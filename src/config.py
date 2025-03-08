@@ -13,16 +13,16 @@ from softmatcha.tokenizers import get_tokenizer
 class SoftMatchaAPI(FastAPI):
     templates: Jinja2Templates
     embedding_model_infos: dict[str, str] = {
-        # "glove-wiki-gigaword-300": "gensim",
+        "glove-wiki-gigaword-300": "gensim",
         "fasttext-ja-vectors": "fasttext",
         # "fasttext-la-vectors": "fasttext",
     }
 
     index_filenames: dict[str, dict[str, str]] = {
         # "wikitext2 (2M)": "glove-wiki-gigaword-300_Wikitext2_Raw_Train",
-        # "en": {
-        #     "NLP2025_en": "glove-wiki-gigaword-300_nlp2025",
-        # },
+        "en": {
+            "NLP2025_en": "glove-wiki-gigaword-300_nlp2025",
+        },
         "ja": {
             "NLP2025_ja": "fasttext-ja-vectors_nlp2025",
         },
