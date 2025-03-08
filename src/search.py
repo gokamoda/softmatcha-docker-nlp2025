@@ -62,9 +62,10 @@ def get_formatted_search_result(
 
         file_stem = Path(file_path).stem
         paper_identifiers = file_stem.split("-")
-        nlp_url = f"https://www.anlp.jp/proceedings/annual_meeting/2025/#{file_identifiers[0]}{int(file_identifiers[1])}-{int(file_identifiers[2])}"
+        paper_identifier = f"{paper_identifiers[0]}{int(paper_identifiers[1])}-{int(paper_identifiers[2])}"
+        nlp_url = f"https://www.anlp.jp/proceedings/annual_meeting/2025/#{paper_identifier}"
 
-        if not regex.match(file_stem):
+        if not regex.match(paper_identifier):
             continue
 
 
@@ -93,10 +94,9 @@ def get_formatted_search_result(
                 if count == 0:
                     return_dict["total_hits"] += res.stats.num_hit_spans
                     return_dict["num_searched_files"] += 1
-                    return_dict["search_time"] += stopwatch.timers.elapsed_time["search"]
 
                 result = json.loads(res.text)
-                result_html = "<td><a href='" + nlp_url + "' target='_blank'>" + file_stem + "</a> "
+                result_html = "<td><a href='" + nlp_url + "' target='_blank'>" + paper_identifier + "</a> "
 
                 current_position = 0
                 for rb_begin, token, score in zip(
@@ -129,6 +129,6 @@ def get_formatted_search_result(
     #     }
 
     return_dict["html_lines"] = result_htmls
-    print(return_dict['result_truncated'])
+    return_dict["search_time"] = stopwatch.timers.elapsed_time["search"]
 
     return return_dict
