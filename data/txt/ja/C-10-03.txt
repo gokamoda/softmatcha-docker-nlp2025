@@ -1,0 +1,140 @@
+日本語を主とした日・英・中トリリンガル 700 億パラメータモデルの構築
+
+中島大 野崎雄太 佐藤諒 池田純一 阿部宏幸 伊藤真也 長谷川慶
+
+
+
+中村聡史 麻場直喜
+
+
+
+株式会社リコー
+
+
+
+{ dai.nakashima, yuta.nozaki1, ryo.sato4, j-ikeda,
+
+
+
+hiroyuki.ab.abe, shinya.itoh, kei.kh.hasegawa,
+
+
+
+satoshi.ns.nakamura, naoki.asaba }@jp.ricoh.com
+
+
+
+概要
+
+我々は、 日本語を主とした 700 億パラメータの日本語・英語・中国語のトリリンガル大規模言語モデル(LLM: Large Language Model)を転移学習によって開発した。
+開発にあたっては、 トークナイザーの差替、 カリキュラム学習、 モデルマージといった複数の手法を順に組み合わせた。
+本稿ではその手法の詳細と、 評価結果を報告する。
+結果として、 継続事前学習においては日本語に転移学習済のモデルをベースに学習を行ったことに起因すると思われる日本語性能の飽和が見られたものの、 その後の SFT, 及びモデルマージによって、 元モデルと比較して大幅な指示追従性能の向上が確かめられた。
+1 はじめにLLM の研究開発は近年非常に盛んである。
+国内においても、 その様々な需要から多くの LLM が開発されている。
+一方でトップ性能の競争は国外を軸に行われており、 そうしたモデルは日本語能力を有するものの、 日本語モデルを目指して開発されたものは多くない。
+依然として、 言語間転移学習を行うことによる、 高性能な公開モデルの日本語化が必要である。
+今回、 我々は公開されている継続事前学習済のモデルに日本語・英語・中国語をさらに継続学習することで 3 言語対応モデルを開発した。
+ベースモデルとしては、 日本語モデル Llama-3-Swallow-70B-v0.1を採用した。
+このモデルは Meta-Llama-3 [1]に日本語コーパスで継続事前学習を行ったモデルである[2, 3, 4]. 学習データには公開データを利用した。
+その内訳については表 2 に記した。
+本稿の構成は以下の通りである: section 2 では、 本モデルの構築手法について説明する。
+モデル構築は以下の手順で行った。
+1. トークナイザーの学習2. 初期重みの用意3. データセットの用意、 カリキュラムの設計4. 継続事前学習5. SFT6. Chat Vector のマージこれらの手順ごとに詳細を示す。
+section 3 では、 本モデルの評価結果を示し、 考察を提示する。
+2 モデル構築2.1 Tokenizerトークナイザーは LLM へのテキストの入出力を担う。
+既存の Meta-Llama-3 で用いられているトークナイザーの日本語に対するトークン化効率(対象となるコーパスをトークナイズしたときの、 1 トークンあたりの文字数)は 1.43 であった(表 1). 全 128, 000の語彙のうち、 CJK 統合漢字、 ひらがな、 カタカナの総数は 5, 208 であり、 もし全ての語彙が日本語であれば、 そのトークン化効率は 2.13 程度が見込まれる[5]. トークン化効率が向上すると、 テキストをより少ないトークンで表すことができ、 結果として処理速度、 及び入出力可能な文字数の増加が期待できる。
+トークン化効率が 2 倍になると、 同じ文章を半分の数のトークンで表せるようになる。
+このような観点から、 新たにトークナイザーの学習を行った。
+なお、 このとき日本語として自然なトークン分割を目的として形態素解析を用いた事前分かち書きを行う手法があるものの、 事前分かち書きをした場合は語彙数を増やすことによるトークン化効率の向上が難しくなる。
+そこで本モデルの構築においては、「助詞+名詞」→「助詞」+「名詞」など、 最低限分割すべきところのみを部分的に分かち書きすることで、 自然な分割とトークン化効率の両立を行った。
+2.1.1 学習設定データセットには後述する LLM の学習に用いた各コーパスを混合し、 用いた。
+アルゴリズムは Llamaと同じ Byte-Pair Encoding である。
+語彙数についてもLlama-3 と同じ 128,000 とした。
+ただし、 MeCab を用いて上述した部分的な事前分かち書きを行った上で学習を行った。
+2.1.2学習結果上記設定で学習したトークナイザーの性能を表 1に記す。
+トークナイザーの学習は Llama-3 の語彙を参照せず行われたが、 結果的に共通語彙は全 128, 000の語彙のうち 52, 917 個となり、 割合としては 0.413となった。
+表 1 トークン化効率。
+表 2 に示すモデル学習に用いた各サブセットに対して平均したスコアを示す。
+Llama-3-Swallow を含む、 トークナイザーに差替えを施していない Llama-3 ベースのモデルは、 Llama-3 と同じトークン化効率を有する。
+日本語英語中国語Meta-Llama-3-70B 1.43 4.42 1.22Llama-3-Ricoh-70B 2.01 4.28 1.502.2 Initial weight学習には、 Llama-3-Swallow-70B-v0.1 を初期重みとして用いた。
+このモデルは Llama-3 に対して日本語データで継続事前学習を行われたものである。
+ただし,本開発ではトークナイザーを新しく学習したため、 ベースモデルの入出力層を新しいトークナイザーに対応させる必要がある。
+ここでは、 以下の処理(Algorithm 1)を行った[6, 7].2.3 Datasets学習には日本語・英語・中国語の公開データを用いた。
+表 2 に利用したデータセット及び特にその中から学習に用いたサブセットを記す。
+ただし、コスト、 データセットの言語間比率、 及び後述するCurriculum Learning の観点から、 そのサブセットのさらに一部を学習に用いた。
+Algorithm 1語彙置換(rebind)Require: 新·旧トークナイザー(𝑇𝑛𝑒𝑤, 𝑇𝑜𝑙𝑑), rebind対象となる埋め込み層または lm head 層(𝐸𝑜𝑙𝑑)Ensure: rebind された 𝐸 (= 𝐸𝑟𝑒𝑏𝑖𝑛𝑑𝑒𝑑).𝐸𝑟𝑒𝑏𝑖𝑛𝑑𝑒𝑑← [];for 𝑡𝑜𝑘 𝑒𝑛 𝑖𝑑 ← 0 to |𝑇𝑛𝑒𝑤.vocab| − 1 do𝑡𝑜𝑘 𝑒𝑛 ← 𝑇𝑛𝑒𝑤.decode(𝑡𝑜𝑘𝑒𝑛 𝑖𝑑);𝑡𝑜𝑘 𝑒𝑛 𝑖𝑑𝑠𝑜𝑙𝑑← 𝑇𝑜𝑙𝑑.encode(𝑡𝑜𝑘𝑒𝑛);𝑛𝑒𝑤 𝑒𝑚𝑏𝑒𝑑𝑑𝑖𝑛𝑔 ← 平均(𝐸𝑜𝑙𝑑[𝑡𝑜𝑘𝑒𝑛 𝑖𝑑𝑠𝑜𝑙𝑑]);𝐸𝑟𝑒𝑏𝑖𝑛𝑑𝑒𝑑[𝑡𝑜𝑘𝑒𝑛 𝑖𝑑] = 𝑛𝑒𝑤 𝑒𝑚𝑏𝑒𝑑𝑑𝑖𝑛𝑔;end forreturn 𝐸𝑟𝑒𝑏𝑖𝑛𝑑𝑒𝑑;2.3.1 Curriculum Learning本モデルの作成に伴い、 英語・中国語の破滅的忘却を避けるべくカリキュラム学習を実施した。
+本カリキュラムは 3 つの部分(初期、 中間期、 最終期)から成る(図 1). 学習初期は破滅的忘却の防止、 学習中間期は日本語の表現学習、 最終期は日本語モデルとしての生成品質向上を目的とした。
+2.4 学習の詳細設定学習においては Amazon Web Services, Inc. (AWS)の Amazon EC2 Trn1 インスタンス(trn1.32xlarge)を256 ノード並列し、 同じく AWS の AWS Neuron 2.19.0と、 それに含まれる NeuronX Distributed を用いた[14]. 主なハイパーパラメータを表 3 に添付する。
+2.5 Instruction Tuning継続事前学習後、 表 4 に示すデータセットで 3 エポックの SFT を行った。
+表 4 SFT に用いたデータセットデータ件数ichikara-instruction 10 KRICOH 5 K他 1 K2.6 Chat VectorChat Vector [15]とは、 instruction モデルと base モデルの重みの差分に適当な係数倍したものを、 同じbase モデルに対して継続事前学習したモデルに足し、 モデルの指示追従性を instruction モデルからコピーする方法である。
+本モデルの構築においてもChatVector を用いた。
+表 2 学習に用いたデータセット言語データセットサブセット日本語 - Wikipedia, CC100[8], OSCAR[9], mC4[10]英語 RedPajama-Data-1T [11] Wikipedia, C4, Book, Stack Exchange中国語nlp chinese corpus [12] Wikipedia, news, baike, webtext, translationTigerBot [13] news, baikeコード RedPajama-Data-1T GitHub図 1 学習カリキュラムの概要図。
+ブロック矢印の順に、 記載のサブセットで学習を行った。
+長さがステップ数、 太さがデータ比率の関係を示す。
+表 3 継続事前学習時の主な設定パラメータ値sequence length 8,192global batch size 1,024optimizer AdamWscheduler Linearmax lr 8.0e-05min lr 8.0e-06warmup ratio 0.005weight decay 0.12.6.1 Chat Vector に対する語彙置換Llama-3-70B-Instruct から取り出した Chat Vector をそのままモデルに足そうとした場合、 Llama3 と本モデルのトークナイザーの語彙の違いにより、 埋め込み層(, 及び lm head 層)に問題が生じる。
+そのため、初期重みに対して行ったものと同じ語彙の変換をChat Vector に対しても行った。
+他のパターンも合わせ、 Chat Vector のマージは以下の式で表される。
+𝜏𝑙 𝑙𝑎𝑚𝑎= 𝜃𝑖𝑛𝑠𝑡 ,𝐿𝑙𝑎𝑚𝑎− 𝜃𝑏𝑎𝑠𝑒,𝐿𝑙𝑎𝑚𝑎(1)𝜏𝑟𝑖𝑐𝑜ℎ= 𝜃𝑖𝑛𝑠𝑡 ,𝑅𝑖𝑐𝑜ℎ− 𝜃𝑏𝑎𝑠𝑒,𝑅𝑖𝑐𝑜ℎ(2)𝜃𝑚𝑒𝑟 𝑔𝑒, ( 𝛼,𝛽, 𝑓 )= 𝜃𝑏𝑎𝑠𝑒,𝑅𝑖𝑐𝑜ℎ+ 𝛼 · 𝑓 (𝜏𝑙𝑙𝑎𝑚𝑎) + 𝛽 · 𝜏𝑟𝑖𝑐𝑜ℎ(3)ただし、 ここで𝑓 ∈{𝐼, ℎ, 𝑔} (4)𝐼 : 恒等変換、 ℎ : 入出力層削除、 𝑔 : 語彙置換𝜃 はモデルの重み、 𝜏 は Chat Vector を表し、 𝛼, 𝛽 は0 以上の実数とした。
+マージ結果の比較として、 LLM の出力サンプルを表 5 に示す。
+単純なマージでは生成が不自然になる一方で、 Chat Vector に対してもベースモデルと同じ、埋め込み層の rebind 処理を施すことで自然な生成が可能であった。
+3 評価モデル構築後、 評価データセットとベンチマークツールを用いて評価を行った。
+その結果を報告する。
+3.1 評価手法ベースモデルの日本語評価には llm-jp-eval [16], 英語評価・中国語評価には lm-evaluation-harness [17]を用いた。
+チャットモデルの評価には Elyza-tasks-100[18]を用い、 日本語の指示追従性能を確かめた。
+3.2 ベースモデルの評価結果Llama-3-Swallow-70B-v0.1 では、 前述したベンチマークを用いて、 日本語、 英語(GLUE), 中国語の評価スコアはそれぞれ 0.7454, 0 .7592, 0.7786 であった。
+それに対し、 本実験による継続事前学習後の性能表 5 Chat Vector をマージしたモデルの生成サンプル。
+𝑎,𝑏 はゼロでない、 ある正の実定数。
+入力はシステムプロンプト +「こんにちは」. 入出力層の rebind で安定した出力が可能となる。
+𝛼 𝛽 𝑓 出力例a 0 𝐼 こんにちは！お元通りですね。
+私は優秀なアシスタントですので、 何かお話したり質問されたりしたらお気軽にお声かけください。
+今日はどうされたいのかお話しませんか？a 0 ℎ こんにちは！今日はどうされましたか？
+何かお手伝いできることはありますか？ーションassistant です。
+よろしくお願いします！ーション 【以下略】a 0 𝑔 こんにちは！今日はどうされましたか？
+何かお手伝いできることはありますか？a b ℎ こんにちは！お元気ですか？何かお手伝いできることはありますか？お話しましょう！ーションーションーション！（ちょっとテンション上げてみました）【以下略】a b 𝑔 こんにちは!
+宜しくお願い致します。
+何かお問い合わせやご相談ございますか?は、 それぞれ 0.7415, 0.7633, 0.7712 となった。
+Llama-3-Swallow-70B と比較し、 平均スコアは日本語について −0.0039 とわずかに減少したものの、 英語は GLUEのスコアについて +0.0041, 中国語は +0.0057 となり、同等以上の性能向上が見られた。
+ただし、 英語については GLUE に含まれない TruthfulQA の指標について 0.5529 から 0.5132 となったことで −0.0397 となっており、 総合すれば本質的にいずれの言語においても大幅な能力の変化は見られなかったとみなすのが妥当であると思われる。
+これらのスコアの詳細については、 表 7, 8, 9, 10 に示す。
+学習途中の llm-jp-eval のスコア推移を図 2 に示す。
+語彙の差し替えによって大幅に低下していた性能が学習序盤に復帰し、 その後の学習においてはLlama-3-Swallow-70B とほぼ同じ値で飽和した。
+3.3 チャットモデルの評価結果Elyza-tasks-100 を用いた評価スコアを以下の表 6に示す。
+SFT を行ったモデルでは、 元モデルのインストラクションモデルと比較して明らかな性能向上(+0.14)が見られた。
+また、 Chat Vector のマージも合わせることで、 70B モデルであるにも関わらず gpt-4と同水準(−0.05)の非常に高い性能を示した。
+図 2 学習途中の llm-jp-eval の平均スコア推移。
+表 6 Elyza-tasks-100 のスコア(70B). 自動評価は gpt-4-0613で行った。
+実定数 𝑎, 𝑏 は表 5 と同じ。
+モデルスコアMeta-Llama-3-70B-Instruct 3.63Llama-3-Swallow-70B-Instruct-v0.1 3.88Llama-3.1-Swallow-70B-Instruct-v0.3 4.28gpt-4-0613 4.45Llama-3-Ricoh-70B-Instruct 4.02Llama-3-Ricoh-70B-Merge (𝑎, 0, 𝑔) 4.22Llama-3-Ricoh-70B-Merge (𝑎, 𝑏, 𝑔) 4.403.4 考察トークナイザーを差替えた Llama-3-Swallow-70B-v0.1 に継続事前学習した結果、 ベースモデルの性能は最終的に Llama-3-Swallow-70B-v0.1 とほぼ同程度で飽和した。
+これは何らかの上限値の存在を示唆しているように見えるものの、 LLM の性能にはハイパーパラメータなど様々な要因が寄与しており、 本実験のみからはこの原因について結論付け難い。
+4 おわりに本稿では、日本語コーパスで継続事前学習済みである Llama-3-Swallow-70B-v0.1 に対して日英中 3 言語データでさらに継続事前学習を行い、 各種ベンチマークツールで性能評価した結果を報告した。
+継続事前学習の結果としては、 Swallow と同程度で性能が飽和することが明らかとなった。
+一方で事後学習については Chat Vector のマージを用いることで指示追従性能が従来と比べて大幅に向上し、 70B クラスとしては非常に高い水準の性能を有するモデルの開発が可能であることが確かめられた。
+
+5 謝辞本モデルの構築にあたり、Amazon Web ServicesJapan G.K. 及び Amazon Web Services, Inc. の GenerativeAI Innovation Center によるご支援を頂き、 AWS LLM開発支援プログラムを利用しました。
+
+参考文献
+
+
+[1] AI@Meta. Llama 3 Model Card, 2024. https://github.com/meta-llama/llama3/blob/main/MODEL CARD.md.
+[2] Llama 3 Swallow. https://swallow-llm.github.io/llama3-swallow.ja.html.
+[3] Kazuki Fujii, Taishi Nakamura, Mengsay Loem, HirokiIida, Masanari Ohi, Kakeru Hattori, Hirai Shota, SakaeMizuki, Rio Yokota, and Naoaki Okazaki. Continual Pre-Training for Cross-Lingual LLM Adaptation: EnhancingJapanese Language Capabilities. In Proceedings of theFirst Conference on Language Modeling, COLM, p.(to appear), University of Pennsylvania, USA, October2024. preprint: https://arxiv.org/abs/2404.17790.
+[4] Naoaki Okazaki, Kakeru Hattori, Hirai Shota, Hiroki Iida,Masanari Ohi, Kazuki Fujii, Taishi Nakamura, MengsayLoem, Rio Yokota, and Sakae Mizuki. Building a LargeJapanese Web Corpus for Large Language Models. In Pro-ceedings of the First Conference on Language Mod-eling, COLM, p. (to appear), University of Pennsylvania,USA, October 2024.
+[5] 中島大, 野崎雄太, 佐藤諒, 麻場直喜, 川村晋太郎.BPE を用いたトークナイザーの性能に対する, 言語・語彙数・データセットの影響. 言語処理学会第 30 回年次大会, 2024. https://www.anlp.jp/proceedings/annual meeting/2024/pdf dir/D3-5.pdf.
+[6] 野崎雄太, 中島大, 佐藤諒, 伊藤真也, 近藤宏, 麻場直喜,川村晋太郎.大規模言語モデルに対する語彙置換継続事前学習の有効性の検証. 言語処理学会第 30 回年次大会, 2024. https://www.anlp.jp/proceedings/annual meeting/2024/pdf dir/A2-6.pdf.
+[7] Nozaki Yuta, Nakashima Dai, Sato Ryo, and Asaba Naoki.VRCP: Vocabulary Replacement Continued Pretrainingfor Eﬃcient Multilingual Language Models. In Proceed-ings of the Second Workshop on Scaling Up Multi-lingual Evaluation, Abu Dabi, UAE, 2025. Associationfor Computational Linguistics. (in press).
+[8] Alexis Conneau, Kartikay Khandelwal, Naman Goyal,Vishrav Chaudhary, Guillaume Wenzek, FranciscoGuzm´an, Edouard Grave, Myle Ott, Luke Zettlemoyer, andVeselin Stoyanov. Unsupervised Cross-lingual Represen-tation Learning at Scale. In Dan Jurafsky, Joyce Chai,Natalie Schluter, and Joel Tetreault, editors, Proceed-ings of the 58th Annual Meeting of the Associationfor Computational Linguistics, pp. 8440–8451, On-line, July 2020. Association for Computational Linguistics.https://aclanthology.org/2020.acl-main.747.
+[9] Pedro Javier Or tiz Su’arez, Benoit Sagot, and Laurent Ro-mary. Asynchronous pipelines for processing huge cor-pora on medium to low resource infrastructures. Pro-ceedings of the Workshop on Challenges in the Manage-ment of Large Corpora (CMLC-7) 2019. Cardiﬀ, 22nd July2019, pp. 9 – 16, Mannheim, 2019. Leibniz-Institut f”urDeutsche Sprache. http://nbn-resolving.de/urn:nbn:de:bsz:mh39-90215.
+[10] Linting Xue, Noah Constant, Adam Roberts, Mihir Kale,Rami Al-Rfou, Aditya Siddhant, Aditya Barua, and ColinRaﬀel. mT5: A Massively Multilingual Pre-trainedText-to-Text Transformer. In Kristina Toutanova, AnnaRumshisky, Luke Zettlemoyer, Dilek Hakkani-Tur, Iz Belt-agy, Steven Bethard, Ryan Cotterell, Tanmoy Chakraborty,and Yichao Zhou, editors, Proceedings of the 2021Conference of the North American Chapter of theAssociation for Computational Linguistics: HumanLanguage Technologies, pp. 483–498, Online, June2021. Association for Computational Linguistics. https://aclanthology.org/2021.naacl-main.41.
+[11] Together Computer. RedPajama: An Open Source Recipeto Reproduce LLaMA training dataset, 2023. https://github.com/togethercomputer/RedPajama-Data.
+[12] Bright Xu. NLP Chinese Corpus: Large Scale ChineseCorpus for NLP, September 2019. https://doi.org/10.5281/zenodo.3402023.
+[13] Chen Ye, Cai Wei, Wu Liangmin, Li Xiaowei, Xin Zhanx-uan, and Fu Cong. TigerBot: An Open Multilingual Multi-task LLM, 2023. https://arxiv.org/abs/2312.08688.
+[14] AWS Neuron. https://awsdocs-neuron.readthedocs-hosted.com.
+[15] Shih-Cheng Huang, Pin-Zu Li, Yu-chi Hsu, Kuang-MingChen, Yu Tung Lin, Shih-Kai Hsiao, Richard Tsai, andHung-yi Lee. Chat Vector: A Simple Approach to EquipLLMs with Instruction Following and Model Alignmentin New Languages. In Lun-Wei Ku, Andre Martins, andVivek Srikumar, editors, Proceedings of the 62nd An-nual Meeting of the Association for ComputationalLinguistics (Volume 1: Long Papers), pp. 10943–10959, Bangkok, Thailand, August 2024. Associationfor Computational Linguistics. https://aclanthology.org/2024.acl-long.590.
+[16] Namgi Han, 植 田 暢 大, 大 嶽 匡 俊, 勝 又 智, 鎌 田啓 輔, 清 丸 寛 一, 児 玉 貴 志, 菅 原 朔, Bowen Chen,松 田 寛, 宮 尾 祐 介, 村 脇 有 吾, 劉 弘 毅. llm-jp-eval: 日 本 語 大 規 模 言 語 モ デ ル の 自 動 評 価 ツ ール, March 2024. https://www.anlp.jp/proceedings/annual meeting/2024/pdf dir/A8-2.pdf.
+[17] Leo Gao, Jonathan Tow, Baber Abbasi, Stella Bider-man, Sid Black, Anthony DiPoﬁ, Charles Foster, Lau-rence Golding, Jeﬀrey Hsu, Alain Le Noac’h, HaonanLi, Kyle McDonell, Niklas Muennighoﬀ, Chris Ociepa,Jason Phang, Laria Reynolds, Hailey Schoelkopf, AviyaSkowron, Lintang Sutawika, Eric Tang, Anish Thite,Ben Wang, Kevin Wang, and Andy Zou. A frame-work for few-shot language model evaluation, 12 2023.https://zenodo.org/records/10256836.
+[18] Akira Sasaki, Masato Hirakawa, Shintaro Horie, and To-moaki Nakamura. ELYZA-tasks-100: 日 本 語 instr uc-tion モ デ ル 評 価 デ ー タ セ ッ ト, 2023. https://huggingface.co/elyza/ELYZA-tasks-100.
+
+A Appendix表 7 ベースモデルの日本語ベンチマーク結果checkpoint EL FA HE MC MR MT NLI QA RC Avg.Llama-3-Swallow-70B-v0.1 0.5384 0.3308 0.7000 0.9800 0.9500 0.9103 0.7280 0.6675 0.9034 0.7454initial-01-of-03 0.2228 0.1796 0.6150 0.8000 0.9100 0.8899 0.6040 0.5023 0.8037 0.6141initial-02-of-03 0.4834 0.2647 0.6700 0.8800 0.9300 0.9034 0.7340 0.6157 0.8934 0.7083initial-03-of-03 0.5195 0.2863 0.6850 0.9500 0.9400 0.9050 0.7280 0.6352 0.8811 0.7256middle-01-of-06 0.5693 0.3097 0.6750 0.9300 0.9500 0.9072 0.7180 0.6310 0.8845 0.7305middle-02-of-06 0.5603 0.3184 0.6800 0.9200 0.9700 0.9066 0.7360 0.6463 0.8759 0.7348middle-03-of-06 0.5599 0.3155 0.6900
+0.9500 0.9600 0.9073 0.7360 0.6441 0.8831 0.7384middle-04-of-06 0.5409 0.3251 0.6900 0.9500 0.9600 0.9077 0.7380 0.6532 0.8810 0.7384middle-05-of-06 0.5342 0.3285 0.6800 0.9400 0.9700 0.9075 0.7420 0.6466 0.8854 0.7371middle-06-of-06 0.5314 0.3344 0.6900 0.9400 0.9700 0.9077 0.7400 0.6481 0.8860 0.7386ﬁnal-01-of-04 0.5546 0.3330 0.6850 0.9500 0.9700 0.9069 0.7500 0.6610 0.8920 0.7447ﬁnal-02-of-04 0.5507 0.3288 0.6900 0.9400 0.9700 0.9074 0.7500 0.6468 0.8884 0.7413ﬁnal-03-of-04 0.5542 0.3320 0.6900 0.9500 0.9600 0.9069 0.7400 0.6702 0.8936 0.7441Llama-3-Ricoh-70B(ﬁnal-04-of-04)0.5320 0.3206 0.7000 0.9400 0.9600 0.9086 0.7480 0.6693 0.8948 0.7415表 8 ベースモデルの英語ベンチマーク結果。
+GLUECoLA MNLI-m MNLI-mm MRPC QNLI QQP RTE SST-2 WNLI Avg.(mcc)(acc)(acc)(acc)(acc)(acc)(acc)(acc)(acc)Llama-3-Swallow-70B-v0.10.5413 0.7035 0.7002 0.7598 0.7168 0.8184 0.7834 0.9358 0.8732 0.7592Llama-3-Ricoh-70B0.5736 0.7059 0.6918 0.7574 0.7316 0.8242 0.7834 0.9427 0.8592 0.7633表 9 ベースモデルの英語ベンチマーク結果(GLUE 以外)ARC HellaSwag MMLU TruthfulQA Winogrande GSM8K XL-Sum-en Avg.(acc norm)(acc norm)(acc)(mc2)(acc)(ﬂexible-extract)(BERTScore)Llama-3-Swallow-70B-v0.10.6758 0.8753 0.7740 0.5529 0.8516 0.8150 0.9053 0.7786Llama-3-Ricoh-70B0.6706 0.8786 0.7772 0.5132 0.8493 0.8036 0.9056 0.7712表 10 ベースモデルの中国語ベンチマーク結果モデル C-Eval CMMLU Avg.(acc norm)(acc norm)Llama-3-Swallow-70B-v0.1 0.6441 0.6703 0.6572Llama-3-Ricoh-70B 0.6553 0.6704 0.6629

@@ -1,0 +1,249 @@
+Anchoring を行う生成的関係抽出
+
+広田航
+
+1
+
+ 高橋洸丞
+
+1
+
+ 
+
+
+
+Benjamin Heinzerling
+
+2,3
+
+ 
+
+
+
+Qin Dai
+
+3
+
+ 近江崇宏
+
+1
+
+ 乾健太郎
+
+4,3,21
+
+ストックマーク株式会社 
+
+2
+
+理化学研究所 
+
+3
+
+東北大学 
+
+4
+
+MBZUAI
+
+
+
+wataru.hirota@stockmark.co.jp  kosuke.takahashi@stockmark.co.jp
+
+
+
+ benjamin.heinzerling@riken.jp  qin.dai.b8@tohoku.ac.jp
+
+
+
+ takahiro.omi@stockmark.co.jp  kentaro.inui@mbzuai.ac.ae
+
+
+
+概要
+
+生成的言語モデルを用いた関係抽出(生成的関係抽出)によって関係抽出の精度は大きく向上したが、再現率が依然低いという問題がある。
+この問題に対し、 本論文では任意の生成的関係抽出に適用できる新手法 Anchoring を提案する。
+Anchoring はあらかじめ 3 つ組(head, relation , tail)の head の候補となるスパン(anchor)を抽出し、 各 anchor に対して個別に生成的関係抽出を行う手法である。
+評価実験では複数の関係抽出データセットにおいて Anchoring が精度および再現率が向上させることを示した上で、 特にhead および tail の抽出性能の向上に寄与すること、および文の主題でない head, tail に対しても頑健性が高まることを示す。
+
+
+
+1 はじめに
+
+生成的言語モデルの登場により関係抽出の性能は大きく向上している。
+従来の関係抽出はスパン特定モデルおよび関係分類モデルを用いて段階的に解くパイプライン方式が一般的であったが、 近年は生成的言語モデルを使用して関係抽出を解く生成的関係抽出が提案されている(図 1 上段、 中段).生成的関係抽出は高い精度を示すものの、 特定のスパンに関する 3 つ組のみを抽出する傾向があり再現率が低いという問題がある[1]. この問題に対し、本論文では任意の生成的関係抽出に適応可能な新手法 Anchoring を提案する。
+Anchoring は事前に 3 つ組の head の候補となるスパン(anchor)を抽出し、 それぞれの anchor に対して個別に生成的関係抽出を解く方法である。
+(図 1 下段). Anchoring によって生成的関係抽出の長所である高い精度を維持しつつ、 より抜け漏れなく 3 つ組を抽出できることが期待される。
+評価実験では複数の関係抽出データセットで精度および再現率を比較し、 Anchoring の有効性を検証する。
+また 3 つ組の head, tail の抽出性能も個別に評価し、 提案手法は特に多様な head に関する 3 つ組を抽出する効果があることを示す。
+さらに 3 つ組に含まれるスパンが文の主題かどうかによって分けて性能を比較し、 主題性が関係抽出に及ばす影響を論じる。
+
+2 関連研究
+
+関係抽出は古典的に(1)スパン特定(2)関係分類の 2 段階で解くパイプライン方式が提案されてきた[2, 3]. 近年ではこの 2 つを同時に解く End-to-End形式の手法も提案されている[4, 5].Cabot ら[6]は関係抽出を End-to-End の seq2seq 問題として解く生成的関係抽出を提唱した。
+近年では、関係抽出や固有表現抽出、 イベント抽出などの情報抽出タスクを統一したテンプレートせ生成的に解く手法が高い抽出性能を示している[7, 8, 9].生成的関係抽出は大規模言語モデル(LLM)と組み合わせることで高い精度を示す[7, 9, 10]一方で、再現率にあまり向上が見られないという問題がある[7, 1]. Ding ら[1]は特に 3 つ組数が多い関係抽出データで生成的関係抽出の再現率が低下することを示している。
+
+
+3 前提
+
+
+
+3.1 問題設定
+
+関係ラベルの集合を 𝑅, 文 𝐷 に存在するスパンの集合を 𝑆𝐷とするとき、 関係抽出は 𝐷 中の全ての 3つ組の集合{(ℎ, 𝑟, 𝑡)|ℎ ∈ 𝑆𝐷, 𝑟 ∈ 𝑅, 𝑡 ∈ 𝑆𝐷} (1)を得る問題である。
+図 1 パイプライン方式、 生成的関係抽出および生成的関係抽出 w/ Anchoring (提案手法)の概略図。
+入力テキストおよび各手法の出力は Re-DocRED データセットにおける実際のデータからサンプルした。
+本例では、 提案手法はパイプライン方式で見られた偽陽性(赤色)を防ぎつつ Anchoring を行わない生成的関係抽出で抽出されなかった 3 つ組(青色)を正しく抽出している。
+簡単のため、 入力文および両手法の予測の一部を省略した。
+
+
+
+3.2 ベースライン手法
+
+本論文ではベースライン手法としてパイプライン方式と Anchoring を行わない生成的関係抽出を採用する。
+パイプライン方式は関係抽出を(1)スパン特定(2)関係分類の 2 段階に分けて解く方法である。
+パイプライン手法の概略図を図 1 上段に示す。
+生成的関係抽出は seq2seq 問題として関係抽出を解く手法である(図 1 中段). 本論文では生成的関係抽出のテンプレートとして CodeIE [9]と UIE [7]を採用する。
+CodeIE と UIE のテンプレートを付録 A に示す。
+
+
+
+4 提案手法: Anchoring
+
+本論文では生成的関係抽出における Anchoring を提案する。
+Anchoring はあらかじめ 3 つ組の head の候補となるスパン(anchor)を抽出し、 次にテキストと個々の anchor の 2 つを入力して生成的関係抽出を解く方法である(図 1 下段). Anchoring は任意の生成的関係抽出に対して適用できる。
+Anchoring の核心は、 モデルに anchor に対して注目を向けさせるよう明示的に指示することである。
+モデルが各 anchor に対して注意深く関係抽出を行うよう仕向けることで、 より 3 つ組の抽出漏れが少なくなることが期待される。
+
+
+5 評価実験
+
+
+
+5.1 実験設定
+
+データセット本実験では関係抽出のデータセットとして Re-DocRED [11], SciERC [12]およびBioRED [13]を用いる。
+Re-DocRED, SciERC, BioREDはそれぞれ Wikipedia 文書、 人工知能分野の学術文献、 生物医学分野の学術文献に対して関係ラベルを付与したデータセットである。
+各データセットの詳細な情報を表1 に示す。
+ベースライン生成的関係抽出のテンプレートには CodeIE [9]と UIE [7]を用いる。
+CodeIE (w/Anchoring)と UIE (w/ Anchoring)はそれぞれのテンプレートに対し Anchoring を適用した手法である。
+これらのテンプレートを付録 A に示す。
+ベースライン手法との公平な比較のため、 CodeIE, UIE のAnchoring におけるスパン特定はそれぞれ CodeIE,UIE を用いる。
+パイプライン方式におけるスパン特定は、 より精度の高い UIE テンプレートを使用する。
+パイプライン方式における関係分類の学習では、 偽陽性を抑制するため、 正例の 80% の量の負例を自動生成して教師データに追加した。
+これは Ni ら[10]が提案している値である。
+モデルと学習本実験では全ての手法で Llama 3.18B Instruct [14]に LoRA [15]チューニング(𝑟 = 16, 𝛼 =32)を行った。
+全ての学習で学習率を 1.0 × 10−4, 最適化手法を AdamW [16], バッチサイズを 16, エポック数を 3 に定めた。
+
+
+
+5.2 ベースラインとの比較
+
+目的提案手法によって関係抽出の精度・再現率が向上するか検証する。
+結果と考察表 2 に関係抽出の精度、 再現率および F1 スコアを示す。
+Re-DocRED と SciERC において提案手法はベースライン手法と比べ全体的に高表 1 データセットの詳細な情報。
+データセット文書の種類関係数関係の対称性平均トークン数平均 3 つ組数平均スパン数Re-DocRED Wikipedia 96 非対称 235.3 31.9 63.7SciERC 学術論文 8 非対称 151.6 9.2 18.5BioRED 学術論文 9 対象 69.7 2.7 6.0表 2 関係抽出の精度(P), 再現率(R)および F1 スコア(F).Re-DocRED SciERC BioRED手法 P R F P R F P R Fパイプライン方式 0.594 0.341 0.433 0.188 0.379 0.251 0.518 0.527 0.522CodeIE 0.527 0.044 0.081 0.230 0.194 0.210 0.489 0.432 0.459(w/ Anchoring) 0.540 0.522 0.531 0.177 0.261 0.211 0.302 0.578 0.397UIE 0.632 0.281 0.389 0.256 0.242 0.249 0.503 0.442 0.470(w/ Anchoring) 0.635 0.527 0.576 0.313 0.373 0.340 0.498 0.516 0.507表 3 head のみ、 tail のみ、 ペアのみの精度と再現率。
+Head Tail PairP R P R P RRe-DocREDパイプライン方式 0.845 0.679 0.755 0.596 0.640 0.367CodeIE0.796 0.069 0.739 0.670 0.589 0.048(w/ Anchoring) 0.743 0.853 0.764 0.684 0.601 0.583UIE 0.821 0.413 0.830 0.732 0.699 0.311(w/ Anchoring) 0.748 0.766 0.855 0.751 0.693 0.575SciERCパイプライン方式 0.451 0.600 0.491 0.673 0.211 0.432CodeIE 0.508 0.428 0.535 0.544 0.284 0.252(w/ Anchoring) 0.375 0.617 0.516 0.509 0.207 0.320UIE 0.464 0.487 0.639 0.591 0.307 0.283(w/ Anchoring) 0.451 0.614 0.746 0.716 0.353 0.429BioREDパイプライン方式 0.804 0.778 - - 0.631 0.646CodeIE 0.801 0.737 - - 0.638 0.568(w/ Anchoring) 0.567 0.930 - - 0.379 0.723UIE 0.804 0.731 - - 0.632 0.560(w/ Anchoring) 0.775 0.802 - - 0.594 0.627い精度・再現率を示した。
+このことから、 Anchoringは 3 つ組をより正確に、 網羅的に行う効果があることがわかる。
+一方で BioRED においては Anchoringによって精度が低下した。
+これは BioRED データセットは関係が対照的であることに起因すると考えられる。
+すなわち、 3 つ組(head, relation, tail)と(tail,relation, head)は同義であるが、 Anchoring を行った場合は別々に推論が行われるため、 偽陽性が増え精度が低下したと考えられる。
+対称性のある関係に対する精度の向上は提案手法の今後の課題である。
+
+
+5.3 head および tail の抽出性能
+
+目的提案手法の性能が向上した理由として考えられる以下の仮説を検証する。
+• head の抽出性能が上がった• head に対する tail の抽出性能が上がった。
+• 関係ラベルの分類性能が上がった。
+実験設定各手法の予測結果を以下の指標で比較する。
+• head の精度と再現率(Head).• 各 head に対する tail の精度と再現率(Tail).• (head, tail )のペアに対する精度と再現率(Pair).関係ラベルの正誤は問わない。
+なお BioRED は関係が対称的であることから Headと Tail は同一の評価になるため、 Head のみ評価する。
+結果と考察結果を表 3 に示す。
+Head においては、 提案手法の精度はベースライン手法と比べ同等か少し下がる一方、 再現率は大きく向上した。
+Tail においては提案手法が精度と tail のいずれも高い値を示した。
+Pair においても提案手法が高い精度、 再現率を示した。
+Pair の精度、 表 2 で示した 3 つ組の精度、 再現率の差は手法によらず同程度であった。
+両者の違いは関係ラベルの正誤を考慮するかどうかにあることから、 関係の分類性能は手法間の差異がないことがわかった。
+以上を総合し、 提案手法は(1) head の網羅性を向上させ(2) head が与えられた上での tail の精度、 再現率を高く維持したことで関係抽出の性能が向上していることがわかった。
+
+
+
+5.4 スパンの主題性
+
+目的 「ベースライン手法は文の主題ではないスパンの 3 つ組を取りのがすことが多く、 提案手法は主題ではないスパンに対しても頑健である」という仮説を立て検証した。
+ここではスパンが主題であるBoth Only head Only target Neither00.20.40.60.8Both Only head Only target Neither00.20.40.6Both Only head Neither00.10.20.30.4Both Only head Only target Neither00.20.4Both Only head Only target Neither00.10.20.30.4Both Only head Neither00.20.40.60.8Pipelilne CodeIE CodeIE w/ anchoring UIE UIE w/ anchoringPrecisionRecallRe-DocRED SciERC BioRED図 2 スパンを主題・非主題に分けた時の関係抽出の性能。
+上段の 3 つのグラフの縦軸は精度、 下段の 3 つのグラフの縦軸は再現率を表す。
+グラフの横軸はテストデータのカテゴリを表し、 異なる色の縦棒でそれぞれの手法を表す。
+表 4 トピックの主題・非主題で分類した 4 つのデータセットの 3 つ組数。
+データセット Both Only head Only tail NeitherRe-DocRED 5, 039 7, 442 3, 349 2, 309SciERC 450 158 155 207BioRED 888 547 - 161ことを「文がそのスパンについて主に述べている」ことと定める。
+例えば ”テスラは自動車メーカであり、 アメリカに本社がある” という文では、 テスラが主題スパン、 自動車・アメリカは非主題スパンに分類される。
+実験設定 GPT-4o1）を用いて正解の 3 つ組に含まれる head および tail が文の主題であるかどうかを分類し、 3 つ組を「head も tail も主題である(Both)」「head のみが主題である(Only head)」「tail のみが主題である(Only tail) 」「どちらも主題ではない(Neither)」の 4 つのカテゴリに分けた。
+4 つのカテゴリの 3 つ組数を表 4 に示す。
+分類に使用したプロンプトは付録 B に示す。
+なお BioRED は関係に対称性があることから Only tail の評価は行わない。
+結果と考察図 2 に 4 つのカテゴリでの精度と再現率を示す。
+結果より、 Re-DocRED と SciERC においてベースライン手法は非主題のスパンに対する再現率が低下するのに対し、 提案手法では非主題のスパンに対しても高い再現率を示すことがわかった。
+このことから、 Anchoring を行わない生成的関係抽出はより主題のスパンに偏って着目して 3 つ組を抽出するが、 Anchoring によってそれが緩和されていること1） モデルは gpt-4o-2024-08-06 を用いた。がわかる。
+一方でて非主題のスパンに対する精度は全ての手法・データセットにおいて低く、 提案手法でも改善が見られない。
+非主題のスパンに対する精度の向上は今後の課題である。
+また興味深いことに、 生成的関係抽出では Onlytail の性能は Only head に比べ低いという現象がみられた。
+この現象はパイプライン方式では見られないことから、 生成的関係抽出のモデルには 3 つ組のhead と tail の順番に対するバイアスがあることが推察される。
+
+
+6 おわりに
+
+本論文では、 生成的関係抽出の再現率が低いという問題に対する解決策として Anchoring を提案し、 評価実験によりその効果を確認した。
+また評価実験では(1)提案手法は多様な head に対する 3 つ組の抽出に効果があること(2)生成的関係抽出は主題ではないスパンの 3 つ組に対して性能が劣化するが、 提案手法ではそれが緩和されることをそれぞれ示した。
+本研究の今後の課題として、 5.2 章で論じた対称性のある関係抽出における精度の向上、 および 5.4 章で論じた非主題スパンの精度の向上が挙げられる。
+これらの問題は関係ラベルなど head 以外の anchorを採用することで解決できる可能性がある。
+本論文で提案した Anchoring はあらゆる生成的関係抽出に簡単に適用できる上に、 追加の教師データも必要としない。
+この利点を踏まえ、 関係抽出において幅広く本手法が使われることを期待する。
+
+
+
+参考文献
+
+
+[1] Zepeng Ding, Wenhao Huang, Jiaqing Liang, YanghuaXiao, and Deqing Yang. Improving recall of large lan-guage models: A model collaboration approach for rela-tional triple extraction. In Nicoletta Calzolari, Min-YenKan, Veronique Hoste, Alessandro Lenci, Sakriani Sakti,and Nianwen Xue, editors, Proceedings of the 2024Joint International Conference on ComputationalLinguistics, Language Resources and Evaluation, pp.8890–8901, Torino, Italia, May 2024. ELRA and ICCL.
+[2] Nanda Kambhatla. Combining lexical, syntactic, and se-mantic features with maximum entropy models for ex-tracting relations. In Proceedings of the ACL 2004 onInteractive Poster and Demonstration Sessions, p.22–es, Barcelona, Spain, 2004. Association for Computa-tional Linguistics.
+[3] Daojian Zeng, Kang Liu, Siwei Lai, Guangyou Zhou, andJun Zhao. Relation classiﬁcation via convolutional deepneural network. In Junichi Tsujii and Jan Hajic, editors,Proceedings of the 25th International Conferenceon Computational Linguistics: Technical Papers,pp. 2335–2344, Dublin, Ireland, August 2014. Dublin CityUniversity and Association for Computational Linguistics.
+[4] Makoto Miwa and Yutaka Sasaki. Modeling joint en-tity and relation extraction with table representation. InAlessandro Moschitti, Bo Pang, and Walter Daelemans,editors, Proceedings of the 2014 Conference on Em-pirical Methods in Natural Language Processing,pp. 1858–1869, Doha, Qatar, October 2014. Associationfor Computational Linguistics.
+[5] Arzoo Katiyar and Claire Cardie. Going out on a limb:Joint extraction of entity mentions and relations withoutdependency trees. In Regina Barzilay and Min-Yen Kan,editors, Proceedings of the 55th Annual Meetingof the Association for Computational Linguistics(Volume 1: Long Papers), pp. 917–928, Vancouver,Canada, July 2017. Association for Computational Lin-guistics.
+[6] Pere-Llu´ıs Huguet Cabot and Roberto Navigli. REBEL:Relation extraction by end-to-end language generation. InMarie-Francine Moens, Xuanjing Huang, Lucia Specia,and Scott Wen-tau Yih, editors, Findings of the Associ-ation for Computational Linguistics: EMNLP 2021,pp. 2370–2381, Punta Cana, Dominican Republic, Novem-ber 2021. Association for Computational Linguistics.
+[7] Yaojie Lu, Qing Liu, Dai Dai, Xinyan Xiao, Hongyu Lin,Xianpei Han, Le Sun, and Hua Wu. Uniﬁed structure gen-eration for universal information extraction. In Proceed-ings of the 60th Annual Meeting of the Associationfor Computational Linguistics (Volume 1: Long Pa-pers), pp. 5755–5772, Dublin, Ireland, May 2022. Asso-ciation for Computational Linguistics.
+[8] Giovanni Paolini, Ben Athiwaratkun, Jason Krone, JieMa, Alessandro Achille, RISHITA ANUBHAI, Ci-cero Nogueira dos Santos, Bing Xiang, and Stefano Soatto.Structured prediction as translation between augmentednatural languages. In International Conference onLearning Representations, Vir tual Event, May 2021.PMLR.
+[9] Peng Li, Tianxiang Sun, Qiong Tang, Hang Yan, Yuan-bin Wu, Xuanjing Huang, and Xipeng Qiu. CodeIE:Large code generation models are better few-shot infor-mation extractors. In Anna Rogers, Jordan Boyd-Graber,and Naoaki Okazaki, editors, Proceedings of the 61stAnnual Meeting of the Association for Computa-tional Linguistics, pp. 15339–15353, Toronto, Canada,July 2023. Association for Computational Linguistics.
+[10] Jian Ni, Gaetano Rossiello, Alﬁo Gliozzo, and Radu Flo-rian. A generative model for relation extraction and clas-siﬁcation. arXiv [cs.CL], February 2022.
+[11] Qingyu Tan, Lu Xu, Lidong Bing, Hwee Tou Ng, andSharifah Mahani Aljunied. Revisiting DocRED - address-ing the false negative problem in relation extraction. InYoav Goldberg, Zornitsa Kozareva, and Yue Zhang, edi-tors, Proceedings of the 2022 Conference on Empir-ical Methods in Natural Language Processing, pp.8472–8487, Abu Dhabi, United Arab Emirates, December2022. Association for Computational Linguistics.
+[12] Yi Luan, Luheng He, Mari Ostendorf, and Hannaneh Ha-jishirzi. Multi-task identiﬁcation of entities, relations, andcoreference for scientiﬁc knowledge graph construction.In Ellen Riloﬀ, David Chiang, Julia Hockenmaier, andJun’ichi Tsujii, editors, Proceedings of the 2018 Con-ference on Empirical Methods in Natural LanguageProcessing, pp. 3219–3232, Brussels, Belgium, October-November 2018. Association for Computational Linguis-tics.
+[13] Ling Luo, Po-Ting Lai, Chih-Hsuan Wei, Cecilia N Arighi,and Zhiyong Lu. Biored: a r ich biomedical relation ex-traction dataset. Brieﬁngs in Bioinformatics, Vol. 23,No. 5, p. bbac282, July 2022.
+[14] Aaron Grattaﬁori, Abhimanyu Dubey, Abhinav Jauhri, Ab-hinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, AieshaLetman, Akhil Mathur, Alan Schelten, Alex Vaughan,Amy Yang, and Angela Fan et al. The llama 3 herd ofmodels. arXiv [cs.AI], July 2024.
+[15] Edward J Hu, yelong shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and WeizhuChen. LoRA: Low-rank adaptation of large language mod-els. In International Conference on Learning Repre-sentations, Virtual Event, may 2022. PMLR.
+[16] Ilya Loshchilov and Frank Hutter. Decoupled weight de-cay regularization. In International Conference onLearning Representations, Louisiana, U.S., May 2019.PMLR.
+
+
+
+
+A 生成的関係抽出のテンプレート
+
+
+
+A.1 CodeIE
+
+CodeIE は以下のようなソースコードに模したテンプレートで関係抽出を解く。
+def relation_extraction(input_text):""" extract the relations of named entitiesfrom the input text. """input_text = "Steve became CEO of Apple."entity_relation_list = []# extacted relationsentity_relation_list.append({"rel_type" "work_for","ent1_name: "Steve","ent2_name": "Apple"})Anchoring を行った CodeIE は input_text 以降の部分を以下のように変更する。
+input_text = "Steve became CEO of Apple."anchor = "Steve"entity_relation_list = []# extacted relationsentity_relation_list.append({"rel_type" "work_for","ent2_type": "Apple"}
+
+A.2 UIE
+
+UIE は以下のようなテンプレート(StructuredExtraction Language; SEL)で関係抽出を解く。
+入力: Steve became CEO of Apple.出力:((person: Steve(work for: Apple)))Anchoring を行った UIE は以下のようなテンプレートになる。
+入力: Steve became CEO of Apple.anchor: Steve出力:((person: Steve(work for: Apple)))
+
+B 主題スパン・非主題スパンの分類
+
+主題スパン・非主題スパンの判定は以下のプロンプトを用いた。
+Task:You are an expert in identifying topics andcategorizing entities from text. Yourgoal is to analyze the given text and alist of entities to classify theminto two categories:1. Main Topic Entities: Entities thatrepresent the central topic(s)or main focus of the text.2. Other Entities: Entities thatare mentioned in the text but arenot central to its main topic(s).Input:- `text`: A paragraph or document.- `entities`: A list of entitiesextracted from the text.Output:A JSON object with
+two fields:- "main_topic_entities": A listof entities that represent the main topic(s).- "other_entities": A list of entitiesthat are not central but stillmentioned in the text.Example Input:Text: Electric vehicles are gaining popularityas a sustainable alternative to traditional cars.Tesla, a leading manufacturer of EVs, hasannounced plans to expand its charging network.The government is also offering subsidies topromote electric vehicle adoption.Entities:["Electric vehicles", "Tesla", "charging network","government", "subsidies", "traditional cars"]Example Output:```{"main_topic_entities": ["Electric vehicles","Tesla"],"other_entities": ["charging network","government", "subsidies", "traditional cars"]}```

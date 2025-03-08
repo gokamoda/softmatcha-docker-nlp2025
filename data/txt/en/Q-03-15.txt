@@ -1,0 +1,197 @@
+How Much Can Large Language Models Guide BodyMovements of 3D Digital Human Agents?
+
+Kunhang Li
+
+1
+
+Jason Naradowsky
+
+1
+
+Yansong Feng
+
+2
+
+Yusuke Miyao
+
+1,31
+
+The University of Tokyo
+
+2
+
+Peking University
+
+3
+
+NII LLMC
+
+
+
+{kunhangli, narad, yusuke}@is.s.u-tokyo.ac.jp
+
+
+
+fengyansong@pku.edu.cn
+
+
+
+Abstract
+
+We aim to explore the extent to which Large LanguageModels (LLMs) can guide 3D digital human agents inperforming body movements without supervised training.
+Given an existing human model and a textual instruction,we prompt the LLM to generate a high-level plan decom-posing the whole motion into consecutive steps, followedby specifying the positions of every body part in each step.
+We then render the animation by linearly interpolating theselected body part positions across steps.
+We evaluatethe generated animations from a diverse set of motion in-structions through both automatic and human evaluation,and ﬁnd that LLMs generally struggle to recognize accu-rate body part positions.
+Speciﬁcally, LLMs struggle withcomplex motions with multiple steps and body parts, andcomplex body parts with more possible positions.
+
+
+1 Introduction
+
+Recent studies on Large Language Model (LLM)-basedgenerative agents [1, 2] demonstrate their capability toproduce open-ended behaviors in simulated environments.
+However, these agents typically express actions and statesusing text or emoji symbols in the absence of pre-deﬁnedanimations.
+This limitation poses challenges for imple-menting digital human agents in 3D environments, wherebody movements are essential for natural interactions.
+Modern text-conditioned human motion generation ap-proaches employ generative models to synthesize realistichuman body movements from natural language instruc-tions
+[3, 4], but they often struggle with open-ended mo-tion instructions due to overﬁtting to limited language-motion paired datasets [5, 6].
+Existing work attempts toimprove the generalization by using LLMs to extract spe-ciﬁc motion-relevant information, such as active body parts[7], detailed body part descriptions
+[8] and keyframe co-ordinates
+[9].
+However, these approaches typically utilizeLLMs in a limited capacity, primar ily as auxiliar y com-ponents in their pipelines.
+We aim to explore to whatextent we can generate animations using only the rich in-formation provided by LLMs, potentially opening up newways to create human motions in lack of pre-implementedanimations.
+In this paper, we present a framework that purely lever-ages LLMs to generate animations on SMPL
+[10], a stan-dard 3D human model compatible with the Unity computergraphics engine.1）We provide a sketch of SMPL in Ap-pendix A.1.
+Given the input motion instruction, the frame-work ﬁrst uses LLMs to generate a structured animationplan with speciﬁc body part movements in natural lan-guage, then translates these descriptions into Unity codesspecifying SMPL parameters using predeﬁned rules, andﬁnally renders the animation in Unity.
+We conduct both automatic evaluation, where we cal-culate the accuracy of the LLM-selected positions againstannotated oracle ones, and human evaluation, where anno-tators evaluate the animations both overall and body-part-wise.
+We have the following ﬁndings:(I) LLMs generally struggle to recognize accurate bodypart positions: Compared with oracle standards, all testedLLMs exhibit signiﬁcant shortcomings in body part posi-tion identiﬁcation.
+The highest performer in human eval-uation, Claude 3.5 Sonnet, trails the oracle’s overall scoreby 1.28 points on a 5-point scale.(II) LLMs struggle with human motion complexity:Our analysis reveals a negative correlation between motioncomplexity (deﬁned by the number of moved body parts1）
+https://unity.com/across steps) and the accuracy of selected body part posi-tions.
+LLMs demonstrate lower accuracy for body partswith more possible positions like the upper ar m, comparedto more constrained parts like the upper leg.
+Moreover,accuracy remains consistently higher for lower body com-ponents than their upper body counterparts, highlightingLLMs’ diﬃculties with complex and ﬂexible movements.
+
+
+2 Animation Generation
+
+LLMs primarily learn about human motions throughnatural language descriptions, rather than exact spatial co-ordinates or temporal quantities.
+We therefore evaluateLLMs’ human motion knowledge by testing their abilityto recognize appropriate body part positions described innatural language.
+Figure1 illustrates our pipeline of ani-mation generation.
+Firstly, given the joint structure of the SMPL model 𝑀(Appendix A.1), we deﬁne a ﬁnite set of positions Text(𝑀)for preset body parts.
+Following the natural hierarchy ofhuman motion from action sequences to body part move-ments [11], we implement a hierarchical querying frame-work 𝑄 that ﬁrst decomposes the input motion instruction𝐼2）into sequential high-level steps, then iteratively speci-ﬁes body par t positions from Text(𝑀).
+The LLM uses thisframework to acquire the animation plan 𝑃.
+While the po-sition querying is conducted hierarchically,3）we discussdiﬀerent querying strategies in Appendix A.3.𝑃 = LLM𝑄(𝐼, Text(𝑀))(1)Secondly, we use predeﬁned Rules to convert 𝑃 intoUnity codes 𝐶 by mapping the speciﬁed body part positionsto local joint rotations on 𝑀, and inserting them into a codetemplate 𝑇 .4）𝐶
+= Rules(𝑃, 𝑇 )(2)Finally, we render the animation 𝐴 by executing 𝐶 on𝑀 in Unity, where joint rotations are linearly interpolatedbetween consecutive steps.𝐴 = Unity(𝐶, 𝑀)(3)2）
+We show our tested motion instructions in Appendix A.2.3）
+For example, when we query the position of the left elbow, ﬁrst weask whether it is str ight or bent.
+If it is bent, we further ask whetherit is slightly bent in, bent in 90 degrees or fully bent.4）
+We avoid a naive method of generating Unity codes from thegiven motion instruction in one go, since the codes can seldom besuccessfully executed in Unity, and the few generated animations aretoo low-quality for evaluation.
+
+
+3 Evaluation
+
+
+
+3.1 Automatic Evaluation
+
+For each motion instruction
+, we ﬁrst ﬁx an oracle high-level plan by calibrating one high-level plan generated fromGPT-4o, and manually annotate the oracle positions of allbody parts across steps.
+Then we calculate the accuracyof the LLM-selected positions against the annotated oracleones (Body Part Position Accuracy).
+We run each LLMthree times to take the averaged accuracy.
+The complexity of an annotated oracle motion is decidedby the numbers of moved body parts across steps.
+There-fore, we deﬁne a new metric Motion Complexity as thesum of step-wise ratios between moved and unmoved bodyparts (Equation 4), where 𝑠 denotes the step number and| · | represents the count of body parts.𝑀𝑜𝑡𝑖𝑜𝑛 𝐶𝑜𝑚 𝑝𝑙𝑒𝑥𝑖𝑡𝑦 =𝑁∑𝑠 =1|𝑚𝑜𝑣𝑒𝑑𝑠||𝑢𝑛𝑚𝑜𝑣𝑒𝑑𝑠|(4)
+
+3.2 Human Evaluation
+
+While automatic evaluation ﬁxes the oracle high-levelplans, we conduct human evaluation of the unconstrainedgeneration, to account for multiple valid ways of perform-ing a motion.
+Each animation is assessed by ﬁve indepen-dent annotators both overall and body-part-wise.
+Overall Score.
+Given one animation and the corre-sponding motion instruction, the evaluator checks to whatextent the animation is following the instructed motion,and gives one integer overall score from one to ﬁve.
+Body Part Label.
+We ask human evaluators to checksix body parts in the animations — Head, Torso, Left Arm,Right Arm, Left Leg and Right Leg.
+Evaluators classifyeach body part using one of four labels — “Good”, “Par-tially Good”, “Bad”, and “Not Relevant”.
+We introduce the“Not Relevant” label to distinguish between motion-criticalbody par ts (e.g., arms during throwing) and those that havelittle involvement in the action (e.g., legs during a stand-ing wave), while still marking any unnatural movement as“Bad”.
+This separation helps evaluators provide targetedfeedback on the quality of key motion components.
+Instead of showing oracle animations alongside LLM-generated ones during evaluation, we separately includethem in the evaluation pool to avoid biasing annotatorstoward a single reference motion while still establishingFigure 1: Pipeline of animation generation.an upper performance bound.
+The inter-rater agreementshows moderate levels (weighted kappa of 0.531 for over-all scores, average pairwise agreement of 0.510-0.638 forbody parts), which is reasonable given the inherent vari-ability in human motion.
+
+
+4 Results and Analysis
+
+We run our probing pipeline on selected LLMs, includ-ing Claude 3.5 Sonnet, GPT-4o, GPT-4o-mini, GPT-3.5-turbo and Llama-3.1-70B. As shown in Table 1, whileoracle animations achieve an averaged Overall Score of4.57, all tested LLMs demonstrate substantial shortcom-ings.
+The closest competitor, Claude 3.5 Sonnet, scores1.28 points below the oracle.
+Body Part Position Accuracyfollows a similar pattern — the highest performing LLMsClaude 3.5 Sonnet and GPT-4o only achieve 72.71% and70.25% respectively.
+Given that humans are sensitive tominor inaccuracies in body movements [12], these substan-tial performance gaps suggest that LLMs generally strugglewith accurately recognizing body part positions.
+Further comparison of body par t motions reveals gener-ally large performance gaps between LLM-generated andoracle animations across all body parts, with varying de-grees of deﬁcit (Table 2, Figure 2).
+For body part labels(Table 2), head and torso movements show smaller deﬁcits,Table 1: Averaged Overall Score and Body Part PositionAccuracy for each tested LLM.LLMAveragedOverall ScoreBody Part PositionAccuracy (%)Claude 3.5 Sonnet 3.29 72.71GPT-4o 3.13 70.25GPT-4o-mini 2.87 67.82GPT-3.5-turbo 2.14 66.90Llama-3.1-70B 2.13 52.51(Oracle Annotation) 4.57 100.00while arm and leg motions display signiﬁcant inaccura-cies.
+Claude 3.5 Sonnet and GPT-4 lead in ”Good” and”Partially Good” labels, while GPT-3.5-turbo and Llama-3.1-70B dominate ”Bad” labels across all body parts.
+BodyPart Position Accuracy (Figure 2) reveals that lower bodyparts achieve higher accuracy than their upper body coun-terparts (e.g., Knee versus Elbow), and complex body partswith more possible positions tend to have lower accuracythan simpler body par ts (e.g., Upper Arm versus Elbow).Complex Motions.
+We analyze the correlation be-tween Motion Complexity and Body Part Position Accu-racy (Figure 3), and ﬁnd that LLMs tend to have lower BodyPart Position Accuracy when predicting complex motions.
+Complex Body Parts.
+Our analysis of the correla-tion between position prediction accuracy and number ofTable 2: Percentage (%) of body part labels (excluding “Not Relevant”) across evaluated LLMs.
+G, PG, and B respectivelystand for “Good”, “Partially Good”, and “Bad”.
+Highest percentages for each label are highlighted in pink (G), yellow(PG), and gray (B).LLMHead Torso Left Arm Right Arm
+Left Leg Right LegG PG B G PG B G PG B G PG B G PG B G PG BClaude 3.5 Sonnet 74.1
+22.2 3.7 72.6 17.7 9.7 25.0 53.9 21.1 29.3 53.3 17.3 38.6 31.8 29.5 31.7 29.3 39.0GPT-4o 63.8 19.1 17.0 60.7 25.0 14.3 15.2 58.2 26.6 16.9 64.9 18.2 46.8 36.2 17.0 29.5 47.7 22.7GPT-4o-mini 80.7 8.8 10.5 59.4 28.1 12.5 12.8 47.4 39.7 12.2 52.7 35.1 17.9 33.3 48.7 11.1 33.3 55.6GPT-3.5-turbo 34.2 13.2 52.6 29.1 16.4 54.5 3.8 41.8 54.4 3.8 46.2 50.0 10.3 30.8 59.0 5.4 18.9 75.7Llama-3.1-70B 44.0 32.0 24.0 34.8 34.8 30.4 6.9 41.4 51.7 9.4 38.8 51.8 15.5 7.0 77.5 5.9 5.9 88.2(Average)
+59.4 19.0 21.6 51.3 24.4 24.3 12.8 48.6 38.7 14.3 51.2 34.5 25.8 27.8 46.3 16.7 27.0 56.2(Oracle) 89.6
+10.4 0.0 80.3 18.2 1.5 74.0 19.5 6.5 76.3 19.7 4.0 76.6 14.9 8.5 76.1 13.0 10.9Figure 2: Body Part Position Accuracy for each body partand tested LLM.
+We average the accuracy for paired bodyparts, e.g., “Elbow” for “LeftElbow” and “RightElbow”.Figure 3: Motion-wise correlation between Motion Com-plexity and the averaged Body Part Position Acccuracy.
+Figure 4: Body-part-wise correlation between number ofpossible positions and the averaged Body Part PositionAcccuracy.possible positions for diﬀerent body parts (Figure 4) re-veals two key patterns.
+First, prediction accuracy tendsto inversely correlate with movement ﬂexibility — bodyparts with more possible positions (e.g., Upper Ar m) showlower accuracy compared to more constrained parts (e.g.,Upper Leg).
+Second, comparison of the lower body perfor-mance (green line) and upper body performance (red line)demonstrates that LLMs achieve higher accuracy for lowerbody parts versus their upper body counterpar ts.
+
+
+5 Conclusion
+
+In this work, we explore the human motion knowledgeembedded in LLMs, and verify it from the generated ani-mations on the 3D human model SMPL.
+We ﬁnd that LLMsunderstand human motions in natural language space to acertain degree, but struggle with accurate body part posi-tions, especially complex motions and body parts.
+
+
+
+Acknowledgement
+
+This work was partially supported by the “R&D HubAimed at Ensuring Transparency and Reliability of Gen-erative AI Models” project of the Ministry of Education,Culture, Sports, Science and Technology.
+
+References
+
+
+[1] Joon Sung Park, Joseph C. O’Brien, Carrie J. Cai, Mered-ith Ringel Morris, Percy Liang, and Michael S. Bernstein.Generative agents: Interactive simulacra of human be-havior. In In the 36th Annual ACM Symp osiumon User Interface Software and Technology (UIST’23), UIST ’23, New York, NY, USA, 2023. Associationfor Computing Machinery.
+[2] Zhilin Wang, Yu Ying Chiu, and Yu Cheung Chiu. Hu-manoid agents: Platform for simulating human-like gen-erative agents. In Yansong Feng and Els Lefever, edi-tors, Proceedings of the 2023 Conference on Em-pirical Methods in Natural Language Processing:System Demonstrations, pp. 167–176, Singapore, De-cember 2023. Association for Computational Linguistics.
+[3] Chuan Guo, Shihao Zou, Xinxin Zuo, Sen Wang, Wei Ji,Xingyu Li, and Li Cheng. Generating diverse and natural3d human motions from text. 2022 IEEE/CVF Confer-ence on Computer Vision and Pattern Recognition(CVPR), pp. 5142–5151, 2022.
+[4] Guy Tevet, Sigal Raab, Brian Gordon, Yoni Shaﬁr, DanielCohen-or, and Amit Haim Bermano. Human motion dif-fusion model. In The Eleventh International Confer-ence on Learning Representations, 2023.
+[5] Kunhang Li and Yansong Feng. Motion generation fromﬁne-grained textual descriptions. In Proceedings of the2024 Joint International Conference on Computa-tional Linguistics, Language Resources and Evalua-tion (LREC-COLING 2024), pp. 11625–11641, Torino,Italy, May 2024. ELRA and ICCL.
+[6] Ke Fan, Jiangning Zhang, Ran Yi, Jingyu Gong, YabiaoWang, Yating Wang, Xin Tan, Chengjie Wang, andLizhuang Ma. Textual decomposition then sub-motion-space scattering for open-vocabulary motion generation,2024.
+[7] Nikos Athanasiou, Mathis Petrovich, Michael J. Black,and G¨ul Varol. SINC: Spatial composition of 3D humanmotions for simultaneous action generation. ICCV, 2023.
+[8] Yiming Huang, Weilin Wan, Yue Yang, Chris Callison-Burch, Mark Yatskar, and Lingjie Liu. Como: Controllablemotion generation through language guided pose code edit-ing, 2024.
+[9] Han Huang, Fernanda De La Torre, Cathy MengyingFang, Andrzej Banburski-Fahey, Judith Amores, and JaronLanier. Real-time animation generation and control onrigged models via large language models, 2024.
+[10] Matthew Loper, Naureen Mahmood, Javier Romero, Ger-ard Pons-Moll, and Michael J. Black. SMPL: A skinnedmulti-person linear model. ACM Trans. Graphics(Proc. SIGGRAPH Asia), Vol. 34, No. 6, pp. 248:1–248:16, October 2015.
+[11] Tamar Flash and Binyamin Hochner. Motor primitivesin vertebrates and invertebrates. Current Opinion inNeurobiology, Vol. 15, No. 6, pp. 660–666, 2005. Motorsytems / Neurobiology of behaviour.
+[12] Wentao Zhu, Xiaoxuan Ma, Dongwoo Ro, Hai Ci, JinluZhang, Jiaxin Shi, Feng Gao, Qi Tian, and Yizhou Wang.Human motion generation: A survey. IEEE Transac-tions on Pattern Analysis and Machine Intelligence,Vol. 46, pp. 2430–2449, 2023.
+
+
+
+A Appendix
+
+
+
+A.1 3D Human Model SMPL
+
+SMPL
+[10] accurately generates the corresponding hu-man body shape given speciﬁed pose parameters, i.e., jointlocal rotations.
+We can manipulate SMPL by modifyingthese parameters.
+For example, suppose that SMPL startsfrom an initial state extending two arms to the sides (FigureA1a), when we change the local rotation of the left elbowjoint m avg L Elbow from (0, 0, 0) to (0, 90, 0),SMPL bends the left elbow at 90 degrees (Figure A1b).(a) Initial (b) Left Elbow BentFigure A1: Overview of SMPL
+
+A.2 Tested Motion Instructions
+
+We collect 20 diverse motion instructions, covering dif-ferent body parts in a balanced way.5）To show the potentialof application to an open-world game, we devise each mo-tion instruction to be a ﬁnite motion6）related to a speciﬁcpractical scene, while avoiding commonly implementedanimations in games like walking.
+Each instruction speci-ﬁes necessary elements to avoid ambiguity, while we alsoprevent it from being verbose.
+The tested motion instruc-tions are shown in Table A1.
+
+
+A.3 Impact of Querying Strategies
+
+We investigate into the eﬀect of diﬀerent LLM-queryingstrategies with GPT-4o.
+After changing high-level plan-ning from generating piece-by-piece to in-one-go, the av-eraged overall score drops by 0.34.
+For step-based iterativereﬁnement, we try selecting the body-part position frompredeﬁned positions all at once or one-by-one, instead of5）
+We manually label involved body parts in all motion instructions.
+The involved body parts and their counts are: Head (15), Torso (16),Arms (16 each), Legs (13 each).6）
+For example, “walking” without constraints like “three steps” canbe inﬁnite.hierarchically.
+The performance drops respectively by 0.22and 0.31.Table A1: Tested Motion InstructionsMotion ID Motion Instruction1 Slide the window open from the center to the sideswith both hands.2 Water a 30-centimeter-tall plant using the wateringcan in the right hand.3 Look down to check the time of the watch on theleft wrist.4 Pat a 30-centimeter-tall dog in front of you on thehead with the right hand.5 Lean back fully and toss the ball into the air at a45-degree angle using both hands.6 Wipe down the 1-meter-high table in front of youwith a cloth in the left hand.7 Hold the glass with the left hand and pour the juicewith the right hand.8 Put a book on the 2-meter-high shelf with bothhands.9
+Lift a 20-centimeter-high box from the ground tothe table on your left with both hands.10 Swing the golf club from right to left.11 Close the 2-meter-high store shutter door from topto bottom.12 Squat to pick up litter by the right foot with theright hand.13 Lift the right shoe with both hands and put it on inthe air.14 Perform a left-leg high side kick in Karate.15 Kneel in a traditional Japanese bow.16 Roll out a yoga mat on the ground.17 Crouch to check
+a car tyre.18 Arch the back 60 degrees to relieve tension in thelower back muscles with two hands on the waist.19 Bend to the left to reach for an item by the left footwithout moving or bending the left leg.20 Walk through while ducking under a low-hangingbranch.

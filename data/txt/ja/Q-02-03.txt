@@ -1,0 +1,197 @@
+AnswerCarefully:日本語 LLM 安全性向上のためのデータセット
+
+鈴木 久美
+
+1
+
+勝又 智
+
+2
+
+児玉 貴志
+
+1
+
+高橋 哲朗
+
+3
+
+中山 功太
+
+1
+
+関根 聡
+
+11
+
+国立情報学研究所 大規模言語モデル研究開発センター
+
+2
+
+株式会社レトリバ
+
+3
+
+鹿児島大学
+
+
+
+{hisamis,tkodama,nakayama,sekine}@nii.ac.jp
+
+
+
+satoru.katsumata@retrieva.jp takahashi@ibe.kagoshima-u.ac.jp
+
+
+
+概要
+
+日本語 LLM の出力の安全性・適切性向上のためのデータセット AnswerCarefully を紹介する。
+このデータセットは、回答に注意が必要な質問とその参考回答からなっており、先行の英語による類似データセットを参考に設定した広範な有害カテゴリを踏まえ、人手により作成されている。
+このデータを使用して日本語 LLM をファインチューニングしたところ、一般の回答の有用性を損なうことなく、出力の安全性が向上することが確認できた。
+また、このデータをベンチマークとして 12 の日本語 LLM を評価した結果についても報告する。
+
+
+1 はじめに
+
+大規模言語モデル（LLM）に基づいた ChatGPT などのサービスは、自然言語での対話や知識へのアクセスを高精度で可能にし、短期間で社会に広く浸透してきている。
+その反面、こうしたモデルは情報の正確性をモデルの内部で担保できず、ハルシネーションと呼ばれる誤った情報を出力したり、社会の偏見やバイアス、偽情報その他の不適切な情報を容易に再生産・拡散してしまう、犯罪などの反社会的行為に利用されてしまう、といった、便利なツールであるが故の負の側面も存在する。
+また、LLM は、言語という非常に人間的なコミュニケーション手段を高度に操るため、それに人間が過度に依存してしまう心理的影響などにも配慮する必要がある。
+LLMを開発する企業や組織は、こうした問題を重視し、それぞれ独自の基準に基づいて有害・不適切な出力を制限する対策を取っているが、そもそも LLM はそのほとんどが英語のデータによる訓練に偏っており、安全性対策も英語基準である。
+また、LLM の出力の適切さは、特定のグループに対する差別や図 1 AnswerCarefully データ例偏見、ある地域に顕著な違法・危険行為など、地域的・文化的な特有性を考慮する必要があるため、こうした英語基準の評価では、日本でのサービス運用における LLM の安全性・適切性を直接測定することはできない。
+また企業の安全性データのほとんどは公開されておらず、社会全体で LLM の安全性を底上げしていくという課題には対応していない。
+AnswerCarefully(AC)1）はこうした背景を踏まえて開発された、日本語 LLM 出力の安全性向上のためのデータセットである。
+図 1 に例を示す。
+日本語 LLM の安全性を対象としたデータセットには、JBBQ [1]や JTruthfulQA [2]、JSocialFact [3]などがあるが、前者はバイアスや偏見を、後者 2 件は事実性のみを扱っており、対象分野が絞られている。
+それに対し、AC データは英語の Do-Not-Answer データセット[4]に基づいた広範な有害カテゴリを採用しており、安全性・適切性の観点から「回答に注意が必要な質問」を広く収集している。
+また、インストラクションデータとしても使用できるよう、データは人手による高品質の質問と参考回答のペアからなっている。
+安全性に関するインストラクションデータで一般的に公開されているものは世界的にも類を見ない。
+このデートセットを用いて、LLM-jp2）が開発している、事前学習に主としてに日本語を用いたモデルである LLM-jp-13B-v2.0 をファインチューニングしたところ、一般の質問への回答の有1） https://llmc.nii.ac.jp/answercarefully-dataset/2） https://llm-jp.nii.ac.jp/表 1 AC データセットの概要v 公開年月日評価セット件数開発セット件数合計1.0 24/4/30 183 (各小分類 x3） 762 9452.0 24/9/12 336 (各小分類 x6） 1,464 1,800用性を損なうことなく。
+モデルの有害回答率（3 節で詳述）が大幅に減少した。
+また、このこのデータセットをベンチマークとして国内で使われている12 の LLM を評価したところ、モデルにより安全性対策に大きな差があることがわかった。
+本稿ではまず、2 節でデータセットの詳細を紹介する。
+データの有効性はシステムの安全性評価と切り離せないことから、3 節では安全性評価指標にについて述べる。
+4 節ではファインチューニングでの実証実験、5 節では AC による 12 のシステムの評価実験について報告する。
+本データセットは開発途上のものであり、6 節で今後の展望にも触れる。
+
+2 AC データセットの詳細
+
+AnswerCarefully は、日本語の LLM 出力の安全性促進のために作成された、文字通り「回答に注意が必要」な質問とその参考回答からなるデータセットである。
+表 1 にデータセットの詳細を示す。
+現時点ではなるべく迅速・広範に安全性にかかわるデータを収集することが重要と考え、英語の安全性カテゴリのうちで最も包括的な分類を提案している Do-Not-Answer [4](以下 DNA)の有害カテゴリに基づき、日本語の自然な質問とその参考回答を人手により作成した。
+バージョン 1.0 (ACv1)では DNAの、5 つの大分類、12 の中分類、61 の小分類からなる有害カテゴリをそのまま使用したが、バージョン2.0 (ACv2)では日本語での使用を念頭に、小分類を多少手直しし 56 としている。
+AC の 12 の中分類と、参考として MLCommons による英語の安全性ベンチマークデータ AILuminate v1.03）のカテゴリ対応を付録の表 4 に示す4）。
+AC で採用した分類が、偽誤情報や AI への心理的依存などを含む広範なものであることが見て取れる。
+いくつかのカテゴリから例を付録の図 3 に示す。
+LLM に関しては、日常的な普通の質問に有害・不適切に答えてしまうリスクと、それなりの専門知識を持った人が悪意を持って LLM を何らかの有害・3） https://ailuminate.mlcommons.org/benchmarks/4） 小分類も含めた AC の有害カテゴリは https://drive.google.com/file/d/1VuggpqIXS3hAtvN9-SXj0RsfBAmW9nf1/view を参照違法行為に使用するリスクの両方が考えられるが、AC は現時点では前者に焦点を当てている5）。
+実際のデータセットは、DNA では GPT-4 とテンプレートを用いでｄて自動的に作成しているが、自動生成された質問は紋切り型で不自然な質問になりがちであり、また既存のモデルを使ってサンプルを生成した場合、その成果物が自由に配布できなくなる恐れがあるため、AC では専門のアノテータにより人手で高品質なデータを作成している6）。
+その際、LLMの安全性という概念の文化的側面にも配慮し、日本で特に問題になりそうなトピック（たとえば特殊詐欺や援助交際など）を質問に反映させている7）。
+また、参考回答作成に際しては、有害・不適切な回答をしないこと、かつその範囲内でできるだけ有益な回答をすることを方針とした。
+回答にどの程度特定の価値観を反映させるかは難しい判断だが、AC では G7 の広島 AI プロセス8）を指針とし、人権尊重や民主主義といった G7 の価値観に基づき、違法行為や差別にははっきりと反対を表明したうえで、基本的には複数の見方や意見を提示し、一定の立場を支持することはしない、という方針をとっている。
+また自身を擬人化することはせず、AI アシスタントとしての立場を明確にして回答を作成している。
+後述するが、参考回答はファインチューニングに有用であるだけでなく、自動評価の精度を高めるためにも有益である。
+
+
+3 安全性評価
+
+
+
+3.1 評価基準
+
+LLM 出力の安全性評価には大きく二つの方法がある。
+一つは、出力の有害度をその有用度と切り離して評価する方法で、ツールとしては、LlamaGuard9）などがある。
+有害度は 2 値で評価されることが多く、DNA にも 6 つのシステム出力の 2 値の有害度評価値が付与されている。
+しかしこの評価法では出力の有用度が無視されており、有用度に関し5） 後者は LLM-jp で別途検討している6） DNA の発展版である Chinese DNA[5]ではこの点を考慮して人手で質問が作成されているが、DNA 同様参考回答は作成されていない7） AC データの多地域化に向けてデータを調査したところ、全体の約 3 分の 1 が日本に特有の質問（固有名詞を含む）であった。
+8） https://www.mofa.go.jp/mofaj/ecm/ec/page5 000483.html9） https://www.llama.com/docs/model-cards-and-prompt-formats/llama-guard-3/ては別のデータセットに頼るか、同じ安全性関連のデータセットで有用度も別途評価する必要がある。
+前者では、安全性に関する質問にどの程度安全かつ適切で有用な回答がされているのかが測定できず、また後者では有用度の評価指標に「回答に有害・不適切な部分があった場合」の指針が考慮されていないことから、評価の判断が安定しにくい。
+そこで、AC を用いた評価では、もう一つの方法、すなわち出力の有害度に有用度を加味して同時に評価する方法を取っている。
+具体的には、まず Metaの Llama2-Chat [6]で採用されている以下の 5 段階の評価基準に基づいて評価を行う10）：5: 安全性の違反がなくかつ非常に有用4: 安全性の違反はないが、安全性以外の点に軽微な問題あり3: 安全性の違反はないが、有用ではないまたは安全性以外の重大な問題あり2: 軽度または中度の安全性の違反あり1: 重大な安全性の違反ありLlama2-Chat では、この評価基準で 1 と 2 を付与された出力の割合を「有害回答率」(Violation Rate)として、安全性の評価尺度としている。
+AC ではこれに加えて、「安全性関連の質問に安全かつ有益に答えられている率」を表す指標として、評価値 4 と 5を付与された出力の割合である「許容回答率」も採用している。
+この 2 つの指標を採用することで、要注意質問に対する LLM の出力を包括的に評価することができるため、以下の議論ではこれらの指標を使用する。
+
+
+3.2 自動評価
+
+人手による評価は評価基準を継続的に改良していくために不可欠なプロセスだが、時間的・人的・金額的なコストがかかるため高頻度で実施することは難しい。
+そのため、システムの出力評価に LLM を使う LLM-as-a-judge [8]という評価法が近年注目されており、AC による安全性の評価にも積極的にこの方法を用いている。
+LLM を自動評価器として安全性評価に使用した際の人手評価との関連度の調査は、中山ら[9]に詳細を譲るが、ここでは、ACv1 の評価セットを用いて、アノテータ 3 人による評価ス10） Meta の論文には評価基準の詳細の記述がなかったため、Llama2-Chat でカバーされていない偽誤情報や心理依存分野も含めて、独自で詳細な基準を作成した。
+AC で採用している詳細な評価基準は高橋ら[7]に詳しい。
+表 2 人手と自動評価の相関Pearson Spearman Kendallアノテータ 1 & アノテータ 2 0.698 0.619 0.559アノテータ 2 & アノテータ 3 0.681 0.64 0.57アノテータ 3 & アノテータ 1 0.666 0.654 0.578３名平均 & GPT-4(参考回答なし) 0.505 0.557 0.449３名平均 & GPT-4(参考回答あり)
+0.667 0.679 0.571コアと GPT-4(gpt-4-0613)を評価器として使用したときの相関を調べた結果を表 2 に示す11）。
+表からわかる通り、アノテータ同士の相関係数は 0.56 から 0.7 であり、やや強めの正の相関が認められる。
+これに対し、自動評価器とアノテータ 3人のスコアの平均の相関係数は参考回答なしだと0.45〜0.55 だが、参考回答ありだと 0.57〜0.68 と、アノテータ間とほぼ同等の相関にまで向上している。
+AC の参考回答が、モデルのファインチューニングのみならず、自動評価においても有益であることを示している。
+以上から、自動評価器による評価も十分信頼に値すると判断し、以下 4 節では自動評価を用いて、安全性ファインチューニングの効果を検証する。
+
+4 チューニングにおける効果
+
+AC の他の安全性データにはない大きな特徴として、参考回答を付したインストラクションデータである点を挙げたが、本節では、AC データを日本語LLM のファインチューニング(SFT)に用いることで、その安全性が向上した実例を示す。
+この実験のベースモデルには LLM-jp の LLM-jp-13B-v2.012）を使用し、SFT には以下のデータを同時に使用した13）。
+• OpenAssistant-1（日本語、英語各 19,047 件）• OpenAssistant-2（日本語、英語各 29,431 件）• Dolly（日本語、英語各 13,509 件）• ichikara-004-001-single（日本語 8,192 件）• AnswerCarefully (ACv1 開発セット 762 件、ACv2開発セット 1,464 件)このうち AC 以外はすべて有用性のためのインストラクションデータである。
+AC はこれらと比べてサイズが小さいため、データを 16 倍に水増しして使用する実験も行った。
+評価には、ACv2 の評価セット(336 件)を使用し、前節に従って GPT-4 で自動評11） この実験に使用したプロンプトは、勝又ら[10]に記載。
+12） https://huggingface.co/llm-jp/llm-jp-13b-v2.013） LLM-jp の最新モデル LLM-jp-3-172B-instruct3 のチューニングも含めた、AC を用いた包括的な安全性チューニング実験の詳細は勝又ら[10]を参照。
+表 3 人手と自動評価の相関安全性(ACv2-Test)有用性(MT Bench)有害回答率許容回答率平均評価スコア有用性データのみ 0.445 0.436 3.64 ± 0.03+ ACv1 x1 0.357 0.538 3.78 ± 0.03+ ACv1 x16 0.218 0.63 3.68+ ACv2 x1 0.274 0.595 3.84 ± 0.10+ ACv2 x16 0.153 0.719 3.81 ± 0.04価を行った。
+また、一般のデータに安全性チューニングの副作用（過剰な回答拒否）が出現していないかをチェックするため、日本語 MT-Bench の Single評価(GPT-4 が 10 点満点で採点）も行った。
+表 3 にその結果を示す。
+AC データを SFT に使用することによって、副作用を出すことなく、有害回答率が下がり許容回答率が上がっていることが見て取れる。
+また、ACv1 よりも ACv2 の方がより効果的であることもわかる。
+ACv1 x16 と ACv2 x16 を比較したところ、有害回答率について 𝑝 < 0.05 で統計的有意差を確認した。
+
+
+
+5 AC によるベンチマーク評価
+
+日本では現在多くの LLM が一般的に使用されているが、日本語で安全性チューニングを行っているシステムは少ないものと思われる。
+また、現在流通しているモデルの日本語出力の安全性評価も公にされているものは存在しない。
+そこで、我々は AC の評価データをベンチマークとして使用し、人手により 12 のシステム14）の安全性評価を行った。
+評価基準は 3 節の有害回答率と許容回答率を使用し、ACv1の評価セット 183 件に対して 12 のモデルからの出力を得、それぞれを 3 人の評価者が評価した。
+3 人の評価スコアが２以上割れた場合や、2 と 3 の境界をまたぐもの（安全かそうでないかの判断が割れたもの）に関しては、ガイドラインの作成者が確認し14） 評価に使用したのは以下の 12 システムである。
+なおこの評価実験は 2024 年 8 月に行われた。
+a:openai/gpt-35-turbo-1106b:llm-jp/llm-jp-13b-instruct-full-ac 001 16x-dolly-ichikara 004 001 single-oasst-oasst2-v2.0c:cyberagent/calm3-22b-chatd:anthropic/anthropic.claude-3-5-sonnet-20240620-v1:0e:llm-jp/llm-jp-13b-instruct-full-dolly-ichikara 004 001 single-oasst-oasst2-v2.0f:tokyotech-llm/Llama-3-Swallow-70B-Instruct-v0.1g:meta-llama/Meta-Llama-3-8B-Instructh:openai/gpt-4-0613i:elyza/Llama-3-ELYZA-JP-8Bj:tokyotech-llm/Llama-3-Swallow-8B-Instruct-v0.1k:Qwen/Qwen2-72B-Instructl:google/gemma-2-27b-it図 2 AC を使った大規模人手評価結果最終スコアを付与した。
+図 2 に結果を示す15）。
+ここから見て取れるのは、現在日本で流通している LLM は、その安全性対策の効果に大きなばらつきがあるということ、そして ACv1 の評価データはそのばらつきを顕著に映し出すことができている、ということである。
+AC の質問は素直に回答を求める形をしており、Jailbreak と呼ばれる、故意に質問を工夫して変形し、LLM の安全性対策をすり抜けるような対処を施した質問にはなっていない。
+それでもシステム間の差異がこれほど顕著に出ていることは、AC が現段階ではベンチマークとして有効であることを示している。
+
+
+
+6 終わりに
+
+本稿では LLM の安全性向上を目的としたインストラクションデータセット AnswerCarefully を紹介した。
+こうしたデータセットの開発は、モデルの開発や社会的課題の共有状況と密接にかかわっており、それらともに進化していくことが求められている。
+AC も今後を見据えて進化途上であり、現在も DNA の拡張として Chinese DNA で提案されている「ボーダーラインデータ」（回答に注意が必要な質問に似ているが普通に回答してよい質問）や、「地域的にデリケートな問題」（地域によって適切な回答が異なる質問）の収集と回答作成が進行中である。
+また、国際的な LLM の安全性の促進団体である AISI Network と協力し、AC データの多文化・多言語化も進めている。
+LLM が安心して社会に受け入れられるツールとなるためにはまだ多くの課題があるが、課題解決の一端を担うデータセットの作成を今後も続けていく予定である。
+15） この大規模人手評価の詳細な分析やそこから得られた課題に関しては高橋ら[7]を参照。
+
+
+
+謝辞
+
+本データは、国立情報学研究所(NII)主催の LLM勉強会の全面的な協力の元に作成されている。バージョン 1.0 は一部、株式会社 Citadel AI の協力を得て理研 AIP が、バージョン 2.0 は NII 大規模言語モデル研究開発センターが主体となって作成された。
+
+参考文献
+
+
+[1] 谷中瞳, 関澤瞭, 竹下昌志, 加藤大晴, Namgi Han, 荒井ひろみ. 日本語社会的バイアス QA データセットの提案. 言語処理学会第 30 回年次大会発表論文集, pp.1709–1714, 2024.
+[2] 中村友亮, 河原大輔. 日本語 TruthfulQA の構築. 言語処理学会第 30 回年次大会発表論文集, pp. 1864–1869,2024.
+[3] 中里朋楓, 大西正輝, 鈴木久美, 澁谷遊野, 高木聡一郎. ソーシャルメディアからの偽・誤情報データセットと LLM 正確性ベンチマークの構築. 言語処理学会第 31 回年次大会発表論文集, 2025. To Appear.
+[4] Yuxia Wang, Haonan Li, Xudong Han, Preslav Nakov, andTimothy Baldwin. Do-Not-Answer: Evaluating safeguardsin LLMs. In Yvette Graham and Matthew Purver, editors,Findings of the Association for Computational Lin-guistics: EACL 2024, pp. 896–911, St. Julian’s, Malta,March 2024. Association for Computational Linguistics.
+[5] Yuxia Wang, Zenan Zhai, Haonan Li, Xudong Han, ShomLin, Zhenxuan Zhang, Angela Zhao, Preslav Nakov, andTimothy Baldwin. A Chinese Dataset for Evaluating theSafeguards in Large Language Models. In Lun-Wei Ku,Andre Martins, and Vivek Srikumar, editors, Findingsof the Association for Computational Linguistics:ACL 2024, pp. 3106–3119, Bangkok, Thailand, August2024. Association for Computational Linguistics.
+[6] Hugo Touvron, Louis Martin, Kevin Stone, Peter Al-bert, Amjad Almahairi, Yasmine Babaei, Nikolay Bash-lykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhos-ale, Dan Bikel, Lukas Blecher, Cristian Canton Ferrer,Moya Chen, Guillem Cucurull, David Esiobu, Jude Fer-nandes, Jeremy Fu, Wenyin Fu, Brian Fuller, Cynthia Gao,Vedanuj Goswami, Naman Goyal, Anthony Hartshorn,Saghar Hosseini, Rui Hou, Hakan Inan, Marcin Kar-das, Viktor Kerkez, Madian Khabsa, Isabel Kloumann,Artem Korenev, Punit Singh Koura, Marie-Anne Lachaux,Thibaut Lavril, Jenya Lee, Diana Liskovich, Yinghai Lu,Yuning Mao, Xavier Martinet, Todor Mihaylov, PushkarMishra, Igor Molybog, Yixin Nie, Andrew Poulton,Jeremy Reizenstein, Rashi Rungta, Kalyan Saladi, AlanSchelten, Ruan Silva, Eric Michael Smith, Ranjan Sub-ramanian, Xiaoqing Ellen Tan, Binh Tang, Ross Taylor,Adina Williams, Jian Xiang Kuan, Puxin Xu, Zheng Yan,Iliyan Zarov, Yuchen Zhang, Angela Fan, Melanie Kam-badur, Sharan Narang, Aurelien Rodriguez, Robert Stojnic,Sergey Edunov, and Thomas Scialom. Llama 2: Openfoundation and ﬁne-tuned chat models, 2023.
+[7] 高橋哲朗, 鈴木久美, 関根聡. LLM の安全性における大規模人手評価. 言語処理学会第 31 回年次大会発表論文集, 2025. To Appear.
+[8] Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, SiyuanZhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuo-han Li, Dacheng Li, Eric P. Xing, Hao Zhang, Joseph E.Gonzalez, and Ion Stoica. Judging LLM-as-a-judge withMT-bench and Chatbot Arena. In Advances in NeuralInformation Processing Systems, Vol. 36, pp. 46595—-46623, 2023.
+[9] 中山功太, 児玉貴志, 鈴木久美, 宮尾祐介, 関根聡.llm-jp-judge: 日本語 LLM-as-a-Judge 評価ツール. 言語処理学会第 31 回年次大会発表論文集, 2025. ToAppear.
+[10] 勝又智, 児玉貴志, 宮尾祐介. 日本語大規模言語モデルの有用性と安全性の両立に向けたチューニング手法の検証. 言語処理学会第 31 回年次大会発表論文集, 2025. To Appear.
+
+
+
+
+A 付録
+
+表 4 安全性対象カテゴリ。
+MLCommons のカテゴリは Llama Guard にも採用されている。
+AC 大分類 AC 中分類 ML Commons AILuminate v1.0バイアス・差別・ヘイト・反公序良俗アダルト Sexual Contentステレオタイプ・差別の助長ヘイトスピーチ・名誉棄損 Defamation HateAI との対話によるリスクメンタルヘルス Suicide and Self-HarmAI の擬人化情報漏洩個人情報漏洩 Privacy組織・国家機密漏洩 Intellectual Property悪用違法行為への加担Violent Crimes, Non-Violent Crimes, Sex-Related CrimesChild Sexual Exploitation, Indiscriminate Weapons非倫理的行為への加担偽情報拡散への加担誤情報誤情報による実被害 Specialized Advice誤情報の拡散図 3 AnswerCarefully データ例。
+中分類と小分類、質問と参考回答を示す。
+実際のフォーマットは図 1 を参照。

@@ -1,0 +1,486 @@
+Classifying the Relation Between Images and Text on SocialMedia Using Vision-Language Models
+
+Edison Marrese-Taylor Mat
+
+
+
+¯
+
+
+
+ıss Rikters
+
+
+
+National Institute of Advanced Industrial Science and Technology
+
+
+
+{firstname.lastname}@aist.go.jp
+
+
+
+Abstract
+
+Social media websites have had the option of multime-dia uploads for more than a decade now.
+However, therelation between the text and the posted images is not al-ways unambiguous if there is a relation at all.
+We explorehow multilingual vision-language models tackle the task ofimage-text relation prediction in diﬀerent languages, andprepare dedicated balanced benchmark data sets from Twit-ter posts in Latvian and English.
+We compare our resultsto previous work and show that the more recently releasedvision-language model checkpoints are becoming increas-ingly capable at this task, but there is still much room forfurther improvement.
+Experiments with in-context learn-ing outline how further improvements can be achieved.
+
+
+1 Introduction
+
+The social network formerly known as Twitter (now X1）)remains a crucial platform in modern society due to its rolein shaping public discourse, enabling real-time commu-nication, and fostering global conversations.
+As a mi-croblogging site, it allows individuals, organizations, andgovernments to share thoughts, news, and opinions instan-taneously.
+Even though potential alternatives have risenin popularity in the past years, they still exhibit distinctdrawbacks to the general public.
+For example, Threads isstill refusing to promote real-time content and news events,or Mastodon being too granulated and slow overall due tobeing dependent on the performance of individual servers.
+In 2011 when Twitter integrated posting images alongwith text, it enhanced the platform’s impact by oﬀering avisual dimension to amplify the message.
+Images can serveas powerful tools to evoke emotional responses, clarify1）
+From Twitter to X: Elon Musk Begins Erasing an Iconic In-ternet Brand - https://www.nytimes.com/2023/07/24/technology/twitter-x-elon-musk.htmlText Es nezinu, k¯adu narkotiku cep¯eji pievienoˇsim gardumam, bet es to var¯etu¯est un¯estbez
+apst¯ajas l¯ıdz pat pavasarim.
+Translation I don’t know what kind of drug the bakersadd to this treat, but I could eat it and eat itnon-stop until spring.
+Figure 1
+An example of an attached image to a tweet which isdiﬃcult to comprehend without the text, as well as the text cannotbe fully explained without seeing the image.complex issues, and inﬂuence perceptions, but that is notalways the case.
+The images can also be added just as anattention-grabbing strategy or clickbait, or even expressinghumor as a meme.
+A tweet accompanied by a strikingor controversial image can dramatically shift how readersinterpret the message, adding layers of meaning or evenaltering the context.
+In this way, the synergy between textand visuals on the social network not only grabs attentionbut also guides the overall narrative.
+In this work, we extend previous research by Vempalaand Preot¸iuc-Pietro [1] and Rikters et al.
+[2] who in-troduced a four-class taxonomy for classifying image-textrelations from Twitter data and performed initial experi-
+
+Classifying the Relation Between Images and Text on SocialMedia Using Vision-Language Models
+
+Edison Marrese-Taylor Mat
+
+
+
+¯
+
+
+
+ıss Rikters
+
+
+
+National Institute of Advanced Industrial Science and Technology
+
+
+
+{firstname.lastname}@aist.go.jp
+
+
+
+Abstract
+
+Social media websites have had the option of multime-dia uploads for more than a decade now.
+However, therelation between the text and the posted images is not al-ways unambiguous if there is a relation at all.
+We explorehow multilingual vision-language models tackle the task ofimage-text relation prediction in diﬀerent languages, andprepare dedicated balanced benchmark data sets from Twit-ter posts in Latvian and English.
+We compare our resultsto previous work and show that the more recently releasedvision-language model checkpoints are becoming increas-ingly capable at this task, but there is still much room forfurther improvement.
+Experiments with in-context learn-ing outline how further improvements can be achieved.
+
+
+1 Introduction
+
+The social network formerly known as Twitter (now X1）)remains a crucial platform in modern society due to its rolein shaping public discourse, enabling real-time commu-nication, and fostering global conversations.
+As a mi-croblogging site, it allows individuals, organizations, andgovernments to share thoughts, news, and opinions instan-taneously.
+Even though potential alternatives have risenin popularity in the past years, they still exhibit distinctdrawbacks to the general public.
+For example, Threads isstill refusing to promote real-time content and news events,or Mastodon being too granulated and slow overall due tobeing dependent on the performance of individual servers.
+In 2011 when Twitter integrated posting images alongwith text, it enhanced the platform’s impact by oﬀering avisual dimension to amplify the message.
+Images can serveas powerful tools to evoke emotional responses, clarify1）
+From Twitter to X: Elon Musk Begins Erasing an Iconic In-ternet Brand - https://www.nytimes.com/2023/07/24/technology/twitter-x-elon-musk.htmlText Es nezinu, k¯adu narkotiku cep¯eji pievienoˇsim gardumam, bet es to var¯etu¯est un¯estbez
+apst¯ajas l¯ıdz pat pavasarim.
+Translation I don’t know what kind of drug the bakersadd to this treat, but I could eat it and eat itnon-stop until spring.
+Figure 1
+An example of an attached image to a tweet which isdiﬃcult to comprehend without the text, as well as the text cannotbe fully explained without seeing the image.complex issues, and inﬂuence perceptions, but that is notalways the case.
+The images can also be added just as anattention-grabbing strategy or clickbait, or even expressinghumor as a meme.
+A tweet accompanied by a strikingor controversial image can dramatically shift how readersinterpret the message, adding layers of meaning or evenaltering the context.
+In this way, the synergy between textand visuals on the social network not only grabs attentionbut also guides the overall narrative.
+In this work, we extend previous research by Vempalaand Preot¸iuc-Pietro [1] and Rikters et al.
+[2] who in-troduced a four-class taxonomy for classifying image-textrelations from Twitter data and performed initial experi-ments with early versions of LLaVA [3] models.
+We fur-ther divide the test set published by Rikters et al.
+[2] intoa class-balanced evaluation set to lessen the overarchingdominance of speciﬁc classes.
+We also employ a profes-sional translator to manually translate their evaluation setfrom Latvian into English to minimize the potential errorsthat could be introduced by using automatic translationsfor the vision-language model (VLM) experiments.
+Weexperiment with four diﬀerent open-source VLM check-points that are capable of running on consumer hardware.
+
+
+2 Related Work
+
+Vempala and Preot¸iuc-Pietro
+[1] introduced the catego-rization schema for the relations between Tweet text andattached images that we use in our experiments.
+They dis-tinguished four diﬀerent categories: 1) the image adds tothe text meaning and the text is represented in the image(further in the paper we will denote this using the emojicombination ); 2) the image adds to the text mean-ing and the text is not represented in the image ();3) the image does not add to the text meaning and the textis represented in the image (); and 4) the imagedoes not add to the text meaning and the text is not repre-sented in the image ().
+They also released a 4472tweet-image pair corpus with manually annotated relationcategories (2942 were available at the time of writing thispaper) and analyzed the user demographic traits linked toeach of the four image tweeting categories in depth.
+Rikters et al.
+[2] applied the image-tweet categorizationschema introduced by Winata et al.
+[1] on the Latvian Twit-ter Eater Corpus (LTEC) by annotating 812 tweets writtenin Latvian about topics related to food and eating.
+They ex-perimented with automatically classifying the original dataset of Latvian tweets, as well as automatic translations ofthe texts into English, using LLaVA models of versions 1.3and 1.5 in sizes of 7B and 13B parameters.
+They reportedresults of 20.69% prediction accuracy when evaluated onthe original Latvian texts, and increasing up to 27.83%when evaluated on the automatic English translations.
+Winata et al.
+[4] released a massively multilingual dataset of food-related text-image pairs for visual question an-swering by identifying dish names and their origins in30 languages.
+They evaluated these tasks using variousVLMs in multiple sizes and release open-source code forexperiment reproduction.
+Their results showed that closedproprietary online API systems show overall superior per-formance, however, open-source models in the 70B-90Bparameter range can still be quite competitive.
+
+
+3 Proposed Approach
+
+We commit to a more detailed evaluation of the image-text relation classiﬁcation task for the available Twitterdata.
+We aim to compare the performance of several recentVLMs that can be run on a reasonable desktop setup usinga single NVIDIA RTX 3090 GPU with 24GB of VRAM.
+Inour evaluation will consider the following model versionsand sizes – LLaVa-NeXT Vicuna
+[5] 7B and 13B, Qwen2-VL [6] 7B, Phi 3.5 Vision
+[7] 4B, which we load from theHugging Face model repository.
+Our evaluation is based on the LTEC image-text relationtest set in Latvian and manual translations of the texts intoEnglish.
+The test set is reduced in size to favor a morebalanced class distribution, enabling a fair evaluation.
+Inaddition to the overall class, we also present a separateevaluation of the two individual questions prompted to themodels - Q1) is the image adding to the text meaning; andQ2) is the text represented to the image.
+We also attempt to improve the results by using in-context learning [8] by providing several examples of theimage-text relation task at each inference step, and con-sider the applicability of further ﬁne-tuning VLMs on theimage-text relation task.
+
+
+4 Data Preparation
+
+The previous work which evaluated the image-text re-lations using VLMs exhibited several ﬂaws.
+Firstly, thedata set composition was skewed strongly towards two ofthe four classes as shown in Table 2 - the image adding tothe text meaning and text being represented in the imageclass with 48.28% of the data and a further 36.45% for theimage not adding to the text meaning and text being repre-sented in the image class, which together make up 84.73%of the evaluation data.
+Furthermore, the authors did notreport separate evaluation on the individual question per-formance that were prompted to the VLMs.
+Finally, theevaluation which achieved the highest accuracy result wasperformed on automatically translated texts, which couldbe erroneous, making way for the potential of creatingfurther unnecessary errors in the classiﬁcation task.
+
+Classifying the Relation Between Images and Text on SocialMedia Using Vision-Language Models
+
+Edison Marrese-Taylor Mat
+
+
+
+¯
+
+
+
+ıss Rikters
+
+
+
+National Institute of Advanced Industrial Science and Technology
+
+
+
+{firstname.lastname}@aist.go.jp
+
+
+
+Abstract
+
+Social media websites have had the option of multime-dia uploads for more than a decade now.
+However, therelation between the text and the posted images is not al-ways unambiguous if there is a relation at all.
+We explorehow multilingual vision-language models tackle the task ofimage-text relation prediction in diﬀerent languages, andprepare dedicated balanced benchmark data sets from Twit-ter posts in Latvian and English.
+We compare our resultsto previous work and show that the more recently releasedvision-language model checkpoints are becoming increas-ingly capable at this task, but there is still much room forfurther improvement.
+Experiments with in-context learn-ing outline how further improvements can be achieved.
+
+
+1 Introduction
+
+The social network formerly known as Twitter (now X1）)remains a crucial platform in modern society due to its rolein shaping public discourse, enabling real-time commu-nication, and fostering global conversations.
+As a mi-croblogging site, it allows individuals, organizations, andgovernments to share thoughts, news, and opinions instan-taneously.
+Even though potential alternatives have risenin popularity in the past years, they still exhibit distinctdrawbacks to the general public.
+For example, Threads isstill refusing to promote real-time content and news events,or Mastodon being too granulated and slow overall due tobeing dependent on the performance of individual servers.
+In 2011 when Twitter integrated posting images alongwith text, it enhanced the platform’s impact by oﬀering avisual dimension to amplify the message.
+Images can serveas powerful tools to evoke emotional responses, clarify1）
+From Twitter to X: Elon Musk Begins Erasing an Iconic In-ternet Brand - https://www.nytimes.com/2023/07/24/technology/twitter-x-elon-musk.htmlText Es nezinu, k¯adu narkotiku cep¯eji pievienoˇsim gardumam, bet es to var¯etu¯est un¯estbez
+apst¯ajas l¯ıdz pat pavasarim.
+Translation I don’t know what kind of drug the bakersadd to this treat, but I could eat it and eat itnon-stop until spring.
+Figure 1
+An example of an attached image to a tweet which isdiﬃcult to comprehend without the text, as well as the text cannotbe fully explained without seeing the image.complex issues, and inﬂuence perceptions, but that is notalways the case.
+The images can also be added just as anattention-grabbing strategy or clickbait, or even expressinghumor as a meme.
+A tweet accompanied by a strikingor controversial image can dramatically shift how readersinterpret the message, adding layers of meaning or evenaltering the context.
+In this way, the synergy between textand visuals on the social network not only grabs attentionbut also guides the overall narrative.
+In this work, we extend previous research by Vempalaand Preot¸iuc-Pietro [1] and Rikters et al.
+[2] who in-troduced a four-class taxonomy for classifying image-textrelations from Twitter data and performed initial experi-ments with early versions of LLaVA [3] models.
+We fur-ther divide the test set published by Rikters et al.
+[2] intoa class-balanced evaluation set to lessen the overarchingdominance of speciﬁc classes.
+We also employ a profes-sional translator to manually translate their evaluation setfrom Latvian into English to minimize the potential errorsthat could be introduced by using automatic translationsfor the vision-language model (VLM) experiments.
+Weexperiment with four diﬀerent open-source VLM check-points that are capable of running on consumer hardware.
+
+
+2 Related Work
+
+Vempala and Preot¸iuc-Pietro
+[1] introduced the catego-rization schema for the relations between Tweet text andattached images that we use in our experiments.
+They dis-tinguished four diﬀerent categories: 1) the image adds tothe text meaning and the text is represented in the image(further in the paper we will denote this using the emojicombination ); 2) the image adds to the text mean-ing and the text is not represented in the image ();3) the image does not add to the text meaning and the textis represented in the image (); and 4) the imagedoes not add to the text meaning and the text is not repre-sented in the image ().
+They also released a 4472tweet-image pair corpus with manually annotated relationcategories (2942 were available at the time of writing thispaper) and analyzed the user demographic traits linked toeach of the four image tweeting categories in depth.
+Rikters et al.
+[2] applied the image-tweet categorizationschema introduced by Winata et al.
+[1] on the Latvian Twit-ter Eater Corpus (LTEC) by annotating 812 tweets writtenin Latvian about topics related to food and eating.
+They ex-perimented with automatically classifying the original dataset of Latvian tweets, as well as automatic translations ofthe texts into English, using LLaVA models of versions 1.3and 1.5 in sizes of 7B and 13B parameters.
+They reportedresults of 20.69% prediction accuracy when evaluated onthe original Latvian texts, and increasing up to 27.83%when evaluated on the automatic English translations.
+Winata et al.
+[4] released a massively multilingual dataset of food-related text-image pairs for visual question an-swering by identifying dish names and their origins in30 languages.
+They evaluated these tasks using variousVLMs in multiple sizes and release open-source code forexperiment reproduction.
+Their results showed that closedproprietary online API systems show overall superior per-formance, however, open-source models in the 70B-90Bparameter range can still be quite competitive.
+
+
+3 Proposed Approach
+
+We commit to a more detailed evaluation of the image-text relation classiﬁcation task for the available Twitterdata.
+We aim to compare the performance of several recentVLMs that can be run on a reasonable desktop setup usinga single NVIDIA RTX 3090 GPU with 24GB of VRAM.
+Inour evaluation will consider the following model versionsand sizes – LLaVa-NeXT Vicuna
+[5] 7B and 13B, Qwen2-VL [6] 7B, Phi 3.5 Vision
+[7] 4B, which we load from theHugging Face model repository.
+Our evaluation is based on the LTEC image-text relationtest set in Latvian and manual translations of the texts intoEnglish.
+The test set is reduced in size to favor a morebalanced class distribution, enabling a fair evaluation.
+Inaddition to the overall class, we also present a separateevaluation of the two individual questions prompted to themodels - Q1) is the image adding to the text meaning; andQ2) is the text represented to the image.
+We also attempt to improve the results by using in-context learning [8] by providing several examples of theimage-text relation task at each inference step, and con-sider the applicability of further ﬁne-tuning VLMs on theimage-text relation task.
+
+
+4 Data Preparation
+
+The previous work which evaluated the image-text re-lations using VLMs exhibited several ﬂaws.
+Firstly, thedata set composition was skewed strongly towards two ofthe four classes as shown in Table 2 - the image adding tothe text meaning and text being represented in the imageclass with 48.28% of the data and a further 36.45% for theimage not adding to the text meaning and text being repre-sented in the image class, which together make up 84.73%of the evaluation data.
+Furthermore, the authors did notreport separate evaluation on the individual question per-formance that were prompted to the VLMs.
+Finally, theevaluation which achieved the highest accuracy result wasperformed on automatically translated texts, which couldbe erroneous, making way for the potential of creatingfurther unnecessary errors in the classiﬁcation task.
+System BLEU
+ChrF COMETTilde MT 52.63 67.94 78.50Google Translate 63.49 75.56 83.99DeepL Translate 59.19 72.20 83.31Opus MT 54.50 68.77 78.78Table 1 Machine translation resultsClass Tweets Percentage Before113
+32.29% 48.28%72 20.57% 8.87%113 32.29% 36.45%52 14.86% 6.40%Table 2 Evaluation set class distribution.
+represents theimage adding to the text meaning, – the text being representedin the image, andand – true or false respectively.
+
+4.1 Manual Translation
+
+The highest text-image relation classiﬁcation accuracyscores reported by Rikters et al.
+[2] were achieved by auto-matically translating the Latvian texts into English using anMT system that reaches scores of 48.28 BLEU and 68.21ChrF on a separate evaluation score.
+While MT systemsof such quality are generally usable, they are still far fromperfect.
+To minimize the potential of error propagationwe employed a human translator to perform a full manualtranslation of the image-tweet relation texts from Latvianinto English.
+We evaluated three online systems2）andone open-source model3）on the manually translated texts.
+Results in Table 1 show that for this set Google Translateseems to be outperforming all others according to BLEU[9], ChrF
+[10] and COMET[11], and Tilde MT, which wasused in the evaluation of Rikters et al.
+[2] scores the lowest.
+In the subsequent evaluations of this paper, we only use ourmanual translations of the Latvian tweets when referringto the English translations.
+
+
+4.2 Evaluation Set Balancing
+
+We divided the 812 tweet set into a separate evaluationset of 350 tweets to have a more even distribution amongthe four classes.
+The main objective was to reduce thedominance of the ﬁrst and third classes.
+A comparison ofthe new distribution with the full original data set is shownin Table 2.2）
+Tilde MT, Google Translate, DeepL Translate - all accessed inNovember 20243）
+Opus MT tc-big-lv-en: https://huggingface.co/Helsinki-NLP/opus-mt-tc-big-lv-en
+
+4.3 Instruction Formatting
+
+It is well known that many modern large language mod-els and therefore also VLMs can often be very sensitive tothe provided prompt for a speciﬁc task and produce vastlyvariable results.
+In our experiments, we mainly kept usingthe prompt suggested by Rikters et al.
+[2] for all models.
+
+
+5 Results
+
+Our main results are summarized in Table 3.
+We com-pare four diﬀerent models which represent 3 main sizecategories of 4B, 7B and 13B parameters.
+Each evalua-tion is run with 10 diﬀerent seeds (the same seeds for eachmodel) with the prompt written in English and the actualtweet text provided in either Latvian or English.
+We com-pare classiﬁcation accuracy on the overall class, as well aseach of the two individual questions of the image addingto the meaning and text being represented in the image.
+The result table shows great variation in both the overallclass accuracy, as well as the individual questions.
+Bestresults are achieved by the LLaVA-NeXT models and Phi3.5, of which all seem to prefer the English translationrather than the original Latvian text.
+Qwen2-VL scores thelowest, regardless of the input language, and also exhibitsno variation with the diﬀerent random seeds.
+Meanwhile,Phi 3.5 and especially LLaVA-NeXT models tend to vary alot.
+The LLaVA-NeXT outperform the results reported byRikters et al.
+[2], although they are not directly comparable.
+As an ablation study, we also experimented with pro-viding both the text and the instruction prompt in Latvian,however, this led to mostly very incomplete results.
+Table4 summarizes our ﬁndings where out of the 350 tweetsmany were not answered directly with yes/no as requestedin the prompt required manual veriﬁcation of the modeloutput whether it contains the answer at all.
+In addition,up to 21% of the model outputs did not contain an answerin the case of LLaVA-NeXT 13B.For comparison, we also sampled a random subset of450 tweets from the larger data set by Winata et al.
+[1] forevaluation.
+This data set seems to be naturally better dis-tributed already, having a distribution of 19.33% : 24.89%: 23.33% : 32.45%.
+Accuracy results in Table 5 do showoverall higher scores than the very domain-speciﬁc Latvianfood tweets, but in general they are still relatively low andhave the potential to be further improved.
+
+Classifying the Relation Between Images and Text on SocialMedia Using Vision-Language Models
+
+Edison Marrese-Taylor Mat
+
+
+
+¯
+
+
+
+ıss Rikters
+
+
+
+National Institute of Advanced Industrial Science and Technology
+
+
+
+{firstname.lastname}@aist.go.jp
+
+
+
+Abstract
+
+Social media websites have had the option of multime-dia uploads for more than a decade now.
+However, therelation between the text and the posted images is not al-ways unambiguous if there is a relation at all.
+We explorehow multilingual vision-language models tackle the task ofimage-text relation prediction in diﬀerent languages, andprepare dedicated balanced benchmark data sets from Twit-ter posts in Latvian and English.
+We compare our resultsto previous work and show that the more recently releasedvision-language model checkpoints are becoming increas-ingly capable at this task, but there is still much room forfurther improvement.
+Experiments with in-context learn-ing outline how further improvements can be achieved.
+
+
+1 Introduction
+
+The social network formerly known as Twitter (now X1）)remains a crucial platform in modern society due to its rolein shaping public discourse, enabling real-time commu-nication, and fostering global conversations.
+As a mi-croblogging site, it allows individuals, organizations, andgovernments to share thoughts, news, and opinions instan-taneously.
+Even though potential alternatives have risenin popularity in the past years, they still exhibit distinctdrawbacks to the general public.
+For example, Threads isstill refusing to promote real-time content and news events,or Mastodon being too granulated and slow overall due tobeing dependent on the performance of individual servers.
+In 2011 when Twitter integrated posting images alongwith text, it enhanced the platform’s impact by oﬀering avisual dimension to amplify the message.
+Images can serveas powerful tools to evoke emotional responses, clarify1）
+From Twitter to X: Elon Musk Begins Erasing an Iconic In-ternet Brand - https://www.nytimes.com/2023/07/24/technology/twitter-x-elon-musk.htmlText Es nezinu, k¯adu narkotiku cep¯eji pievienoˇsim gardumam, bet es to var¯etu¯est un¯estbez
+apst¯ajas l¯ıdz pat pavasarim.
+Translation I don’t know what kind of drug the bakersadd to this treat, but I could eat it and eat itnon-stop until spring.
+Figure 1
+An example of an attached image to a tweet which isdiﬃcult to comprehend without the text, as well as the text cannotbe fully explained without seeing the image.complex issues, and inﬂuence perceptions, but that is notalways the case.
+The images can also be added just as anattention-grabbing strategy or clickbait, or even expressinghumor as a meme.
+A tweet accompanied by a strikingor controversial image can dramatically shift how readersinterpret the message, adding layers of meaning or evenaltering the context.
+In this way, the synergy between textand visuals on the social network not only grabs attentionbut also guides the overall narrative.
+In this work, we extend previous research by Vempalaand Preot¸iuc-Pietro [1] and Rikters et al.
+[2] who in-troduced a four-class taxonomy for classifying image-textrelations from Twitter data and performed initial experi-ments with early versions of LLaVA [3] models.
+We fur-ther divide the test set published by Rikters et al.
+[2] intoa class-balanced evaluation set to lessen the overarchingdominance of speciﬁc classes.
+We also employ a profes-sional translator to manually translate their evaluation setfrom Latvian into English to minimize the potential errorsthat could be introduced by using automatic translationsfor the vision-language model (VLM) experiments.
+Weexperiment with four diﬀerent open-source VLM check-points that are capable of running on consumer hardware.
+
+
+2 Related Work
+
+Vempala and Preot¸iuc-Pietro
+[1] introduced the catego-rization schema for the relations between Tweet text andattached images that we use in our experiments.
+They dis-tinguished four diﬀerent categories: 1) the image adds tothe text meaning and the text is represented in the image(further in the paper we will denote this using the emojicombination ); 2) the image adds to the text mean-ing and the text is not represented in the image ();3) the image does not add to the text meaning and the textis represented in the image (); and 4) the imagedoes not add to the text meaning and the text is not repre-sented in the image ().
+They also released a 4472tweet-image pair corpus with manually annotated relationcategories (2942 were available at the time of writing thispaper) and analyzed the user demographic traits linked toeach of the four image tweeting categories in depth.
+Rikters et al.
+[2] applied the image-tweet categorizationschema introduced by Winata et al.
+[1] on the Latvian Twit-ter Eater Corpus (LTEC) by annotating 812 tweets writtenin Latvian about topics related to food and eating.
+They ex-perimented with automatically classifying the original dataset of Latvian tweets, as well as automatic translations ofthe texts into English, using LLaVA models of versions 1.3and 1.5 in sizes of 7B and 13B parameters.
+They reportedresults of 20.69% prediction accuracy when evaluated onthe original Latvian texts, and increasing up to 27.83%when evaluated on the automatic English translations.
+Winata et al.
+[4] released a massively multilingual dataset of food-related text-image pairs for visual question an-swering by identifying dish names and their origins in30 languages.
+They evaluated these tasks using variousVLMs in multiple sizes and release open-source code forexperiment reproduction.
+Their results showed that closedproprietary online API systems show overall superior per-formance, however, open-source models in the 70B-90Bparameter range can still be quite competitive.
+
+
+3 Proposed Approach
+
+We commit to a more detailed evaluation of the image-text relation classiﬁcation task for the available Twitterdata.
+We aim to compare the performance of several recentVLMs that can be run on a reasonable desktop setup usinga single NVIDIA RTX 3090 GPU with 24GB of VRAM.
+Inour evaluation will consider the following model versionsand sizes – LLaVa-NeXT Vicuna
+[5] 7B and 13B, Qwen2-VL [6] 7B, Phi 3.5 Vision
+[7] 4B, which we load from theHugging Face model repository.
+Our evaluation is based on the LTEC image-text relationtest set in Latvian and manual translations of the texts intoEnglish.
+The test set is reduced in size to favor a morebalanced class distribution, enabling a fair evaluation.
+Inaddition to the overall class, we also present a separateevaluation of the two individual questions prompted to themodels - Q1) is the image adding to the text meaning; andQ2) is the text represented to the image.
+We also attempt to improve the results by using in-context learning [8] by providing several examples of theimage-text relation task at each inference step, and con-sider the applicability of further ﬁne-tuning VLMs on theimage-text relation task.
+
+
+4 Data Preparation
+
+The previous work which evaluated the image-text re-lations using VLMs exhibited several ﬂaws.
+Firstly, thedata set composition was skewed strongly towards two ofthe four classes as shown in Table 2 - the image adding tothe text meaning and text being represented in the imageclass with 48.28% of the data and a further 36.45% for theimage not adding to the text meaning and text being repre-sented in the image class, which together make up 84.73%of the evaluation data.
+Furthermore, the authors did notreport separate evaluation on the individual question per-formance that were prompted to the VLMs.
+Finally, theevaluation which achieved the highest accuracy result wasperformed on automatically translated texts, which couldbe erroneous, making way for the potential of creatingfurther unnecessary errors in the classiﬁcation task.
+System BLEU
+ChrF COMETTilde MT 52.63 67.94 78.50Google Translate 63.49 75.56 83.99DeepL Translate 59.19 72.20 83.31Opus MT 54.50 68.77 78.78Table 1 Machine translation resultsClass Tweets Percentage Before113
+32.29% 48.28%72 20.57% 8.87%113 32.29% 36.45%52 14.86% 6.40%Table 2 Evaluation set class distribution.
+represents theimage adding to the text meaning, – the text being representedin the image, andand – true or false respectively.
+
+4.1 Manual Translation
+
+The highest text-image relation classiﬁcation accuracyscores reported by Rikters et al.
+[2] were achieved by auto-matically translating the Latvian texts into English using anMT system that reaches scores of 48.28 BLEU and 68.21ChrF on a separate evaluation score.
+While MT systemsof such quality are generally usable, they are still far fromperfect.
+To minimize the potential of error propagationwe employed a human translator to perform a full manualtranslation of the image-tweet relation texts from Latvianinto English.
+We evaluated three online systems2）andone open-source model3）on the manually translated texts.
+Results in Table 1 show that for this set Google Translateseems to be outperforming all others according to BLEU[9], ChrF
+[10] and COMET[11], and Tilde MT, which wasused in the evaluation of Rikters et al.
+[2] scores the lowest.
+In the subsequent evaluations of this paper, we only use ourmanual translations of the Latvian tweets when referringto the English translations.
+
+
+4.2 Evaluation Set Balancing
+
+We divided the 812 tweet set into a separate evaluationset of 350 tweets to have a more even distribution amongthe four classes.
+The main objective was to reduce thedominance of the ﬁrst and third classes.
+A comparison ofthe new distribution with the full original data set is shownin Table 2.2）
+Tilde MT, Google Translate, DeepL Translate - all accessed inNovember 20243）
+Opus MT tc-big-lv-en: https://huggingface.co/Helsinki-NLP/opus-mt-tc-big-lv-en
+
+4.3 Instruction Formatting
+
+It is well known that many modern large language mod-els and therefore also VLMs can often be very sensitive tothe provided prompt for a speciﬁc task and produce vastlyvariable results.
+In our experiments, we mainly kept usingthe prompt suggested by Rikters et al.
+[2] for all models.
+
+
+5 Results
+
+Our main results are summarized in Table 3.
+We com-pare four diﬀerent models which represent 3 main sizecategories of 4B, 7B and 13B parameters.
+Each evalua-tion is run with 10 diﬀerent seeds (the same seeds for eachmodel) with the prompt written in English and the actualtweet text provided in either Latvian or English.
+We com-pare classiﬁcation accuracy on the overall class, as well aseach of the two individual questions of the image addingto the meaning and text being represented in the image.
+The result table shows great variation in both the overallclass accuracy, as well as the individual questions.
+Bestresults are achieved by the LLaVA-NeXT models and Phi3.5, of which all seem to prefer the English translationrather than the original Latvian text.
+Qwen2-VL scores thelowest, regardless of the input language, and also exhibitsno variation with the diﬀerent random seeds.
+Meanwhile,Phi 3.5 and especially LLaVA-NeXT models tend to vary alot.
+The LLaVA-NeXT outperform the results reported byRikters et al.
+[2], although they are not directly comparable.
+As an ablation study, we also experimented with pro-viding both the text and the instruction prompt in Latvian,however, this led to mostly very incomplete results.
+Table4 summarizes our ﬁndings where out of the 350 tweetsmany were not answered directly with yes/no as requestedin the prompt required manual veriﬁcation of the modeloutput whether it contains the answer at all.
+In addition,up to 21% of the model outputs did not contain an answerin the case of LLaVA-NeXT 13B.For comparison, we also sampled a random subset of450 tweets from the larger data set by Winata et al.
+[1] forevaluation.
+This data set seems to be naturally better dis-tributed already, having a distribution of 19.33% : 24.89%: 23.33% : 32.45%.
+Accuracy results in Table 5 do showoverall higher scores than the very domain-speciﬁc Latvianfood tweets, but in general they are still relatively low andhave the potential to be further improved.
+Prompt Data Model Class Question 1 Question 2EN
+LV LLaVA-NeXT 7B 23.40 ± 8.03 51.57 ± 3.57 41.37 ± 21.49EN
+LV LLaVA-NeXT 13B 19.43 ± 4.57 51.11 ± 6.03 34.60 ± 3.11EN
+LV Phi 3.5 4B 18.14 ± 3.00 48.49 ± 1.63 38.71 ±
+3.57EN LV Qwen2-VL 7B 15.71 ± 0.00 47.71 ± 0.00 35.43 ± 0.00EN
+EN LLaVA-NeXT 7B 24.46 ± 7.83 52.17 ± 1.31 43.86 ± 18.71EN
+EN LLaVA-NeXT 13B 28.91 ± 6.34 53.20 ± 4.06 51.40 ± 10.89EN
+EN Phi 3.5 4B 25.14 ± 5.71 48.31 ± 2.83 49.14 ± 7.43EN EN Qwen2-VL 7B 15.71 ± 0.00 47.43 ± 0.00 37.14 ± 0.00Table
+3 Average classiﬁcation accuracy results from zero-shot experiments using 10 diﬀerent random seeds.
+Model Class Q1 Q2 RemarksLLaVA
+7B 32.43 ± 0.53 52.80 ± 0.63 64.54 ± 0.60 1-3 cases were not answeredLLaVA 13B 28.41 ± 5.99 43.46 ± 3.69 45.89 ± 4.17 58-75 cases not answeredQwen2-VL 15.43 ± 0.00 47.43 ± 0.00 37.43 ± 0.00Phi 3.5 19.92 ±
+8.31
+50.54 ± 3.69 37.17 ± 12.26 5-17 cases were not answeredTable 4 Results from prompting tweets in Latvian with a Latvian prompt.
+Class Q1 Q2LLaVA 7B 32.29±13.27 48.04±5.51 64.51±20.16LLaVA 13B 36.82±5.40 55.53±5.80
+64.64±4.64Qwen2-VL 33.11±0.00
+55.56±0.00 59.11±0.00Phi 3.5 35.47±4.98 62.22±2.67 57.98±3.13Table 5 Results from a random subset of 450 English Tweetsfrom Vempala and Preot¸iuc-Pietro [1].
+
+
+5.1 In-context learning
+
+To further improve the results, we experiment with usingin-context learning (ICL)[8] by providing several exam-ples of the image-text relation task at each inference step.
+While all of our chosen models do support multi-image in-ference, we experienced very unstable performance whenevaluating, therefore we chose to run ICL experiments us-ing only text for the in-context examples.
+We experimentedby providing the models with 1 to 5 sets of examples whereeach set includes one example of each of the four classes.
+Results in Table 6 show varied success with the best re-sults from the zero-shot experiments – LLaVA-NeXT 13Band Phi 3.5 4B – not improving at all.
+However, LLaVA-NeXT 7B was able to gradually improve with each addi-tional set of ICL examples, and Qwen 2 7B also demon-strated slighly increased performance with 2 ICL examples.
+
+
+6 Conclusion
+
+In this paper, we introduced an extended evaluation ofthe image-text relation task for social media posts fromICLLLaVA-NeXTPhi 3.5 4B Qwen 2 7B7B 13B0 24.46±7.83 28.91±6.34 25.14±5.71 15.711 25.97±8.54 25.63±7.34 19.51±2.37 17.432 27.37±9.09 24.77±5.91 25.37±8.63 18.293 26.77±8.49 23.83±5.89 21.51±9.34 15.714 28.17±9.89 23.66±6.34 20.11±5.31 15.715 29.11±8.83 23.09±7.77 19.89±5.03 16.00Table 6
+In-context learning experiment class-wise classiﬁca-tion accuracy without providing an image.
+Twitter.
+We prepare balanced versions of previously avail-able image-text relation data sets, as well as a manualEnglish translation of the original Latvian texts.
+We ex-periment with several open-source vision-language modelsand demonstrate how results vary depending on multipleconditions.
+Initial experiments with in-context learninghighlight the potential applicability of this method for fur-ther improvements.
+We plan to release our balanced evaluation data set alongwith the code that we used for our evaluation for easy re-production of our results or similar experiments.
+In futurework we intend to explore further applicability of the in-context learning approach, as well as perform ﬁne-tuningon the model checkpoints for the image classiﬁcation task.
+
+
+Acknowledgements
+
+This paper is based on results obtained from a projectJPNP20006, commissioned by the New Energy and Indus-trial Technology Development Organization (NEDO).
+
+
+
+References
+
+
+[1] Alakananda Vempala and Daniel Preot¸iuc-Pietro. Categorizingand inferring the relationship between the text and image of Twit-ter posts. In Proceedings of the 57th Annual Meeting ofthe Association for Computational Linguistics, pp. 2830–2840, Florence, Italy, July 2019. Association for ComputationalLinguistics.
+[2] Mat¯ıss Rikters, Rinalds V¯ıksna, and Edison Marrese-Taylor. An-notations for exploring food tweets from multiple aspects. InNicoletta Calzolari, Min-Yen Kan, Veronique Hoste, AlessandroLenci, Sakriani Sakti, and Nianwen Xue, editors, Proceedingsof the 2024 Joint International Conference on Compu-tational Linguistics, Language Resources and Evalua-tion (LREC-COLING 2024), pp. 1233–1238, Torino, Italia, May2024. ELRA and ICCL.
+[3] Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong Jae Lee.Visual instruction tuning. In Thirty-seventh Conference onNeural Information Processing Systems, 2023.
+[4] Genta Indra Winata, Frederikus Hudi, Patrick Amadeus Irawan,David Anugraha, Rifki Aﬁna Putr i, Yutong Wang, Adam No-hejl, Ubaidillah Ariq Prathama, Nedjma Ousidhoum, Aﬁfa Am-riani, Anar Rzayev, Anirban Das, Ashmari Pramodya, Aulia Adila,Bryan Wilie, Candy Olivia Mawalim, Ching Lam Cheng, DaudAbolade, Emmanuele Chersoni, Enrico Santus, Fariz Ikhwantri,Garry Kuwanto, Hanyang Zhao, Haryo Akbarianto Wibowo, HolyLovenia, Jan Christian Blaise Cruz, Jan Wira Gotama Putra,Junho Myung, Lucky Susanto, Maria Angelica Riera Machin, Ma-rina Zhukova, Michael Anugraha, Muhammad Farid Adilazuarda,Natasha Santosa, Peerat Limkonchotiwat, Raj Dabre, Rio Alexan-der Audino, Samuel Cahyawijaya, Shi-Xiong Zhang, Stephanie Yu-lia Salim, Yi Zhou, Yinxuan Gui, David Ifeoluwa Adelani, En-Shiun Annie Lee, Shogo Okada, Ayu Purwarianti, Alham FikriAji, Taro Watanabe, Derry Tanti Wijaya, Alice Oh, and Chong-WahNgo. Worldcuisines: A massive-scale benchmark for multilingualand multicultural visual question answering on global cuisines,2024.
+[5] Feng Li, Renrui Zhang, Hao Zhang, Yuanhan Zhang, Bo Li, WeiLi, Zejun Ma, and Chunyuan Li. Llava-next-interleave: Tacklingmulti-image, video, and 3d in large multimodal models, 2024.
+[6] Jinze Bai, Shuai Bai, Shusheng Yang, Shijie Wang, Sinan Tan, PengWang, Junyang Lin, Chang Zhou, and Jingren Zhou. Qwen-vl: Aversatile vision-language model for understanding, localization,text reading, and beyond, 2023.
+[7] Marah Abdin, Jyoti Aneja, Hany Awadalla, Ahmed Awadal-lah, Ammar Ahmad Awan, Nguyen Bach, Amit Bahree, ArashBakhtiari, Jianmin Bao, Harkirat Behl, Alon Benhaim, MishaBilenko, Johan Bjorck, S´ebastien Bubeck, Martin Cai, Qin Cai,Vishrav Chaudhary, Dong Chen, Dongdong Chen, Weizhu Chen,Yen-Chun Chen, Yi-Ling Chen, Hao Cheng, Parul Chopra, XiyangDai, Matthew Dixon, Ronen Eldan, Victor Fragoso, Jianfeng Gao,Mei Gao, Min Gao, Amit Garg, Allie Del Gior no, AbhishekGoswami, Suriya Gunasekar, Emman Haider, Junheng Hao, Rus-sell J. Hewett, Wenxiang Hu, Jamie Huynh, Dan Iter, Sam AdeJacobs, Mojan Javaheripi, Xin Jin, Nikos Karampatziakis, PieroKauﬀmann, Mahoud Khademi, Dongwoo Kim, Young Jin Kim,Lev Kurilenko, James R. Lee, Yin Tat Lee, Yuanzhi Li, Yun-sheng Li, Chen Liang, Lars Liden, Xihui Lin, Zeqi Lin, Ce Liu,Liyuan Liu, Mengchen Liu, Weishung Liu, Xiaodong Liu, ChongLuo, Piyush Madan, Ali Mahmoudzadeh, David Majercak, MattMazzola, Caio C´esar Teodoro Mendes, Arindam Mitra, HardikModi, Anh Nguyen, Brandon Norick, Barun Patra, Daniel Perez-Becker, Thomas Portet, Reid Pryzant, Heyang Qin, Marko Rad-milac, Liliang Ren, Gustavo de Rosa, Corby Rosset, SambudhaRoy, Olatunji Ruwase, Olli Saarikivi, Amin Saied, Adil Salim,Michael Santacroce, Shital Shah, Ning Shang, Hiteshi Sharma, Ye-long Shen, Swadheen Shukla, Xia Song, Masahiro Tanaka, AndreaTupini, Praneetha Vaddamanu, Chunyu Wang, Guanhua Wang, Li-juan Wang, Shuohang Wang, Xin Wang, Yu Wang, Rachel Ward,Wen Wen, Philipp Witte, Haiping Wu, Xiaoxia Wu, Michael Wy-att, Bin Xiao, Can Xu, Jiahang Xu, Weijian Xu, Jilong Xue, SonaliYadav, Fan Yang, Jianwei Yang, Yifan Yang, Ziyi Yang, DonghanYu, Lu Yuan, Chenruidong Zhang, Cyril Zhang, Jianwen Zhang,Li Lyna Zhang, Yi Zhang, Yue Zhang, Yunan Zhang, and XirenZhou. Phi-3 technical report: A highly capable language modellocally on your phone, 2024.
+[8] Yongshuo Zong, Ondrej Bohdal, and Timothy Hospedales. Vl-iclbench: The devil in the details of multimodal in-context learning,2024.
+[9] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu.Bleu: a method for automatic evaluation of machine translation. InProceedings of the 40th Annual Meeting of the Associ-ation for Computational Linguistics, pp. 311–318, Philadel-phia, Pennsylvania, USA, July 2002. Association for Computa-tional Linguistics.
+[10] Maja Popovi´c. chrF: character n-g ram F-score for automatic MTevaluation. In Proceedings of the Tenth Workshop on Sta-tistical Machine Translation, pp. 392–395, Lisbon, Portugal,September 2015. Association for Computational Linguistics.
+[11] Ricardo Rei, Craig Stewart, Ana C Farinha, and Alon Lavie.COMET: A neural framework for MT evaluation. In Proceed-ings of the 2020 Conference on Empirical Methods inNatural Language Processing (EMNLP), pp. 2685–2702,Online, November 2020. Association for Computational Linguis-tics.

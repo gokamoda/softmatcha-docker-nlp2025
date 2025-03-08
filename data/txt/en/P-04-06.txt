@@ -1,0 +1,328 @@
+In search of eﬃcient, parsing-free encodings of word structure:
+
+eﬃcacy comparison among 𝑛-grams, skippy 𝑛-grams and extended skippy 𝑛-grams
+
+
+
+against on noun classiﬁcation tasks
+
+Kow KurodaMedical School, Kyorin University
+
+Abstract
+
+This study explores eﬃcient, parsing-free methods forencoding word structure by comparing regular 𝑛-grams,skippy 𝑛-grams, and extended skippy 𝑛-grams in the con-text of inﬂectional classiﬁcation tasks for noun gender,plurality, and case.
+The classiﬁcation was tested on thenouns of four languages: Czech, French, German, andIrish.
+While the outcomes were mixed and complex, theﬁndings suggest that extended skippy 𝑛-grams (with orwithout boundary marking) outperform skippy 𝑛-grams,and skippy 𝑛-grams perform better than regular 𝑛-grams interms of classiﬁcation eﬃciency.
+This study provides evi-dence that (extended)
+skippy 𝑛-grams oﬀer a more eﬀectiveapproach for encoding word structure.
+
+
+1 Introduction
+
+All words, or more precisely, surface word forms, pos-sess internal structures.
+This is true even in languageswhere the concept of a word is diﬃcult to deﬁne, as cer-tain languages may not exhibit the same clear-cut distinc-tions between words.
+However, the existence of internalstructures in words is ir refutable.
+Words often exhibit in-teresting properties that sentences do not have, cruciallybecause they can be classiﬁed.
+For example, nouns in sev-eral languages display declensions, and adjectives oftenfollow suit.
+Similarly, verbs exhibit conjugations, whichwould not be possible if words lacked internal structure.
+A central question arises: How can the internal struc-tures of words be encoded?
+While it is widely acceptedthat sentences and phrases can be parsed, few assert thatwords can be parsed in the same way.
+This discrepancyarises because the structure of a word is not as easily bro-ken down into clear categories such as Noun (N), Adjective(A), Preposition (P), and Verb (V).
+But does this mean thatwords do not have internal structures?
+No, that is not thecase.
+Words in many languages reveal complex internalpatterns, even though these patterns may not conform totraditional parsing categories.
+The challenge lies in encoding these internal structures,as there are currently no widely accepted parsing models forword structure1).
+This research addresses this challenge byexploring parsing-free methods to encode word structure,focusing speciﬁcally on the use of skippy 𝑛-grams.
+Skippy𝑛-grams, ﬁrst introduced in prior work [3], are extended inthis study to assess their eﬃciency for encoding the inter nalstructure of words.
+
+
+2 Methodology
+
+
+
+2.1 Task
+
+The task at hand is a word (form) classiﬁcation prob-lem, where the classiﬁer predicts the inﬂectional class of agiven word.
+Speciﬁcally, the classiﬁcation involves threeattributes: gender, plurality, and case.
+For example, inFrench, the noun maison (meaning “house” in English)is a feminine singular noun, while maisons (meaning“houses” in English) is the plural form of maison andremains feminine.
+The classiﬁer must predict the correctgender and plurality for each form.
+For the purposes of this study, decision tree (DT), ran-dom forest (RF), and neural network (NN) classiﬁers wereused.
+These classiﬁers were optimized to the extent pos-sible for each dataset.2)It is important to note that theobjective of this research is not to identify the best classiﬁ-1)
+Arguably, Morfessor https://github.com/aalto-speech/morfessor
+[1] is one of them, but it has two problems.
+First, itis based on a statistical model that require an ample to train withfor better performance.
+Second, it is a segmentation tool unable tohandle overlaps prevalent in morphology.
+Prevalence is overlappingin Japanese morphology was reported in [2].2)
+There seems to be no room for detailed explanation on this paper.
+Refer the Jupyter Notebook scripts available at: https://github.com/kow-k/ngram-based-noun-classificationcation method but to evaluate the most eﬀective encoding.
+Each encoding was assessed based on the best performanceachieved using any of the classiﬁers (DT, RF, or NN).
+
+
+2.2 Data
+
+A sample of 2,000 random sentences was taken fromtagged corpora of Czech, French, German, and Irish, avail-able through the Sketch Engine6)using seed lemmas inTable 2.
+The data obtained was tagged with relevant in-ﬂectional attributes such as gender, plurality, and case.
+Table 1 summarizes the target attributes.
+These sentenceswere manually parsed to extract the relevant tags.
+It is important to note that the construction of the trainingdata may contain imperfections for two primary reasons.
+First, the tags used for annotation are not error-free and maybe inaccurate.
+Second, certain information may be missingfrom the data, particularly for case, due to syncretism7),where the same form may correspond to multiple values.
+
+
+2.3 Encodings under assessment
+
+The study compares three types of encodings: (a) reg-ular (consecutive) 𝑛-grams (abbreviated as 𝑛-grams), (b)skippy 𝑛-grams (abbreviated as sk𝑛grams), and (c) ex-tended skippy 𝑛-grams (abbreviated as xsk𝑛grams)8), forvarious values of 𝑛 (2, 3, 4).
+These encodings were testedacross the following tasks: i) Gender, plurality, and caseclassiﬁcation for Czech nouns ii) Gender and plurality clas-siﬁcation for French nouns iii) Gender, plurality, and caseclassiﬁcation for German nouns iv) Gender, plurality, andcase classiﬁcation for Irish nounsTable 3 provides examples of how diﬀerent types of 𝑛-grams are formed for the word “ﬁg,” based on the degree of“skippiness” (i.e., the gaps between the consecutive charac-ters).
+Skippy 𝑛-grams allow for gaps between the positionsof the characters, represented by character “ ”.Cleary 𝑛-grams with larger 𝑛 are ineﬃcient.
+This limi-tation can be attenuated by adding inclusiveness.
+Note thatthe comparison below is the one among inclusive versions.6) Sources are Project Gutengerg corpora of the four languages avail-able at https://www.sketchengine.eu7) Syncretism is (the term for) a situation in which diﬀerent functionsare expressed by the same form.
+Case system is notoriously suscep-tible to syncretism.
+Both in Czech and German, for example, manynouns have the same form for Accusative and Nominative.8)
+This was not deﬁned in [3].
+It is worth a mention that extendedskippy 𝑛-gram was designed to get skippy 𝑛-gram to incorporate theeﬀect of boundary marking after the eﬀect was accidentally found.
+The inclusion of gaps in skippy 𝑛-grams makes themmore ﬂexible than regular 𝑛-grams, but also less eﬃcient.
+This ineﬃciency can be mitigated by adding inclusiveness.
+This means including (𝑛 − 1)-grams along with 𝑛-grams.
+Inclusive n-grams include the (𝑛 − 1)-grams for each 𝑛.Table 3 demonstrates this for the word “ﬁg” with inclusive𝑛-grams.
+During the exploratory stages of the experiment, it wasdiscovered that explicitly marking word boundaries im-proved performance in several cases.
+Thus, this optionwas included for testing.
+Examples of relevant cases areshown in Table 5.
+
+2.4 Other training parameters
+
+For training and validation, three diﬀerent data sizeswere used: 1.2k, 2k, and 3k samples.
+For cross-validation,10% of the data was held out as test data.
+An upper limit was set on the length of words in thetraining data.
+This parameter, called the max doc size,had values of either 9 or 11 characters.
+To ensure computational and cognitive eﬃciency, a limitwas imposed on how far a gap could extend within skippy 𝑛-grams.
+The max gap size parameter was chosen relativeto the maximum document size (i.e., max doc size).
+Itwas deﬁned by a max gap ratio, which had values of .33,.67, or 1.00, cor responding to max gap val values of 3, 6,or 9 characters when the max doc size was set to 9.The ﬁnal parameter in the training setup concerned theinclusion of supplementary attributes in the encoding.
+If supplementary attributes were not used, words were en-coded solely by 𝑛-grams.
+However, when supplementaryattributes were included, they were added to the 𝑛-gram-based encodings.
+This modiﬁcation often led to betterperformance, though it was not always eﬀective.
+
+
+3 Results
+
+Experiments were conducted across various combina-tions of training data sizes (1.2k, 2k, and 3k), maximumdocument sizes (9 and 11 characters), and maximum gapratios (.33, .67, and 1.00).
+Due to space limitations, a fullreport of all results is not feasible.
+We focus here on onespeciﬁc analysis, where training was perfor med with a 1.2ksample, a maximum document size of 9, a maximum gapratio of .67 (which corresponds to a maximum gap valueof 6), and the use of supplementary attributes in training.
+Table 1 Target attribute valuesAttribute German French Irish Czechgender Fem, Masc, Neu Fem, Masc, Comm3)Fem, Masc Fem, Masc{ 0,1 }4), Neutplurality Sg, Pl Sg, Pl, Inv5)Sg, Pl, Inv Sg, Plcase Nom, Acc, Gen, Dat n.a.
+Nom, Gen Nom, Acc, Gen, Dat, Instr, LocTable 2 lemmas used for data
+constructionEnglish German French Irish Czechbook Buch livre leabhar knihacat Kat chat cat koˇckadog Hund chien madra pesman Mann homme fear muˇzsea Meer mer farraige moˇrewater Wasser eau uisce vodaTable 3 𝑛-gram encodings for “ﬁg”𝑛 regular skippy extended skippy1 f, i, g f, i, g f , i , g2 ﬁ, ig ﬁ, f g, ig ﬁ , f g, ig3 ﬁg ﬁg ﬁgThe results are presented in two sections: the ﬁrst com-pares performance across languages, and the second com-pares performance across attributes within each language.
+
+
+3.1 Language-wise comparison
+
+Method 2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g-hashsk3g-hashsk4g-hashxsk2g+hashxsk3g+hashxsk4g+hashmaxGender 0.66 0.64 0.56 0.62 0.64 0.64 0.63 0.61 0.60 0.59 0.65 0.62 0.68 0.63 0.61 0.62 0.68 0.55 0.68Gender2 0.91 0.87 0.92 0.88 0.88 0.93 0.87 0.88 0.89 0.93 0.87 0.92 0.88 0.88 0.93 0.86 0.84 0.80 0.93Pluraity 0.89 0.92 0.82 0.89 0.84 0.87 0.90 0.81 0.88 0.82 0.82 0.97 0.88 0.86 0.84 0.89 0.80 0.79 0.97Case 0.44 0.50 0.53 0.47 0.55 0.49 0.44 0.43 0.48 0.52 0.52 0.47 0.52 0.52 0.62 0.44 0.50 0.44 0.62rank.geomean4.3 3.1 6.7 4.5 3.3 5.2 6.6 8.3 6.6 6.1 3.9 6.4 2.2 5.5 3 4.7 4.1 10.1Figure 1 Czech all attributes under mgr 0.67 on 1.2k sampleMethod 2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmaxGender;Yes;Best0.79 0.71 0.81 0.78 0.72 0.82 0.79 0.78 0.83 0.74 0.82 0.83 0.79 0.69 0.79 0.77 0.80 0.71 0.83Gender;No;Best0.78 0.71
+0.81
+0.80
+0.69 0.84 0.78 0.78 0.84 0.73 0.79 0.78 0.78 0.68 0.79 0.79 0.80 0.69 0.84Plurality;Yes;Best0.94 0.93 0.93 0.96 0.95 0.93 0.94 0.94 0.95 0.93 0.91 0.92 0.96 0.95 0.93 0.99 0.96 0.97 0.99Plurality;No;Best0.93 0.93 0.93 0.95 0.94 0.93 0.94 0.95 0.93 0.93 0.93 0.91 0.94 0.95 0.96 0.97 0.97 0.96 0.97rank.geomean 8.9 13.3 6.7 5.1 10.4 4.5 8.2 8.2 2.9 12.7 7.7 7.2 6.2 9.9 6.2 3 2.9 6.3Figure 2 French all attributes under mgr 0.67 on 1.2k sampleMethod 2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmaxGender 0.58 0.56 0.56 0.55 0.55 0.58 0.60 0.47 0.50 0.55 0.61 0.54 0.56 0.55 0.67 0.59 0.51 0.53 0.67Pluraity 0.86 0.87 0.86 0.84 0.84 0.85 0.82 0.83 0.86 0.88 0.87 0.86 0.84 0.77 0.84 0.82 0.86 0.82 0.88Case 0.37 0.43 0.50 0.41 0.43 0.36 0.33 0.42 0.46 0.40 0.45 0.39 0.45
+0.38 0.40 0.38 0.38 0.42 0.50rank.geomean9 8.3 2.4 6.4 6.6 7.6 8.4 12.3 6.9 7.6 2.4 9.6 6.8 12.6 3.3 8.5 8.1 8.9Figure 3 German all attributes under mgr 0.67 on 1.2k sampleMethod 2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax max-unitGender 0.77 0.75 0.75 0.79 0.72 0.78 0.81 0.82 0.72 0.75 0.77 0.81 0.73 0.73 0.77 0.73 0.74 0.77 0.82Pluraity 0.72 0.67 0.76 0.74 0.70 0.70 0.67 0.73 0.62 0.71 0.68 0.68 0.68 0.64 0.66 0.65 0.64 0.66 0.76Case 0.98 0.99 0.99 0.96 0.96 0.99 0.99 0.96 0.97 1.00 0.99 0.96 0.97 0.96 0.96 0.94 0.97 0.97 1.00rank.geomean7.4 4.6 4.3 7 12.2 2.8 3.8 3.1 12.1 4.9 2.6 6.1 10.3 13.1 9.2 15.2 9.2 6.8Figure 4 Irish all attributes under mgr 0.67 on 1.2k sampleFigures 1 to 4 display the language-wise accuracy dis-tributions for Czech, German, and Irish.
+The accuracydistributions for each language are organized by the clas-siﬁcation task (gender, plurality, and case) and by the en-coding methods used.
+From the results, we observe thefollowing:
+Czech: The best-performing encodings are theskippy 2-gram, skippy 4-gram, and regular 3-gram, in thatorder.
+These results highlight the eﬀectiveness of skippy𝑛-grams for this language.
+French:
+The best performers areextended skippy 4-grams and extended skippy 3-gram withhashing.
+The inclusion of hash-based encodings appearsto boost performance signiﬁcantly.
+German:
+The mostTable 4 inclusive 𝑛-gram encodings for “ﬁg”𝑛 regular skippy extended skippy1 f, i, g f, i, g f , i , g2 ﬁ, ig, f, i, g ﬁ, f g, ig, f, i, g ﬁ , f g, ig, f , i , g3 ﬁg, ﬁ, ig, f, i, g ﬁg, ﬁ, f g, ig, f, i, g ﬁg, ﬁ , . .
+.
+, i , gTable 5 Non-inclusive hashed 𝑛-gram encodings for “ﬁg”𝑛 regular skippy extended skippy1 #, f, i, g, # #, f, i, g, # # , f , i , g , #2 #f, ﬁ, ig, g# #f, # i, . . .
+, g# #f , # i , . . .
+, ig , g#3 #ﬁ, ﬁg, ig# #ﬁ, #f g, . . .
+, ig# #ﬁ, #f g, . . .
+, ﬁg , ig#eﬀective encodings are the 3-gram with hashing and theskippy 4-gram with hashing.
+These results demonstratethe advantage of using skippy 𝑛-grams in combinationwith hash-based encodings.
+Irish:
+The best-performingencodings include the regular 4-gram and the 3-gram withhashing.
+Extended skippy 3-grams also perform well, butoverall, regular 𝑛-grams seem to be more eﬀective for Irish.
+
+
+3.2 Attribute-wise comparison
+
+This section provides a detailed analysis of the resultsfor plurality, gender, and case classiﬁcation tasks acrossthe languages studied.
+The accuracy distr ibutions for eachattribute (gender, plurality, and case) are presented in ﬁg-ures 9 to 15, which show how each encoding method per-formed across diﬀerent attributes.3.2.1 Plurality classiﬁcationTargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk 2g xsk 3g xsk 4g2g-hash3g-hash4g-hashsk2g-hashsk3g-hashsk4g-hashxsk2g+hashxsk3g+hashxsk4g+hashmax rankPlurality
+Yes DT 0.86 0.86 0.76 0.87 0.82 0.86 0.74 0.77 0.81 0.82 0.82 0.97 0.81 0.86 0.81 0.86 0.79 0.72 0.97 1Plurality
+Yes RF 0.89 0.92 0.80 0.89 0.84 0.87 0.90 0.81 0.88 0.82 0.82 0.85 0.88 0.85 0.84 0.89 0.78 0.79 0.92 2Plurality
+Yes NN 0.82 0.88 0.82 0.83 0.76 0.83 0.83 0.75 0.82 0.82 0.72 0.84 0.81 0.84 0.82 0.87 0.80 0.75 0.88 3max 0.89 0.92 0.82 0.89 0.84 0.87 0.90 0.81 0.88 0.82 0.82 0.97 0.88 0.86 0.84 0.89 0.80 0.79 0.97rank 4 2 13 4 11 9 3 16 7 13 13 1 7 10 11 4 17 18Figure 5 Czech plurality under mgr 0.67 on 1.2kTargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk 2g xsk 3g xsk 4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankPlurality
+Yes DT 0.93 0.93 0.86 0.88 0.87 0.85 0.88 0.94 0.82 0.88 0.89 0.87 0.92 0.86 0.92 0.94 0.87 0.88 0.94
+3Plurality
+Yes RF 0.94 0.93 0.92 0.96 0.91 0.93 0.93 0.94 0.89 0.92 0.89 0.92 0.93 0.93 0.93 0.97 0.96 0.97 0.97 2Plurality
+Yes NN 0.90 0.90 0.93 0.95 0.95 0.92 0.94 0.93 0.95 0.93 0.91 0.91 0.96 0.95 0.93 0.99 0.96 0.95 0.99 1max 0.94 0.93 0.93 0.96 0.95 0.93 0.94 0.94 0.95 0.93 0.91 0.92 0.96 0.95 0.93 0.99 0.96 0.97 0.99rank 9 12 12 3 6 12 9 9 6 12 18 17 3 6 12 1 3 2Figure 6 French plurality under mgr 0.67 on 1.2kTargetSupplementMethod 2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankPlurality
+Yes DT 0.76 0.85 0.78 0.74 0.84 0.78 0.78 0.75 0.80 0.88 0.77 0.86 0.80 0.71 0.75 0.76 0.72 0.76 0.88 2Plurality
+Yes RF 0.86 0.87 0.86 0.84 0.78 0.85 0.82 0.83 0.78 0.85 0.87 0.85 0.84 0.77 0.84 0.82 0.86 0.82 0.87 1Plurality
+Yes NN 0.78 0.76 0.85 0.80 0.78 0.75 0.77 0.75 0.86 0.82 0.82 0.81 0.82 0.76 0.78 0.79 0.77 0.79 0.86 2max 0.86 0.87 0.86 0.84 0.84 0.85 0.82 0.83 0.86 0.88 0.87 0.86 0.84 0.77 0.84 0.82 0.86 0.82 0.88rank 4 2 4 10 10 9 15 14 4 1 2 4 10 18 10 15 4 15Figure 7 German plurality under mgr 0.67 on 1.2kTargetSupplementMethod 2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankPlurality
+Yes DT 0.60 0.65 0.63 0.74 0.63 0.69 0.63 0.71 0.61 0.64 0.65 0.66 0.63 0.59 0.60 0.59 0.62 0.58 0.74 2Plurality
+Yes RF 0.72 0.67 0.76 0.69 0.70 0.70 0.67 0.73 0.62 0.63 0.68 0.68 0.68 0.64 0.66 0.59 0.62 0.64 0.76 1Plurality
+Yes NN 0.59 0.64 0.66 0.59 0.62 0.67 0.60 0.68 0.54 0.71 0.61 0.63 0.61 0.61 0.58 0.65 0.64 0.66 0.71 3max 0.72 0.67 0.76 0.74 0.70 0.70 0.67 0.73 0.62 0.71 0.68 0.68 0.68 0.64 0.66 0.65 0.64 0.66
+0.76rank 4 11 1 2 6 6 11 3 18 5 8 8 8 16 13 15 16 13Figure 8 Ir ish plurality under mgr 0.67 on 1.2k sampleFigures 5 to 8 show the accuracy distributions for plu-rality classiﬁcation of nouns in Czech, French, German,and Irish.
+The best-performing methods for plurality clas-siﬁcation include: Czech: The highest-performing methodis skippy 2-gram, followed by skippy 4-gram and regular3-gram.
+French:
+Extended skippy 4-grams with hashingyield the best results, followed by regular 3-grams andskippy 3-grams.
+Ger man: The most eﬀective methods are3-grams with hashing and skippy 4-grams with hashing.
+Irish:
+Regular 4-grams and 3-grams with hashing are thetop performers, followed by extended skippy 3-grams.3.2.2 Gender classiﬁcationTargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g-hashsk3g-hashsk4g-hashxsk2g+hashxsk3g+hashxsk4g+hashmax rankGender2
+Yes DT 0.88 0.82 0.83 0.88 0.83 0.76 0.75 0.55 0.66 0.93 0.82 0.83 0.88 0.83 0.76 0.75 0.58 0.44 0.93 1Gender2
+Yes RF 0.91 0.87 0.92 0.87 0.88 0.93 0.87 0.88 0.89 0.93 0.87 0.92 0.87 0.88 0.93 0.84 0.84 0.78 0.93
+1Gender2
+Yes NN 0.91 0.85 0.90 0.82 0.88 0.82 0.84 0.79 0.72 0.91 0.85 0.90 0.82 0.88 0.82 0.86 0.84 0.80 0.91 3max0.91 0.87 0.92 0.88 0.88 0.93 0.87 0.88 0.89 0.93 0.87 0.92 0.88 0.88 0.93 0.86 0.84 0.80 0.93rank 6 13 4 8 8 1 13 8 7 1 13 4 8 8 1 16 17 18Figure 9 Czech gender (version 2) under mgr 0.67 on 1.2kTargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankGender Yes DT 0.74 0.66 0.81 0.68 0.61 0.78 0.66 0.68 0.74 0.71 0.71 0.76 0.70 0.65 0.65 0.68 0.70 0.57
+0.81 3Gender
+Yes RF 0.77 0.71 0.80 0.78 0.63 0.82 0.79 0.78 0.83 0.74 0.82 0.83 0.79 0.69 0.77 0.77 0.80 0.68 0.83 1Gender
+Yes NN 0.79 0.69 0.74 0.76 0.72 0.82 0.78 0.75 0.75 0.68 0.75 0.75 0.69 0.67 0.79 0.77
+0.78 0.71 0.82 2max 0.79 0.71 0.81 0.78 0.72 0.82 0.79 0.78 0.83 0.74 0.82 0.83 0.79 0.69 0.79 0.77 0.80 0.71 0.83rank 7 16 5 11 15 3 7 11 1 14 3 1 7 18 7 13 6 16Figure 10 French gender under mgr 0.67 on 1.2kTargetSupplementMethod 2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankGender Yes DT 0.53 0.56 0.49 0.53 0.55 0.56 0.47 0.47 0.39 0.41 0.53 0.50 0.48 0.49 0.60 0.51 0.44 0.49 0.60 2Gender
+Yes RF 0.58 0.52 0.56 0.54 0.55 0.58 0.60 0.45 0.50 0.55 0.61 0.54 0.45 0.54 0.67 0.56 0.50 0.53 0.67
+1Gender
+Yes NN 0.55 0.54 0.48 0.55 0.55 0.51 0.51 0.43 0.49 0.45 0.54 0.51 0.56 0.55 0.53 0.59 0.51 0.53 0.59 3max 0.58 0.56 0.56 0.55 0.55 0.58 0.60 0.47 0.50 0.55 0.61 0.54 0.56 0.55 0.67 0.59 0.51 0.53 0.67rank 5 7 7 10 10 5 3 18 17 10 2 14 7 10 1 4 16 15Figure 11
+Ger man gender under mgr 0.67 on 1.2kTargetSupplementMethod 2g 3g 4g sk2g sk3g sk4g xs k2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankGender Yes DT 0.77 0.72 0.64 0.75 0.69 0.75 0.71 0.77 0.71 0.75 0.76 0.77
+0.70 0.71 0.77 0.68 0.68 0.77 0.77 3Gender
+Yes RF 0.76 0.75 0.75 0.79 0.70
+0.78 0.81 0.82 0.72 0.71 0.77 0.81 0.73 0.73 0.75 0.73 0.72 0.75 0.82 1Gender
+Yes NN 0.74 0.73 0.75 0.78 0.72 0.75 0.74 0.78 0.72 0.66 0.75 0.71 0.68 0.70 0.69 0.67 0.74 0.74 0.78 2max 0.77 0.75 0.75 0.79 0.72 0.78 0.81 0.82 0.72 0.75 0.77
+0.81
+0.73
+0.73
+0.77
+0.73 0.74 0.77 0.82rank 6 10 10 4 17 5 2 1 17 10 6 2 14 14 6 14 13 6Figure 12 Irish gender under mgr 0.67 on 1.2kFigures 9 to 12 display the accuracy distributions forgender classiﬁcation in Czech, French, German, and Irish.
+The best-performing methods for gender classiﬁcation in-clude: Czech: The extended skippy 4-gram with hashing,followed by the regular 3-gram, showed the best results.
+French:
+The best-performing method is extended skippy3-gram with hashing, followed by regular 4-grams.
+Ger-man: Skippy 4-grams and extended skippy 3-grams withhashing produced the best results, with the 3-gram withhashing also performing well.
+Irish:
+Extended skippy 3-grams with hashing and skippy 4-grams produced the bestperformance for gender classiﬁcation.3.2.3 Case classiﬁcationFigures 13 to 15 present the accuracy distributions forcase classiﬁcation in Czech, German, and Irish.
+The re-sults indicate the following: Czech: Skippy 2-grams withhashing and regular 4-grams are the top performers forcase classiﬁcation.
+German:
+The best results are obtainedwith 3-grams with hashing and extended skippy 4-grams.
+TargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk 2g xsk 3g xsk 4g2g-hash3g-hash4g-hashsk2g-hashsk3g-hashsk4g-hashxsk2g+hashxsk3g+hashxsk4g+hashmax rankCase
+Yes DT 0.43 0.45 0.41 0.41 0.42 0.
+40 0.32 0.32 0.48 0.51 0.43 0.42 0.41 0.46 0.42 0.35 0.38 0.38 0.51
+2Case
+Yes RF 0.39 0.50 0.53 0.47 0.55 0.49 0.44 0.43 0.46 0.52 0.52 0.47 0.52 0.52
+0.62 0.39 0.50 0.44 0.62
+1Case
+Yes NN 0.44 0.38 0.34 0.47 0.43 0.42 0.37 0.34 0.41 0.41 0.46 0.36 0.35 0.39 0.46 0.44 0.39 0.31 0.47 3max 0.44 0.50 0.53 0.47 0.55 0.49 0.44 0.43 0.48 0.52 0.52 0.47 0.52 0.52 0.62 0.44 0.50 0.44 0.62rank 14 8 3 12 2 10 14 18 11 4 4 12 4 4 1 14 8 14Figure 13 Czech case under mgr 0.67 on 1.2k sampleTargetSupplementMethod 2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax
+rankCase
+Yes DT 0.27 0.37 0.40 0.29 0.37 0.36 0.33 0.35 0.44 0.40 0.41 0.33 0.43 0.36 0.36 0.28 0.34 0.28 0.44 2Case
+Yes RF 0.37 0.43 0.50 0.41 0.43 0.31 0.29 0.42 0.46 0.38 0.45 0.32 0.45 0.37 0.40 0.38 0.38 0.42 0.50 1Case
+Yes NN 0.32 0.30 0.37 0.35 0.34 0.34 0.33 0.31 0.34 0.31 0.32 0.39 0.33 0.38 0.34 0.36 0.37 0.34 0.39
+3max 0.37 0.43 0.50 0.41 0.43 0.36 0.33 0.42 0.46 0.40 0.45 0.39 0.45 0.38 0.40 0.38 0.38 0.42 0.50rank 16 5 1 9 5 17 18 7 2 10 3 12 3 13 10 13 13 7Figure 14
+Ger man case under mgr 0.67 on 1.2k sampleTargetSupplementMethod 2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankCase
+Yes DT 0.98 0.97 0.97 0.96 0.96 0.98 0.99 0.96 0.97 0.98 0.97 0.94 0.96 0.92 0.95 0.94 0.96 0.96 0.99 3Case
+Yes RF 0.98 0.99 0.99 0.96 0.96 0.99 0.98 0.96 0.97 1.00 0.99 0.96 0.97 0.96 0.95 0.94 0.97 0.97 1.00 1Case
+Yes NN 0.98 0.99 0.99 0.96 0.96 0.99 0.98 0.96 0.97 1.00 0.99 0.96 0.97 0.96 0.96 0.94 0.97 0.97 1.00 1max 0.98 0.99 0.99 0.96 0.96 0.99 0.99 0.96 0.97 1.00 0.99 0.96 0.97 0.96 0.96 0.94 0.97 0.97 1.00rank 7 2 2 12 12 2 2 12 8 1 2 12 8 12 12 18 8 8Figure 15 Ir ish case under mgr 0.67 on 1.2k sampleIrish:
+Extended skippy 𝑛-grams and 3-grams with hashingproduced the highest accuracy for case classiﬁcation.
+In general, the best performing methods for case classi-ﬁcation are similar to those for gender and plurality clas-siﬁcation.
+Skippy 𝑛-grams, especially those extended orcombined with hashing, show superior performance acrossdiﬀerent tasks and languages.
+
+
+3.3 Discussion
+
+The results obtained from these experiments provideseveral insights into the eﬀectiveness of various 𝑛-gramencoding methods for word classiﬁcation tasks.
+One keyobservation is that, in certain cases, ((extended) skippy) 𝑛-grams perform worse as 𝑛 increases, while in other cases,they show improved results with larger 𝑛-values.
+This in-consistency suggests that while skippy 𝑛-grams oﬀer ﬂexi-bility in encoding word structure, the relationship between𝑛-gram size and performance is not always straightforwardand depends on the speciﬁc language and task.
+
+
+4 Conclusion
+
+This study investigated the eﬃcacy of diﬀerent 𝑛-gram-based encoding methods for word structure classiﬁcationtasks, focusing on gender, plurality, and case attributesacross multiple languages (Czech, French, German, andIrish).
+It is sugggested that (extended) skippy 𝑛-grams,when used with boundary markers and hash-based encod-ing, oﬀer an eﬀective and eﬃcient method for word struc-ture classiﬁcation.
+However, further exploration is requiredto understand the nuances of 𝑛-gram size, encoding type,and language-speciﬁc factors in order to ﬁne-tune thesemethods for optimal performance.
+
+
+
+Acknowledgements
+
+To run decision tree and random forest analyses, relevantmodules in scikit-learn (https://scikit-learn.org/) were used. To run neural network analysis,keras (https://keras.io/) was used. For other dataanalysis and visualizations, Anaconda 3 (https://www.anaconda.com) version 24.11.x was used, running JupyterNotebook 7.0.x on Python 3.11.
+
+References
+
+
+[1] Peter Smit, Sami Virpioja, Stig-Arne Gr¨onroos, and MikkoKurimo. Morfessor 2.0: Toolkit for statistical morphologi-cal segmentation. In Proceedings of Demonstrations atthe 14th Conference of the European Chapter of theAssociation for Computational Linguistics, pp. 21–24,2014.
+[2] 黒田航, 相良かおる, 東条佳奈, 麻子軒, 西嶋佑太郎,山崎誠. LDA を使った専門用語の教師なしクラスタリング. 言語処理学会 30 回年次大会発表論文集, pp.2858–63, 2024.
+[3] Kow Kuroda. Finding str ucture in spelling and pronun-ciation using latent dirichlet allocation. In Proceedingsof the 30th Annual Meeting of the Natural LanguageProcessing Association, 2024.
+
+
+
+A Appendix: Attribute-wise analy-
+
+
+
+sis of mgv: 1.00 results
+
+This appendix gives the results of another analysis withparameters max gap ratio = 1.00 on 1.2k sample.
+
+
+A.1 Plurality classiﬁcation
+
+TargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g-hashsk3g-hashsk4g-hashxsk2g+hashxsk3g+hashxsk4g+hashmax rankPlurality
+Yes DT 0.89 0.78 0.82 0.76 0.74 0.87 0.79 0.78 0.84 0.91 0.86 0.88 0.73 0.84 0.83 0.82 0.81 0.80 0.91 2Plurality
+Yes RF 0.88 0.82 0.86 0.82 0.82 0.88 0.84 0.81 0.84 0.88 0.88 0.89 0.83 0.85 0.86 0.83 0.89 0.85 0.89 3Plurality
+Yes NN 0.81 0.75 0.81 0.72 0.74 0.82 0.88 0.78 0.92 0.84 0.78 0.80 0.82 0.82 0.85 0.82 0.82 0.74 0.92 1max 0.89 0.82 0.86 0.82 0.82 0.88 0.88 0.81 0.92 0.91 0.88 0.89 0.83 0.85 0.86 0.83 0.89 0.85
+0.92 1:xsk4g;2:2g+h;rank 3 15 9 15 15 6 6 18 1 2 6 3 13 11 9 13 3 11Figure 16 Czech plurality under mgr 1.00 on 1.2kTargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankPlurality
+Yes DT 0.93 0.85 0.86 0.85 0.89 0.89 0.95 0.82 0.90 0.88 0.82 0.91 0.93 0.90 0.87 0.86 0.82 0.89 0.95 3Plurality
+Yes RF 0.94 0.92 0.92 0.90 0.91 0.90 0.97 0.93 0.96 0.89 0.87 0.96 0.96 0.94 0.89 0.93 0.93 0.97 0.97 1Plurality
+Yes NN 0.91 0.88 0.91 0.93 0.95 0.93 0.97 0.95 0.96 0.89 0.88 0.88 0.96 0.97 0.91 0.93 0.97 0.97 0.97 1max 0.94 0.92 0.92 0.93 0.95 0.93 0.97 0.95 0.96 0.89 0.88 0.96 0.96 0.97 0.91 0.93 0.97 0.97 0.97 1:xsk2g,4g+h,xsk3g+h,xsk4g+h;rank 10 14 14 11 8 11 1 8 5 17 18 5 5 1 16 11 1 1Figure 17 French plurality under mgr 1.00 on 1.2kTargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankPlurality
+Yes DT 0.84 0.82 0.78 0.74 0.75 0.81 0.75 0.75 0.81 0.82 0.83 0.84 0.83 0.77 0.82 0.78 0.79 0.75 0.84 3Plurality
+Yes RF 0.82 0.87 0.83 0.83 0.80 0.83 0.78 0.79 0.85 0.79 0.85 0.88 0.87 0.86 0.81 0.82 0.79 0.82 0.88 2Plurality
+Yes NN 0.84 0.80 0.78 0.78 0.78 0.80 0.77 0.82 0.78 0.76 0.77 0.74 0.89 0.82 0.74 0.82 0.81 0.84 0.89 1max 0.84 0.87 0.83 0.83 0.80 0.83 0.78 0.82 0.85 0.82 0.85 0.88 0.89 0.86 0.82 0.82 0.81 0.84
+0.89rank
+7 3 9 9 17 9 18 12 5 12 5 2 1 4 12 12 16 7Figure 18
+Ger man plurality under mgr 1.00 on 1.2kTargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankPlurality
+Yes DT 0.69 0.70 0.65 0.67 0.57 0.64 0.58 0.59 0.70 0.67 0.74 0.68 0.63 0.69 0.70 0.62 0.58 0.70 0.74 2Plurality
+Yes RF 0.65 0.69 0.66 0.68 0.60 0.72 0.63 0.65 0.66 0.72 0.75 0.71 0.69 0.72 0.74 0.64 0.63 0.68 0.75 1Plurality
+Yes NN 0.59 0.59 0.61 0.65 0.60 0.65 0.70 0.54 0.61 0.70 0.68 0.71 0.68 0.68 0.73 0.56 0.59 0.61 0.73 3max 0.69 0.70 0.66 0.68 0.60 0.72 0.70 0.65 0.70 0.72 0.75 0.71 0.69 0.72 0.74 0.64 0.63 0.70
+0.75rank 11 7 14 13 18 3 7 15 7 3 1 6 11 3 2 16 17 7Figure 19 Irish plurality under mgr 1.00 on 1.2k sampleFigures 16–19 give the accuracy distributions for plural-ity of nouns in Czech, French, German and Irish.
+Perfor-mace of extended skippy 𝑛-grams, with or without hash,seem to be improved.
+
+
+A.2 Gender classiﬁcation
+
+TargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g-hashsk3g-hashsk4g-hashxsk2g+hashxsk3g+hashxsk4g+hashmax rankGender
+Yes DT 0.58 0.58 0.51 0.57 0.49 0.56 0.57
+0.57
+0.40 0.57 0.59 0.53 0.47 0.44 0.50 0.52 0.44 0.46 0.59 3Gender
+Yes RF 0.65 0.66
+0.68 0.60 0.54 0.66 0.60 0.68 0.62 0.62 0.59 0.62 0.59 0.62 0.63 0.65 0.55 0.65 0.68 2Gender
+Yes NN 0.57 0.55 0.62 0.54 0.58 0.59 0.61 0.63 0.67 0.56 0.52 0.69 0.59 0.67 0.54 0.57 0.53 0.62 0.69 1max 0.65 0.66 0.68 0.60 0.58 0.66 0.61 0.68 0.67 0.62 0.59 0.69 0.59 0.67 0.63 0.65 0.55 0.65 0.69 1:4g+h;2:4g,xsk3g;rank 8 6 2 14 17 6 13 2 4 12 15 1 15 4 11 8 18 8Figure 20 Czech gender under mgr 1.00 on 1.2kTargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankGender Yes DT 0.71 0.68 0.68 0.72 0.69 0.68 0.64 0.69 0.67 0.63 0.72 0.61 0.68 0.68 0.67 0.65 0.72 0.57 0.72 3Gender
+Yes RF 0.77 0.80 0.69 0.81 0.80 0.79 0.74 0.75 0.75 0.73 0.72 0.71 0.80 0.74 0.77 0.76 0.76 0.75
+0.81 1Gender
+Yes NN 0.72 0.79 0.69 0.79 0.78 0.73 0.75 0.76 0.73 0.72 0.68 0.68 0.79 0.74 0.77 0.79 0.72 0.69 0.79 2max 0.77 0.80 0.69 0.81 0.80 0.79 0.75 0.76 0.75 0.73 0.72 0.71 0.80 0.74 0.77 0.79 0.76 0.75 0.81 1:sk2g;2:sk3g,sk2g+h;rank 7 2 18 1 2 5 11 9 11 15 16 17 2 14 7 5 9 11Figure 21 French gender under mgr 1.00 on 1.2kTargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankGender Yes DT 0.52 0.47 0.47 0.48 0.57 0.53 0.56 0.48 0.45 0.47 0.52 0.50 0.47 0.51 0.52 0.54 0.59 0.53 0.59 2Gender
+Yes RF 0.57 0.54 0.57 0.61 0.57 0.57 0.61 0.54 0.55 0.56 0.54 0.61 0.59 0.50 0.62 0.56 0.61 0.58 0.62 1Gender
+Yes NN 0.52 0.44 0.56 0.57 0.54 0.53 0.45 0.55 0.55 0.46 0.49 0.55 0.56 0.52 0.54 0.50 0.52
+0.50
+0.57
+3max 0.57 0.54 0.57 0.61 0.57 0.57 0.61 0.55 0.55 0.56 0.54 0.61 0.59 0.52 0.62 0.56 0.61 0.58 0.62 1:sk4g+h;2:sk2g,xsk2g,4g+h,xsk3g+h;rank 8 16 8 2 8 8 2 14 14 12 16 2 6 18 1 12 2 7Figure 22
+Ger man gender under mgr 1.00 on 1.2kTargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankGender Yes DT 0.82 0.67 0.68 0.76 0.66 0.70 0.68 0.58 0.59 0.79 0.75 0.75 0.70 0.72 0.72 0.69 0.56 0.68 0.82 1Gender
+Yes RF 0.76 0.77 0.74 0.78 0.71 0.81 0.78 0.68 0.70 0.75 0.73 0.75 0.78 0.74 0.79 0.75 0.68 0.70
+0.81 2Gender
+Yes NN 0.75 0.70 0.68 0.78 0.71 0.80 0.76 0.68 0.69 0.69 0.75 0.77 0.70 0.75 0.74 0.68 0.61 0.70 0.80 3max 0.82 0.77 0.74 0.78 0.71 0.81 0.78 0.68 0.70 0.79 0.75 0.77 0.78 0.75 0.79 0.75 0.68
+0.70 0.82rank 1 8 13 5 14 2 5 17 15 3 10 8 5 10 3 10 17 15Figure 23 Irish gender under mgr 1.00 on 1.2kFigures 20 to 23 provide the accuracy distributions forgender classiﬁcation of nouns in Czech, French, Ger manand Irish.
+Performace of extended skippy 𝑛-grams, with orwithout hash, seem to be improved.
+
+
+A.3 Case classiﬁcation
+
+TargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g-hashsk3g-hashsk4g-hashxsk2g+hashxsk3g+hashxsk4g+hashmax
+rankCase
+Yes DT 0.56 0.51 0.48 0.47 0.30 0.41 0.32 0.36 0.39 0.42 0.45 0.53 0.47 0.40 0.36 0.36 0.31 0.34 0.56 2Case
+Yes RF 0.40 0.53 0.56 0.52 0.50 0.52 0.42 0.59 0.49 0.50 0.51 0.50 0.49 0.54 0.53 0.55 0.38 0.53 0.59
+1Case
+Yes NN 0.36 0.37 0.41 0.41 0.32 0.40 0.39 0.42 0.37 0.37 0.40 0.45 0.42 0.33 0.43 0.36 0.27 0.43 0.45 3max 0.56 0.53 0.56 0.52 0.50 0.52 0.42 0.59 0.49 0.50 0.51 0.53 0.49 0.54 0.53 0.55 0.38 0.53 0.59 1:xsk3g;2:2g,4g;rank 2 6 2 10 13 10 17 1 15 13 12 6 15 5 6 4 18 6Figure 24 Czech case under mgr 1.00 on 1.2k sampleTargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankCase
+Yes DT 0.33 0.35 0.32 0.38 0.34 0.29 0.37 0.25 0.33 0.35 0.41 0.28 0.39 0.42 0.33 0.40 0.37 0.33 0.42 3Case
+Yes RF 0.37 0.35 0.38 0.43 0.36 0.41 0.42 0.31 0.33 0.30 0.43 0.32 0.35 0.42 0.41 0.47 0.46 0.38 0.47 1Case
+Yes NN 0.28 0.33 0.23 0.36 0.35 0.24 0.47 0.35 0.32 0.26 0.43 0.31 0.34 0.39 0.38 0.42 0.32 0.24 0.47 1max 0.37 0.35 0.38
+0.43 0.36 0.41 0.47 0.35 0.33 0.35 0.43 0.32 0.39 0.42 0.41 0.47 0.46 0.38
+0.47rank 12 14 10 4 13 7 1 14 17 14 4 18 9 6 7 1 3 10Figure 25 Ger man case under mgr 1.00 on 1.2k sampleTargetSupplementMethod2g 3g 4g sk2g sk3g sk4g xsk2g xsk3g xsk4g2g-hash3g-hash4g-hashsk2g+hashsk3g+hashsk4g+hashxsk2g-hashxsk3g-hashxsk4g-hashmax rankCase
+Yes DT 0.92 0.97 0.97 0.98 0.97 0.96 0.94 0.97 0.95 0.95 0.93 0.96 0.95 0.95 0.96 0.96 0.93 0.97 0.98 3Case
+Yes RF 0.91 0.98 0.98 0.99 0.97 0.98 0.95 0.96 0.95 0.96 0.96 0.96 0.96 0.95 0.96 0.96 0.97 0.97 0.99 1Case
+Yes NN 0.91 0.98 0.98 0.99 0.97 0.98 0.95 0.96 0.95 0.96 0.96 0.96 0.96 0.95 0.96 0.96 0.97 0.97 0.99 1max 0.92 0.98 0.98 0.99 0.97 0.98 0.95 0.97 0.95 0.96 0.96 0.96 0.96 0.95 0.96 0.96 0.97 0.97 0.99rank 18 2 2 1 5 2 15 5 15 9 9 9 9 15 9 9 5 5Figure 26
+Ir ish case under mgr 1.00 on 1.2k sampleFigures 24–26 give the accuracy distributions for plu-rality classiﬁcation of nouns in Czech, German and Irish.
+Like the two cases above, performace of extended skippy𝑛-grams, with or without hash, seems to be improved butnot quite remarkably.
+
+
+A.4 Discussion
+
+In addition to increased performance of extended skippy𝑛-grams mentioned above, overall performance is im-proved with the full max gap ratio = 1.00.
+The poten-tial problem with larger mgv is that it takes more com-putational resources, and it works only under reasonablyshorter words.
+With larger max doc sizes, adverse eﬀectsare quite likely.

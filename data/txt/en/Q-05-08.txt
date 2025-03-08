@@ -1,0 +1,215 @@
+Disentanglement or Entanglement, which is Better for TST
+
+徐 勝
+
+1
+
+ 鈴木 良弥
+
+2
+
+ 福本 文代
+
+2
+
+山梨大学大学院 医工農学総合教育部
+
+1
+
+ 総合研究部工学域
+
+2
+
+{g22dts03,ysuzuki,fukumoto}@yamanashi.ac.jp
+
+
+
+Abstract
+
+With the continuous breakthroughs in the capabilities ofTransformer-based models, NLP research focused on lan-guage style, such as Text Style Transfer (TST), has gradu-ally attracted more attention.
+Approaches for handling TSTtasks can generally be categorized into two main strategies:disentanglement and entanglement.
+This paper proposesa method to construct two prompting pipelines based onthese two strategies, utilizing Chain of Thought (CoT)
+andLarge Language Models (LLMs).
+We investigate the per-formance of these pipelines on four TST sub-tasks andanalyze their improvements compared to the baseline.
+
+
+1 Introduction
+
+The text style is an intuitive notion involving how some-thing is mentioned [1].
+TST, a subset of text generationtasks, aims to alter the style of a given text (e.g., a sentence)while preserving its style-independent content.
+Dependingon the type of style being considered, TST can be viewedas a collection of sub-tasks, such as sentiment style transfer(SST), and formality style transfer (FST).Approaches employing disentanglement or entangle-ment strategies represent the dominant paradigm and anintuitive solution in prior research on TST tasks.
+Here,the disentanglement strategy assumes that the style andcontent information in the source sentence can be decou-pled.
+It then integrates the separated content with the targetstyle to produce the desired sentence.
+In contrast, the en-tanglement strategy leverages the target style directly toguide the model’s generation process.
+These representa-tive works include seq2seq models trained from scratchon non-parallel dataset [2, 3], ﬁne-tuning pre-trained lan-guage models by parallel dataset [4, 5, 6], and LLM-basedprompting techniques
+[7, 8].
+In seq2seq and ﬁne-tunedmodels, disentanglement/entanglement predominantly fo-cuses on manipulating the hidden states of input sentences.
+For instance, the seq2seq model employing the disentan-glement strategy is trained to learn disentangled representa-tions in the latent space.
+Similarly, under the entanglementstrategy, the decoder integrates controllable style featureswith the representations of the source sentences to generatethe target sentence.
+Although previous studies have demonstrated the eﬀec-tiveness of their disentanglement or entanglement strate-gies through experimental results, a systematic investiga-tion into which strategy is more eﬀective remains an openproblem.
+Furthermore, prior approaches have predomi-nantly focused on employing a single strategy to developspeciﬁc methods, without capitalizing on the complemen-tary advantages of integ rating both strategies.
+Several in-novative approaches have also been investigated, includingmethods leveraging Reinforcement Learning or attempts toexamine the underlying transfer pattern from input to tar-get [9, 10].
+Nonetheless, these eﬀorts have not emphasizeddisentanglement or entanglement strategies.
+In this paper, to overcome the limitations mentionedabove, we propose two CoT pipelines using LLMs, eachof which is based on either the disentanglement or en-tanglement strategy.
+To comprehensively compare the per-formance and generalizability of each pipeline, we conductexperiments on four TST subtasks.
+The main contributionsof our work are summarized as follows:(1)
+We conducted a comparison of the performance ofCoT prompting methods utilizing disentanglementand entanglement strategies.(2) To fully harness the advantages of both strategies,we employ an LLM-based evaluation and rerankingmethod, as proposed in [11], to ensemble the outputsfrom the two pipelines.(3) Extensive experiments consistently demonstrate theeﬀectiveness and generalizability of the variouspipeline variants.(a)
+Disentanglement pipeline(b) Entanglement pipelineFigure 1: Two overarching strategies for TST
+
+2 Method
+
+
+
+2.1 Constructing CoT Pipelines
+
+
+To enhance the controllability and logical coherence ofLLMs reasoning processes, we propose our two pipelinesgrounded in the CoT prompting [12], designed to ensurerobust performance across a wide range of TST subtasks.
+Considering the prompting template can be directly con-structed by Natural Language to deﬁne the expected trans-fer, each CoT pipeline consists of two steps of promptingwhich are designed by following the disentanglement andentanglement strategies shown in (a) and (b) of Figure 1,respectively.
+Let X indicate the input sentence with anoriginal style s (e.g. “negative”).
+The target style is repre-sented by s′(e.g. “positive”).
+The style to be transferredis referred to as S (e.g. “sentiment”).
+For the two steps ofthe disentanglement pipeline, we set the prompt templatesas follows:Disentanglement Prompt: Here is a sentence “X”.
+Please analyze which part expresses s, and which isS-independent content.
+Style Transfer Prompt: Based on the analysis, pleaserevise the sentence to transfer s content to s′. whilepreserving the S-independent content.
+Similarly, the prompt templates for the entanglementpipeline are presented as follows:Analysis Prompt: Here is a sentence “X”.
+Pleaseanalyze the information conveyed in this sentence.
+Entanglement Prompt: Based on the analysis,please revise the sentence to express a more s′.To this end, the disentanglement and entanglementpipelines can be formalized as 𝑃𝑑𝑖𝑠(X) and 𝑃𝑒𝑛𝑡(X), re-spectively.
+
+
+2.2 Ensembling Disentanglement and
+
+
+
+Entanglement
+
+Considering the diversity of TST cases and the inher-ent ﬂexibility of natural language, we assume that relyingexclusively on either a disentanglement- or entanglement-based CoT pipeline may not be enough to handle all sce-narios eﬀectively.
+As depicted in Figure 2, the ﬁrst inputsentence can be easily decomposed into a content compo-nent, “Ever since joes has changed hands it’s just gotten”, and a style component, “worse and worse.”.
+However,the second input sentence presents challenges in explicitlyseparating content and style in natural language, as it ex-presses sentiment implicitly, and requires more advancedreasoning capabilities.
+In such cases, the entanglement-based pipeline may achieve better results.
+Figure 2: Two examples of SST.To fully exploit the advantages of both CoT strategies,we adopt the re-ranking method proposed by [11].
+Eachgenerated candidate (X′) will be evaluated with a score cal-culated by a speciﬁc function Φ(X, X′).
+In our work, bothCoT pipelines are applied for each input, and their outputsare subsequently evaluated with three scores, representingthe strength of style transfer, content preservation, and ﬂu-ency.
+All three scores are multiplied to get theΦ(X,X′),as shown in Eq.(1).
+Diﬀerent from [11], where these threescores are predicted by PLMs, we directly prompt LLMto assess each score on a regularized scale from 0 to 100which is similar to [13].Φ(X, X′) = 𝜙𝑠(X, X′) · 𝜙𝑐(X, X′) ·
+𝜙𝑓(X, X′)(1)According to Eq.(2) the candidate with the higherTable 1: Statistics of seven datasets for four TST subtasksTask Dataset SizeSSTYelp ( 𝑛𝑒𝑔 → 𝑝𝑜𝑠) 500Yelp (𝑝𝑜𝑠 → 𝑛𝑒𝑔) 500Amazon (𝑛𝑒𝑔 → 𝑝𝑜𝑠) 500Amazon (𝑝𝑜𝑠 → 𝑛𝑒𝑔)
+500FST GYAFC 500GST JFLEG 747AST SHASP 599Φ(X, X′) is regarded as the ﬁnal generation, 𝐺 (X).𝐺 (X) =𝑃𝑑𝑖𝑠(X) , 𝛼 ≤ 0𝑃𝑒𝑛𝑡(X) , 𝛼 > 0(2)𝛼 = Φ(X, 𝑃𝑑𝑖𝑠(X))
+− Φ(X, 𝑃𝑒𝑛𝑡(X))
+
+
+3 Experiments
+
+
+
+3.1 Experimental Setup
+
+We conducted experiments on four TST subtasks, i.e.,SST, FST, g rammar style transfer (GST), and authorshipstyle transfer (AST).
+The datasets, which have been cleanedby [11], used for these tasks are brieﬂy explained as follows:(1) SST.
+We choose the annotated Yelp and Amazon testdatasets for the SST task [14], where both datasets in-clude two subsets for transfer from negative to positive(𝑛𝑒𝑔 → 𝑝𝑜𝑠) and vice versa (𝑝𝑜𝑠 → 𝑛𝑒𝑔).(2) FST.
+Following most of the related works, we use theGYAFC dataset collected to evaluate the performanceof each variant for the FST task [15].
+We focus on thetransfer direction from informality to formality.(3) GST.
+The last dataset we selected is JFLEG for theautomatic grammatical error correction task [16].
+Weconducted the transfer from ungrammatical sentencesto their grammatical counterparts.(4) AST.
+For the AST task, we leverage a small subset ofthe dataset, proposed to translate the plays of Shake-speare to their counterparts written in modern English[17].
+For convenience, the subset is named “SHASP”.
+Since Yelp and Amazon contain two subsets for 𝑛𝑒𝑔 →𝑝𝑜𝑠 and 𝑝𝑜𝑠 → 𝑛𝑒𝑔 tasks, respectively, all other datasetsinvolve single-directional transfer.
+In total, seven TSTdatasets are used across all experiments.
+The statistics ofthese datasets are shown in Tabel 1.We explore four prompting variants: a straightforwardprompt serving as the baseline, disentanglement CoT, en-tanglement CoT, and their ensembled conﬁguration.
+Theexperiments for each variant on the above seven datasetsare conducted by leveraging LLaMA3.2 as the backbone.
+The prompt templates, designed for interacting with LLMsto address each speciﬁc task, are detailed in our code1）.
+To obtain the most accurate scores, we select LLaMA3.3with 70 billion parameters as the scoring evaluator whichis prompted with three templates to implement the 𝜙𝑠, 𝜙𝑐,and 𝜙𝑓, respectively.
+The scoring prompt examples arelisted in Figures 3, 4, and 5.
+To focus on investigating thedisentanglement and entanglement CoTs, all inferences areconducted in a zero-shot context.
+During each inferencestep, the main hyperparameters are the same as the defaultsettings shown in Appendix, Table 3.Five evaluation metrics are utilized to evaluate theperformance of each prompt pipeline, including ac-curacy (Acc), reference-SacreBLEU score (r-sB), self-SacreBLEU score (s-sB), token-level perplexity (t-PPL),and sentence-level perplexity (s-PPL).
+Acc is the rate ofthe output with the target style and is used to measure thestyle transfer strength.
+Following previous work, we ﬁne-tuned a standard BERT-base model with the style labels ofsentences in each dataset to serve as a speciﬁc style classi-ﬁer for every transfer subtask.
+s-sB and r-sB indicate theSacreBLEU scores between generation with the input andannotated reference, respectively, which are calculated bya tool2）.
+Here, s-sB evaluates the ability to preserve style-independent content, and r-sB measures the overall transferperformance.
+t-PPL and s-PPL represent the perplexitiesof the next token predicted by a speciﬁc language model(GPT2-large) to assess the ﬂuency of the generated sen-tences.
+t-PPL is averaged over the number of tokens, whiles-PPL is averaged over the number of sentences across thedataset.
+Instead of relying on human evaluation, we usethe same LLaMA3.3 model to evaluate the performance onthese three aspects.
+The pre-trained parameters of BERT-base and GPT2-large are downloaded from Huggingface3）.
+Likewise, all LLMs are set up by utilizing the Ollama4）.
+
+3.2 Results
+
+Table 2 presents the performance of LLaMA3.2 acrossseven TST datasets.
+Comparing the results of the ﬁve1） https://github.com/codesedoc/CoT4TST2）
+https://github.com/mjpost/sacrebleu3）
+https://huggingface.co/models4） https://ollama.comTable 2: Results of each pipeline across seven TST datasets by leveraging LLaMA3.2 as the backbone model.
+The boldfont indicates the best scores among each subgroup.
+Dataset Pipeline Acc ↑ r-sB ↑ s-sB ↑ t-PPL ↓ s-PPL ↓ Style ↑ Content ↑
+Fluency ↑Yelp (𝑛𝑒𝑔 → 𝑝𝑜𝑠)baseline 78.2 7.81 13.64 37 69 64.24 59.04 67.73disentanglement 76.2 16.48 31.4 47 99 67.84 62.85 70.42entanglement 76.2 8.81 14.85 32 54 63.38 57.43 66.19ensemble 82.2 11.83 20.62 38 79 73.24 66.81 74.79Yelp (𝑝𝑜𝑠→𝑛 𝑒𝑔)baseline 81.4 10.56 20.64 50 98 65.88 64.34 67.86disentanglement 76.6 18.19 38.25 65 165 60.3 60.16 63.1entanglement 84.8 10.89 21.01 46 98 64.28 62.14 66.75ensemble 91.4 15.62 29.65 55 116 74.23 72.08 75.08Amazon (𝑛𝑒𝑔 → 𝑝𝑜𝑠)baseline 74.4 11.42 16.37 38 62 61.98 59.56 65.9disentanglement 74.6 22.12 34.39 51 105 64.54 62.43 68.66entanglement 77.8 9.81 15.14 32 61 65.57 57.91 67.59ensemble 81.0 14.11 21.66 37 65 70.37 64.83 72.67Amazon (𝑝𝑜𝑠 → 𝑛𝑒𝑔)baseline 70.6 17.38 24.28 47 87 51.93 55.12 56.31disentanglement 62.827.26 40.2161 127 45.5250.63 50.77entanglement 90.4 14.82 21.21 40
+76 62.23 56.17 63.37ensemble 84.6 19.79 27.81 46 81 65.3 61.52 66.93GYAFCbaseline 98.8 7.48 4.65 30 50 81.73 76.27 80.5disentanglement 92.0 13.31 15.18 35 59 78.03 74.96 77.52entanglement 98.8 3.1 2.63 25 39 73.56 60.0 69.31ensemble 96.4 7.2 7.6 30 50 81.75 74.3 79.51JFLEGbaseline 94.24 41.02 34.28 32 47 79.87 79.73 85.57disentanglement 87.68 46.38 44.05 40 77 71.77 73.41 77.33entanglement 95.18 23.57 19.78 28 46 64.89 62.8 74.83ensemble 92.1 41.75 37.74 33 53 77.62 78.16 84.52SHASPbaseline 97.83 4.95 4.64 39 54 59.81 64.65 65.91disentanglement 88.15 11.05 15.45 60 95 61.8 67.42 67.45entanglement 98.0 4.32 4.39 34 51 49.15 53.54 57.18ensemble 94.82 8.72 10.51 47 72 63.89 69.28 70.43automatic metrics across various pipeline variants revealsthat the disentanglement strategy consistently achieves thehighest r-sB and s-sB scores across all tasks.
+However, Accscores are consistently lower than those of the baseline.
+Incontrast, the entanglement strategy consistently surpassesthe baseline in Acc scores and achieves the best t-PPL and s-PPL scores, although it performs less favorably in r-sB ands-sB. These ﬁndings suggest that the disentanglement CoTis particularly adept at decomposing sentence componentsand generating target sentences, while the entanglementCoT is more logically intuitive and excels at generatingmore natural sentences that align with the target style.
+However, based on the LLM’s scor ing of the generatedsentences, the variants generally exhibit consistent perfor-mance, either strong or weak, across the three dimensionsof style, content, and ﬂuency.
+Notably, aside from the re-sults on the Amazon dataset, neither the disentanglementnor the entanglement strategy consistently outperforms thebaseline.
+This discrepancy between the LLM-based eval-uations and the automatic metric results requires furtherinvestigation.
+A noteworthy ﬁnding is that, across all eight evaluationmetrics, the ensemble variant achieves a more balancedtrade-oﬀ between the disentanglement and entanglementpipelines.
+This results in improved performance over thebaseline in terms of Acc, r-sB, and s-sB, while maintain-ing comparable perplexity scores.
+From the perspectiveof LLM-based evaluation, the ensemble variant even sur-passes both CoT pipelines, demonstrating superior overalleﬀectiveness and outperforming the baseline in most tasks.
+
+
+4 Conclusion
+
+In this paper, we focused on investigating the perfor-mance of the CoT prompting pipelines based on disentan-glement and entanglement in comparison to the baseline.
+Inspired by the algorithm proposed by [11], we proposedan ensemble operation to trade oﬀ the performance of thesetwo pipelines.
+The experimental results demonstrate theensemble variant can achieve consistently better metricsresults on diﬀerent TST tasks.
+
+
+
+Acknowledgements
+
+This work is supported by JKA (2023M-401) and theSupport Center for Advanced Telecommunications Tech-nology Research (SCAT). The ﬁrst author is supported byJST SPRING, Grant Number JPMJSP2133.
+
+References
+
+
+[1] David D. McDonald and James D. Pustejovsky. A computa-tional theory of prose style for natural language generation. InMaghi King, editor, Second Conference of the EuropeanChapter of the Association for Computational Linguis-tics, Geneva, Switzerland, March 1985. Association for Compu-tational Linguistics.
+[2] Yu Bao, Hao Zhou, Shujian Huang, Lei Li, Lili Mou, Olga Vech-tomova, Xin-yu Dai, and Jiajun Chen. Generating sentences fromdisentangled syntactic and semantic spaces. In Anna Korhonen,David Traum, and Lluís Màrquez, editors, Proceedings of the57th Annual Meeting of the Association for Computa-tional Linguistics, pp. 6008–6019, Florence, Italy, July 2019.Association for Computational Linguistics.
+[3] Ning Dai, Jianze Liang, Xipeng Qiu, and Xuanjing Huang. Styletransformer: Unpaired text style transfer without disentangled la-tent representation. In Anna Korhonen, David Traum, and LluísMàrquez, editors, Proceedings of the 57th Annual Meet-ing of the Association for Computational Linguistics, pp.5997–6007, Florence, Italy, July 2019. Association for Computa-tional Linguistics.
+[4] Léo Laugier, John Pavlopoulos, Jeﬀrey Sorensen, and Lucas Dixon.Civil rephrases of toxic texts with self-supervised transformers. InPaola Merlo, Jorg Tiedemann, and Reut Tsarfaty, editors, Pro-ceedings of the 16th Conference of the European Chap-ter of the Association for Computational Linguistics:Main Volume, pp. 1442–1461, Online, April 2021. Associationfor Computational Linguistics.
+[5] Xu Sheng, Fumiyo Fukumoto, Jiyi Li, Go Kentaro, and YoshimiSuzuki. Learning disentangled meaning and style representationsfor positive text reframing. In C. Maria Keet, Hung-Yi Lee, andSina Zarrieß, editors, Proceedings of the 16th InternationalNatural Language Generation Conference, pp. 424–430,Prague, Czechia, September 2023. Association for ComputationalLinguistics.
+[6] Sheng Xu, Yoshimi Suzuki, Jiyi Li, and Fumiyo Fukumoto. Decou-pling style from contents for positive text reframing. In Biao Luo,Long Cheng, Zheng-Guang Wu, Hongyi Li, and Chaojie Li, ed-itors, Neural Information Processing, pp. 73–84, Singapore,2024. Springer Nature Singapore.
+[7] Emily Reif, Daphne Ippolito, Ann Yuan, Andy Coenen, ChrisCallison-Burch, and Jason Wei. A recipe for arbitrary text styletransfer with large language models. In Smaranda Muresan, PreslavNakov, and Aline Villavicencio, editors, Proceedings of the60th Annual Meeting of the Association for Computa-tional Linguistics (Volume 2: Short Papers), pp. 837–848,Dublin, Ireland, May 2022. Association for Computational Lin-guistics.
+[8] Jingxuan Han, Quan Wang, Zikang Guo, Benfeng Xu, LichengZhang, and Zhendong Mao. Disentangled learning with syntheticparallel data for text style transfer. In Lun-Wei Ku, Andre Mar-tins, and Vivek Srikumar, editors, Proceedings of the 62ndAnnual Meeting of the Association for ComputationalLinguistics (Volume 1: Long Papers), pp. 15187–15201,Bangkok, Thailand, August 2024. Association for ComputationalLinguistics.
+[9] Huiyuan Lai, Antonio Toral, and Malvina Nissim. Thank youBART! rewarding pre-trained models improves formality styletransfer. In Chengqing Zong, Fei Xia, Wenjie Li, and RobertoNavigli, editors, Proceedings of the 59th Annual Meetingof the Association for Computational Linguistics andthe 11th International Joint Conference on Natural Lan-guage Processing (Volume 2: Short Papers), pp. 484–494,Online, August 2021. Association for Computational Linguistics.
+[10] Jingxuan Han, Quan Wang, Licheng Zhang, Weidong Chen, YanSong, and Zhendong Mao. Text style transfer with contrastivetransfer pattern mining. In Anna Rogers, Jordan Boyd-Graber,and Naoaki Okazaki, editors, Proceedings of the 61st An-nual Meeting of the Association for Computational Lin-guistics (Volume 1: Long Papers), pp. 7914–7927, Toronto,Canada, July 2023. Association for Computational Linguistics.
+[11] Mirac Suzgun, Luke Melas-Kyriazi, and Dan Jurafsky. Prompt-and-rerank: A method for zero-shot and few-shot arbitrary textualstyle transfer with small language models. In Yoav Goldberg, Zor-nitsa Kozareva, and Yue Zhang, editors, Proceedings of the2022 Conference on Empirical Methods in Natural Lan-guage Processing, pp. 2195–2222, Abu Dhabi, United ArabEmirates, December 2022. Association for Computational Lin-guistics.
+[12] Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma,Brian Ichter, Fei Xia, Ed H. Chi, Quoc V. Le, and Denny Zhou.Chain-of-thought prompting elicits reasoning in large languagemodels. In Proceedings of the 36th International Confer-ence on Neural Information Processing Systems, NIPS’22, Red Hook, NY, USA, 2022. Curran Associates Inc.
+[13] Phil Sidney Ostheimer, Mayank Kumar Nagda, Marius Kloft, andSophie Fellenz. Text style transfer evaluation using large languagemodels. In Nicoletta Calzolari, Min-Yen Kan, Veronique Hoste,Alessandro Lenci, Sakriani Sakti, and Nianwen Xue, editors, Pro-ceedings of the 2024 Joint International Conference onComputational Linguistics, Language Resources andEvaluation (LREC-COLING 2024), pp. 15802–15822, Torino,Italia, May 2024. ELRA and ICCL.
+[14] Juncen Li, Robin Jia, He He, and Percy Liang. Delete, retrieve,generate: a simple approach to sentiment and style transfer. In Mar-ilyn Walker, Heng Ji, and Amanda Stent, editors, Proceedingsof the 2018 Conference of the North American Chapterof the Association for Computational Linguistics: Hu-man Language Technologies, Volume 1 (Long Papers),pp. 1865–1874, New Orleans, Louisiana, June 2018. Associationfor Computational Linguistics.
+[15] Sudha Rao and Joel Tetreault. Dear sir or madam, may I introducethe GYAFC dataset: Corpus, benchmarks and metrics for formal-ity style transfer. In Marilyn Walker, Heng Ji, and Amanda Stent,editors, Proceedings of the 2018 Conference of the NorthAmerican Chapter of the Association for ComputationalLinguistics: Human Language Technologies, Volume 1(Long Papers), pp. 129–140, New Orleans, Louisiana, June2018. Association for Computational Linguistics.
+[16] Courtney Napoles, Keisuke Sakaguchi, and Joel Tetreault. JF-LEG: A ﬂuency corpus and benchmark for grammatical error cor-rection. In Mirella Lapata, Phil Blunsom, and Alexander Koller,editors, Proceedings of the 15th Conference of the Euro-pean Chapter of the Association for Computational Lin-guistics: Volume 2, Short Papers, pp. 229–234, Valencia,Spain, April 2017. Association for Computational Linguistics.
+[17] Wei Xu, Alan Ritter, Bill Dolan, Ralph Grishman, and ColinCherry. Paraphrasing for style. In Martin Kay and ChristianBoitet, editors, Proceedings of COLING 2012, pp. 2899–2914,Mumbai, India, December 2012. The COLING 2012 OrganizingCommittee.
+
+
+
+A Experiment Setting
+
+Figures 3, 4, and 5 illustrate the prompt templates forLLM-based evaluation using the SST task (𝑛𝑒𝑔 → 𝑝𝑜𝑠 ) asan example.
+The [𝑖𝑛𝑝𝑢𝑡], [𝑟𝑒 𝑓 𝑒𝑟𝑒𝑛𝑐𝑒], and [𝑔𝑒𝑛𝑒𝑟𝑎𝑡𝑖𝑜𝑛]in each ﬁgure represent the placeholders for each inputsentence, its corresponding annotated reference, and theoutput generated by LLM, respectively.
+It is important tonote that reference-related content is excluded dur ing theensemble operation, as the [𝑟 𝑒 𝑓 𝑒𝑟𝑒𝑛𝑐𝑒] is unavailable.system: You are a helpful assistant for evaluating the sentiment styletransfer task.
+The deﬁnition of this task is to revise the input sentenceto transfer negative content to positive while preserving the sentiment-independent content.user: Evaluate the following transfer case relative to the human ref-erence on a continuous scale ranging from 0 to 100 points.
+A scoreof 0 indicates “no sentiment transferred” while a score of 100 denotes“perfect sentiment transferred”.input sentence: [𝑖𝑛 𝑝𝑢𝑡 ]human reference: [𝑟 𝑒 𝑓 𝑒𝑟 𝑒𝑛𝑐𝑒]revised sentence:
+[𝑔𝑒𝑛𝑒𝑟 𝑎𝑡𝑖𝑜𝑛]Please only reply me the score.
+Figure 3: Prompt template for evaluating the sentimenttransfer strength.system: You are a helpful assistant for evaluating the sentiment styletransfer task.
+The deﬁnition of this task is to revise the input sentenceto transfer negative content to positive while preserving the sentiment-independent content.user: Evaluate the following transfer case relative to the human refer-ence on a continuous scale ranging from 0 to 100 points.
+A score of 0indicates “no preservation of sentiment-independent content” while ascore of 100 denotes “perfect preservation of sentiment-independentcontent”.input sentence: [𝑖𝑛 𝑝𝑢𝑡 ]human reference: [𝑟 𝑒 𝑓 𝑒𝑟 𝑒𝑛𝑐𝑒]revised sentence: [𝑔𝑒𝑛𝑒𝑟 𝑎𝑡𝑖𝑜𝑛]Please only reply me the score.
+Figure 4: Prompt template for evaluating the capacity ofpreserving content.system: You are a helpful assistant for evaluating the sentiment styletransfer task.
+The deﬁnition of this task is to revise the input sentenceto transfer negative content to positive while preserving the sentiment-independent content.user: Evaluate the following transfer case relative to the human refer-ence on a continuous scale ranging from 0 to 100 points.
+A score of0 indicates “not ﬂuent” while a score of 100 denotes “quite ﬂuent”.input sentence:
+[𝑖𝑛 𝑝𝑢𝑡 ]human reference: [𝑟 𝑒 𝑓 𝑒𝑟 𝑒𝑛𝑐𝑒]revised sentence: [𝑔𝑒𝑛𝑒𝑟 𝑎𝑡𝑖𝑜𝑛]Please only reply me the score.
+Figure 5: Prompt template for evaluating the ﬂuency.
+Table 3 presents the major hyperparameters used to con-ﬁgure the LLM for each prompting and evaluation process.
+
+
+B Performance with other LLMs
+
+To compare the performance of the two CoT pipelinesand the baseline under diﬀerent LLM settings, we con-ducted experiments on the Yelp dataset, focusing onTable 3: Main hyperparameters for setting each LLMName Range Valuetemperature
+[0, 1] 0.8top_𝑝
+[0, 1] 0.9seed - 42Table 4: Results of each pipeline on Yelp (𝑛𝑒𝑔 → 𝑝𝑜𝑠)dataset, by using six diﬀerent LLMs.
+The bold font indi-cates the best scores among each subgroup.
+Pipeline Acc ↑ r-sB ↑ s-sB ↑ t-PPL ↓ s-PPL ↓Gemmabaseline 80.6 4.67 7.3 37 61disentanglement 84.6 9.06 15.23 39 74entanglement 91.4 5.32 7.16 29 42Gemma2baseline 74.8 6.46 10.28 46 78disentanglement 82.8 15.04 28.12 50 100entanglement 87.8 3.82 6.71 30 50LLaMA2baseline 83.2 7.56 12.73 35 64disentanglement 74.2 13.93 26.45 49 92entanglement 86.2 8.61 14.67 32 64LLaMA3baseline 87.6 7.94 12.48 48 85disentanglement 85.0 17.62 31.59 54 111entanglement 90.4 7.47 12.23 35 70LLaMA3.1baseline 78.0 9.86 17.26 45 87disentanglement 78.4 18.7 34.59 57 117entanglement 80.0 8.88 14.43 33 64LLaMA3.2baseline 78.2 7.81 13.64 37 69disentanglement 76.2 16.48 31.4 47 99entanglement 76.2 8.81 14.85 32 54the transfer from negative to positive, using six distinctLLMs including Gemma, Gemma2, LLaMA2, LLaMA3,LLaMA3.1, and LLaMA3.2.
+The results of these exper-iments on ﬁve automatic metrics are shown in Table 4.Similar to the ﬁnding in Table 2, the disentanglement strat-egy performs optimally in terms of r-sB and s-sB acrossdiﬀerent LLMs, while the entanglement strategy signif-icantly achieves the best Acc, t-PPL, and s-PPL scores.
+This conﬁrms that, compared to the baseline, the respec-tive strengths and weaknesses of the disentanglement andentanglement strategies exhibit generalizability across dif-ferent LLMs.

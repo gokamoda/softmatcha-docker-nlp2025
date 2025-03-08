@@ -1,0 +1,297 @@
+Evaluating Robustness of LLMs to Numerical Variations inMathematical Reasoning
+
+Yuli Yang
+
+1
+
+ Hiroaki Yamada
+
+1
+
+ Takenobu Tokunaga
+
+11
+
+Institute of Science Tokyo
+
+
+
+{yang.y.aw@m, yamada@c, take@c}.titech.ac.jp
+
+
+
+Abstract
+
+Evaluating an LLM’s robustness against numer ical per-turbation is a good way to know if the LLM actually per-forms reasoning or just replicates patterns learned.
+Wepropose a novel method to augment math word problems(MWPs), producing numerical variations at a large scaleutilizing templates.
+We also propose an automated errorclassiﬁcation framework for scalable error analysis, distin-guishing calculation errors from reasoning errors.
+Our ex-periments using the methods show LLMs are weak againstnumerical variations, suggesting they are not fully capableof generating valid reasoning steps, often failing in arith-metic operations.
+
+
+1 Introduction
+
+Recent LLMs
+[1, 2, 3, 4] have repor ted high accuracyrates on mathematical reasoning benchmarks, includingGSM8K and MATH [5, 6].
+However, a natural concernis that the models just follow surface patterns observed intheir pretraining data rather than performing mathematicalreasoning [7, 8, 9, 10, 11].Perturbing superﬁcial elements like names of individu-als or speciﬁc numbers does not change how the problemshould be solved.
+If an LLM can perform reasoning insolving a math question, it should give correct answerswith similar reasoning steps for both the question and itsperturbed one.
+Recent studies [12, 13, 14, 15] evaluatedmodels’ robustness against the perturbations based on thishypothesis.
+These studies have the following limitations: a) the sizeof the introduced variations was limited, b) they did notdiscuss ranges of numerical values such as digit sizes, andc) they did not distinguish reasoning er rors and computa-tional errors and could not explain the source of errors.
+To address the limitations, we propose a scalable methodto augment a math word problem (MWP) dataset by chang-ing numerical values based on template questions.
+To an-alyze the impact of digit sizes on models’ mathematicalreasoning, we controlled the range of the replaced val-ues and generated two distinct subsets, one with questionscontaining a small number of digits (1-99) and one withquestions containing a large number of digits (1-9,999).Using our method, we constructed a new dataset, GSM-ALT, generating 2,000 variants for each original questionfrom GSM8K.
+Moreover, we propose a novel frameworkfor automated error analysis to identify whether a source ofincorrect prediction stems from errors in logical reasoningor numerical calculation.
+
+
+2 Related Work
+
+Despite strong performance on math benchmarks, re-searchers are questioning whether current benchmarks canadequately evaluate reasoning abilities and language mod-els demonstrate them.
+Levy [7] expanded questions by adding non-essentialcontents, showing that models’ performance decreaseswhen the number of tokens in a problem increases.
+Plan-Bench [8, 9] is a benchmark to evaluate planning and rea-soning capabilities.
+Their ﬁndings suggest that even state-of-the-art models still struggle with this.
+Srivastava
+[12]functionalized the math questions to create a dynamicdataset, providing a robust evaluation metric against poten-tial data leakage to models’ pretraining.
+Jiang
+[10] demon-strated that the models’ high accuracy depends on a speciﬁctoken bias, and the models’ reasoning capability dependson recognizing certain superﬁcial patterns.
+Berglund [16]and Guo
+[11] gave the answer to the questions and reversedto infer one of the variables to constr uct reversal versionsof the original questions.
+They showed that the current― 851 ―This work is licensed by the author(s) under CC BY 4.0models performed poorly on the reversal ones.
+
+
+3 Method
+
+
+
+3.1 Question Template Development
+
+To develop a new dataset to assess the robustness ofnumerical variations, we manually generate new variantsbased on templates (Figure 1) composed from the originalquestions of an existing dataset.
+A question from an existing dataset (e.g., GSM8K) hastuples of (question 𝑄, solution 𝑆).
+𝑄 is a natural languagetext describing a question to be solved.
+𝑆 contains theprocess 𝑃 and the ﬁnal answer A. 𝑃 shows a gold processfor solving the question 𝑄 step by step, including equations.
+A stores a numerical value as a gold outcome from the 𝑃.Given (𝑄, 𝑆), we ﬁrst replace all the numerical values inthe 𝑄 with variables to get 𝑄𝑎𝑏𝑠, which is the abstracted𝑄. We apply the same operation to 𝑆 and get 𝑆𝑎𝑏𝑠. Wekeep variables consistent between 𝑄𝑎𝑏𝑠and 𝑆𝑎𝑏𝑠. 𝑆𝑎𝑏𝑠contains 𝑃𝑎𝑏𝑠and A𝑎𝑏𝑠, representing the abstracted 𝑃 andA. The 𝑄𝑎𝑏𝑠and 𝑆𝑎𝑏𝑠constitute a question template 𝑇 .
+
+3.2 Variant Set Generation
+
+Given a template 𝑇 of an original question, we generatevariants by replacing the variables in 𝑇 with random values.𝑡𝑖denotes a variant generated from 𝑇 , consisting of question𝑄𝑖, solution 𝑆𝑖. 𝑆𝑖contains the process 𝑃𝑖and ﬁnal answer𝐴𝑖. To ensure the variants are valid, the replaced valuesneed to satisfy some constraints (Figure1).
+For example,an answer should be positive and whole when it representsthe number of objects.
+Intermediate values appearing inthe process 𝑃𝑖also need to satisfy the constraints as well.
+We manually deﬁne constraints for each template.
+We onlyaccept a variant if it satisﬁes the constraints.
+If models do only superﬁcial pattern-based inference anddo not conduct reasoning, they perform poorly in solvingquestions containing numbers that are rare in their training,such as large digit numbers.
+To examine this hypothesis, foreach question template, we controlled the replaced valueswithin two diﬀerent ranges and subsequently resulted intwo diﬀerent variant sets: 1-99 (namely, the Easy variantset) and 1-9,999 (namely, the Hard variant set).
+
+
+4 Experimental Settings
+
+We use GSM8K as the base dataset for our experiment.
+GSM8K consists of MWPs for primary and secondaryschool students and involves only the four basic arithmeticoperations.
+We randomly sampled 92 questions from theGSM8K training set, from which we manually created 92question
+templates1）.
+Given the templates, we generated1,000 hard variants and 1,000 easy variants for each tem-plate.
+As a result, our new dataset GSM-ALT consistsof the Hard and Easy variant set, each containing 92,000variants.
+We use accuracy as a pr imary evaluation metric.
+For theoriginal instances from the base dataset (original GSM8K),we use a standard accuracy.
+For generated variants fromour dataset, we ﬁrst calculate the accuracy for each templatevariant set containing 1,000 variants, and then we averagethem over all 92 templates.
+The target models to be evaluated include generic mod-els (Llama-3-8b-Instruct, Llama-3.1-8b-Instruct, Llama-3.1-70b-Instruct, Mistral-7b-Instruct-v0.3) and math mod-els that were ﬁne-tuned on mathematical contents(Deepseekmath-7b-rl, Wizardmath-7b-v1.1)Regarding the generation settings, we used greedy searchto maximize the reproducibility and stability of results.
+Tominimize the inﬂuence of few-shot examples while ensur-ing that the model can perform mathematical reasoning, weadopted the zero-shot Chain-of-Thought (CoT) promptingfor solution generation and extracted the ﬁnal answer in thesame way as Kojima [17] for generic models.
+As for mathmodels, we adopted the speciﬁcally designed prompts,which are recommended on their Web pages.
+The promptsused in the experiment can be found in Appendix C.
+
+5 Results
+
+Table 1 shows the results of each model’s accuracy eval-uated on the original GSM8K and our GSM-ALT.
+Thelowest scores are highlighted in boldface.
+GSM-ALT re-sults show scores from the Easy variant set and the Hardvariant set.
+All models showed a signiﬁcant performancedrop in GSM-ALT from the base GSM8K.
+The drop wasobserved in both the Easy and the Hard variant sets.
+Eventhe two math-specialized models, especially Wizardmath-1）
+We initially created 250 templates but the number of possiblevariants is limited in some of the templates, so we removed thosetemplates to ensure there is no duplicated variant― 852 ―This work is licensed by the author(s) under CC BY 4.0Fabian is shopping at a nearby supermarket.
+He wants to buy 5 kg of apples and 3 packs of sugar.
+One kilogram of apples costs $2, and one pack of sugar is $1 cheaper than one kilogram of apples.
+How much Fabian needs to pay for the items he wants to buy ?
+Final Answer 𝑨: 13Process 𝑷:
+The apples cost Fabian 5 kg * $2/kg = $<<5*2=10>>10.One pack of sugar costs $2 - $1 = $<<2-1=1>>1.So, Fabian will pay $1/pack * 3 = $<<1*3=3>>3 for sugar.
+In total, Fabian needs to pay $10 + $3 = $<<10+3=13>>13.OriginalTemplateFabian is shopping at a nearby supermarket.
+He wants to buy x kg of apples and y packs of sugar.
+One kilogram of apples costs $z, and one pack of sugar is $p cheaper than one kilogram of apples.
+How much Fabian needs to pay for the items he wants to buy ?
+Process 𝑷𝒂𝒃𝒔:
+The apples cost Fabian x kg * $z/kg = $(x*z).One pack of sugar costs $z - $p = $(z-p).So, Fabian will pay $(z-p)/pack *
+y = $((z-p)*y) for sugar.
+In total, Fabian needs to pay $(x*z)
++ $((z-p)*y) = $(x*z + (z-p)*y).Final Answer 𝑨𝒂𝒃𝒔: x*z + (z-p)*yz– p > 0Constraints:
+In this question template, we have the constraint that the price of one pack of sugar should be a positive number, thusSolution 𝑺Question 𝑸Question 𝑸𝒂𝒃𝒔Solution 𝑺𝒂𝒃𝒔Figure 1 Example of Question Template DevelopmentTable 1
+Accuracy scoresModelsGSM8K GSM-ALTBase Easy HardLlama-3-8b-Instruct 0.840 0.507 0.156Llama-3.1-8b-Instruct 0.880 0.604 0.193Llama-3.1-70b-Instruct
+0.978 0.819 0.355Mistral-7b-Instruct-v0.3 0.587 0.238 0.104Deepseek-math-7b-rl 0.957 0.706 0.307Wizardmath-7b-v1.1 0.891 0.489 0.2237b-v1.1, showed lower scores by more than 0.4 on the Easyand more than 0.6 on the Hard.
+This result shows that numerical variations always de-grade performance in both the Hard and the Easy variantsets.
+The fact that the Easy variant set degrades the per-formance indicates that the models are weak even againstthe numbers whose range is similar to the base GSM8K.Moreover, we found clearer score drops from the GSM8Kscores in the Hard variant set than in the Easy variantset, suggesting the computational diﬃculty aﬀects models’reasoning.
+
+
+6 Error Analysis on Solutions
+
+To identify the source of errors, we classify errors intotwo types: calculation errors and reasoning errors.
+If anincorrect solution only contains failures in calculations, wecall it a calculation error.
+If an incorrect solution containsincorrect reasoning steps, we label it a reasoning errorregardless of its incorrect calculations.
+As GSM-ALT will be larger than its original dataset,manually checking each generated solution is not practical,and thus, we propose a novel framework that automaticallyclassiﬁes errors into calculation or reasoning errors.
+
+
+6.1 Error Analysis Framework
+
+To classify errors, we ﬁrst transform a predicted solu-tionˆ𝑆𝑖into its abstracted formˆ𝑆𝑖𝑎𝑏𝑠, which contains theabstractedˆ𝑃𝑖𝑎𝑏𝑠andˆ𝐴𝑖𝑎𝑏𝑠.
+Ifˆ𝑆𝑖is incorrect because ofa reasoning error, its transformedˆ𝑃𝑖𝑎𝑏𝑠should contain areasoning error resulting in incorrectˆ𝐴𝑖𝑎𝑏𝑠. Ifˆ𝑆𝑖containsa calculation error, but its reasoning steps are correct,ˆ𝑃𝑖𝑎𝑏𝑠andˆ𝐴𝑖𝑎𝑏𝑠should be correct.
+Thus, checking ifˆ𝐴𝑖𝑎𝑏𝑠iscorrect should give a proxy to determine the sources oferrors.
+In our framework, an LLM transforms aˆ𝑆𝑖into theˆ𝑆𝑖𝑎𝑏𝑠,as shown in Figure 2.
+Then, we can automatically check ifˆ𝐴𝑖𝑎𝑏𝑠is correct by comparing it with its gold answer 𝐴𝑎𝑏𝑠from our templates.
+An input to the LLM is a model’s pre-dicted solutionˆ𝑆𝑖, its question 𝑄𝑖, and its abstracted ques-tion 𝑄𝑎𝑏𝑠available from our templates.
+We auxiliarylyinput the 𝑄𝑎𝑏𝑠guiding the LLM to use variables consis-tently, inspired by Gaur [18].
+An output from the LLM isan abstracted solutionˆ𝑆𝑖𝑎𝑏𝑠.
+We show our prompt for thisframework in Appendix D. We employ Qwen2-math-72b-instruct [19] for this transformation.
+We manually checkedthe outputs and conﬁrmed the LLM could obtain the ab-stracted solutions at 90% success rate on average in ourpreliminary experiment.
+
+
+6.2 Results of Error Analysis
+
+Table 2 shows the results of er ror classiﬁcation by ourframework.
+Values in the table indicate the proportion of― 853
+―This work is licensed by the author(s) under CC BY 4.0TemplateBuy X pens of $Y.How much in total?QuestionSolutionEach pen costs $Y.So, total expense is $Y*X.Y*XProcess 𝑃!"#Answer 𝐴!"#Buy 4 pens of $3.How much in total?QuestionVariantLLMPredicted solutionSolutionEach pen costs $3.So, total expense is $3*4=$12.12Process 𝑃#$Answer 𝐴$$Abstracted solutionEach pen costs $Y.So, total expense is $Y*X.Y*XProcess 𝑃#!"#$Answer 𝐴$!"#$Match?ReasoningerrorCalculationerrorYes𝑆"!𝑆""#$!𝑄!𝑄"#$𝑆"#$Figure 2 Error classiﬁcation frameworkTable 2 Error rate per error type and variant setBase set Easy variant set Hard variant setcalculation err.
+reasoning err.
+calculation err.
+reasoning err.
+calculation err.
+reasoning err.
+Llama-3-8b-Instruct .033 (20.0%) .130
+(80.0%) .279
+(56.6%) .214
+(43.4%) .573
+(67.9%) .271
+(32.1%)Llama-3.1-8b-Instruct .033 (27.3%) .087
+(72.7%) .252
+(63.6%) .144
+(36.4%) .601
+(74.5%) .206
+(25.5%)Llama-3.1-70b-Instruct .000 (00.0%) .022
+(100.0%) .125
+(69.1%) .056
+(30.9%) .516 (80.0%) .129
+(20.0%)Mistral-7b-Instruct-v0.3 .098
+(23.7%) .315 (76.3%) .385
+(50.5%) .377 (49.5%) .477
+(53.2%) .419
+(46.8%)Deepseek-math-7b-rl .011 (25.0%) .033
+(75.0%) .217
+(73.8%) .077
+(26.2%) .529
+(76.4%) .163
+(23.6%)Wizardmath-7b-v1.1 .043 (40.0%) .065
+(60.0%) .383
+(75.0%) .128
+(25.0%) .586
+(75.4%) .191
+(24.6%)Macro avg.
+.036
+(24.8%) .109
+(75.2%) .274
+(62.3%) .166
+(37.7%) .547 (70.4%) .230
+(29.6%)solutions classiﬁed as calculation errors or reasoning errorsout of all solutions predicted by the models.
+Values inparentheses indicate the proportion of solutions classiﬁedas calculation errors or reasoning errors out of incorrectsolutions.
+In the Base set, the majority of incorrect solutions weredue to reasoning errors, while they changed to calculationerrors in the Easy and Hard variant sets.
+This trend wasespecially evident in the Hard variant set, and more than70% were because of calculation errors.
+This result sug-gests that the limited capability of arithmetic calculationis indeed a major issue of LLMs in solving mathematicalproblems rather than the reasoning capability of generat-ing a valid process of solving steps especially when thenumerical values in the questions are large.
+Looking at the reasoning errors, all the models got moreerrors in both the Easy and Hard variant sets than the baseset.
+The same as calculation errors, the trend was evident inthe Hard variant set.
+This result suggests that variants alsointroduce harmful changes in reasoning steps in addition tocomplex calculations, which result in incorrect solutions.
+Moreover, variants with larger digit sizes are more likelyto introduce errors in reasoning steps.
+
+
+7 Conclusion
+
+We proposed a novel method to augment MWP datasets,which produces a dataset for evaluating LLMs’ robustnessagainst numerical variations at a reliable scale.
+Usingour templates, anyone can easily generate thousands ofvariants from one original question in the GSM8K, whichwas not possible with any preceding proposals.
+We alsoproposed an automated error classiﬁcation framework forscalable error analysis, distinguishing calculation errorsfrom reasoning errors.
+Using the methods, we empirically showed that the sixLLMs we tested were weak against numerical variations,especially when the numerical values were large.
+Thisﬁnding is consistent with previous studies [12, 13, 14, 15],but we conﬁrm it with more variants.
+Our error analysisuniquely identiﬁed that calculation errors contributed toa substantial proportion of incorrect solutions, suggest-ing LLMs’ incapability of arithmetic operations is themain source of limited capabilities in math word problems.
+Moreover, we found that LLMs still fail in their reasoningsteps, especially when they encounter variants with largernumerical values.
+Given our ﬁndings, it is still hard to saythat current LLMs are robust against numerical variations.― 854 ―This work is licensed by the author(s) under CC BY 4.0
+
+
+
+Acknowledgement
+
+This work was partly supported by JST, PRESTO GrantNumber JPMJPR236B, Japan.
+
+References
+
+
+[1] Josh Achiam, Steven Adler, Sandhini Agarwal, LamaAhmad, Ilge Akkaya, Florencia Leoni Aleman, DiogoAlmeida, Janko Altenschmidt, Sam Altman, ShyamalAnadkat, et al. Gpt-4 technical report. arXiv preprintarXiv:2303.08774, 2023.
+[2] Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey,Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman,Akhil Mathur, Alan Schelten, Amy Yang, Angela Fan,et al. The llama 3 herd of models. arXiv preprintarXiv:2407.21783, 2024.
+[3] Gemini Team, Rohan Anil, Sebastian Borgeaud, Jean-Baptiste Alayrac, Jiahui Yu, Radu Soricut, Johan Schalk-wyk, Andrew M Dai, Anja Hauth, Katie Millican, et al.Gemini: a family of highly capable multimodal models.arXiv preprint arXiv:2312.11805, 2023.
+[4] Gemma Team, Morgane Riviere, Shreya Pathak,Pier Giuseppe Sessa, Cassidy Hardin, Surya Bhupatiraju,L´eonard Hussenot, Thomas Mesnard, Bobak Shahriari,Alexandre Ram´e, et al. Gemma 2: Improving openlanguage models at a practical size. arXiv preprintarXiv:2408.00118, 2024.
+[5] Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, MarkChen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert,Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christo-pher Hesse, and John Schulman. Training veriﬁers to solvemath word problems, 2021.
+[6] Dan Hendrycks, Collin Burns, Saurav Kadavath, AkulArora, Steven Basart, Eric Tang, Dawn Song, and JacobSteinhardt. Measuring mathematical problem solving withthe math dataset. arXiv preprint arXiv:2103.03874,2021.
+[7] Mosh Levy, Alon Jacoby, and Yoav Goldberg. Same task,more tokens: the impact of input length on the reason-ing performance of large language models. In Lun-WeiKu, Andre Martins, and Vivek Sr ikumar, editors, Pro-ceedings of the 62nd Annual Meeting of the As-sociation for Computational Linguistics (Volume 1:Long Papers), pp. 15339–15353, Bangkok, Thailand,August 2024. Association for Computational Linguistics.
+[8] Karthik Valmeekam, Matthew Marquez, Alberto Olmo,Sarath Sreedharan, and Subbarao Kambhampati. Plan-bench: An extensible benchmark for evaluating large lan-guage models on planning and reasoning about change.Advances in Neural Information Processing Sys-tems, Vol. 36, , 2024.
+[9] Karthik Valmeekam, Kaya Stechly, and Subbarao Kamb-hampati. Llms still can’t plan; can lrms? a preliminaryevaluation of openai’s o1 on planbench, 2024.
+[10] Bowen Jiang, Yangxinyu Xie, Zhuoqun Hao, XiaomengWang, Tanwi Mallick, Weijie J Su, Camillo Jose Taylor,and Dan Roth. A peek into token bias: Large languagemodels are not yet genuine reasoners. In Yaser Al-Onaizan,Mohit Bansal, and Yun-Nung Chen, editors, Proceedingsof the 2024 Conference on Empirical Methods inNatural Language Pro cessing, pp. 4722–4756, Miami,Florida, USA, November 2024. Association for Computa-tional Linguistics.
+[11] Pei Guo, WangJie You, Juntao Li, Yan Bowen, and MinZhang. Exploring reversal mathematical reasoning abilityfor large language models. In Lun-Wei Ku, Andre Martins,and Vivek Srikumar, editors, Findings of the Associa-tion for Computational Linguistics: ACL 2024, pp.13671–13685, Bangkok, Thailand, August 2024. Associ-ation for Computational Linguistics.
+[12] Saurabh Srivastava, Annarose M B, Anto P V, ShashankMenon, Ajay Sukumar, Adwaith Samod T, Alan Philipose,Stevin Prince, and Sooraj Thomas. Functional benchmarksfor robust evaluation of reasoning performance, and thereasoning gap, 2024.
+[13] Kun Qian, Shunji Wan, Claudia Tang, Youzhi Wang, Xuan-ming Zhang, Maximillian Chen, and Zhou Yu. VarBench:Robust language model benchmarking through dynamicvariable perturbation. In Yaser Al-Onaizan, Mohit Bansal,and Yun-Nung Chen, editors, Findings of the Associa-tion for Computational Linguistics: EMNLP 2024,pp. 16131–16161, Miami, Florida, USA, November 2024.Association for Computational Linguistics.
+[14] Qintong Li, Leyang Cui, Xueliang Zhao, Lingpeng Kong,and Wei Bi. GSM-plus: A comprehensive benchmark forevaluating the robustness of LLMs as mathematical prob-lem solvers. In Lun-Wei Ku, Andre Martins, and VivekSrikumar, editors, Proceedings of the 62nd AnnualMeeting of the Association for Computational Lin-guistics (Volume 1: Long Papers), pp. 2961–2984,Bangkok, Thailand, August 2024. Association for Compu-tational Linguistics.
+[15] Iman Mirzadeh, Keivan Alizadeh, Hooman Shahrokhi,Oncel Tuzel, Samy Bengio, and Mehrdad Farajtabar. Gsm-symbolic: Understanding the limitations of mathemati-cal reasoning in large language models. arXiv preprintarXiv:2410.05229, 2024.
+[16] Lukas Berglund, Meg Tong, Max Kaufmann, MikitaBalesni, Asa Cooper Stickland, Tomasz Korbak, andOwain Evans. The reversal curse: Llms trained on ”ais b” fail to learn ”b is a”, 2024.
+[17] Takeshi Kojima, Shixiang Shane Gu, Machel Reid, YutakaMatsuo, and Yusuke Iwasawa. Large language models arezero-shot reasoners. Advances in neural informationprocessing systems, Vol. 35, pp. 22199–22213, 2022.
+[18] Vedant Gaur and Nikunj Saunshi. Reasoning in largelanguage models through symbolic math word problems,2023.
+[19] An Yang, Baosong Yang, Binyuan Hui, Bo Zheng, BowenYu, Chang Zhou, Chengpeng Li, Chengyuan Li, DayihengLiu, Fei Huang, et al. Qwen2 technical report. arXivpreprint arXiv:2407.10671.― 855 ―This work is licensed by the author(s) under CC BY 4.0
+
+
+
+A Necessity of Manual Operations
+
+
+
+in Creating Question Templates
+
+Although we have considered using regular expressions andrule-based approaches to automate template creation, they havethe following problems: a) Not all numerical values in the originalinstance are “symbolizable.”
+Some numbers in the instance arespeciﬁc, and altering them would make the instance ill-deﬁned.b) As shown in Figure 1, when generating the template, it isnecessary to keep the usage of variable consistent between 𝑄𝑎𝑏𝑠and 𝑆𝑎𝑏𝑠.
+It is hard to catch the relationship with rule-basedreplacement and requires human insight.
+Therefore, we createdthe question templates manually.
+
+
+B Large Language Models
+
+We list all of the LLMs used in our experiments.
+Generic LLMs• Llama-3-8b-Instruct (https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct)• Llama-3.1-8b-Instruct （https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct）• Llama-3.1-70b-Instruct （https://huggingface.co/meta-llama/Llama-3.1-70B-Instruct）• Mistral-7b-Instruct-v0.3 （https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3)LLMs for mathematical domain• Deepseekmath-7b-rl （https://huggingface.co/deepseek-ai/deepseek-math-7b-rl）• Wizardmath-7b-v1.1 （https://huggingface.co/WizardLMTeam/WizardMath-7B-V1.1)
+
+C Prompts Design for Main Exper-
+
+
+
+iments
+
+For the generic LLMs, we developed prompts for solution gen-eration (Figure 3) and answer extraction (Figre 4) based on theprompts used in [17].Generation Prompt – generic modelsSYSTEM:You are an assistant that solves math word problems.
+USER: {question} + Let’s think step by step.
+Figure 3
+The prompt for generic models (generating solutions)Answer Extraction Prompt – generic modelsSYSTEM:
+You are an assistant that solves math word problems.
+USER: {question} + Let’s think step by step.
+ASSISTANT: {model’s completion}USER:
+Therefore, what is the final answer?
+Only write the final answer without any texts.
+Figure 4 The prompt for generic models (extracting ﬁnal an-swer)For Deepseekmath-7b-rl and Wizardmath-7b-v1.1, we em-ployed prompts based on templates suggested on their web pages.
+Figure 5 and 6 show them.
+In extracting answers from solutionsgenerated by the two math models, we could simply use regularexpressions since they always generate solutions in a ﬁxed format.
+Generation Prompt – Deepseekmath-7b-rlUSER: {question} Please reason step by step and put your final answer within \boxed{}.Figure 5 The prompt for Deepseekmath-7b-rl (genearting so-lutions)– Wizardmath-7b-v1.1USER: Below is an instruction that describes a task.
+Write a response that appropriately completes the request.
+### Instruction:{question}### Response: Let's think step by step.
+Figure 6 The prompt for Wizardmath-7b-v1.1 (generating so-lutions)
+
+D Prompt Design for Error Analysis
+
+
+
+Framework
+
+Figure 7 presents the prompt used to transform a predictedsolution into the abstracted form.
+Transform ation PromptSYSTEM:
+Given the numeric version of a math question and its solution as references, you are a helpful assistant designed to copy the numeric solution to get a solution to the symbolic version of that question.
+Instructions:- Symbolic solution should strictly copy the numeric solution no matter whether it is correct or not.-After completion of the solution, output the final answer with "###".
+The final answer should be a sole mathematical expression represented by variables appear in the symbolic question.-Mathematical expression in the symbolic solution should not be represented in the format of LaTeX.{few-shot examples}USER: {target solution}Figure 7 The prompt for solution transformation― 856 ―This work is licensed by the author(s) under CC BY 4.0

@@ -1,0 +1,334 @@
+Semantic feature engineering for in-context AutoML
+
+Afonso Lourenc¸o
+
+1,2,∗
+
+ 
+
+
+
+Hiroaki Kingetsu
+
+2
+
+ 
+
+
+
+Tsuguchika Tabaru
+
+2
+
+ 
+
+
+
+Goreti Marreiros
+
+11
+
+GECAD, Polytechnic of Porto, Portugal  
+
+2
+
+Fujitsu Laboratory Ltd., Japan
+
+
+
+ 
+
+∗
+
+Internship at Fujitsu
+
+
+
+{fonso,mgt}@isep.ipp.pt  {h.kingetsu,tabaru}@fujitsu.com
+
+
+
+Abstract
+
+Machine learning for structured data has lagged be-hind text and image, with current methods remainingapplication-dependent and requiring extensive algorithmselection and hyperparameter tuning.
+Large tabular models(LTMs) oﬀer a promising solution for context-aware Au-toML by pretraining on diverse tabular datasets.
+However,scalability remains a challenge due to the quadratic growthof contexts.
+This paper introduces a novel in-context Au-toML paradigm focused on semantically informed featureengineering, where input data, rather than model parame-ters, are treated as learnable components.
+By leveragingtask-speciﬁc insights from data card descriptions and his-torical logs, a large language model (LLM) enhances con-text creation for a LTM.
+Empirical results on ten benchmarkdatasets demonstrate this paradigm delivers competitiveperformance compared to conventional AutoML methods.
+
+
+1 Introduction
+
+Over the past two decades, machine learning for struc-tured data has lagged behind advances in text and imagemodalities.
+Benchmark studies still ﬁnd gradient-boosteddecision trees as the state-of-the-art for supervised tabularlearning [1].
+The absence of spatial invariances to informprior selection as well as discontinuous, heterogeneous,and uninformative features make the selection of a machinemachine learning pipeline highly application-dependent,covering two critical stages: data pre-processing (wran-gling, integration, and transformation to improve featurequality) and model building (automating algorithm selec-tion and hyperparameter tuning), shown in Figure 1.Despite traditional AutoML methods simplifying theprocess, these typically search iteratively from scratch fornew tasks, ignoring human priors and historical insights,such as model architecture knowledge.
+This results in time-Figure 1 New AutoML paradigm driven by LTMsconsuming and computationally expensive cycles of modelselection and hyperparameter tuning.
+Additionally, thesemethods rely on predeﬁned strategies, limiting their abil-ity to adapt based on insights from the learning process,and their black-box nature further reduces interpretability,excluding human understanding from the process
+[2, 3, 4].To tackle these issues, one should leverage both ma-chine intelligence and human design patterns.
+Instead ofjumping into solving a new task directly, one should uti-lize all contextual information to interpret the task at hand,and draw from past experiences.
+In this regard, recentlyproposed large tabular models (LTMs) oﬀer a natural solu-tion to context-aware AutoML, by ﬁnetuning a cross-tablepretrained tabular transformer, instead of training mod-els on single tables [5].
+Similarly to large language models(LLMs), LTMs trained on diverse tabular datasets can serveas knowledge repositories
+[6, 7].
+These obviate the needfor algorithm selection and hyperparameter tuning, withthe bottleneck lying in contexts scaling quadratically.
+Nat-urally, this limits performance, and contrasts with coven-tional AutoML that tends to improve as the amount ofdata increases.
+Thus, posing a new in-context paradigm,referred as IC-AutoML and shown in Figure 1, solely fo-cused on data pre-processing to determine what to actuallyput in a pre-tuned models context.
+While conventionalmethods need to adapt the model parameters, this paradigmfocuses on input data as learnable parameters, decouplingalgorithm design from a general-purpose LTM
+[8].To determine the models context, various strategies fortransforming a big dataset into a sketch have been proposed[9].
+Yet these are exclusively data-driven, not understand-ing the task from a semantic perspective.
+Instead, this workhypothesizes that crucial information to classify a querypoint can be found semantically via LLMs, incorporatingdescriptions of data cards, and historical logs into prompts,to not only engineer compact feature representations butalso explain the choices behind a pre-processing operationfor context optimization.
+For example, understanding therelationship between a city and its zip code for data clean-ing constraints, or how age is intuitively more relevant thanward census for disease prediction [10].
+Similarly to howrecent works have used LLMs for optimization of anotherLLM
+[11], this work uses LLMs for optimization of a LTM,acting as interactive agents, capable of generating code andprompt editing.
+Experiments performed on ten benchmarkdatasets show that the new proposed paradigm is as goodas current state of the art methods for tabular classiﬁca-tion, i.e. XGBoost [12], LightGBM
+[13], CatBoost [14],AutoGluon [2], H2O
+[3], and PyCaret
+[4].
+
+
+2 Related work
+
+Recent eﬀorts have explored applying LLMs’ validatedcapabilities in table understanding to supervised learningof tabular data, predicting unseen samples by continuingtextual descriptions, e.g., ”The column name is Value”[15].
+When supported with extensive tabular-speciﬁc pre-training, tabular prompting in LLMs can outperform tradi-tional methods [16].
+Nonetheless, tokenization and multi-nomial objectives of LLMs often result in fragmented pat-terns, making it expensive to autoregressively model con-tinuous variables or whole numbers.
+To overcome this, re-cent eﬀorts have introduced LTMs, i.e. transformer-basedarchitectures which are speciﬁcally trained on heteroge-neous tabular datasets to better handle numeric data
+[6].For instance, allowing to represent a decimal feature witha single ﬂoating-point number, whereas LLAMA requiresfour tokens for the same value [17].
+However, LTM’squadratic complexity cannot scale with samples, features,and categories, which limits its application to real-worldscenarios.
+Thus, similarly to LLM prompt engineering[18], various context optimization techniques have beenproposed, including k-means centroids [19], dataset distil-lation [20], and retrieval-based strategies [21].These data-driven context optimization methods lack se-mantic task understanding.
+In this context, LLMs can oﬀersigniﬁcant promise as black-box optimizers to iterativelygenerate decision rules [22], and code for feature engineer-ing (FE) using user-provided dataset descriptions, featurenames, data types, missing values, and random samples[23], with iterative feature selection guided by validationaccuracy scores [24, 23].
+Building on previous work thatcombines LLMs with genetic algorithm (GA) optimizationfor tasks like neural architecture search
+[25], and featureselection [24], this paper proposes using LLMs as evolu-tionary operators within a GA framework to optimize FEfor LTM context optimization.
+
+
+3 Methodology
+
+
+In this work, in-context Auto-ML is referred to as theconstruction of a map from in-context examples to a LTMwithout any updates to the LTM’s parameters.
+From avariance standpoint, being a pre-tuned, but untrained pre-dictor with many hyperparameters and multi-head atten-tion, LTMs have extremely high sensitivity to individualtraining samples, which translates in an increased abilityto choose submodels and vanishing variance.
+From a biasstandpoint, hyperparameters are pre-tuned to be optimalfor a set of tasks deﬁned by the prior [8].
+If the priorhas broad support and does not concentrate away from thetrue hypothesis, the posterior predictive distribution (PPD)approximates the true distribution.
+Larger datasets leadto more complex PPDs, and the training set size acts as aregularizer on the models complexity.
+While LTMs en-sure vanishing variance, bias decreases only if the contextis appropriately localized around the test feature.
+The in-context learning error decreases with a more infor mativeinput space
+[26], underscoring the need for localizationstrategies that restrict the context to concept-related exam-ples.
+This highlights the role of inductive biases, such assmoothness, cluster, and manifold assumptions, in guidingmodel adaptation.
+Leveraging human knowledge to biasthe parameter space structure can yield state-of-the-art Au-toML, enhancing sample eﬃciency and generalization.
+Building on this intuition, this work proposes a localiza-tion strategy based on semantic similarity to reduce modelbias.
+Particularly, one can argue that the context is not onlysensitive to the choice of the instances but also the input fea-tures used to represent data, suggesting that improvementsin the earlier context optimization work [19, 20, 21] may bepossible.
+To address this, one can use LLMs proven capa-bilities on FE
+[23, 24] to signiﬁcantly enrich the engineeredcontext, with devised prompts including details about thedataset’s collection, task’s objective, explanation of the tar-get variable, feature descriptions, and samples of instancesvalues.
+For this purpose, this work relies on various promptengineering techniques for multi-step reasoning, namely,chain-of-thought (CoT)[18], role-playing [27], and othertabular speciﬁc serialization techniques
+[15].
+Moreover, itis important to emphasize both exploration and exploitationof the prompt space.
+On one hand, to deal with the highvariance of diﬀerent contexts for the downstream tasks, oneshould explore the space by enumerating and selecting thebest prompt from a number of candidates, e.g. augmentingit by re-sampling [28].
+On the other hand, to emphasizeexploitation, one can collect the incorrectly predicted casesand analyze the corresponding root cause to edit existingprompts
+[11].
+Building on previous work that combinesLLMs with GA optimization [24, 25], this work uses LLMsas a evolutionary operator within a GA framework to eﬃ-ciently explore and exploit the FE solution space.
+Overall,this GA-inspired optimization framework encompasses sixsteps: (1) population initialization derived by promptingthe LLM 𝑌 times in a zero-shot manner, with task descrip-tion, features, and data types, (2) tournament selectionmethod of parents for evolutionary pressure to the opti-mization process, (3) LLM as the evolutionar y operator viafew-shot role-playing and chain-of-tought explanations, (4)child evaluation via LLM-generated code to run the LTMwith the suggested features, (5) elitism replacement basedon the obtained validation accuracy, with a hard constraintof not replacing the top 𝐾 feature combinations, (6) ran-dom immigrant invoked when the best solution does notchange for 𝑅 epochs, by randomly replacing a solution withvalidation accuracy under the mean by a new solution gen-erated via zero-shot prompting.
+Prompt templates can befound in the Appendix.
+This iterative, evolutionary pro-cess, is repeated for 𝐸 epochs, culminating in the selectionof the best one within the ﬁnal population as the optimaldata pre-processing strategy.
+
+
+4 Experiments
+
+In these experiments, LLaMA3 70B
+[17] was used asthe backbone LLM, and the TabPFN
+[6] as the LTM.
+Theinitialization stage begins with the LLM being asked toassume the role of a Machine Learning Engineer to rec-ommend a list of important features based on the giventask and dataset features in a zero-shot manner.
+TheLLM is prompted twenty times to generate diﬀerent featuresets, forming the initial population for the evolution algo-rithm.
+The evolution stage comprises 17 distinct roleplays:Domain Expert, Public Policy, Philosopher, Consultant,Professor, Coach, Data Scientist, Data Analyst, MachineLearning Engineer, Manager, AI/ML Researcher, Data En-gineer, Ethical AI Advocate.
+These roleplays facilitatecrossover and mutation operations within the LLM, lever-aging diverse perspectives for semantically-driven featureengineering.
+While the eﬀectiveness of this approach de-pends heavily on the quality of dataset descriptions, priorstudies [22, 23, 24] have explored these eﬀects in detail.
+Building on their ﬁndings, we included in the prompts a de-tailed dataset context, input and target concepts, few-shotexamples, and CoT explanations.
+To ensure comprehensiveevaluation, a diverse set of binary classiﬁcation datasetswere used: Credit1）(150.000 instances, 11 features, im-balanced), Diabetes2）(70.692 inst.
+, 22 feat., bal.), Heart3）(70.000 inst.
+, 12 feat., bal.), Insurance4）(50.882 inst., 48feat., imb.)
+, Bank5）(45.211 inst., 38 feat., imb.), Cars6）(16.734 inst., 42 feat., bal.), Stroke7）(9.722 inst.
+, 22 feat.
+,bal.), Student8）(4.424 inst., 57 feat., imb.), Credit-G9）(1.000 inst.
+, 17 feat., bal.), and Pima Indians Diabetes10）(536 inst., 8 feat., bal.).These datasets were selected for their suitability in evalu-ating the impact of semantically-driven feature engineeringon model performance, as they present problems amenableto domain knowledge-based feature representations.
+Table1 summarizes accuracy performance across these, orderedby dataset size and evaluated over ten seeds.
+Hyperparam-eter settings can be found in the Appendix.
+IC-AutoMLdemonstrated competitive results, performing best on the1） kaggle.com/c/GiveMeSomeCredit2）
+kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset3）
+kaggle.com/datasets/sulianova/cardiovascular-disease-dataset4） kaggle.com/datasets/owaiskhan9654/health-insurance-lead-prediction-raw-data5）
+archive.ics.uci.edu/dataset/2226） kaggle.com/datasets/nelgiriyewithana/australian-vehicle-prices7）
+kaggle.com/datasets/fedesoriano/stroke-prediction-dataset8） archive.ics.uci.edu/dataset/6979） kaggle.com/datasets/uciml/german-credit10）
+kaggle.com/datasets/uciml/pima-indians-diabetes-databaseTable 1 Accuracy performanceIC-AutoML XGBoost LightGBM CatBoost AutoGluon H2O PyCaretCredit .730 ± .022 .662
+± .030 .658
+± .031 .688 ± .027
+.692 ± .026
+.722 ± .023 .690
+±
+.028Diabetes
+.758 ± .029
+.764
+± .018 .774 ± .017
+.758 ± .020 .772
+± .019
+.736 ± .022 .768
+± .018Heart
+.766
+± .017
+.758 ± .019
+.766
+± .016 .766
+± .018 .758 ± .021 .748 ± .020
+.756 ± .019Insurance
+.726 ± .020 .730
+± .022 .702
+± .025
+.710 ± .023 .708 ± .021 .724 ± .020 .702
+±
+.024Bank
+.828
+± .027
+.745 ± .019
+.792 ± .016 .778 ± .021 .814 ± .015
+.878 ± .013 .844 ± .016Cars
+.836 ± .038 .788 ± .019
+.796
+± .018 .794 ± .019
+.818 ± .016 .824
+± .014 .812
+±
+.017Stroke
+.930 ± .045 .946
+± .016 .952 ± .014 .950
+± .015 .962
+± .010
+.958 ± .012 .950
+± .013Student
+.910
+± .034 .864 ± .022
+.850
+± .021
+.890 ± .015
+.886
+± .018 .914
+± .012
+.892
+± .015Credit-g .754 ± .043 .712 ± .027 .693
+±
+.033
+.701
+± .029
+.740
+± .024 .748 ± .022
+.736 ± .025Pima
+.794 ± .017
+.786 ± .019 .778
+± .020 .783 ± .018 .767 ± .022
+.791 ± .016 .788
+± .017Avg.
+Rank 2.55 5.05 4.95 4.80 3.75 2.90 4.0Credit (.730), Cars (.836), Credit-g (.754) and Pima (.794)datasets.
+Overall, achieving an average rank of 2.55across diverse datasets, showcasing its general eﬀective-ness.
+Among other methods, H2O achieved the highestaverage rank (2.90), particularly excelling on the Bank(0.878) and Student (0.914) datasets.
+XGBoost, Light-GBM, and CatBoost performed best on larger datasets likeDiabetes (.774), Heart (.766), and Insurance (.730), withaverage ranks around 5.0.
+Interestingly, IC-AutoML didnot show a clear advantage on smaller datasets, despiteprocessing contexts limited to 1,000 instances at a time.
+The engineered features varied widely across datasets.
+For example, in the Credit dataset, the LLM proposed 47new features, with the ﬁnal selection comprising 13 ofthem, including log transformations to normalize skewedfeatures such as revolving utilization and debt ratio, binningoperations to ﬂag high debt-to-income ratios, and interac-tion features like income per dependent or a compositedelinquency score.
+In healthcare datasets like Diabetes(42 features suggested), Heart (43), and Stroke (56), do-main knowledge-driven feature interactions proved mostbeneﬁcial.
+For instance, in the Stroke dataset, the LLMsuggested a stress proxy combining employment type, ur-ban residence, smoking status, and marital history; a healthdeterioration rate integrating glucose levels, BMI, and age;and a loneliness index derived from marital status, employ-ment history, and age.
+Conversely, in the Diabetes dataset,suggested features included a socioeconomic disparity in-dicator combining income and education levels, a proactivehealth behavior score averaging cholesterol checks, bloodpressure management, and healthcare coverage, and a co-morbidity score summing key health risk factors (e.g., highblood pressure, smoking).
+Another impactful feature wasa health risk-adjusted age metric, calculated as the productof age and a composite health risk score.
+
+
+5 Conclusion
+
+This work shows how LTMs enable a promising lear ningparadigm, referred to as IC-AutoML.
+Rather than relyingon extensive model selection and hyperparameter tuning,this approach focuses on data pre-processing as a localiza-tion strategy for a pre-tuned, yet untrained, LTM.
+Specif-ically, this work employs LLMs as evolutionary operatorswithin a GA framework to explore the feature engineer-ing solution space, utilizing prompts enriched with datasetdetails, task objectives, target variable explanations, fea-ture descriptions, and instance samples.
+Dynamic roleselection
+[27] expands the conﬁguration space, potentiallyimproving solutions at the cost of increased computation.
+To address this, prior evaluations of feature engineeringdecisions reﬁne the conﬁguration process CoT
+[18].This work emphasizes the context sensitivity to inputfeatures, leveraging semantically-driven FE.
+Future re-search will explore other pre-processing operations, suchas error detection and data cleaning [29], along with theoptimization of instance selection [19, 20, 21].
+Addition-ally, the interaction with users in a human-in-the-loop IC-AutoML framework warrants further investigation.
+
+
+Acknowledgements
+
+This work is supported by
+Fujitsu Laboratory Ltd.
+andFCT under project doi.org/10.54499/UIDP/00760/2020.
+
+
+
+References
+
+
+[1] Duncan McElfresh, Sujay Khandagale, Jonathan Valverde,Vishak Prasad C, Ganesh Ramakrishnan, Micah Gold-blum, and Colin White. When do neural nets outperformboosted trees on tabular data? Advances in NeuralInformation Processing Systems, Vol. 36, , 2024.
+[2] Nick Erickson, Jonas Mueller, Alexander Shirkov, HangZhang, Pedro Larroy, Mu Li, and Alexander Smola.Autogluon-tabular: Robust and accurate automl for struc-tured data. arXiv preprint arXiv:2003.06505, 2020.
+[3] P. Stetsenko. Machine Learning with Python andH2O, October 2022.
+[4] Moez Ali. PyCaret: An open source, low-code ma-chine learning library in Python, April 2020.
+[5] Bingzhao Zhu, Xingjian Shi, Nick Erickson, Mu Li,George Karypis, and Mahsa Shoaran. Xtab: Cross-table pretraining for tabular transformers. arXiv preprintarXiv:2305.06090, 2023.
+[6] Noah Hollmann, Samuel M¨uller, Katharina Eggensperger,and Frank Hutter. Tabpfn: A transformer that solves smalltabular classiﬁcation problems in a second. arXiv preprintarXiv:2207.01848, 2022.
+[7] David Bonet, Daniel Mas Montserrat, Xavier Gir´o-i Nieto,and Alexander G Ioannidis. Hyperfast: Instant classiﬁca-tion for tabular data. InProceedings of the AAAI Con-ference on Artiﬁcial Intelligence , Vol. 38, pp. 11114–11123, 2024.
+[8] Thomas Nagler. Statistical foundations of prior-data ﬁttednetworks. In International Conference on MachineLearning, pp. 25660–25676. PMLR, 2023.
+[9] Alon Albalak, Yanai Elazar, Sang Michael Xie, ShayneLongpre, Nathan Lambert, Xinyi Wang, Niklas Muen-nighoﬀ, Bairu Hou, Liangming Pan, Haewon Jeong, et al.A survey on data selection for language models. arXivpreprint arXiv:2402.16827, 2024.
+[10] Zifeng Wang, Chufan Gao, Cao Xiao, and Jimeng Sun.Meditab: Scaling medical tabular data predictors viadata consolidation, enrichment, and reﬁnement. arXivpreprint arXiv:2305.12081, 2023.
+[11] Reid Pryzant, Dan Iter, Jerry Li, Yin Tat Lee, ChenguangZhu, and Michael Zeng. Automatic prompt optimizationwith” gradient descent” and beam search. arXiv preprintarXiv:2305.03495, 2023.
+[12] T Chen. Xgboost: extreme gradient boosting. R packageversion 0.4-2, Vol. 1, No. 4, 2015.
+[13] Guolin Ke, Qi Meng, Thomas Finley, Taifeng Wang, WeiChen, Weidong Ma, Qiwei Ye, and Tie-Yan Liu. Light-gbm: A highly eﬃcient gradient boosting decision tree.Advances in neural information processing systems,Vol. 30, , 2017.
+[14] Liudmila Prokhorenkova, Gleb Gusev, Aleksandr Vorobev,Anna Veronika Dorogush, and Andrey Gulin. Catboost:unbiased boosting with categorical features. Advancesin neural information processing systems, Vol. 31, ,2018.
+[15] Stefan Hegselmann, Alejandro Buendia, Hunter Lang,Monica Agrawal, Xiaoyi Jiang, and David Sontag. Tabllm:Few-shot classiﬁcation of tabular data with large languagemodels. In International Conference on Artiﬁcial In-telligence and Statistics, pp. 5549–5581. PMLR, 2023.
+[16] Josh Gardner, Juan C Perdomo, and Ludwig Schmidt.Large scale transfer learning for tabular data via languagemodeling. arXiv preprint arXiv:2406.12031, 2024.
+[17] Hugo Touvron, Thibaut Lavril, Gautier Izacard, XavierMartinet, Marie-Anne Lachaux, Timoth´ee Lacroix, Bap-tiste Rozi`ere, Naman Goyal, Eric Hambro, Faisal Azhar,et al. Llama: Open and eﬃcient foundation language mod-els. arXiv preprint arXiv:2302.13971, 2023.
+[18] Jason Wei, Xuezhi Wang, Dale Schuurmans, MaartenBosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al.Chain-of-thought prompting elicits reasoning in large lan-guage models. Advances in neural information pro-cessing systems, Vol. 35, pp. 24824–24837, 2022.
+[19] Benjamin Feuer, Robin Tibor Schirrmeister, ValeriiaCherepanova, Chinmay Hegde, Frank Hutter, Micah Gold-blum, Niv Cohen, and Colin White. Tunetables: Contextoptimization for scalable prior-data ﬁtted networks. arXivpreprint arXiv:2402.11137, 2024.
+[20] Junwei Ma, Valentin Thomas, Guangwei Yu, and AnthonyCaterini. In-context data distillation with tabpfn. arXivpreprint arXiv:2402.06971, 2024.
+[21] Andreas C Mueller, Carlo A Curino, and Raghu Ramakr-ishnan. Mothernet: Fast training and inference via hyper-network transformers. In NeurIPS 2024 Third TableRepresentation Learning Workshop.
+[22] Sungwon Han, Jinsung Yoon, Sercan O Arik, and TomasPﬁster. Large language models can automatically engineerfeatures for few-shot tabular learning. arXiv preprintarXiv:2404.09491, 2024.
+[23] Noah Hollmann, Samuel M¨uller, and Frank Hutter. Largelanguage models for automated data science: Introduc-ing caafe for context-aware automated feature engineer-ing. Advances in Neural Information Processing Sys-tems, Vol. 36, , 2024.
+[24] Shaoshan Liu, Fuyuan Lvu, Xue Liu, et al. Ice-search: Alanguage model-driven feature selection approach. arXivpreprint arXiv:2402.18609, 2024.
+[25] Angelica Chen, David Dohan, and David So. Evoprompt-ing: language models for code-level neural architecturesearch. Advances in Neural Information ProcessingSystems, Vol. 36, , 2024.
+[26] Sang Michael Xie, Aditi Raghunathan, Percy Liang,and Tengyu Ma. An explanation of in-context learn-ing as implicit bayesian inference. arXiv preprintarXiv:2111.02080, 2022.
+[27] Murray Shanahan, Kyle McDonell, and Laria Reynolds.Role play with large language models. Nature, Vol. 623,No. 7987, pp. 493–498, 2023.
+[28] Yongchao Zhou, Andrei Ioan Muresanu, Ziwen Han,Keiran Paster, Silviu Pitis, Harris Chan, and Jimmy Ba.Large language models are human-level prompt engineers.arXiv preprint arXiv:2211.01910, 2022.
+[29] Avanika Narayan, Ines Chami, Laurel Or r, Simran Arora,and Christopher R´e. Can foundation models wrangle yourdata? arXiv preprint arXiv:2205.09911, 2022.
+
+
+
+A Appendix
+
+Detailed prompt examples used for various tasks are pro-vided.
+Note that text outputs from the language model re-quire further processing to extract relevant information, yet,for simplicity, these are omitted in the following prompts.
+
+
+A.1 Zero-shot initialization
+
+Enhance predictions for {Objective} using adataset: {Method of collection}.Available attributes:• {Column A Name}: (Numerical, range: {Min}–{Max}), Samples:
+[...], {Description}• {Column B Name}: (Boolean, {0 = X}, {1 =Y}), Samples:
+[...],{Description}• {Column C Name}: (Categorical, {1 = X}, {2= Y}, {3 = Z}), Samples:
+[...], {Description}Propose new feature combinations to improve predic-tion performance using transformations, interactions,aggregations, or domain knowledge.
+Consider com-binations such as (Normalized A * One-Hot EncodedC)
+* B. Drop redundant features if they harm modelperformance.
+For each proposed feature, provide:• Feature Name• Justiﬁcation: Why it improves {Objective}• Samples
+
+A.2 Role-play mutation and crossover
+
+Your role is {Role}.
+Enhance predictions for{Objective} using a dataset: {Method ofcollection}.You have recently tried these feature combinationswith the following validation accuracy:• ”Norm.
+A”, ”One-Hot C” : {Accuracy}• ”B”, ”One-Hot Encoded C” : {Accuracy}• ”Norm.
+A”, ”B * One-Hot C” : {Accuracy}Propose new feature combinations to improve predic-tion performance using transformations, interactions,aggregations, or domain knowledge.
+Consider com-binations such as (Normalized A * One-Hot EncodedC)
+* B. Drop redundant features if they harm modelperformance.
+For each proposed feature, provide:• Feature Name• Justiﬁcation: Why it improves {Objective}• Samples:
+[...]
+
+A.3 LTM evaluation
+
+Enhance predictions for {Objective} using adataset: {Method of collection}.The dataframe df is loaded.
+Each column corre-sponds to an attribute:• {Column A Name}: (Numerical, range: {Min}–{Max}), Samples:
+[...], {Description}• {Column B Name}: (Boolean, {0 = X}, {1 =Y}), Samples:
+[...], {Description}• {Column C Name}: (Categorical, {1 = X}, {2= Y}, {3 = Z}), Samples:
+[...], {Description}A data scientist has proposed creating a df with newfeatures useful for TabPFN predicting Objective:• Feature name/Justification/Samples• Feature name / Justification / SamplesWrite code to generate these additional columns in df,adhering to the feature descriptions and consideringcolumn types and class semantics.
+The classiﬁer willtrain on the updated dataframe df.
+
+
+A.4 Hyperparameter settings
+
+50 iterations of random search optimized XGBoost, Cat-Boost, and LightGBM, while AutoGluon, H2O, PyCaret,and TabPFN were used as oﬀ-the-shelf AutoML solutions.
+Table 2 Hyperparameter settingsXGBoost eta: {0.01, 0.05, 0.1 }, n estimators:{100, 200, 500}, max depth: {3, 5, 7},subsample: {0.5, 0.8, 1}, alpha: {0,0.1, 1}, lambda: {1, 1.5, 2}, gamma:{0, 1, 5}, colsample bytree: {0.5, 0.7,1}, colsample bylevel: {0.5, 0.7, 1},min child weight: {1, 3, 5}LightGBM num leaves: {31, 63, 127}, max depth:{-1, 5, 10}, learning rate: {0.01, 0.05,0.1}, min child weight: {1, 3, 5},reg alpha: {0, 0.1, 1}, reg lambda: {1,1.5, 2}, n estimators: {100, 200, 500},subsample: {0.5, 0.8, 1}CatBoost learning rate: {0.01, 0.05, 0.1},iterations: {1000, 1500, 2000}, depth:{6, 10, 12}, l2 leaf reg: {1, 3, 5},border
+count: {32, 64, 128}, subsample:{0.7, 0.8, 1}, random strength: {0.5, 1,2}, bagging temperature: {0.5, 1, 2}

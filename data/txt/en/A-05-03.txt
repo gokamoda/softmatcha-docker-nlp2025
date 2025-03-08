@@ -1,0 +1,215 @@
+Tracing the Roots of Facts in Multilingual Language Models:Independent, Shared, and Transferred Knowledge
+
+Xin Zhao
+
+1
+
+Naoki Yoshinaga
+
+2
+
+Daisuke Oba
+
+2∗1
+
+The University of Tokyo
+
+2
+
+Institute of Industrial Science, The University of Tokyo
+
+
+
+xzhao@tkl.iis.u-tokyo.ac.jp {ynaga,oba}@iis.u-tokyo.ac.jp
+
+
+
+Abstract
+
+Acquiring factual knowledge for language models (LMs)in low-resource languages poses a serious challenge, thusresorting to cross-lingual transfer in multilingual LMs(ML-LMs).
+In this study, we ask how ML-LMs acquireand represent factual knowledge by conducting multilin-gual factual knowledge probing and a neuron-level investi-gation of ML-LMs.
+Additionally, we trace the roots of factsback to their source (Wikipedia) to understand how ML-LMs acquire speciﬁc facts.
+We identiﬁed three patternsin how ML-LMs acquire and represent facts: language-independent, cross-lingual shared, and transferred.
+
+
+1 Introduction
+
+To mitigate data sparsity of low-resource languages,multilingual language models (ML-LMs), such asmBERT
+[1] and Aya
+[2], are developed to facilitate knowl-edge transfer across languages.
+While cross-lingual trans-fer in ML-LMs has been observed in various tasks [3, 4,5, 6, 7] due to the use of shared tokens [8, 9] and paral-lel corpora
+[10, 11, 12], previous studies have primarilyconcentrated on linguistic tasks like dependency parsing,and the transfer of factual knowledge remains unexplored.
+Previous studies using multilingual cloze-style queries forprobing show that ML-LMs can recall facts across lan-guages [13, 14, 15, 16, 17], demonstrating their ability inmultilingual factual understanding.
+However, the mecha-nisms of fact representation in ML-LMs remain unclear.
+We investigate whether ML-LMs exhibit cross-lingualtransfer for factual knowledge with the following questions:RQ1:
+Why and how does the factual probing perfor-mance of ML-LMs vary across languages?
+(§ 3)RQ2: Do ML-LMs represent the same fact in diﬀerentlanguages using a shared representation?
+(§ 4)∗Currently, he works for ELYZA, Inc.!"#$%"&'("')*+&,)-)&,)&.!/#$01233*4+&'("4$!35"1),#!6#$01233*4+&'("4$!.1"&37)11),#!"#$%&'!"#$%&(#$)*+'()*,-.,/!"#!$8"6.$+&$.)9.
+8"6.$&)(12&3Figure 1
+Three types of multilingual fact representation.
+RQ3: How are cross-lingual representations of factsformed in ML-LMs during pre-training?
+(§ 5)We conduct factual knowledge probing on two ML-LMs,mBERT and XLM-R, using mLAMA [14].
+We recon-ﬁrm the diﬃculty ML-LMs face in learning facts in low-resource languages [14](§ 2), identify factors inﬂuencingthe learning of multilingual facts.
+We also observe that lan-guages in geographical proximity exhibit greater overlapin shared facts, suggesting the possibility of cross-lingualknowledge transfer.
+Additionally, we perform a neuron-level analysis of facts to explore the role of cross-lingualtransfer in fact probing.
+By comparing active neuronsacross languages, we observe that identical facts in variouslanguages are not acquired in identical ways.
+Some lan-guages share similar neuron activity for speciﬁc facts, whileothers exhibit distinct patterns.
+We categorize the formeras cross-lingual fact representations (Figure 1(b,c)), andthe latter as language-independent (Figure 1(a)).To further understand cross-lingual representations, wedevise a method for tracing the origins of facts by check-ing their presence in pretraining corpora (Wikipedia formBERT).
+We assume that facts predicted correctly, eventhough absent in the training data, are captured throughcross-lingual transfer, termed cross-lingual transferred(Figure 1(c)) to distinguish it from cross-lingual shared(Figure 1(b)).
+Our results reveal that only a limited numberof facts can be acquired through cross-lingual transfer.― 1763 ―thtagalaltsljakabnruazlveubehisrhyfiukurbgsksqetcebcshrhuarplzhkoheelcyfaglviroaffrsvmsdatrcaptnlesdeitiden0.02.55.07.510.012.515.017.520.0Factual probing P@1Correlation: 0.510100200300400500Data size of abstracts (MB)Figure 2 Wikipedia data size of abstracts vs. Factual probing P@1 on mLAMA in mBERT in 53 languages.
+
+
+2 Multilingual Factual Probing
+
+We do multilingual factual probing on ML-LMs to ex-plore diﬀerences in factual understanding across languages.
+Datasets: We use the mLAMA dataset for multilingualfactual probing [14].
+It comprises 37,498 instances across43 relations, formatted as cloze prompts, e.g., “[X] plays[Y] music,” where subject, relation, object form a triplet.
+Models:
+We use encoder-based ML-LMs, including mul-tilingual BERT (mBERT)[1] and XLM-R [18] for knowl-edge probing.
+We focus on encoder-based models ratherthan generative ones because they are smaller yet still ex-hibit strong performance on language understanding tasks.
+For our factual knowledge probing task, which employsﬁll-in-the-blank queries, encoder-based models excel at in-tegrating information across entire sentences, ensuring adetailed contextual understanding.
+Evaluation protocol:
+We substitute X with the subjectand replace Y with mask tokens in each relational templateto form a query (e.g., “The Beatles play [MASK] music.”)and
+feed it to ML-LMs.
+If, in this instance, it predicts themask token to be “rock,” we consider that ML-LMs capturethe fact.
+Since the object is not necessarily tokenized asa single token, we set the exact number of mask tokenscorresponding to the object in the template and let ML-LMs predict multiple mask tokens simultaneously.
+Results: Figure 2 shows the ﬁrst-rank precision (P@1)across all languages with mBERT.1）We can observe lowP@1 scores for most low-resource languages, and diﬀerentlanguages largely diﬀer from each other in recallable facts.
+As mBERT outperforms XLM-R in most languages, wewill primarily focus on mBERT, a 12-layer Transformer-1）
+Refer to Appendix A for language codes and detailed accuraciesfor both mBERT and XLM-R.it ja afmBERT P@1 16.94 1.34 12.05One-token P@1 15.27 15.34 17.00One-token entities 1675 126 498XLM-R P@1 10.80 4.78 8.17One-token P@1 13.67 14.73
+16.58One-token entities 923 244 333Table 1 P@1 and one-token object counts for mBERT andXLM-R in Italian (it), Japanese (ja) Afrikaans (af).based ML-LM pre-trained on Wikipedia text across 103languages for clarity in our subsequent analysis.
+
+
+3 Factors Behind Probing Gaps
+
+Figure 2 shows that factual probing accuracy for variouslanguages exhibits substantial diﬀerences.
+In this section,we will evaluate the potential factors contributing to thesediﬀerences and examine how they relate to the proﬁciencyof ML-LMs in cross-lingual transfer.
+Training data volume: The ﬁrst factor relates to theamount of distinct factual knowledge seen during the train-ing of ML-LMs
+We use the training data volume to esti-mate the amount of factual knowledge in the training data,speciﬁcally the data size of Wikipedia2）abstracts and fullarticles.
+Then, we calculate the Pearson correlation coeﬃ-cient between probing accuracy (P@1) and data volumes,yielding values of 0.44 and 0.51 for abstracts and full ar-ticles, respectively.
+These moderate correlations suggestthat training data volume has a limited impact on learningfactual knowledge, implying that other factors contribute tothe acquisition of facts by ML-LMs.
+The details of abstractsize and P@1 are shown in Figure 2.Number of mask tokens: There are correlations of −0.81(mBERT) and −0.74 (XLM-R) between P@1 and the num-ber of subwords in the target entities.
+As shown in Table 1,2）
+We use Wikipedia dumps prior to mBERT’s
+release.― 1764 ―en de nl da id ms vi pl cs sk hu hi bn urendenldaidmsviplcsskhuhibnur0.10.20.30.4Jaccard
+similarityFigure 3 Jaccard similarity matrix of shared factual knowledgeacross languages with mBERT.while both ML-LMs have similar P@1 scores for predict-ing one-token entities, XLM-R captures more one-tokenentities in Japanese (ja), resulting in more accurate predic-tions.
+However, the mask token and training data volumecannot fully explain the P@1 diﬀerences across languages,as Afrikaans (af) outperforms Japanese (ja) for one-tokenP@1 even with Japanese having ten times more trainingdata than Afrikaans, as shown in Figure 2.Localized knowledge cluster: We hypothesize that thehigh accuracy for low-resource languages may result fromthe model’s proﬁciency in cross-lingual factual knowledgesharing.
+To investigate this, we assess shared facts betweenlanguages using Jaccard similarity.
+Figure 3 shows that lan-guages in geographical proximity exhibit greater overlapin shared facts.
+Geographically close languages, such asIndonesian (id), Malay (ms), and Vietnamese (vi), demon-strate higher similarities, indicating substantial shared con-tent.
+This suggests that cross-lingual knowledge transferdoes not occur universally across all languages.
+Rather, itseems to be localized, inﬂuenced more by shared cultureand vocabulary.
+We will explore this phenomenon furtherin the following sections.
+
+
+4 Cross-lingual Representation
+
+This section examines how ML-LMs represent factswithin their parameter spaces through two scenarios.
+Inthe ﬁrst scenario, facts are independently maintained indiﬀerent languages (Figure 1(a)), which we refer to as“language-independent.”
+In the second, fact representa-tions are uniﬁed across languages in an embedding space(Figure 1(b,c)), called “cross-lingual” representations.
+Factual neuron probing: Building on the theory thatspeciﬁc neurons in the feed-forward network (FFN) storefacts
+[19, 20], we analyze the cross-lingual representationFigure 4 Neuron activities in mBERT for three languages, inresponse to an identical fact.
+Color intensity implies neuronactivity, with neurons in each Transformer layer grouped into 16bins.
+Distinct activation patterns in the English-Indonesian pairindicate cross-lingual representation.enesnlptcadasvfrafglitdehuroidmsvicsfacyelhekoarettrhrcebzhplenesnlptcadasvfrafglitdehuroidmsvicsfacyelhekoarettrhrcebzhpl0.150.200.250.300.350.400.450.50Jaccard distanceFigure 5 Language similarity based on top 50 shared activeneurons by probing on mLAMA with mBERT.of facts using PROBELESS
+[21], an eﬃcient neuron attri-bution method that measures neuron importance in repre-senting facts.
+Speciﬁcally, we collect the active neurons forthe same fact in various languages to identify cross-lingualor language-independent fact representations.
+Languageswith similar neuron activity patterns suggest a cross-lingualrepresentation of that fact.
+Do cross-lingual representations exist?
+Through a casestudy of neuron probing (Figure 4), we ﬁnd that while somelanguages exhibit similar neuron activities for a given fact,others may exhibit distinct patterns, indicating the presenceof both language-independent and cross-lingual represen-tations.
+To measure the extent of cross-lingual sharingof a speciﬁc fact, we calculate the Jaccard similarity be-tween the top 50 active neurons of two languages.
+Wethen compute pairwise language similarities by averag-ing the Jaccard similarity across all their shared facts, asshown in Figure 5.
+Figure 5 shows that there are no consis-tent geographical boundaries among languages, suggestingthat both the language-independent scenario and the cross-lingual sharing scenario largely depend on speciﬁc facts.― 1765 ―endeesnlitfrcasvptdaidtrfarozhplvimsarhukoglheelcsafcyukfisqbghrsketrusrcebjahyureuhibesllvbnazgaltkalatath010002000300040005000Number of correctly predicted facts0.00.10.20.30.40.50.60.70.8Rate of absent source facts6%22%19%30%14%14%31%16%15%32%13%11%10%26%32%8%9%22%19%33%24%17%20%20%16%76%40%10%9%62%22%33%12%8%13%31%12%7%38%16%19%11%14%47%15%30%12%30%21%3%10%3%2%Knowledge source does not existKnowledge source existsFigure 6 Number of correctly-predicted facts with mBERT in terms of the existence of knowledge source.
+
+
+5 Cross-lingual Share vs. Transfer
+
+We subsequently explore the formation of cross-lingualrepresentations within ML-LMs to assess whether theyare learned individually from distinct language corporaand subsequently aligned into a common semantic space(Figure 1(b)) or whether they are acquired through cross-lingual transfer (Figure 1(c)).Tracing the roots of facts back to data: We use a simpleyet eﬀective method to check the presence of a fact in text:for a fact triplet (subject, relation, object), we examine theoccurrences of the subject and object in mBERT’s trainingdata, Wikipedia.
+If both can be found, the fact is consideredpresent in the data.
+Although this approach may not pro-vide precise quantitative results, it is useful for exploringcross-lingual transfer possibilities.
+See § B for a detaileddescription of the method for checking subject/object oc-currences.
+We assess the absence rates of all facts andcorrectly predicted facts, respectively.
+As shown by theresults for 53 languages in Figure 6, languages with moretraining data exhibit better factual knowledge coverage, asexpected.
+Nevertheless, several facts, such as those inAfrikaans (af) and Albanian (sq), are accurately predicteddespite not having veriﬁable existence in the training cor-pus, suggesting a high possibility of cross-lingual transfer.
+What kinds of facts are absent yet predictable?
+Analysisreveals that many of the facts that are absent in the knowl-edge source but correctly predicted were relatively easyto predict.
+We categorize these easy-to-predict facts intotwo types: shared entity tokens and naming cues.
+Theformer refers to quer ies in which the target object shares to-kens with the subject (e.g., ‘Sega Sports R&D is owned bySega.’), while the latter pertains to entity-universal associ-ations across person names, countries, and languages (e.g.,‘The native language of Go Hyeon-jeong is Korean.’).
+Inboth cases, ML-LMs can predict the object entity from thesubwords of the subject entity.
+However, some other factsare diﬃcult to infer from the entities alone (e.g., ‘Crime &Punishment originally aired on NBC’), suggesting a highpossibility of cross-lingual transfer.
+We classify facts intothe three types by rule-based method, as detailed in § C.We measure the average proportions of facts correctlypredicted by mBERT for the three types across languages:shared entity tokens (25.8%), naming cues (22.0%), andothers (52.2%).
+The predictability of easy-to-predict factssuggests that ML-LMs can rely on simple deductions ratherthan encoding speciﬁc facts to make predictions, highlight-ing the need to enhance probing datasets to enable a moreeﬀective factual knowledge evaluation.
+Meanwhile, thehigh ratio of predictable facts that are not easy to predictsuggests that ML-LMs indeed possess cross-lingual trans-fer ability for factual knowledge for some languages.
+Referto § C for details.
+
+
+6 Conclusions
+
+Our research establishes the groundwork for further stud-ies in understanding cross-lingual factual knowledge rep-resentation.
+Through comprehensive factual knowledgeprobing and analysis across 53 languages, we evaluate fac-tors aﬀecting cross-lingual knowledge transfer on factualknowledge, such as the training data volume and mask to-ken count, and identify knowledge-sharing patterns amonggeographically close languages.
+We then leverage neuronprobing and propose knowledge tracing methods to un-cover three multilingual knowledge representation patternsin ML-LMs: language-independent, cross-lingual shared,and transferred.
+Our future work will investigate the knowl-edge representations in generative large LMs like Aya
+[2].― 1766 ―
+
+
+
+Acknowledgements
+
+This work was partially supported by the special fundof Institute of Industrial Science, The University of Tokyo,by JSPS KAKENHI Grant Number JP21H03494, and byJST, CREST Grant Number JPMJCR19A, Japan.
+
+References
+
+
+[1] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and KristinaToutanova. BERT: Pre-training of deep bidirectional transform-ers for language understanding. In Proceedings of the 2019Conference of the North American Chapter of the Asso-ciation for Computational Linguistics: Human LanguageTechnologies, Volume 1 (Long and Short Papers), pp. 4171–4186, Minneapolis, Minnesota, June 2019. Association for Com-putational Linguistics.
+[2] Ahmet¨Ust¨un, Viraat Aryabumi, Zheng-Xin Yong, Wei-Yin Ko,Daniel D’souza, Gbemileke Onilude, Neel Bhandari, et al. Ayamodel: An instruction ﬁnetuned open-access multilingual lan-guage model, 2024.
+[3] Telmo Pires, Eva Schlinger, and Dan Garrette. How multilingualis multilingual BERT? In Proceedings of the 57th AnnualMeeting of the Association for Computational Linguistics,pp. 4996–5001, Florence, Italy, July 2019. Association for Com-putational Linguistics.
+[4] Haoyang Huang, Tianyi Tang, Dongdong Zhang, Xin Zhao, TingSong, Yan Xia, and Furu Wei. Not all languages are created equal inLLMs: Improving multilingual capability by cross-lingual-thoughtprompting. In Houda Bouamor, Juan Pino, and Kalika Bali, editors,Findings of the Association for Computational Linguistics:EMNLP 2023, pp. 12365–12394, Singapore, December 2023.Association for Computational Linguistics.
+[5] Benjamin Muller, Yanai Elazar, Benoˆıt Sagot, and Djam´e Seddah.First align, then predict: Understanding the cross-lingual ability ofmultilingual BERT. In Proceedings of the 16th Conferenceof the European Chapter of the Association for Compu-tational Linguistics: Main Volume, pp. 2214–2231, Online,April 2021. Association for Computational Linguistics.
+[6] Tyler Chang, Zhuowen Tu, and Benjamin Bergen. The geometryof multilingual language model representations. In Proceedingsof the 2022 Conference on Empirical Methods in NaturalLanguage Processing, pp. 119–136, Abu Dhabi, United ArabEmirates, December 2022. Association for Computational Lin-guistics.
+[7] Tianze Hua, Tian Yun, and Ellie Pavlick. mOthello: When docross-lingual representation alignment and cross-lingual transferemerge in multilingual models? In Kevin Duh, Helena Gomez,and Steven Bethard, editors, Findings of the Asso ciation forComputational Linguistics: NAACL 2024, pp. 1585–1598,Mexico City, Mexico, June 2024. Association for ComputationalLinguistics.
+[8] Karthikeyan K, Zihan Wang, Stephen Mayhew, and Dan Roth.Cross-lingual ability of multilingual bert: An empirical study. InThe Eighth International Conference on Learning Repre-sentations, 2020.
+[9] Alexis Conneau, Shijie Wu, Haoran Li, Luke Zettlemoyer, andVeselin Stoyanov. Emerging cross-lingual structure in pretrainedlanguage models. In Proceedings of the 58th Annual Meetingof the Association for Computational Linguistics, pp. 6022–6034, Online, July 2020. Association for Computational Linguis-tics.
+[10] Ibraheem Muhammad Moosa, Mahmud Elahi Akhter, and Ash-ﬁa Binte Habib. Does transliteration help multilingual languagemodeling? In Findings of the Association for ComputationalLinguistics: EACL 2023, pp. 670–685, Dubrovnik, Croatia, May2023. Association for Computational Linguistics.
+[11] Machel Reid and Mikel Artetxe. On the role of parallel data incross-lingual transfer learning. In Findings of the Associationfor Computational Linguistics: ACL 2023, pp. 5999–6006,Toronto, Canada, July 2023. Association for Computational Lin-guistics.
+[12] Jiahuan Li, Shujian Huang, Aarron Ching, Xinyu Dai, and JiajunChen. PreAlign: Boosting cross-lingual transfer by early estab-lishment of multilingual alignment. In Yaser Al-Onaizan, MohitBansal, and Yun-Nung Chen, editors, Proceedings of the 2024Conference on Empirical Metho ds in Natural LanguageProcessing, pp. 10246–10257, Miami, Florida, USA, November2024. Association for Computational Linguistics.
+[13] Zhengbao Jiang, Antonios Anastasopoulos, Jun Araki, Haibo Ding,and Graham Neubig. X-FACTR: Multilingual factual knowledgeretrieval from pretrained language models. In Proceedings of the2020 Conference on Empirical Methods in Natural Lan-guage Pro cessing (EMNLP), pp. 5943–5959, Online, Novem-ber 2020. Association for Computational Linguistics.
+[14] Nora Kassner, Philipp Dufter, and Hinrich Sch¨utze. MultilingualLAMA: Investigating knowledge in multilingual pretrained lan-guage models. In Proceedings of the 16th Conference of theEuropean Chapter of the Association for ComputationalLinguistics: Main Volume, pp. 3250–3258, Online, April 2021.Association for Computational Linguistics.
+[15] Da Yin, Hritik Bansal, Masoud Monajatipoor, Liunian Harold Li,and Kai-Wei Chang. GeoMLAMA: Geo-diverse commonsenseprobing on multilingual pre-trained language models. In Pro-ceedings of the 2022 Conference on Empirical Methodsin Natural Language Processing, pp. 2039–2055, Abu Dhabi,United Arab Emirates, December 2022. Association for Computa-tional Linguistics.
+[16] Constanza Fierro and Anders Søgaard. Factual consistency ofmultilingual pretrained language models. In Findings of theAssociation for Computational Linguistics: ACL 2022, pp.3046–3052, Dublin, Ireland, May 2022. Association for Computa-tional Linguistics.
+[17] Amr Keleg and Walid Magdy. DLAMA: A framework for curatingculturally diverse facts for probing the knowledge of pretrainedlanguage models. In Findings of the Association for Com-putational Linguistics: ACL 2023, pp. 6245–6266, Toronto,Canada, July 2023. Association for Computational Linguistics.
+[18] Alexis Conneau, Kar tikay Khandelwal, Naman Goyal, VishravChaudhary, Guillaume Wenzek, Francisco Guzm´an, EdouardGrave, Myle Ott, Luke Zettlemoyer, and Veselin Stoyanov. Un-supervised cross-lingual representation learning at scale. In Pro-ceedings of the 58th Annual Meeting of the Associationfor Computational Linguistics, pp. 8440–8451, Online, July2020. Association for Computational Linguistics.
+[19] Nadir Durrani, Hassan Sajjad, Fahim Dalvi, and Yonatan Belinkov.Analyzing individual neurons in pre-trained language models. InProceedings of the 2020 Conference on Empirical Methodsin Natural Language Processing (EMNLP), pp. 4865–4880,Online, November 2020. Association for Computational Linguis-tics.
+[20] Damai Dai, Li Dong, Yaru Hao, Zhifang Sui, Baobao Chang, andFuru Wei. Knowledge neurons in pretrained transformers. In Pro-ceedings of the 60th Annual Meeting of the Associationfor Computational Linguistics (Volume 1: Long Papers),pp. 8493–8502, Dublin, Ireland, May 2022. Association for Com-putational Linguistics.
+[21] Omer Antverg and Yonatan Belinkov. On the pitfalls of analyzingindividual neurons in language models. In International Con-ference on Learning Representations, 2022.― 1767 ―
+
+ISO (Lang.) mBERT XLM-R ISO (Lang.) mBERT
+XLM-Ren (English) 19.07 17.08 cs (Czech) 5.63 1.21id (Indonesian) 18.15 13.99 ceb (Cebuano) 5.11 0.76it (Italian) 16.94 10.80 et (Estonian) 4.97 3.82de (German) 16.91 12.06 sq (Albanian) 4.93 3.31es (Spanish) 16.65 10.51 sk (Slovak) 4.90 2.84nl (Dutch) 15.98 10.47 bg (Bulgarian) 4.51 5.07pt (Portuguese) 14.76 14.05 ur (Urdu) 4.41 4.40ca (Catalan) 14.11 5.23 uk (Ukrainian) 3.84 0.64tr (Turkish) 14.08 13.79 ﬁ (Finnish) 3.58 4.43da (Danish) 13.56 12.01 hy (Armenian) 3.25 3.90ms (Malay) 13.14 11.20 sr (Serbian) 3.07 2.45sv (Swedish) 12.89 11.63 hi (Hindi) 2.95 3.78fr (French) 12.68 7.79 be (Belarusian) 2.80 0.78af (Afrikaans) 12.05 8.17 eu (Basque) 2.45 1.19ro (Romanian) 11.33 13.38
+lv (Latvian) 2.15 1.66vi (Vietnamese) 10.93 11.78 az (Azerbaijani) 1.99 3.21gl (Galician) 10.00 6.04 ru (Russian) 1.90 0.79fa (Persian) 8.67 7.30 bn (Bangla) 1.76 2.67cy (Welsh) 7.98 5.08 ka (Georgian) 1.45 1.89el (Greek) 7.24 5.68 ja (Japanese) 1.34 4.78he (Hebrew) 6.78 4.60 sl (Slovenian) 1.26 1.77ko (Korean) 6.73 7.18 lt (Lithuanian) 1.25 2.31zh (Chinese) 6.51 4.05 la (Latin) 1.21 1.83pl (Polish) 6.33 5.09 ga (Irish) 0.96 0.56ar (Arabic) 6.11 6.16 ta (Tamil) 0.90 0.93hu (Hungarian) 5.86 5.42 th (Thai) 0.49 2.75hr (Croatian) 5.65 2.36 Average (macro) 8.85 6.88Table 2 P@1 for 53 languages on mBERT with both mBERTand XLM-R, with all language codes.
+
+
+A Full Probing Accuracies
+
+Table 2 lists the probing P@1 for the 53 languages onmLAMA with mBERT and XLM-R, respectively, to com-plement the overall results.
+
+
+B Occurrence Checking Method
+
+We use subject-object co-occurrence as an approxima-tion method to determine whether a fact is traced backto the data.
+We r igorously adhere to the preprocessingand sentence-splitting guidelines for mBERT
+[1].
+Usingthe WikiExtractor,3）we extract only text passages, delib-erately omitting lists, tables, and headers.
+Each extracteddocument is segmented into multiple lines, with each linecontaining no more than 512 tokens.4）Using string match-ing between the object-subject pair and Wikipedia text, weassess the co-occurrence of the object and subject for agiven fact.
+If there is a co-occurrence, we consider the factpresent; otherwise, it is considered absent.3） https://github.com/attardi/wikiextractor4）
+The maximum number of tokens that can be input to mBERT intraining.0 20 40 60 80 100eniditdeesnlptcatrdamssvfrafroviglfacyelhekozhplarhu51 9 35263 91 185115 339 760127 269 586421 295 85164 111 298165 217 66665 29 13398 364 38180 112 6870 64 365239 78 302234 178 264165 22 19346 10 5528 6 14643 21 93158 31 12494 0 90116 25 5722 104 133221 101 12128 51 32106 85 35198 163 90 20 40 60 80 100hrcscebetsqskbgurukfihysrhibeeulvazrubnkajaslltlagatath13 89 72100 7 40321 1722 1 15817 36443 1 1824 25 7434 8 1135 0 3841 0 2333 32 6016 48 5620 2 531 0 541 1 1316 0
+1211
+0
+726 11 2446 0130014 7 210 6 9237 1530 729 0 11200100Shared tokens Naming OthersFigure 7
+The count of three types of absent and predictablefacts with mBERT.
+
+
+C Classifying Predictable Facts
+
+We classify the three types of predictable facts by thefollowing rules.
+Shared entity tokens: We normalize entities by rules,such as lowercasing strings and unifying Chinese tra-ditional/simpliﬁed characters, and then assess if theobject is a substring of or shares subwords with thesubject.
+Naming cues: We manually select several relationscontaining information among person name, location,and country entities.
+Others: The facts other than those classiﬁed into sharedentity tokens and naming cues are regarded as others.
+Following the rules above, we classify the predictablefacts in each language into these three types and measuretheir count, as shown in Figure 7.
+It shows that evenwithout the Without easy-to-predict facts, the absence ratedrops but is still not zero for some of the lan- guages (bluebar in Figure 7), such as Albanian (sq), Slovenian (sl),and Galician (gl), indicating that ML-LMs indeed possesscross-lingual transfer ability for factual knowledge for somelanguages.― 1768 ―

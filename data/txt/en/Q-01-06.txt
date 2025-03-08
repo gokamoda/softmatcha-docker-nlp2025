@@ -1,0 +1,272 @@
+Fine-Grained Error Annotations for Sentence Simpliﬁcation byLarge Language Models
+
+Xuanxin WU
+
+1
+
+Yuki Arase
+
+21
+
+Graduate School of Information Science and Technology, Osaka University
+
+2
+
+School of Computing, Institute of Science Tokyo
+
+
+
+xuanxin.wu@ist.osaka-u.ac.jp
+
+
+
+arase@c.titech.ac.jp
+
+
+
+Abstract
+
+Large language models (LLMs) demonstrate strong per-formance in text simpliﬁcation, yet current metrics lack theinformativeness of more detailed schemes that annotate in-dividual errors.
+Clearly stating these limitations is essentialto understand the simpliﬁcation quality of LLMs.
+Buildingon our previous work [1], which introduced an error-basedhuman annotation framework to assess GPT-4’s simpliﬁca-tion capabilities, this study expands the scope by includingtwo additional LLMs, Qwen2.5-72B and Llama-3.2-3B,along with more datasets.
+Our human-annotated corpuscomprises ﬁne-grained error analyses for 4, 500 complex-simple sentence pairs and Likert-scale ratings for 10, 471pairs, one of the largest scales to date.
+Results show thatLLMs generally generate fewer erroneous simpliﬁcationoutputs than the previous state-of-the-art (SOTA).
+How-ever, LLMs have their limitations, as seen in larger LLMsstruggle with lexical paraphrasing.
+
+
+1 Introduction
+
+Sentence simpliﬁcation automatically rewrites sentencesto make them easier to read and understand by modifyingtheir wording and structures, without changing their mean-ings.
+It helps people with reading diﬃculties, such asnon-native speakers and individuals with aphasia [2, 3].With the rise of LLMs demonstrating exceptional abil-ities, some studies [4, 5] evaluated their performance insentence simpliﬁcation, including both automatic scoringand conventional human evaluations where annotators as-sess the levels of ﬂuency, meaning preservation, and sim-plicity [6, 7, 8, 9].
+However, given the general high perfor-mance of LLMs, these approaches may be too superﬁcial tocapture the subtle yet critical aspects of simpliﬁcation qual-ity.
+In contrast, Heineman et al.
+[10] proposed a detailedhuman evaluation framework for LLMs, categorizing 21linguistically based success and failure types.
+However,their approach appears to be excessively intricate and com-plex, resulting in low consistency among annotators, thusraising concerns about the reliability of the evaluation.
+The trade-oﬀ between interpretability and reliability un-derscores the necessity for a more balanced approach.
+Tobridge the gap, we designed an error-based human eval-uation framework to identify key failures in importantaspects of sentence simpliﬁcation, such as inadvertentlyincreasing complexity or altering the original meaning [1].This approach aligns closely with human intuition by fo-cusing on outcome-based assessments rather than linguisticdetails, making the annotation easy without necessitatinga background in linguistics.
+We apply our human evaluation framework to evaluatethe performance of GPT-41）[11], Qwen2.5-72B
+[12], andLlama-3.2-3B2）[14] in English sentence simpliﬁcation.
+We believe that these models oﬀer a representative selec-tion across large, medium, and small sizes of LLMs.
+Weuse prompt engineering and evaluate models on four rep-resentative datasets on sentence simpliﬁcation:
+Turk
+[15],ASSET [16], Newsela
+[17], and SimPA
+[18].
+We bench-mark LLMs against Control-T5 [19], the previous SOTAsupervised simpliﬁcation model.
+In total, we collect humanassessments of 4500 simpliﬁcations for error identiﬁcationand 10, 471 simpliﬁcations for Likert-scale ratings.
+To thebest of our knowledge, our corpus is the largest to date forﬁne-grained annotations evaluating simpliﬁcation quality.1）
+We used the ‘gpt-4-0613’ and accessed it via OpenAI’s APIs.2）
+We used the ‘Qwen2.5-72B-Instruct’ and ‘Llama-3.2-3B-Instruct’.
+We runned the two models using Transformers library[13].Table 1: Deﬁnitions and Examples of ErrorsError Deﬁnition Source SimpliﬁcationLack ofSimplicityLexical More intricate lexical expres-sion(s)....
+it shows Harry’s bravery... ...
+it portrays Harry’scourage...
+Structural More diﬃcult grammaticalstructure.
+The other incorporated cities on thePalos Verdes Peninsula include...Other cities on the PalosVerdes Peninsula include...,which are also incorporated.
+AlteredMeaningLexical Signiﬁcant deviation in themeaning due to lexical substitu-tion(s).The Britannica was primarily aScottish enterprise.
+The Britannica was mainly aScottish endeavor.
+Structural Signiﬁcant deviation in themeaning due to structuralchanges....
+ﬁrst famed Colombian trainerFrancisco Maturana, and then JulioCésar Falcioni....two famous Colombiantrainers, Francisco Maturanaand Julio César Falcioni.
+Coreference A named entity critical to un-derstanding the main idea is re-placed with a vague description.
+Sea slugs dubbed sacoglossans aresome of the most...
+These are some of the most...Repetition Unnecessary duplication of sen-tence fragmentsThe report emphasizes the impor-tance...
+The report emphasizes theimportance, the signiﬁcance,and the necessity...Hallucination Inclusion of incorrect or unre-lated infor mation not present inthe original sentence....
+Fray is not done, Fray is comingback....
+Fray will return, althoughthe story is not yet ﬁnished.
+With these annotations, we conduct a large-scale analysisof models.
+Our key ﬁndings are summarized as follows:• LLMs generally surpass the previous SOTA in per-formance; LLMs tend to generate fewer erroneoussimpliﬁcations and preserve the original meaning bet-ter, while maintaining comparable levels of ﬂuencyand simplicity.•
+Among the LLMs, GPT-4 and Qwen2.5-72B surpassLlama-3.2-3B, with Qwen2.5-72B generating fewererrors than GPT-4.
+This implies the strong potentialof medium-sized LLMs in simpliﬁcation tasks.• Larger LLMs have their limitations, as seen in GPT-4 and Qwen2.5-72Bs struggles with lexical para-phrasing.
+
+
+2 Error Annotation Schemes
+
+
+
+2.1 Datasets
+
+
+We used test sets from four representative datasets onEnglish sentence simpliﬁcation.
+These datasets have dis-tinctive features due to diﬀerences in simpliﬁcation strate-gies and domains as summarized below.•
+Turk
+[15]: This dataset comprises 359 sentencesfrom English Wikipedia, each paired with eight sim-pliﬁed references written by crowd-workers.
+It is cre-ated primarily focusing on lexical paraphrasing.• ASSET
+[16]: This dataset uses the same 359 sourcesentences as the Turk dataset.
+It diﬀers from Turkby aiming at rewriting sentences with more diversetransformations, i.e., paraphrasing, deleting phrases,and splitting a sentence, and provides10simpliﬁedreferences written by crowd-workers.• Newsela
+[17, 20]: This dataset originates from a col-lection of news articles accompanied by simpliﬁedversions written by professional editors.
+The test splitcontains 1, 077 sentence pairs.
+After careful obser-vation, we found that deletions of words, phrases,and clauses predominantly characterize the Newseladataset.• SimPA
+[18]: This dataset originated from the publicadministration domain.
+It contains 1, 100 originalsentences with two versions of simpliﬁed sentences:(1) lexical simpliﬁcations (2) lexical and syntacticsimpliﬁcations.
+We selected the second version forits diverse transformations.
+
+2.2 Models
+
+For the three LLMs, we reused the prompts from ourprevious work, which were developed through prompt en-gineering and proven eﬀective (see Appendix A).
+Giventhe similarity between SimPA and ASSET in emphasiz-ing diverse transformations as outlined in their annotationguidelines, we did not include SimPA in the prompt en-gineering process.
+Instead, we directly applied the in-struction from ASSET, accompanied by 3-shot exampleswith single references from SimPA itself.
+We replicatedControl-T5 model following the approach used in the orig-inal study [19].
+Note that we did not evaluate Control-T5on SimPA since the training dataset is not available.
+
+
+2.3 Human Annotation Procedure
+
+We conducted two annotation tasks:• Error Identiﬁcation: Following the error-basedhuman annotation framework from our previouswork
+[1], we analyzed model-generated simpliﬁca-tions to identify key failures in cr itical aspects of sen-tence simpliﬁcation.
+Table 1 provides deﬁnitions andexamples of the target errors.
+In this task, we sampled300 source sentences from each test set, along withsimpliﬁcation outputs generated by models, resultingin a total of 4500 complex-simple sentence pairs.•
+Likert Scale Rating:
+We evaluated ﬂuency, meaningpreservation, and simplicity using a 1–3 Likert scaleto evaluate overall quality.
+In this task, we examinedon all 10, 471 model-generated simpliﬁcation outputs.
+Our annotators were graduate students and alumni(second-language learners with advanced English proﬁ-ciency) aﬃliated with our organization, and native speak-ers with English teaching experience.
+To ensure qualitycontrol, annotators had to pass a qualiﬁcation test beforeparticipating in the task.
+In both tasks, seven annotatorsparticipated, and each simpliﬁcation was evaluated by threeannotators.
+To resolve annotator disagreements on errorlabels, all annotators involved in error identiﬁcation par-ticipated in discussion sessions to collectively review theirlabels until reaching the consensus.
+
+
+3 Result Analysis
+
+
+
+3.1 Error Identiﬁcation
+
+
+This section presents a comparative analysis of erro-neous simpliﬁcation outputs generated by models, and re-ports additional observations during the annotation.3.1.1 Characteristic Errors in ModelsWe quantitatively analyze the frequency of diﬀerent er-ror types in the simpliﬁcations generated by the models.
+Table 2: Comparison of error types across modelsError Type GPT-4
+Qwen Llama T5Lack of Sim-L 144 (100) 99 (77) 61 (51)(4)Lack of Sim-S 11 (8) 26 (24) 17 (14)(15)Altered Meaning-L 94 (74) 59 (55) 149 (110)(176)Altered Meaning-S 12 (8) 10 (10) 12 (11)(15)Coreference 15 (14) 3 (2) 51 (35)(104)Repetition 0 (0) 1 (0) 53 (53)(7)Hallucination 9 (7) 5 (5) 62 (52)(29)T&A&N (211)(173)(326)(350)TOTAL 285 203 405 —The results are summarized in Table 2.
+We also reportthe results after excluding SimPA for fair comparison withControl-T5, that is, only on Turk, ASSET, and Newsela(denoted as ‘T&A&N’) and with those values indicated inround brackets.
+The best-performing values (fewer occur-rences, better performance) are highlighted in green.
+LLMs Outperform Control-T5 Control-T5 gener-ated more errors overall (350 occurrences) than the LLMgroup (211 for GPT-4, 173 for Qwen, and 326 for Llamaafter excluding SimPA).
+Among the LLMs, Qwen2.5-72Bproduced the fewest errors (203), followed by GPT-4 (285),and Llama-3.2-3B (405).
+Notably, Qwen performs best infour out of seven error categories, suggesting that whilelarger LLMs generally perform better, performance maynot always scale directly with model size in simpliﬁcation.
+Lexical Paraphrasing is the Biggest ChallengeBoth GPT-4 and Qwen2.5-72B show similar ten-dencies, with errors predominantly from Lack ofSimplicity-Lexical (144 for GPT-4 and 99 for Qwen)and Altered Meaning-Lexical (94 for GPT-4 and59for Qwen).
+This reﬂects their propensity to em-ploy complex lexical expressions or misinterpret mean-ings through lexical choices.
+Control-T5 shows no-tably high frequencies in Altered Meaning-Lexical(176) and Coreference (104).
+This indicates diﬃ-culties with preserving original lexical meanings andensuring referential clarity.
+Across all models, er-rors in lexical aspect (Lack of Simplicity-Lexical,Altered Meaning-Lexical, Coreference, Repetition)surpass the occurrences of errors in structural as-pect (Lack of Simplicity-Structural, AlteredMeaning-Structural) as a general tendency.
+Llama-3 is Prone to Repetition Error Remark-ably, for Llama-3.2-3B, while paraphrasing remainsa signiﬁcant issue, errors such as Repetition andHallucination, are notably more frequent than in othermodels.
+Llama-3.2-3B appears to combine multiple sim-pliﬁcations into a single output, leading to repetitive con-tent.
+Below is an example:Source: But landowner Gene Pfeifer refused to give uphis 3-acre riverfront property in the middle of theproposed library site.
+Llama:
+Gene Pfeifer didn’t want to sell his 3-acre land.
+Gene Pfeifer refused to sell his land.
+Gene Pfeiferdidn’t want to give up his 3-acre property.3.1.2 Additional ObservationsDuring the error identiﬁcation annotation process, weobserved two nuanced phenomena in LLMs’ simpliﬁca-tions that were diﬃcult to ﬁt into speciﬁc error categories.
+Change of focus fails to meet the satisfactory criteria,and Factual Information Not Inferable from theSource Sentence could be controversial.
+This sectionoutlines the models where these phenomena were observedand provides examples for each category.
+Change of Focus Simpliﬁcations that inappropri-ately alter the original sentence’s focus, leading to mislead-ing interpretations.
+This was only observed in Control-T5with four reported cases and Llama-3.2-3B with six.
+In thefollowing example, Llama-3.2-3B redirects attention fromthe ag reement and actions of other judges to the federalcourt’s decision itself.
+Source: Other judges agreed with the federal court’s de-cision and started marrying same-sex couples in themorning.
+Llama:
+The federal court ruled that same-sex couplescould get married.
+Factual Information Not Inferable from theSource Sentence We found cases where informationnot explicitly present in the source sentence was added tothe simpliﬁcations.
+This was observed in all models, withfour reported cases in GPT-4, 12 in Qwen2.5-72B, ﬁvein Llama-3.2-3B, and 12 in Control-T5.
+These additionswere generally factual and, although not inferable from thesource sentence, were veriﬁed to be factual using onlinesources.
+This type of information can be controversial, asTable 3: Average RatingsDimension GPT-4 Qwen Llama T5Fluency 2.
+99 2.99 3. 00
+2.98Meaning 2. 80 2.80 2.
+22 1.66Simplicity 2.84 2.93 2.
+82 2.94it does not strictly adhere to the input.
+However, it mayfacilitate the reader’s understanding of the source sentence.
+For example, in the case below, “Lincoln’s assassination”cannot be inferred directly from the source sentence.
+How-ever, Qwen2.5-72B included this detail, likely drawing onits internal knowledge by linking the provided date andnamed entities.
+Source: For example, there’s a letter of sympathy fromQueen Victoria to Mary Todd Lincoln on April29, 1865, calling his assassination “so terrible acalamity”.
+Qwen:
+Queen Victoria wrote a letter of sympathy toMary Todd Lincoln about Lincoln’s assassination.
+
+3.2 Likert Scale Rating
+
+In this section, we compared model performances byaveraging annotators’ ratings.
+Results are summarized inTable 3.
+For ﬂuency, all models demonstrate high ﬂuencylevels, indicated by the average ratings approach three.
+This suggests that these models generated grammaticallycorrect simpliﬁcations without signiﬁcant diﬀerences inﬂuency.
+For meaning preservation, GPT-4 (2.80) andQwen2.5-72B (2. 80) outperform Llama-3.2-3B (2.22) andControl-T5 (1. 66) .
+Conversely, for simplicity, GPT-4(2. 84) and Qwen2.5-72B (2.93)’s ratings are comparablewith those of Llama-3.2-3B (2.82) and Control-T5 (2. 94).This contrast suggests that Llama-3.2-3B and Control-T5may be comparably good at generating simpler outputs butat the cost of losing the original meaning.
+
+
+4 Discussions
+
+Our human error annotation revealed that LLMs strug-gle to handle lexical paraphrasing while their simpliﬁca-tion quality surpasses that of the previous SOTA model.
+Our investigation opens up multiple directions for futureresearch.
+The corpus we created can support studies ex-ploring strategies like instruction tuning to automate errorannotations.
+Furthermore, future studies could investigatehow to mitigate lexical paraphrasing issues.
+
+
+
+Acknoledgement
+
+This work was suppor ted by JSPS KAKENHI GrantNumber JP21H03564.
+
+References
+
+
+[1] Xuanxin Wu and Yuki Arase. An in-depth evaluation ofgpt-4 in sentence simpliﬁcation with error-based humanassessment, 2024.
+[2] Gustavo Henr ique Paetzold. Lexical Simpliﬁcation forNon-Native English Speakers. PhD thesis, Universityof Sheﬃeld, September 2016. Publisher: University ofSheﬃeld.
+[3] John Carroll, Guido Minnen, Darren Pearce, Yvonne Can-ning, Siobhan Devlin, and John Tait. Simplifying text forlanguage-impaired readers. In Ninth Conference of theEuropean Chapter of the Association for Computa-tional Linguistics, pp. 269–270, Bergen, Norway, June1999. Association for Computational Linguistics.
+[4] Yutao Feng, Jipeng Qiang, Yun Li, Yunhao Yuan, andYi Zhu. Sentence simpliﬁcation via large language models,2023.
+[5] Tannon Kew, Alison Chi, Laura Vásquez-Rodríguez,Sweta Agrawal, Dennis Aumiller, Fernando Alva-Manchego, and Matthew Shardlow. BLESS: Benchmark-ing large language models on sentence simpliﬁcation. InProceedings of the 2023 Conference on Empiri-cal Methods in Natural Language Processing, pp.13291–13309, Singapore, December 2023. Association forComputational Linguistics.
+[6] Reno Kriz, João Sedoc, Marianna Apidianaki, CarolinaZheng, Gaurav Kumar, Eleni Miltsakaki, and ChrisCallison-Burch. Complexity-weighted loss and diversereranking for sentence simpliﬁcation. In Proceedingsof the 2019 Conference of the North AmericanChapter of the Association for Computational Lin-guistics: Human Language Technologies, Volume 1(Long and Short Papers), pp. 3137–3147, Minneapo-lis, Minnesota, June 2019. Association for ComputationalLinguistics.
+[7] Chao Jiang, Mounica Maddela, Wuwei Lan, Yang Zhong,and Wei Xu. Neural CRF model for sentence alignment intext simpliﬁcation. In Proceedings of the 58th AnnualMeeting of the Association for Computational Lin-guistics, pp. 7943–7960, Online, July 2020. Associationfor Computational Linguistics.
+[8] Fernando Alva-Manchego, Carolina Scarton, and LuciaSpecia. The (un)suitability of automatic evaluation met-rics for text simpliﬁcation. Computational Linguistics,Vol. 47, No. 4, pp. 861–889, December 2021.
+[9] Mounica Maddela, Fernando Alva-Manchego, and WeiXu. Controllable text simpliﬁcation with explicit para-phrasing. In Proceedings of the 2021 Conferenceof the North American Chapter of the Asso ciationfor Computational Linguistics: Human LanguageTechnologies, pp. 3536–3553, Online, June 2021. Asso-ciation for Computational Linguistics.
+[10] David Heineman, Yao Dou, Mounica Maddela, and WeiXu. Dancing between success and failure: Edit-level sim-pliﬁcation evaluation using SALSA. In Proceedings ofthe 2023 Conference on Empirical Methods in Nat-ural Language Processing, pp. 3466–3495, Singapore,December 2023. Association for Computational Linguis-tics.
+[11] OpenAI. Gpt-4 technical report, 2023.
+[12] Jinze Bai et al. Qwen technical report, 2023.
+[13] Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chau-mond, Clement Delangue, Anthony Moi, Pierric Cistac,Tim Rault, Rémi Louf, Morgan Funtowicz, and JamieBrew. Huggingface’s transformers: State-of-the-art nat-ural language processing. CoRR, Vol. abs/1910.03771, ,2019.
+[14] Hugo Touvron, Thibaut Lavril, Gautier Izacard, XavierMartinet, Marie-Anne Lachaux, Timothée Lacroix, Bap-tiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar,Aurelien Rodriguez, Armand Joulin, Edouard Grave, andGuillaume Lample. Llama: Open and eﬃcient foundationlanguage models, 2023.
+[15] Wei Xu, Courtney Napoles, Ellie Pavlick, Quanze Chen,and Chris Callison-Burch. Optimizing statistical machinetranslation for text simpliﬁcation. Transactions of theAssociation for Computational Linguistics, Vol. 4, pp.401–415, 2016.
+[16] Fernando Alva-Manchego, Louis Martin, Antoine Bordes,Carolina Scarton, Benoît Sagot, and Lucia Specia. AS-SET: A dataset for tuning and evaluation of sentence sim-pliﬁcation models with multiple rewriting transformations.In Proceedings of the 58th Annual Meeting of theAssociation for Computational Linguistics, pp. 4668–4679, Online, July 2020. Association for ComputationalLinguistics.
+[17] Wei Xu, Chris Callison-Burch, and Courtney Napoles.Problems in current text simpliﬁcation research: New datacan help. Transactions of the Association for Com-putational Linguistics, Vol. 3, pp. 283–297, 2015.
+[18] Carolina Scarton, Gustavo Paetzold, and Lucia Specia.SimPA: A sentence-level simpliﬁcation corpus for thepublic administration domain. In Proceedings of theEleventh International Conference on LanguageResources and Evaluation (LREC 2018), Miyazaki,Japan, May 2018. European Language Resources Associ-ation (ELRA).
+[19] Kim Cheng Sheang and Horacio Saggion. Controllablesentence simpliﬁcation with a uniﬁed text-to-text transfertransformer. In Proceedings of the 14th InternationalConference on Natural Language Generation, pp.341–352, Aberdeen, Scotland, UK, August 2021. Associ-ation for Computational Linguistics.
+[20] Xingxing Zhang and Mirella Lapata. Sentence simpliﬁca-tion with deep reinforcement learning. InProceedings ofthe 2017 Conference on Empirical Methods in Nat-ural Language Processing, pp. 584–594, Copenhagen,Denmark, September 2017. Association for ComputationalLinguistics.
+
+
+
+A Best Prompts in GPT-4’s prompt engineering
+
+Figure 1 illustrates the best prompts that achieved the highest SARI scores during GPT-4’s prompt engineering in ourprevious work [1].
+Each prompt comprises: instructions, examples of original to simpliﬁcation(s) transformation, and asource sentence.
+You are required to simplify th e original sentence  by using simpler concepts, words, or phra ses.
+Please kee p the meaning the same.
+Only provide one result.
+Original sentence: San Francisco Bay is located in the U.S. state of California, surrounded by a contiguous region known as the San Francisco Bay Area, dominated by the large cities San Francisco, Oakland and San Jose.
+Simplified sentence: San Francisco Bay is located in the U.S. state of California, surrounded by a contiguous region known as the San Francisco Bay Area, influenced by the large cities, San Francisco, Oakland and San Jose.
+Original sentence: The book chronicles events which take place in the fictional space colony of Windhaven.
+Simplified sentence: The book chronicles events which take place in the space colony of Windhaven.
+Original sentence: Some academic journals do refer to Wikipedia articles, but are not elevating it to the same level as traditional references.
+Simplified sentence: Some academic journals do refer to Wikipedia articles, but are not using it to the same level as common references.
+Original sentence: {input}(a) Turk style + Few-shot + Single refYou are required to simplify the original sentence by applying di fferent transformations.
+Please keep the meaning the same.
+Only provide one result.
+Original sentence: Rollins retired in 1962 and opted to become a coach.
+Simplified sentence: Rollins retired in 1962.
+He then chose to become a coach.
+Original sentence: To ur is m  is  c on ce ntrate d  in  t
+he  m ou nta in s,  p ar ti cu la rl y  ar ou nd  t
+he  t ow ns  o
+f  
+Da vos  /  Arosa, Laax and St. Moritz / Pontresina.
+Simplified sentence: To ur is m ta ke s  pl ac e  in  t he  m ou nta in s  aro un d  
+th e  to wn s  of  D avo s  /  Arosa, Laax and St. Moritz / Pontresina.
+Original sentence:
+First Fleet is the name given to the 11 ships which sailed from Great Britain on 13 May 1787 with about 1,487 people to establish the first European colony in New South Wales.
+Simplified sentence: 11 ships sailed from Great Britain on 13 May 1787 carrying about 1,487 people.
+These ships aimed to establish the first European colony in New South Wales.
+These 11 ships were named First Fleet.
+Original sentence: {input}(b) ASSET style + Few-shot + Single refYou  are required  to simplify th e original sentence.  
+Yo u  can delete informat ion that ma ke s the sentence di fficult to understand.
+Only provide one result.
+Original sentence: Becker was trailing an underwater camera that will help him and the other scientists figure out how to wrench out an extensive network of oyster racks held up by some 4,700 wooden posts sunk into the Estero 's sandy bottom.
+Simplified sentences: The camera will help scientists figure out how to remove the oyster racks.
+The posts are sunk into the Estero 's sandy bottom.
+The racks are held up by about 4,700 wooden posts.
+Original sentence: He also announced a 15 percent increase in the minimum wage, effective next month, and an increase in scholarships for high school and college students.
+Simplified sentences: He said the minimum wage for workers will go up.
+President Maduro said he would fix some things.
+The minimum wage is the least amount of money someone can get paid to work.
+Original sentence: The monitoring site, more than 5,000 feet above sea level on a pine-studded overlook above the lowest layer of the atmosphere, gives Faloona access to undisturbed air from across the Pacific before it is fouled by U.S. pollution sources.
+Simplified sentences: The spot is more than 5,000 feet above sea level.
+His measuring instruments are located on Chews Ridge in the Santa Lucia Mountains.
+There he can test the air blowing in from across the Pacific.
+Original sentence: {input}(c) Newsela style +
+Few-shot + Multi refsFigure 1: Best prompts in GPT-4’s prompt engineering.

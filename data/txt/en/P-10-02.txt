@@ -1,0 +1,254 @@
+Detecting Individual Decision-Making Dialoguesin Conversation
+
+Weiwen Su
+
+1
+
+Naoki Yoshinaga
+
+2
+
+Masashi Toyoda
+
+2
+
+Zihan Wang
+
+1
+
+Yuhan Zhou
+
+11
+
+The University of Tokyo
+
+2
+
+Institute of Industr ial Science, The University of Tokyo
+
+
+
+{su-w,ynaga,toyoda,zwang,yzhou}@tkl.iis.u-tokyo.ac.jp
+
+
+
+Abstract
+
+Decision-making is an essential part of our daily lives,especially in dialogue.
+It involves group decision-making,where we strive to reach a consensus with others, or in-dividual decision-making primarily based on our indepen-dent thinking.
+Collecting decision-making data helps usanalyze our daily behaviors and engage in self-reﬂection.
+In this study, aiming to detect individual decision-makingdialogues in conversation automatically, we annotate thedecision-seeking (e.g., “Would you like to form a bandwith me?”) and decision-making utterances in a dialoguedataset.
+We then investigate the LLMs’ ability to detectindividual decision-making and conduct an error analysisto analyze the mistakes in the detection processes.
+
+
+1 Introduction
+
+We engage in decision-making during daily dialogue, asillustrated in Figure 1, whether individually or as a group.
+Decision-making is a fundamental cognitive process ofhuman behavior [1] and reﬂects one’s thinking.
+By ana-lyzing our decision-making in daily dialogues, we can gaina better understanding of our behaviors, which may alsofoster self-reﬂection.
+However, detecting decision-makingprocesses within dialogue remains a challenging task.
+In the early year, Fernandez et al.
+[2] explored the taskof detecting group decision-making in conversation usinga meeting corpus and proposed a decision dialogue acts(DDAs) class set.
+Recently, encouraged by the strong lan-guage understanding ability of pre-trained language mod-els (PLMs), Karan et al.
+[3] revisited the task and discov-ered that the models sometimes depend on topic-speciﬁcwords for detection.
+However, even with the PLMs, theperformance of the task remains quite a space to be im-proved.
+Moreover, the detection of individual decision-Do you want to be ina band with me?
+I'm not sure...
+I've neverbeen in a band before.
+Come on!
+Just give ita try!Alright, I’ll give it a shot.
+Figure 1
+An example of individual decision-making dialogueupon request.making that often happens in daily dialogue and is relatedto one’s personal choice has not yet been thoroughly inves-tigated, which remains an obstacle to understanding one’sbehaviors through decision-making in conversation.
+In thisstudy, we explore detecting individual decision-making di-alogues in conversation by building a dataset for evaluationand testing current models on the dataset.
+Since sponta-neous individual decision-making (suddenly announcing adecision without being requested) often does not oﬀer anapparent trigger point, we focus on the individual decision-making upon request, meaning that there is a decision-seeking utterance explicitly or implicitly requests the inter-locutor to make a decision, and then the interlocutor replieswith a decision-making utterance.
+Besides, there mightbe a discussion between decision-seeking and decision-making that makes the detection more diﬃcult consideringthe possible change of decision.
+To approach the goal, weﬁrst choose the TvShowGuess
+[4] dataset containing somedaily drama scripts as a source dialogue dataset.
+Then wemanually annotate the pairs of decision-seeking (Utterance1 in Figure 1) and decision-making utterances (Utterance4 in Figure 1) with their possible discussion process (Ut-terance 2 and 3 in Figure 1) in each dialogue.
+Additionally,we annotate the importance level (how much the decisionwould inﬂuence the decision-maker or other people) of thedecisions in the dataset to assess the number of importantdecision-making instances present.
+Subsequently, we conduct experiments to investigatethe current models’ ability to detect individual decision-making dialogues in conversation and explore the possiblemethods to enhance the ability.
+Therefore, We evaluate thedataset with open-sourced and closed-sourced LLMs usingseveral prompting methods or masking background infor-mation.
+Finally, we conduct an error analysis to discoverpossible reasons for the mistakes during the detection.
+
+
+2 Related Work
+
+
+In this section, we introduce the research on detectingdecision-making in conversation.
+Hsueh et al.
+[5] initi-ated to explore the automatic detection of decision-makingsub-dialogues in conversation (meeting corpus) by classi-fying the decision-related utterances using various features(e.g., dialogue acts, prosodic features).
+Fernandez et al.
+[2]then proposed a set of decision dialogue acts and used asupport vector machine (SVM) to classify the acts for de-tecting decision-making.
+Bui et al.
+[6] tried to improve theperformance using hierarchical graphical models.
+Recently, with the emergence of the pre-trained languagemodels, Karan et al.
+[3] revisited the decision-making sub-dialogues detection task and tested the performance ofBERT
+[7] model while revealing that sometimes the mod-els depend more on the topic related words than the wordsindicating decision-making to do detection.
+Consideringthe emerging e-mail interaction in recent years, Karan etal.
+[8] proposed a large-organization email dataset for ana-lyzing the dialogue acts within the decision-making.
+The previous research mainly targets the decision-making dialogues in the business area using a meetingcorpus.
+Besides, they show that the detection of decision-making, even detecting only the sub-dialogue rather thanspeciﬁc utterances, remains diﬃcult for pre-trained lan-guage models to achieve.
+In this study, we focus on in-dividual decision-making in open-domain dialogue wherethe topic is more related to daily life and the decisions areprimarily based on independent thinking.
+
+
+3 Decision-Making Dialogues
+
+Due to the lack of datasets for decision-making detec-tion in open-domain dialogue, this study builds a dataset toevaluate LLM-based baselines and demonstrate the com-plexity of the task.
+This section describes our approach tocreating a small-scale dataset for detecting required indi-vidual decision-making in conversation.
+In this study, we focus on the decision-making requestedby the interlocutor because it has a relatively apparenttrigger point compared with spontaneous decision-makingwhere the speaker often suddenly announces a decision.
+We consider the dataset to involve some dialogues includ-ing decision-making pairs including:Decision-seeking utterance An utterance where thespeaker explicitly or implicitly requests the interlocu-tor to make a decision.
+Corresponding decision-making utterance An ut-terance where the interlocutor makes a decision re-quested in the decision-seeking utterance.
+Theremight be decision-making utterances expressing ten-tative decisions, but only the ﬁnal one is paired withthe decision-seeking utterance.
+To create such a dataset, we ﬁrst choose a source dialoguedataset, the TVShowGuess dataset [4], as the starting point.
+It contains some daily drama scripts, which we can use asa multi-party open-domain dialogue dataset.
+Then threegraduate students (the ﬁrst, fourth, and ﬁfth authors) an-notate the dataset, concretely, to label the decision-seekingutterances and corresponding decision-making utterancesin each dialogue.
+To better analyze the decision-making process, we alsoask the annotators to label the utterances between thedecision-seeking and decision-making utterances.
+We con-sider the exchange of opinion and information would in-ﬂuence the ﬁnal decision.
+Therefore, we formulate thecategories of the middle utterances as “tentative decision”,“asking for opinion”, “providing opinion”, “asking for in-formation”, “providing information”, “agreement or dis-agreement”, and “other utterances.”In
+addition, because there are many trivial decision-making (e.g., “Do you want to have lunch together?”) indaily dialogue, we ask the annotators to label the impor-tance level (subjectively, how inﬂuential a decision is to thedecision-maker or others) of the decision requested in thedecision-seeking utterance to see how many important de-cisions exist in the dataset.
+The labels of importance levelare “3, Highly inﬂuential or having a long-term impacton decision-makers or others.”, “2, Inﬂuential to decision-maker or other people”, and “1, Not inﬂuential”.
+Figure 2 Distribution of the importance level of the decisions.
+Table 1
+Statistics of the dataset.
+Dialogues 130Utterances per dialogue 49.8Decision-making pairs per dialogue 1.95To ensure the precision of decision-making pairs in thedataset, we only pick the dialogues with decision-makingpairs labeled by at least two annotators.
+To ensure thedecision-making pairs in these dialogues are all labeled,we double-checked the decision-making pairs labeled byonly one annotator in these dialogues and kept the onesthat passed the double-check.
+As a result, we show thestatistics of the dataset in Table 1.
+We take an average ofthe importance level from annotators for each decision andshow the distribution in Figure 2.
+The distribution showsthat nearly half of the required individual decision-makingis inﬂuential to some extent.
+
+
+4 Detecting Decision-Making
+
+In this section, we evaluate two LLMs on the createddataset and conduct a case study to analyze the possiblereasons for the mistakes in the detection.
+We start with thesettings of the experiments, and then introduce the resultsand case study.
+
+
+4.1 Settings
+
+As for the task setting, the models need to detect allthe decision-making pairs in each dialogue.
+Given a di-alogue D with each utterance assigned a unique numberu𝑖(𝑖 = 1, 2, 3, 4, . . .)
+, we ask the model to return eachpair of decision-seeking and decision-making utterance as[u𝑠, u𝑚], where u𝑠and u𝑚represent the utterance numberof the two utterances.
+To show the models’ ability to detect decision-makingpairs, we conduct an automatic evaluation.
+In addition, wealso want to know which part of the models would makemore mistakes.
+Therefore, we also evaluate the perfor-mance of detecting decision-seeking and decision-makingutterances separately.
+Models We evaluate one open-sourced model and oneclosed-sourced model on the dataset, the Llama3.1-8B-Instruction model1）and the GPT-4o model.
+As the inputsettings for the models, we test the following settings:Zero-shot The models are given the description of thetask and the deﬁnitions of decision-seeking utter-ance, decision-making utterance, and correspondingdecision-making utterance as shown in the AppendixTable 4.One-shot The models are additionally given one exam-ple as shown in the Appendix Table 6.Chain-of-Thought (CoT)
+Considering the depen-dency between decision-seeking and decision-makingutterances, we applied CoT
+[9] prompting method thatoften enhances the LLMs’ reasoning ability as shownin the Appendix Table 5.Anonymous To check whether the background knowl-edge of the speakers (e.g., the relationships betweenthe speakers or their characteristics) will inﬂuence theperformance, based on the zero-shot setting, we re-place the place, person, and organization name withplaceholders ( e.g., Joey → person 1).Metrics As for the metrics, we choose the precision((P), recall ((R), and f1-score ((F1) to automatically eval-uate the performance of the models.
+Concretely, we cal-culate the three metrics for the decision-making pairs, thedecision-seeking utterances, and the decision-making ut-terances separately, between the gold labels and the pre-dicted labels.
+For the decision-seeking utterances, wename the metrics P𝑠, R𝑠, and F1𝑠(P𝑚, R𝑚, and F1𝑚for decision-making utterances).
+
+
+4.2 Main Results
+
+Table 2 shows the automatic evaluation results of detect-ing individual decision-making dialogues in conversation.
+From the results of the GPT-4o model, we can observe thatthe zero-shot setting achieves the best overall performanceand CoT setting achieves the worst overall perfor mance.
+The reason may be that the GPT-4o model has better think-ing steps than our prompt.
+As for the one-shot setting,1）
+https://huggingface.co/meta-llama/Llama-3.1-8B-InstructTable 2 Automatic evaluation results for GPT-4o and the Llama3.1-8B-Instruction model, including the results of overall detection,decision-seeking detection, and decision-making detection.
+Settings P R F1 PsRsF1sPmRmF1mGPT-4oZero-shot 0.436 0.451 0.443 0.562 0.580 0.571 0.540 0.540
+0.540One-shot 0.416 0.451 0.433 0.514 0.558 0.535 0.511 0.535 0.523CoT 0.403 0.425 0.414 0.525 0.553 0.539 0.481
+0.491 0.486Anonymous 0.403 0.460 0.430 0.519 0.593 0.554 0.510
+0.540
+0.525Llama3.1-8B-InstructionZero shot 0.073 0.248 0.113 0.141 0.460 0.216 0.147 0.434 0.219One-shot 0.065 0.274 0.106 0.126 0.491 0.200 0.119 0.425 0.185CoT 0.096 0.283 0.143 0.163 0.456 0.240 0.167 0.456 0.244Anonymous 0.106 0.317 0.159 0.177 0.489 0.260 0.177 0.448 0.254the performance does not exceed the zero-shot setting, thereason might be that the one-shot example fails to pinpointthe speciﬁc weaknesses or areas of diﬃculty in the model’sdetection capabilities.
+From the results of the Llama3.1-8B-Instruction model,we can observe that the CoT setting and anonymous set-ting achieve better overall performance than the zero-shotsetting.
+Especially, the anonymous setting performs thebest, the reason may be that the background knowledge ofthe entities distracts the attention of the model.
+The CoTprompt still beneﬁts the Llama3.1-8B-Instruction modelfor detecting decision-making pairs.
+Moreover, while theRecall of the detection is not particularly poor, the Preci-sion is signiﬁcantly low, indicating that the model strugglesto distinguish incorrect samples.
+Therefore, introducingmore counterexamples into the instruction might help im-prove the model’s performance.
+
+
+4.3 Error Analysis
+
+We conduct an error analysis for the GPT-4o zero-shot setting to analyze the mistakes within the detec-tion.
+We ﬁrst count the samples of decision-making pairswith or without discussion (middle utterances between thedecision-making pair) in the dataset and count that in themissed gold decision-making pairs.
+We ﬁnd that 51.9%of the decision-making pairs with discussion are missedand 47.7% of the decision-making pairs without discus-sion are missed.
+That shows the decision-making pairswith discussion is more diﬃcult for the model to detect.
+To gain a deeper understanding of the errors, we ran-domly pick 8 samples of missed gold decision-makingpairs and 8 samples of wrongly predicted decision-makingpairs.
+Our observation of the samples shows that the im-Table 3 An example of a missed pair.
+A:
+Yeah, call it whatever you want, I get minimumwage.
+Yeah, anyway, I was wondering if you couldhelp me out with something, I was....
+B: Yes.plicit decision-seeking (e.g., through suggestion or subtlybringing up) and decision-seeking utterance mixed withthe response to the previous utterance cause some diﬃcul-ties.
+In addition, We observe that the model occasionallymisinterprets some decision-making utterances that are notresponses to decision-seeking utterances as if they were.
+Therefore, enhancing the models’ ability to understandimplicit decision-seeking utterances and correctly recog-nize whether an utterance is responding to the decision-seeking utterance may be a direction to improve the perfor-mance.
+Meanwhile, detecting the middle utterances maysupport the detection of the decision-making pairs.
+
+
+5 Conclusions
+
+In this study, we propose to detect individual decision-making dialogues in conversation by detecting the pair ofdecision-seeking and decision-making utterances.
+We cre-ate a dataset for detecting individual decision-making di-alogues by annotating the pairs of decision-seeking anddecision-making utterances and the discussion process.
+We then evaluate open-sourced and closed-sourced modelson the dataset with an automatic evaluation.
+The resultsshow that the current models need a well-designed methodto accomplish this task.
+Besides, our error analysis showsthat implicit decision-seeking utterances, exchanging opin-ions during discussion, and decision-making utterancesthat do not respond to the decision-seeking utterances posesome challenges for the task.
+
+
+
+Acknowledgement
+
+This work was partially supported by JST, CREST GrantNumber JPMJCR19A4, JSPS KAKENHI Grant Num-ber JP21H03494, and JSPS KAKENHI Grant NumberJP21H03445
+
+References
+
+
+[1] Vassilios N. Christopoulos, Kristen N. Andersen, and Richard A.Andersen. Chapter 8 - extinction as a deﬁcit of the decision-makingcircuitry in the posterior parietal cortex. In Giuseppe Vallar andH. Branch Coslett, editors, The Parietal Lobe, Vol. 151 of Hand-book of Clinical Neurology, pp. 163–182. Elsevier, 2018.
+[2] Raquel Fern´andez, Matthew Frampton, Patrick Ehlen, MatthewPurver, and Stanley Peters. Modelling and detecting decisions inmulti-party dialogue. In David Schlangen and Beth Ann Hockey,editors, Proceedings of the 9th SIGdial Workshop on Dis-course and Dialogue, pp. 156–163, Columbus, Ohio, June 2008.Association for Computational Linguistics.
+[3] Vanja Mladen Karan, Prashant Khare, Patrick Healey, and MatthewPurver. Mitigating topic bias when detecting decisions in dialogue.In Haizhou Li, Gina-Anne Levow, Zhou Yu, Chitralekha Gupta,Berrak Sisman, Siqi Cai, David Vandyke, Nina Dethlefs, Yan Wu,and Junyi Jessy Li, editors, Proceedings of the 22nd AnnualMeeting of the Special Interest Group on Discourse andDialogue, pp. 542–547, Singapore and Online, July 2021. Associ-ation for Computational Linguistics.
+[4] Yisi Sang, Xiangyang Mou, Mo Yu, Shunyu Yao, Jing Li, andJeﬀrey Stanton. Tvshowguess: Character comprehension in storiesas speaker guessing. arXiv preprint arXiv:2204.07721, 2022.
+[5] Pei-Yun Hsueh and Johanna D. Moore. What decisions have youmade?: Automatic decision detection in meeting conversations.In Candace Sidner, Tanja Schultz, Matthew Stone, and ChengX-iang Zhai, editors, Human Language Technologies 2007: TheConference of the North American Chapter of the Asso-ciation for Computational Linguistics; Proceedings of theMain Conference, pp. 25–32, Rochester, New York, April 2007.Association for Computational Linguistics.
+[6] Trung H. Bui and Stanley Peters. Decision detection using hierar-chical graphical models. In Jan Hajiˇc, Sandra Carberry, StephenClark, and Joakim Nivre, editors, Proceedings of the ACL 2010Conference Short Papers, pp. 307–312, Uppsala, Sweden, July2010. Association for Computational Linguistics.
+[7] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and KristinaToutanova. BERT: Pre-training of deep bidirectional transformersfor language understanding. In Proceedings of the 2019 Confer-ence of the North American Chapter of the Association forComputational Linguistics: Human Language Technologies,Volume 1 (Long and Short Papers), pp. 4171–4186. Associa-tion for Computational Linguistics, June 2019.
+[8] Vanja Mladen Karan, Prashant Khare, Ravi Shekhar, StephenMcQuistin, Ignacio Castro, Gareth Tyson, Colin Perkins, PatrickHealey, and Matthew Purver. LEDA: a large-organization email-based decision-dialogue-act analysis dataset. In Anna Rogers, Jor-dan Boyd-Graber, and Naoaki Okazaki, editors, Findings of theAssociation for Computational Linguistics: ACL 2023, pp.6080–6089, Toronto, Canada, July 2023. Association for Computa-tional Linguistics.
+[9] Takeshi Kojima, Shixiang Shane Gu, Machel Reid, Yutaka Mat-suo, and Yusuke Iwasawa. Large language models are zero-shotreasoners. ArXiv, Vol. abs/2205.11916, , 2022.
+
+
+
+Appendix
+
+Table 4 Prompt for zero-shot decision-making pair detection.
+You are an expert in linguistics.
+Please analyze the given dialogue and identify all pairs of decision-seeking utterances and their correspondingdecision-making utterances related to personal decision-making.1.
+A decision-seeking utterance is an utterance where the speaker explicitly or implicitly encourages the interlocutorto make a decision.2.
+A decision-making utterance is an utterance where the speaker makes a decision.3.
+A corresponding decision-making utterance is one that responds to the decision requested in the decision-seekingutterance.
+Personal decision-making refers to decisions about an individual’s own actions, choices, or preferences.
+For each decision-seeking utterance, there might be several tentative decision-making utterances.
+Pair it only with thefinal decision-making utterance.
+Each utterance in the dialogue is assigned a unique number.
+Please return only the numbers, formatted as a list of pairs:[(decision-seeking number, decision-making number)].
+Only a list!
+No additional text!Table 5 Prompt for CoT decision-making pair detection.
+You are an expert in linguistics.
+Please analyze the given dialogue and identify all pairs of decision-seeking utterances and their correspondingdecision-making utterances related to personal decision-making.1.
+A decision-seeking utterance is an utterance where the speaker explicitly or implicitly encourages the interlocutorto make a decision.2.
+A decision-making utterance is an utterance where the speaker makes a decision.3.
+A corresponding decision-making utterance is one that responds to the decision requested in the decision-seekingutterance.
+Personal decision-making refers to decisions about an individual’s own actions, choices, or preferences.
+For each decision-seeking utterance, there might be several tentative decision-making utterances.
+Pair it only with thefinal decision-making utterance.
+You should first find a decision-seeking utterance and then find the corresponding decision-making utterance answeringthat.
+Do it step by step.
+Each utterance in the dialogue is assigned a unique number.
+Please return only the numbers, formatted as a list of pairs:[(decision-seeking number, decision-making number)].
+Only a list!
+No additional text!Table 6 Prompt for one-shot decision-making pair detection.
+You are an expert in linguistics.
+Please analyze the given dialogue and identify all pairs of decision-seeking utterances and their correspondingdecision-making utterances related to personal decision-making.1.
+A decision-seeking utterance is an utterance where the speaker explicitly or implicitly encourages the interlocutorto make a decision.2.
+A decision-making utterance is an utterance where the speaker makes a decision.3.
+A corresponding decision-making utterance is one that responds to the decision requested in the decision-seekingutterance.
+Personal decision-making refers to decisions about an individual’s own actions, choices, or preferences.
+For each decision-seeking utterance, there might be several tentative decision-making utterances.
+Pair it only with thefinal decision-making utterance.
+Each utterance in the dialogue is assigned a unique number.
+Please return only the numbers, formatted as a list of pairs: [(decision-seeking number, decision-making number)].
+Onlya list!
+No additional text!***************Example***************Dialogue:(1)
+SpeakerA:
+Do you want to be in a band with me?(2) Speaker B: I’m not sure...
+I’ve never been in a band before.(3)
+Speaker A: Come on!
+Just give it a try!(4) Speaker B:
+Alright, Ill give it a shot.
+Your Return:[(1,4)]

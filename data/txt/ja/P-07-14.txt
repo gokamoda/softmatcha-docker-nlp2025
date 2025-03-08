@@ -1,0 +1,202 @@
+SelfCheckGPT はコード生成におけるハルシネーションを検知できるか
+
+伊東 和香
+
+1
+
+ 小原 有以
+
+1
+
+ 佐藤 美唯
+
+1
+
+ 秋信 有花
+
+3
+
+ 倉林 利行
+
+3
+
+ 倉光 君郎
+
+21
+
+日本女子大学大学 理学研究科
+
+2
+
+日本女子大学 理学部
+
+3
+
+NTT ソフトウェアイノベーションセンタ
+
+
+
+m2016013iw@ug.jwu.ac.jp kuramitsuk@fc.jwu.ac.jp
+
+
+
+概要
+
+大規模言語モデル(Large Language Model, LLM)によるコード生成は、ソフトウェア開発の効率化に寄与する技術として注目されている。
+しかし LLM の出力にはハルシネーションを含むことが問題となる。
+ハルシネーションを含む出力コードはエラーを引き起こす可能性があるため、事前にハルシネーションを検知することが重要である。
+本研究では、自然言語におけるハルシネーション検知手法である SelfCheckGPT をコード生成に適用する。
+一般的なコード生成の評価手法である実行ベース評価と、SelfCheckGPT によるコードの評価を比較することで、両者の関連性を確認する。
+実行ベース評価と比較した結果、特に BLEU，ROUGE-L，EditSim を利用した SelfCheckGPT による評価において、実行ベース評価との関連性が見られた。
+
+
+1 はじめに
+
+生成 AI の進展に伴い、モデルの出力の信頼性を検証する手法が注目を集めている。
+その中で、SelfCheckGPT[1]は、大規模言語モデル（LLM）が生成するテキスト内のハルシネーション(事実に基づかない情報）を検出するための手法である。
+外部データベースを必要とせず、同じ入力に対して複数の出力をサンプリングし、それらの一貫性から事実性を評価できる点が特徴である。
+本研究の目的は、SelfCheckGPTによるハルシネーション検出をコード生成タスクに適用し、コード生成の正確さと比較することである。
+コード生成タスクでは、HumanEval 等のベンチマーク[2, 3, 4]で導入された実行ベース評価、すなわち生成されたコードを実行し、テストケースの通過率を測定する手法が正確さの評価手法として用いられてきた。
+我々の関心は、実行ベース評価の代わりに、SelfCheckGPTのハルシネーション検知はどの程度、有効であるか調査することである。
+過去、SelfCheckGPT は、自然言語タスクに適用され、有用性[5, 6, 7]が検証されてきたが、コード生成タスクにおいては検証されていない。
+もしSelfCheckGPT でコード生成のエラーを予測できるのであれば、ソフトウェア開発現場に対し、テストケースの作成コスト[8, 9, 10]の軽減などの貢献が期待できる。
+他方、もし SelfCheckGPT の有効性が限定的である場合、自然言語とプログラミング言語の構造的な差異に対して有益な示唆が期待できる。
+
+
+2 コード生成とハルシネーション
+
+ハルシネーションの分類は、ハルシネーションの原因や解決策を探るために重要であり、コード生成においてもハルシネーションの分類が行われている。
+Liu ら[11]は、3,084 件のハルシネーションを含むコードを調査し、その種類を体系的に分類した。
+表 1 にその結果を示す。
+これらのハルシネーションを含むコードのうち、全テストケースに通過するコードの割合は 10%以下に止まることが示された。
+また、特に発生割合の高いハルシネーションであるIntent Conﬂicting と Inconsistency では全テストケースを通過する割合が 2%を下回ることが確認された。
+これらの結果より、ハルシネーションを含むコードの多くが、機能的に正しく実行できないコードであることが結論づけられている。
+以上より、我々はコード生成におけるハルシネーションとは、コードが正しく実行できるかどうかに類似するという立場を採用する。
+表 1 コード生成におけるハルシネーションの分類分類発生割合(%)説明Intent Conﬂicting 32.1 プロンプトの要求と生成コードの動作が異なるContext DeviationInconsistency 31.8 プロンプトの要求に準じてはいるが、要求の実現を妨げるコードが存在するRepetition 17.3 プロンプトの内容を繰り返している、または生成コード内に繰り返しが生成しているDead Code 3.2 冗長なコードや決して実行されないコードが含まれているKnowledge Conﬂicting 15.1 間違った変数の利用、関数指定時の因数の欠落、インポートされていない API の呼び出し等
+
+3 SelfCheckGPT
+
+SelfCheckGPT は、ハルシネーション検知手法として注目を集めている。
+我々はこの手法をコード生成に適用した。
+本節では、SelfCheckGPT を概説する。
+
+
+3.1 概要
+
+SelfCheckGPT は、「LLM が与えられた入力に対して知識を保持している場合、サンプリングされた回答(同一のプロンプトに対する複数の回答)は高い類似性を持ち、一貫した事実を含む」というアイデアに基づいている。
+SelfCheckGPT の特徴の一つに、外部リソースを必要としないゼロリソースの検知手法である点が挙げられる。
+他の検知手法である Collu-Bench 等[12, 6, 13]と比較して、トークン単位の対数確率(logprobability)の利用など、モデルによっては外部 APIを必要とする要素が SelfCheckGPT には含まれていない。
+
+
+
+3.2 ハルシネーションスコアの算出
+
+SelfCheckGPT は、サンプリングされた回答間の類似度から算出されるハルシネーションスコアを用いてハルシネーション検知を行う。
+ハルシネーションスコアは、検知対象 R と同一のプロンプトより得られる 𝑁 個のサンプルとの類似度から算出される。
+検知対象 R の 𝑖 番目の文章を 𝑟𝑖，𝑛 個目のサンプルの 𝑘 番目の文章を 𝑠𝑛𝑘とした際に、𝑟𝑖のハルシネーションスコア 𝐻𝑆𝑖𝑚(𝑖)は以下のような式で表される。
+また、𝑆𝑖𝑚 (𝑟𝑖, 𝑠𝑛𝑘)は 𝑟𝑖と 𝑠𝑛𝑘の類似度を表す。
+𝐻𝑆𝑖𝑚(𝑖) = 1 −1𝑁𝑁∑𝑛=1max𝑘(𝑆𝑖𝑚(𝑟𝑖, 𝑠𝑛𝑘))
+さらに、検知対象 R の文章全体のハルシネーションスコアは、以下の式のように検知対象 R の各文におけるハルシネーションスコア 𝐻𝑆𝑖𝑚(𝑖)の平均をとることで求められる。
+𝐻𝑝𝑎𝑠𝑠𝑎𝑔𝑒=1|𝑅|∑𝑖𝐻𝑆𝑖𝑚(𝑖)𝐻𝑆𝑖𝑚(𝑖), 𝐻𝑝𝑎𝑠𝑠𝑎𝑔𝑒は 0 から 1 の値を取り、1 に近いほどハルシネーションの可能性が高いことを意味する。
+
+
+4 実験
+
+我々は、図 1 に示すように、出力コード(検知対象 R)に対する、SelfCheckGPT のハルシネーションスコアによるコードの評価と、実行ベースの評価を比較し、双方の関連性を調査した。
+本節では、実験設定・手順と結果を示す。
+
+4.1 検知対象データセット
+
+本実験では、HumanEval[2]データセットを利用する．HumanEval は、LLM のコード生成の能力を評価するための標準的なベンチマークである。
+このベンチマークでは、LLM に関数定義と英文のドキュメンテーションをプロンプトとして与える。
+LLM は、それに続くコードを生成し、関数定義を完成させることが求められる。
+
+
+4.2 実行ベース評価
+
+実行ベース評価では、LLM の生成したコードの正しさを、用意されたテストケースに全て通過するか否かで評価する[14]。
+本実験では、実行ベース評価の評価指標としてpass@1 を採用した。
+これは、PASS(1)と FAIL(0)を意味する二値分類と等しくなる。
+
+4.3 ハルシネーションスコア算出手順
+
+SelfCheckGPT のハルシネーションスコアを以下の手順で算出し、スコアに基づきハルシネーションの有無(PASS か FAIL か)を検知する。
+本実験では、ハルシネーションスコアの二値分類に ROC-AUC を用いた。
+出⼒コード(検知対象 R)def truncate_number(number: float):return number - int(number)PASSハルシネーションスコアPASSFAIL出⼒コード(Sample1)def truncate_number(number: float):return number - int(number)出⼒コード(SampleN)def truncate_number(number: float):return abs(number) - int(abs(number))‧ ‧ SelfCheckGPT⽐較FAIL実⾏ベース評価def truncate_number(number: float):   """   関数の要件(英語のドキュメンテーション)  """ プロンプトLLM テストケース１テストケース２‧ ‧ ‧ ‧ Rに対する１〜Nまでの類似度閾値全通過か否か図 1 実験概要表 2 各モデルのコード生成能力の評価結果モデル pass@1 モデル pass@1GPT-4o-mini1）0.433 CodeLlama2）0.367Llama33）0.433 OpenCoder4）0.800Gemma25）0.400 LLM-jp-36）0.133Phi-3.57）0.667 Llama-3-Swallow8）0.433Qwen2.5-Coder9）0.600 Chico10）0.0004.3.1 回答のサンプリングSelfCheckGPT は、同一のプロンプトに対する複数の回答からハルシネーションを検知する手法である。
+本研究では、ハルシネーションスコアと実行ベース評価の関連性を見つけるため、広範囲なコード生成能力をもった LLM を 10 個選定した。
+それらのモデルを用いて、以下の手順で回答のサンプリングを行った。
+• 検知対象 R の設定: temperature を 0 に設定し、モデルが出力したコードを検知対象 R とした。
+• サンプルコードの生成: temperature を 1 に設定し、検知対象 R と同じプロンプトを用いて 6 つのサンプルコードを生成した。
+表 2 は、対象としたモデルとそのコード生成能力を pass@1 の値でまとめたものである。
+1） https://platform.openai.com/docs/models/gpt- 4o-mini2） https://huggingface.co/meta- llama/CodeLlama-7b-Instruct-hf3） https://huggingface.co/meta- llama/Meta-Llama-3-8B- Instruct4） https://huggingface.co/infly/OpenCoder- 8B-Instruct5） https://huggingface.co/google/gemma- 2-2b-it6） https://huggingface.co/llm- jp/llm-jp-3-1.8b- instruct7） https://huggingface.co/microsoft/Phi- 3.5-mini-instruct8） https://huggingface.co/tokyotech- llm/Llama-3-Swallow-8B-Instruct-v0.19） https://huggingface.co/Qwen/Qwen2.5- 1.5B-Instruct10） https://huggingface.co/NaoS2/tinycodellama- jp-0.6b-20k-24.3.2 コードの類似度算出検知対象 R と 6 つのサンプルコードの類似度を算出する。
+本実験では、コード生成において有効な類似度指標を確認することを目的として、コード生成の評価指標として採用されている 7 種類の類似度指標（表 3）を用いた。
+これらの類似度指標と 3.2 節で示した式に基づき、検知対象 R のハルシネーションスコア 𝐻𝑝𝑎𝑠𝑠𝑎𝑔𝑒を算出する。
+4.3.3 ROC-AUC による閾値評価我々は、選定した HumanEval30 件と 10 個のモデルから得られた、計 300 件のハルシネーションスコアを基に、コードがテストケースを PASS するか否かを予測する。
+本実験では、ハルシネーションスコアに基づく二値分類の評価指標として、ROC-AUC を採用した．ROC-AUC(Receiver Operating Characteristic - AreaUnder the Curve)は、分類モデルの性能を評価する際に広く用いられる指標の一つであり、ROC 曲線によって描かれる面積である。
+ROC 曲線は、モデルの予測スコアに基づく様々な閾値における偽陽性率(False Positive Rate)と真陽性率(True Positive Rate)を可視化したものであり、ROC 曲線の下の面積(AUC)により、分類性能を定量的に評価する。
+ROC-AUCが 1 に近いほど分類精度が高く、0.5 に近い場合はほぼランダムに分類されていることを示す。
+本実験では、ROC 曲線上の点のうち、(0,1)と距離が最小となる点を閾値とし、PASS と FAIL に分類した。
+また、ハルシネーションスコアに基づくpass@1 の予測精度を評価するため、本実験では正解率(Accuracy)を算出した。
+表 3 使用した類似度指標類似度指標類似度指標の説明編集距離類似度(EditSim[15]) Levenshtein 距離[16]に基づく類似度Jaccard 係数二つの集合の共通部分の割合に基づく類似度。
+BLEU[17]検知対象とサンプルの n-gram 一致度と、文章全体の単語数の適切性に基づく類似度。
+ROUGE-L[18]最長共通部分文字列に基づく類似度。
+BERTScore[19] BERT[20]から得られるベクトル表現に基づく類似度。
+CodeBERTScore[21] CodeBERT[22]から得られるベクトル表現に基づく類似度。
+EmbSim[23]検知対象とサンプルの埋め込み表現のコサイン類似度。
+False Positive RateTrue Positive Rate図 2 ROC 曲線
+
+4.4 評価結果
+
+実験結果より描画された ROC 曲線を図 2 に示す。
+また、表 4 に各類似度における ROC-AUC の値と閾値により求められた Accuracy の結果を示す。
+各モデルと全類似度における pass@1 の予測精度の全結果を、付録 A に記載する。
+図 2 と表 4 の ROC-AUC の結果より、どの類似度手法においても ROC-AUC は約 0.7 と、ハルシネーションスコアに基づく二値分類が正しく行われている傾向が見られた。
+また、表 4 の Accuracy の結果では、最も高い Accuracy を示したのは、BLEU，ROUGE-L，EditSim であり、特に pass@1 との関連性を持つことが確認された。
+これらの結果が得られた理由として、BLEU，ROUGE-L，EditSim は、他の類似度指標と比較して、トークンレベルでの一致や順序を重視している点が挙げられる。
+これらの特徴が、コード特有の構造やキーワードを踏まえた評価を可能にしたと考えられる。
+表 4 各類似度の ROC-AUC, 正解率(Accuracy)類似度指標 ROC-AUC AccuracyEditSim 0.702 0.697Jaccard 係数 0.712 0.680BLEU 0.724 0.713ROUGE-L 0.712 0.700BERTScore 0.705 0.693CodeBERTScore 0.700 0.657EmbSim 0.671 0.647
+
+5 おわりに
+
+本研究では、自然言語処理のハルシネーション検知手法である SelfCheckGPT[1]をコード生成に適用した。
+また、コードの評価と実行ベース評価を比較し、両者の関連性を調査した。
+その結果、ROC-AUCの最大値が 0.724、実行ベース評価との Accuracy が最大 0.713 と、両者に関連性があることが確認された。
+我々の調査から、SelfCheckGPT を用いたコード生成評価は、実行ベース評価の代替手法として活用可能であることが示唆された。
+今後は、検知対象の文章全体のハルシネーションスコアに加え、各文におけるスコアの評価を進める。
+また、自然言語とプログラミング言語の構造的な差異を調査し、コード生成に最適な検知手法の実現を目指す。
+
+
+
+参考文献
+
+
+[1] Potsawee Manakul, Adian Liusie, and Mark JF Gales. Self-checkgpt: Zero-resource black-box hallucination detec-tion for generative large language models. arXiv preprintarXiv:2303.08896, 2023.
+[2] Mark Chen, Jer ry Tworek, Heewoo Jun, Qiming Yuan,Henrique Ponde de Oliveira Pinto, Jared Kaplan, HarriEdwards, Yuri Burda, Nicholas Joseph, Greg Brockman,et al. Evaluating large language models trained on code.arXiv preprint arXiv:2107.03374, 2021.
+[3] Jacob Austin, Augustus Odena, Maxwell Nye, MaartenBosma, Henryk Michalewski, David Dohan, Ellen Jiang,Carrie Cai, Michael Terry, Quoc Le, et al. Programsynthesis with large language models. arXiv preprintarXiv:2108.07732, 2021.
+[4] Terry Yue Zhuo, Minh Chien Vu, Jenny Chim, Han Hu,Wenhao Yu, Ratnadira Widyasari, Imam Nur Bani Yusuf,Haolan Zhan, Junda He, Indraneil Paul, et al. Big-codebench: Benchmarking code generation with diversefunction calls and complex instructions. arXiv preprintarXiv:2406.15877, 2024.
+[5] Thanet Markchom, Subin Jung, and Huizhi Liang. Nu-ruat semeval-2024 task 6: Hallucination and related observ-able overgeneration mistake detection using hypothesis-target similarity and selfcheckgpt. InProceedings of the18th International Workshop on Semantic Evalua-tion (SemEval-2024), pp. 253–260, 2024.
+[6] Bairu Hou, Yang Zhang, Jacob Andreas, and ShiyuChang. A probabilistic framework for llm hallucinationdetection via belief tree propagation. arXiv preprintarXiv:2406.06950, 2024.
+[7] Xiangkun Hu, Dongyu Ru, Lin Qiu, Qipeng Guo, Tian-hang Zhang, Yang Xu, Yun Luo, Pengfei Liu, Yue Zhang,and Zheng Zhang. Knowledge-centric hallucination de-tection. In Proceedings of the 2024 Conference onEmpirical Methods in Natural Language Process-ing, pp. 6953–6975, 2024.
+[8] Moritz Beller, Georgios Gousios, Annibale Panichella, Se-bastian Proksch, Sven Amann, and Andy Zaidman. De-veloper testing in the ide: Patterns, beliefs, and behavior.IEEE Transactions on Software Engineering, Vol. 45,No. 3, pp. 261–284, 2017.
+[9] Mikhail Evtikhiev, Egor Bogomolov, Yaroslav Sokolov,and Timofey Bryksin. Out of the bleu: how should weassess quality of the code generation models? Journal ofSystems and Software, Vol. 203, p. 111741, 2023.
+[10] Weixi Tong and Tianyi Zhang. Codejudge: Evaluat-ing code generation with large language models. arXivpreprint arXiv:2410.02184, 2024.
+[11] Fang Liu, Yang Liu, Lin Shi, Houkun Huang, RuifengWang, Zhen Yang, Li Zhang, Zhongqi Li, and Yuchi Ma.Exploring and evaluating hallucinations in llm-poweredcode generation. arXiv preprint arXiv:2404.00971,2024.
+[12] Nan Jiang, Qi Li, Lin Tan, and Tianyi Zhang. Collu-bench:A benchmark for predicting language model hallucinationsin code. arXiv preprint arXiv:2410.09997, 2024.
+[13] Neeraj Varshney, Wenlin Yao, Hongming Zhang, Jian-shu Chen, and Dong Yu. A stitch in time savesnine: Detecting and mitigating hallucinations of llmsby validating low-conﬁdence generation. arXiv preprintarXiv:2307.03987, 2023.
+[14] Sumith Kulal, Panupong Pasupat, Kartik Chandra, MinaLee, Oded Padon, Alex Aiken, and Percy S Liang. Spoc:Search-based pseudocode to code. Advances in NeuralInformation Processing Systems, Vol. 32, , 2019.
+[15] Alexey Svyatkovskiy, Shao Kun Deng, Shengyu Fu, andNeel Sundaresan. Intellicode compose: Code generationusing transformer. In Proceedings of the 28th ACMjoint meeting on European software engineeringconference and symposium on the foundations ofsoftware engineering, pp. 1433–1443, 2020.
+[16] Li Yujian and Liu Bo. A normalized levenshtein distancemetric. IEEE transactions on pattern analysis andmachine intelligence, Vol. 29, No. 6, pp. 1091–1095,2007.
+[17] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu. Bleu: a method for automatic evaluation ofmachine translation. In Proceedings of the 40th an-nual meeting of the Association for ComputationalLinguistics, pp. 311–318, 2002.
+[18] Chin-Yew Lin. Rouge: A package for automatic evaluationof summaries. In Text summarization branches out,pp. 74–81, 2004.
+[19] Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q Wein-berger, and Yoav Artzi. Bertscore: Evaluating text gen-eration with bert. arXiv preprint arXiv:1904.09675,2019.
+[20] Jacob Devlin. Bert: Pre-training of deep bidirectionaltransformers for language understanding. arXiv preprintarXiv:1810.04805, 2018.
+[21] Shuyan Zhou, Uri Alon, Sumit Agarwal, and Gra-ham Neubig. Codebertscore: Evaluating code genera-tion with pretrained models of code. arXiv preprintarXiv:2302.05527, 2023.
+[22] Zhangyin Feng, Daya Guo, Duyu Tang, Nan Duan, Xi-aocheng Feng, Ming Gong, Linjun Shou, Bing Qin, TingLiu, Daxin Jiang, et al. Codebert: A pre-trained modelfor programming and natural languages. arXiv preprintarXiv:2002.08155, 2020.
+[23] Yaoming Zhu, Sidi Lu, Lei Zheng, Jiaxian Guo, WeinanZhang, Jun Wang, and Yong Yu. Texygen: A bench-marking platform for text generation models. In The 41stinternational ACM SIGIR conference on research &development in information retrieval, pp. 1097–1100,2018.
+
+
+
+
+A 各モデルにおけるハルシネーションスコアの予測精度
+
+各モデルの出力に対して算出された SelfCheckGPT のハルシネーションスコアより予測された pass@1 を、実行ベース評価と比較した際の Accuracy表 5 各モデルと類似度指標における AccuracyEditSim Jaccard係数BLEU ROUGE-L BERTScore CodeBERTScore EmbSim 合計GPT-4o-mini 0.567 0.567 0.567 0.567 0.567 0.600 0.433 0.552Llama3 0.600 0.567 0.600 0.600 0.600 0.600 0.633 0.600Gemma2 0.467 0.500 0.500 0.500 0.433 0.433 0.500 0.476Phi-3.5 0.733 0.667 0.700 0.767 0.567 0.533 0.533 0.643Qwen2.5-Coder 0.567 0.567 0.600 0.600 0.667 0.600 0.500 0.586CodeLlama 0.767 0.767 0.833 0.800 0.700 0.700 0.733 0.757OpenCoder 0.733 0.767 0.733 0.767 0.767 0.733 0.667 0.738LLM-jp 0.833 0.867 0.833 0.900 0.867 0.833 0.867 0.857Llama-3-Swallow 0.700 0.533 0.633 0.633 0.767 0.567 0.600 0.633Chico 1.00 1.00 1.00 1.00 1.00 0.967 1.00 0.995

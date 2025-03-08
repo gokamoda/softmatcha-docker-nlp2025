@@ -1,0 +1,203 @@
+継続事前学習による LLM の知識獲得
+
+高橋洸丞
+
+1
+
+ 近江崇宏
+
+1
+
+ 有馬幸介
+
+1
+
+ 
+
+
+
+Benjamin Heinzerling
+
+2,3
+
+ 
+
+
+
+Qin Dai
+
+3
+
+ 乾健太郎
+
+4,3,21
+
+ストックマーク株式会社  
+
+2
+
+理化学研究所 
+
+3
+
+東北大学 
+
+4
+
+MBZUA dI
+
+
+
+{kosuke.takahashi, takahiro.omi, kosuke.arima}@stockmark.co.jp
+
+
+
+benjamin.heinzerling@riken.jp  qin.dai.b8@tohoku.ac.jp kentaro.inui@mbzuai.ac.ae
+
+
+
+概要
+
+継続学習は、モデルが新しい情報を取り入れつつ、既存の知識を保持する能力を向上させる技術であり、本研究では大規模言語モデル（LLM）における継続学習を通じた知識の埋め込みの手法について検討する。
+本研究では、LLM に特定のドメインデータの知識を覚えさせるために、継続学習時に対象ドメインデータから作成した複数の NLP タスクを混ぜ、さらに指示学習時においても、ドメイン特化した指示データで学習を行う。
+QA タスクによる実験の結果、人手評価において、対象のドメインで指示学習データを作ったモデルが最も正答率が高く、ドメイン特化させる場合は指示学習データもドメイン特化させる方がよいと考えられる。
+また本研究では、継続学習時のコンテキスト長が与える QA タスクの性能変化についても調査した。
+
+
+
+1 はじめに
+
+近年、大規模言語モデル（LLM）は、企業のデジタル変革を加速させる重要な技術として、業務効率化、意思決定支援、検索サービスへの活用など、さまざまなビジネス分野で活用されている。
+しかし、これらのモデルがビジネス環境で最大限に機能するためには、単に一般的な知識や言語能力を持つだけでは不十分である。
+企業ごとに異なる理念や専門用語、業界特有の文化的背景が存在するため、LLM はこれらの企業特有の特徴を反映し、それに適応することが求められる。
+ドメイン知識を LLM に反映させる手法は、大きく 4 つに分類される。
+第一の手法は、対象ドメインに特化したデータを用いて、LLM をフルスクラッチで事前学習する方法である[1, 2, 3]。
+このアプローチは、対象ドメインの知識やルールを直接モデルに学習させる点で効果的である一方、事前学習に必要な大規模なデータの収集と高い計算コストが課題となる。
+第二の手法は、対象ドメインにおける下流タスクの教師データを用いてファインチューニングを行う方法である[4, 5]。
+しかし、教師ありファインチューニングは、タスク固有のパフォーマンス向上を目的とするため、ドメイン知識そのものの獲得には限界があると報告されている[6]。
+第三の手法として、RAG（Retrieved Augmented Generation）のように、入力クエリに対して関連する外部知識を検索し、それをプロンプトとして LLM に与えるアプローチが挙げられる[7, 5]。
+この手法は柔軟性が高いものの、回答が検索精度に依存するため一貫した応答生成が難しい場合がある。
+最後に、対象ドメインのデータを用いて LLM を継続学習させ、ドメイン知識をモデル内部に直接埋め込む方法がある[8, 9]。
+この手法は、検索に依存せず、フルスクラッチの事前学習と同様に LLM に知識を獲得させられる点で有効とされている。
+本研究では、ビジネス分野におけるデータを使用した実験を行う前段階として、言語処理年次大会（ANLP）のコーパス1）で継続学習による実験を行った。
+ANLP は、言語処理における最新の研究成果を集約したコーパスであり、NLP 特有の専門用語や分野固有の表現が多く含まれてる。
+本研究の目的は、継続学習を用いて LLM が NLP 特有の知識を獲得する場合、その知識獲得がどれだけ起きているか明らかにすることである。
+将来的にはビジネス分野における企業固有の知識獲得の応用を目指し、LLM のビジネス環境における個社や個人に特化させることを意識している。
+
+
+
+2 継続学習
+
+継続学習は、事前学習後の大規模言語モデル（LLM）に追加的な知識を学習させる手法であり、1） https://huggingface.co/datasets/kunishou/J-ResearchCorpus特に特定のコーパスやタスクに関連する知識を深めるために使用される。
+本研究では、継続学習を行うモデルとして、事前学習後に instruction tuning された LLM「llm-jp-3-13b-instruct」[10]2）を使用し、継続学習を行う。
+ここで instruction-tuned モデルを使用する理由は、多様な指示に対する出力をするためには事前学習時に指示データで学習を行うことが有効だとされているからである[11]。
+継続学習の目的は、ANLP コーパスに含まれる専門用語や特有の表現をモデルに覚えさせ、ANLP に関するタスクをより適切に処理できるようにすることである。
+
+
+2.1 データ拡張
+
+[9]では、事前学習時に指示データのような合成データを混ぜることで、モデルが下流タスクで優れた性能を示すことが報告されてる。
+本研究でも、このアプローチを踏襲し、データ拡張を通じて ANLPコーパスに多様な表現を加え、データ内部の知識をより確実に LLM が覚えられるようにする。
+データ拡張には、Qwen2.5-72B-Instr uct[ 12]3）を用いて、以下の観点で全論文テキストに対して合成データを作成した。
+データ作成時のプロンプトは[9]を参考に日本語で記述し、1 回のデータ作成推論を行う毎に 1 つずつのデータ拡張カテゴリを指定して、1 論文に対して合計 16 個の合成データを準備する。
+• paraphrase: 同義の言い換え• summary: 要約• generalized: 専門用語を一般的な用語に置き換え• elaboration: 詳細な説明の追加• kg_extraction: 知識トリプレットの抽出• translation_en: 英語への翻訳• translation_zh: 中国語への翻訳• qa_diﬃcult: 専門知識が必要な難しい質問（QA）• qa_easy: 専門知識が不要な簡単な質問（QA）• qa_numbers_formula: 数字や数式に関連する質問（QA）• qa_methods: 手法に関する質問（QA）• qa_people_names: 人物名に関連する質問（QA）• positive_negative: ポジティブ・ネガティブな要素のまとめ2） https://huggingface.co/llm-jp/llm-jp-3-13b-instruct/tree/main3） https://huggingface.co/Qwen/Qwen2.5-72B-Instruct• keywords: 重要なキーワードの抽出とその説明• reference: 引用論文との関係性の記述• discussion: 研究的理解を深めるための 5 ターンまでの議論形式の会話これらの合成データは、元のテキストと共に指示文と出力文のペアを順番に連結して学習させる。
+
+
+
+2.2 継続学習時のコンテキスト長の変化
+
+上記のように、ANLP の論文データに合成指示データを混ぜた場合、1 つの論文テキストに付随する合成テキストが長くなり、llm-jp-3-13b-instruct の最大コンテキスト長である 4k トークン長では、1 論文に対して全ての合成データをモデルが一度に扱うことができない。
+そこで、モデルのコンテキスト長を拡張させることで、より元論文と合成データを統一的に学習できるかどうか検証する。
+コンテキスト長の拡張は Llama3[13]の論文とモデルを参考に、rope の theta を変更することで対応した。
+また継続学習は、全体のデータに対して 2epoch 分の学習を行う。
+コンテキスト長の変動に伴い、学習時の 1 ステップで読む分量が変化するため、4k コンテキスト長を基準としてバッチサイズを 128 で設定し、その他のコンテキスト長の際はバッチサイズの調整を行い、全てのモデルで同量の合計ステップ数となるようにした。
+
+
+3 事後学習
+
+継続学習だけでは、多様な入力に対して柔軟な出力ができないので、事後学習として再度指示学習を行う。
+指示学習のデータとして、以下の 4 種類を用意した。
+• ichikara : ichikara データ[14]のシングルターンのみのデータ• one-shot : ichikara をランダムサンプリングして与え、ANLP テキストから Qwen で合成した指示データ• zero-shot : 指示データの例を提示せず、ANLPテキストから Qwen で合成した指示データ• all included : 上記 3 つを全て含むデータセットまた、all included 以外は全てサンプル数は合計 10000になるように調整し、all included は 30000 のサンプル数となった。
+指示データを作る際のプロンプトはQA のデータ拡張時と同様である。
+表 1 継続学習により知識埋め込みがどれだけできているかを QA で自動評価した結果。
+Sent は、モデル出力と正解回答として準備した文単位の回答に対する BERTscore の F 値で、Doc は、モデル出力と元論文の文章全体に対する BERTscoreの F 値。
+train は継続学習時にも出現している QA ペアに対するスコア、test は、継続学習次に出現していない QA ペアに対するスコア。
+モデル train testSent Doc GPT-4o-mini Sent Doc GPT-4o-minillm-jp-3-13b-instruct 0.59 0.795 0.273 0.397 0.543 0.308コンテキスト長 1024+ 継続学習、 ichikara 0.682 0.778 0.494 0.398 0.536 0.408+ 継続学習、 one-shot 0.665 0.773 0.404 0.627 0.807 0.365+ 継続学習、 zero-shot 0.450 0.522 0.363 0.299 0.554 0.352+ 継続学習、 all-included 0.454 0.449 0.517 0.689 0.816 0.420コンテキスト長 2048+ 継続学習、 ichikara 0.455 0.544 0.344 0.376 0.540 0.377+ 継続学習、 one-shot 0.468 0.433 0.465 0.373 0.555 0.359+ 継続学習、 zero-shot 0.446 0.438 0.346 0.340 0.492 0.341+ 継続学習、 all-included 0.507 0.427 0.412 0.378 0.531 0.377コンテキスト長 4096+ 継続学習、 ichikara 0.467 0.552 0.403 0.371 0.513 0.387+ 継続学習、 one-shot 0.490 0.376 0.387 0.700 0.861 0.364+ 継続学習、 zero-shot 0.437 0.500 0.353 0.556 0.846 0.348+ 継続学習、 all-included 0.460 0,547 0.511 0.546 0.821 0.400コンテキスト長 8192+
+継続学習、 ichikara 0.436 0.492 0.357 0.350 0.548 0.340+ 継続学習、 one-shot 0.419 0.374 0.408 0.661 0.852 0.314+ 継続学習、 zero-shot 0.424 0.498 0.319 0.363 0.549 0.324+ 継続学習、 all-included 0.439 0.502 0.378 0.616 0.833 0.354コンテキスト長 16384+ 継続学習、 ichikara 0.477 0.527 0.481 0.377 0.556 0.394+ 継続学習、 one-shot 0.454 0.388 0.372 0.372 0.535 0.361+ 継続学習、 zero-shot 0.478 0.541 0.456 0.346 0.538 0.367+ 継続学習、 all-included 0.472 0.448 0.477 0.348 0.513 0.387表 2 継続学習により知識埋め込みがどれだけできているかをテストデータの手法やツール名、実験結果などに関する質問からランダムサンプリングした 100 件の QAで人手評価した結果モデル正答率llm-jp-3-13b-instruct 0.38コンテキスト長 1024+ 継続学習、 ichikara 0.45+ 継続学習、 one-shot 0.48+ 継続学習、 zero-shot 0.65+ 継続学習、 all-included 0.72コンテキスト長 4096+ 継続学習、 ichikara 0.46+ 継続学習、 one-shot 0.46+ 継続学習、 zero-shot 0.69+ 継続学習、 all-included 0.73コンテキスト長 16384+ 継続学習、 ichikara 0.44+ 継続学習、 one-shot 0.45+ 継続学習、 zero-shot 0.72+ 継続学習、 all-included 0.76
+
+4 QA による知識定着の評価
+
+継続学習により LLM の知識定着がどの程度進んだかを評価するため、質問応答(QA）を各モデルで行う。
+QA は継続学習向けのデータ拡張で作成したデータ群から、QA に該当するものと keywords の指示データを用いる。
+100 件のランダムな論文に付随するこれらの QA 拡張データは継続学習時に除外されており、その除外されたデータの QA を test データ、継続学習時にも出現している QA データを trainデータとした評価セットを組む。
+また、QA データの中には「この論文の提案手法は何ですか？」というような特定の論文を指し示していて、その論文を参照しないと答えられない質問が存在している。
+継続学習時においては、これは元論文が共に与えられるため問題にならないが、評価時には元論文を与えないため元論文の参照が必要な質問は排除すべきである。
+そこで、OpenAI のGPT-4o-mini を用いて、評価用の QA データの質問のフィルタリングを行った。
+自動評価自動評価は、BERTscore[15]4）と GPT-4o-mini を用いた。
+BERTscore は自動的に作成された4） モデルは https://huggingface.co/tohoku-nlp/tohokunlp-bert-500m-sq8192-alpha を使用回答文を reference とする場合と、元論文を referenceにする場合でそれぞれ Sent、Doc と表記している。
+GPT-4o-mini での評価は、正解回答文と元論文を提示しつつ、モデル出力が事実に基づくかどうかを 1、0 出力した。
+表 1 に、QA タスクにおける自動評価の結果を示す。
+全体的にどのモデルでも、継続学習によりスコアは上昇しており、継続学習後の指示学習データは ichikara, one-shot, all-included のスコアが高い。
+コンテキスト長に関しては、各モデルを通してあまり差が見られなかった。
+人手評価人手評価では、正解文と元論文に加えてコーパス全体の論文を読みながら、モデルの出力が事実に基づくかどうかという評価軸で 1、0 のバイナリー評価をテストデータからランダムにサンプリングした 100 件に対して行った。
+人手評価の結果を表 2 に示す。
+人手評価の場合でも、自動評価と同様にコンテキスト長による QA の性能はあまり変化はしていないが、コンテキスト長が伸びるにつれて正答率は微増した。
+また、指示学習データは ichikaraや ichikara を例としてプロンプトに含む one-shot はスコアが低く、zero-shot や all-included が最も正答率が高くなった。
+付録にて一部事例分析を紹介している(表 3)が、ichikara や one-shot は具体的な数値や団体名などのハルシネーションが多く、それが原因で正答率が下がっている。
+指示学習データ毎の性能差については、自動評価ではあまり ichikara, one-shot,all-included に差がなかったが、人手評価では明確なスコア差があり、本実験の自動評価の設計はより人手評価に沿うような改善が必要である。
+
+
+5 おわりに
+
+本研究では、継続学習を用いて特定ドメインの知識を LLM に対して効率的に埋め込む手法を提案した。
+実験の結果、継続学習後のモデルは指示学習データをドメイン特化させることで最も高い正答率を示し、適切なデータ設計が重要であることが確認された。
+一方で、コンテキスト長の変化による性能差は限定的であった。
+また、プロンプト形式による性能の違いを調査した結果、zero-shot や all-included が最も高い正答率を示し、特定の数値や団体名を含む形式では誤りが多発する課題が明らかになった。
+今後は、ハルシネーション抑制やデータ選定基準の最適化、そしてより高性能な自動評価に取り組む予定である。
+
+
+
+参考文献
+
+
+[1] Shijie Wu, Ozan Irsoy, Steven Lu, Vadim Dabravolski, Mark Dredze, Sebastian Gehrmann, PrabhanjanKambadur, David Rosenberg, and Gideon Mann. Bloomberggpt: A large language model for ﬁnance, 2023.
+[2] Hongyang Yang, Xiao-Yang Liu, and Christina Dan Wang. Fingpt: Open-source ﬁnancial large languagemodels, 2023.
+[3] Chen Ling, Xujiang Zhao, Jiaying Lu, Chengyuan Deng, Can Zheng, Junxiang Wang, Tanmoy Chowdhury,Yun Li, Hejie Cui, Tianjiao Zhao, et al. Beyond one-model-ﬁts-all: A survey of domain specialization forlarge language models. arXiv:2305.18703, 2023.
+[4] Yunxiang Li, Zihan Li, Kai Zhang, Ruilong Dan, Steve Jiang, and You Zhang. Chatdoctor: A medical chatmodel ﬁne-tuned on a large language model meta-ai (llama) using medical domain knowledge, 2023.
+[5] Quzhe Huang, Mingxu Tao, Chen Zhang, Zhenwei An, Cong Jiang, Zhibin Chen, Zirui Wu, and YansongFeng. Lawyer llama technical report, 2023.
+[6] Chunting Zhou, Pengfei Liu, Puxin Xu, Srini Iyer, Jiao Sun, Yuning Mao, Xuezhe Ma, Avia Efrat, Ping Yu,LILI YU, Susan Zhang, Gargi Ghosh, Mike Lewis, Luke Zettlemoyer, and Omer Levy. LIMA: Less is morefor alignment. In Thirty-seventh Conference on Neural Information Processing Systems, 2023.
+[7] Jiaxi Cui, Munan Ning, Zongjian Li, Bohua Chen, Yang Yan, Hao Li, Bin Ling, Yonghong Tian, and Li Yuan.Chatlaw: A multi-agent collaborative legal assistant with knowledge graph enhanced mixture-of-experts largelanguage model, 2024.
+[8] Daixuan Cheng, Shaohan Huang, and Furu Wei. Adapting large language models via reading comprehension.In The Twelfth International Conference on Learning Representations, 2024.
+[9] Daixuan Cheng, Yuxian Gu, Shaohan Huang, Junyu Bi, Minlie Huang, and Furu Wei. Instruction pre-training:Language models are supervised multitask learners. In Yaser Al-Onaizan, Mohit Bansal, and Yun-Nung Chen,editors, Proceedings of the 2024 Conference on Empirical Methods in Natural Language Process-ing, pp. 2529–2550, Miami, Florida, USA, November 2024. Association for Computational Linguistics.
+[10] LLM-jp, :, Akiko Aizawa, Eiji Aramaki, Bowen Chen, Fei Cheng, Hiroyuki Deguchi, Rintaro Enomoto,Kazuki Fujii, Kensuke Fukumoto, Takuya Fukushima, Namgi Han, Yuto Harada, Chikara Hashimoto, TatsuyaHiraoka, Shohei Hisada, Sosuke Hosokawa, Lu Jie, Keisuke Kamata, Teruhito Kanazawa, Hiroki Kanezashi,Hiroshi Kataoka, Satoru Katsumata, Daisuke Kawahara, Seiya Kawano, Atsushi Keyaki, Keisuke Kiryu,Hirokazu Kiyomaru, Takashi Kodama, Takahiro Kubo, Yohei Kuga, Ryoma Kumon, Shuhei Kurita, SadaoKurohashi, Conglong Li, Taiki Maekawa, Hiroshi Matsuda, Yusuke Miyao, Kentaro Mizuki, Sakae Mizuki,Yugo Murawaki, Akim Mousterou, Ryo Nakamura, Taishi Nakamura, Kouta Nakayama, Tomoka Nakazato,Takuro Niitsuma, Jiro Nishitoba, Yusuke Oda, Hayato Ogawa, Takumi Okamoto, Naoaki Okazaki, YoheiOseki, Shintaro Ozaki, Koki Ryu, Rafal Rzepka, Keisuke Sakaguchi, Shota Sasaki, Satoshi Sekine, Kohei Suda,Saku Sugawara, Issa Sugiura, Hiroaki Sugiyama, Hisami Suzuki, Jun Suzuki, Toyotaro Suzumura, KensukeTachibana, Yu Takagi, Kyosuke Takami, Koichi Takeda, Masashi Takeshita, Masahiro Tanaka, Kenjiro Taura,Arseny Tolmachev, Nobuhiro Ueda, Zhen Wan, Shuntaro Yada, Sakiko Yahata, Yuya Yamamoto, YusukeYamauchi, Hitomi Yanaka, Rio Yokota, and Koichiro Yoshino. Llm-jp: A cross-organizational project for theresearch and development of fully open japanese llms, 2024.
+[11] Zhengbao Jiang, Zhiqing Sun, Weijia Shi, Pedro Rodriguez, Chunting Zhou, Graham Neubig, Xi Lin, Wen-tauYih, and Srini Iyer. Instruction-tuned language models are better knowledge learners. In Lun-Wei Ku, AndreMartins, and Vivek Srikumar, editors, Proceedings of the 62nd Annual Meeting of the Associationfor Computational Linguistics (Volume 1: Long Papers), pp. 5421–5434, Bangkok, Thailand, August2024. Association for Computational Linguistics.
+[12] Qwen, :, An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chengyuan Li,Dayiheng Liu, Fei Huang, Haoran Wei, Huan Lin, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang,Jiaxi Yang, Jingren Zhou, Junyang Lin, Kai Dang, Keming Lu, Keqin Bao, Kexin Yang, Le Yu, Mei Li,Mingfeng Xue, Pei Zhang, Qin Zhu, Rui Men, Runji Lin, Tianhao Li, Tianyi Tang, Tingyu Xia, XingzhangRen, Xuancheng Ren, Yang Fan, Yang Su, Yichang Zhang, Yu Wan, Yuqiong Liu, Zeyu Cui, Zhenru Zhang,and Zihan Qiu. Qwen2.5 technical report, 2025.
+[13] Aaron Grattaﬁori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle,Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, Amy Yang, Angela Fan, Anirudh Goyal, AnthonyHartshorn, Aobo Yang, Archi Mitra, Archie Sravankumar, Artem Korenev, Arthur Hinsvark, Arun Rao, AstonZhang, Aurelien Rodriguez, Austen Gregerson, Ava Spataru, Baptiste Roziere, Bethany Biron, Binh Tang,Bobbie Chern, Charlotte Caucheteux, Chaya Nayak, Chloe Bi, Chris Marra, Chris McConnell, Christian Keller,Christophe Touret, Chunyang Wu, Corinne Wong, Cristian Canton Ferrer, Cyrus Nikolaidis, Damien Allonsius,Daniel Song, Danielle Pintz, Danny Livshits, Danny Wyatt, David Esiobu, Dhruv Choudhary, Dhruv Mahajan,Diego Garcia-Olano, Diego Perino, Dieuwke Hupkes, Egor Lakomkin, Ehab AlBadawy, Elina Lobanova,Emily Dinan, Eric Michael Smith, Filip Radenovic, Francisco Guzmán, Frank Zhang, Gabriel Synnaeve,Gabrielle Lee, Georgia Lewis Anderson, Govind Thattai, Graeme Nail, Gregoire Mialon, Guan Pang, GuillemCucurell, Hailey Nguyen, Hannah Korevaar, Hu Xu, Hugo Touvron, Iliyan Zarov, Imanol Arrieta Ibarra, IsabelKloumann, Ishan Misra, Ivan Evtimov, Jack Zhang, Jade Copet, Jaewon Lee, Jan Geﬀert, Jana Vranes, JasonPark, Jay Mahadeokar, Jeet Shah, Jelmer van der Linde, Jennifer Billock, Jenny Hong, Jenya Lee, Jeremy Fu,Jianfeng Chi, Jianyu Huang, Jiawen Liu, Jie Wang, Jiecao Yu, Joanna Bitton, Joe Spisak, Jongsoo Park, JosephRocca, Joshua Johnstun, Joshua Saxe, Junteng Jia, Kalyan Vasuden Alwala, Karthik Prasad, Kartikeya Upasani,Kate Plawiak, Ke Li, Kenneth Heaﬁeld, Kevin Stone, Khalid El-Arini, Krithika Iyer, Kshitiz Malik, KuenleyChiu, Kunal Bhalla, Kushal Lakhotia, Lauren Rantala-Yeary, Laurens van der Maaten, Lawrence Chen, LiangTan, Liz Jenkins, Louis Martin, Lovish Madaan, Lubo Malo, Lukas Blecher, Lukas Landzaat, Luke de Oliveira,Madeline Muzzi, Mahesh Pasupuleti, Mannat Singh, Manohar Paluri, Marcin Kardas, Maria Tsimpoukelli,Mathew Oldham, Mathieu Rita, Maya Pavlova, Melanie Kambadur, Mike Lewis, Min Si, Mitesh Kumar Singh,Mona Hassan, Naman Goyal, Narjes Torabi, Nikolay Bashlykov, Nikolay Bogoychev, Niladri Chatterji, NingZhang, Olivier Duchenne, Onur Çelebi, Patrick Alrassy, Pengchuan Zhang, Pengwei Li, Petar Vasic, PeterWeng, Prajjwal Bhargava, Pratik Dubal, Praveen Krishnan, Punit Singh Koura, Puxin Xu, Qing He, QingxiaoDong, Ragavan Srinivasan, Raj Ganapathy, Ramon Calderer, Ricardo Silveira Cabral, Robert Stojnic, RobertaRaileanu, Rohan Maheswari, Rohit Girdhar, Rohit Patel, Romain Sauvestre, Ronnie Polidoro, Roshan Sumbaly,Ross Taylor, Ruan Silva, Rui Hou, Rui Wang, Saghar Hosseini, Sahana Chennabasappa, Sanjay Singh, SeanBell, Seohyun Sonia Kim, Sergey Edunov, Shaoliang Nie, Sharan Narang, Sharath Raparthy, Sheng Shen,Shengye Wan, Shruti Bhosale, Shun Zhang, Simon Vandenhende, Soumya Batra, Spencer Whitman, StenSootla, Stephane Collot, Suchin Gururangan, Sydney Borodinsky, Tamar Herman, Tara Fowler, Tarek Sheasha,Thomas Georgiou, Thomas Scialom, Tobias Speckbacher, Todor Mihaylov, Tong Xiao, Ujjwal Karn, VedanujGoswami, Vibhor Gupta, Vignesh Ramanathan, Viktor Kerkez, Vincent Gonguet, Virginie Do, Vish Vogeti,Vítor Albiero, Vladan Petrovic, Weiwei Chu, Wenhan Xiong, Wenyin Fu, Whitney Meers, Xavier Martinet,Xiaodong Wang, Xiaofang Wang, Xiaoqing Ellen Tan, Xide Xia, Xinfeng Xie, Xuchao Jia, Xuewei Wang,Yaelle Goldschlag, Yashesh Gaur, Yasmine Babaei, Yi Wen, Yiwen Song, Yuchen Zhang, Yue Li, Yuning Mao,Zacharie Delpierre Coudert, Zheng Yan, Zhengxing Chen, Zoe Papakipos, Aaditya Singh, Aayushi Srivastava,Abha Jain, Adam Kelsey, Adam Shajnfeld, Adithya Gangidi, Adolfo Victoria, Ahuva Goldstand, Ajay Menon,Ajay Sharma, Alex Boesenberg, Alexei Baevski, Allie Feinstein, Amanda Kallet, Amit Sangani, Amos Teo,Anam Yunus, Andrei Lupu, Andres Alvarado, Andrew Caples, Andrew Gu, Andrew Ho, Andrew Poulton,Andrew Ryan, Ankit Ramchandani, Annie Dong, Annie Franco, Anuj Goyal, Aparajita Saraf, ArkabandhuChowdhury, Ashley Gabriel, Ashwin Bharambe, Assaf Eisenman, Azadeh Yazdan, Beau James, Ben Maurer,Benjamin Leonhardi, Bernie Huang, Beth Loyd, Beto De Paola, Bhargavi Paranjape, Bing Liu, Bo Wu,Boyu Ni, Braden Hancock, Bram Wasti, Brandon Spence, Brani Stojkovic, Brian Gamido, Britt Montalvo,Carl Parker, Carly Burton, Catalina Mejia, Ce Liu, Changhan Wang, Changkyu Kim, Chao Zhou, ChesterHu, Ching-Hsiang Chu, Chris Cai, Chris Tindal, Christoph Feichtenhofer, Cynthia Gao, Damon Civin, DanaBeaty, Daniel Kreymer, Daniel Li, David Adkins, David Xu, Davide Testuggine, Delia David, Devi Parikh,Diana Liskovich, Didem Foss, Dingkang Wang, Duc Le, Dustin Holland, Edward Dowling, Eissa Jamil,Elaine Montgomery, Eleonora Presani, Emily Hahn, Emily Wood, Eric-Tuan Le, Erik Brinkman, EstebanArcaute, Evan Dunbar, Evan Smothers, Fei Sun, Felix Kreuk, Feng Tian, Filippos Kokkinos, Firat Ozgenel,Francesco Caggioni, Frank Kanayet, Frank Seide, Gabriela Medina Florez, Gabriella Schwarz, Gada Badeer,Georgia Swee, Gil Halpern, Grant Herman, Grigory Sizov, Guangyi, Zhang, Guna Lakshminarayanan, HakanInan, Hamid Shojanazeri, Han Zou, Hannah Wang, Hanwen Zha, Haroun Habeeb, Harrison Rudolph, HelenSuk, Henry Aspegren, Hunter Goldman, Hongyuan Zhan, Ibrahim Damlaj, Igor Molybog, Igor Tufanov, IliasLeontiadis, Irina-Elena Veliche, Itai Gat, Jake Weissman, James Geboski, James Kohli, Janice Lam, JaphetAsher, Jean-Baptiste Gaya, Jeﬀ Marcus, Jeﬀ Tang, Jennifer Chan, Jenny Zhen, Jeremy Reizenstein, JeremyTeboul, Jessica Zhong, Jian Jin, Jingyi Yang, Joe Cummings, Jon Carvill, Jon Shepard, Jonathan McPhie,Jonathan Torres, Josh Ginsburg, Junjie Wang, Kai Wu, Kam Hou U, Karan Saxena, Kartikay Khandelwal,Katayoun Zand, Kathy Matosich, Kaushik Veeraraghavan, Kelly Michelena, Keqian Li, Kiran Jagadeesh, KunHuang, Kunal Chawla, Kyle Huang, Lailin Chen, Lakshya Garg, Lavender A, Leandro Silva, Lee Bell, LeiZhang, Liangpeng Guo, Licheng Yu, Liron Moshkovich, Luca Wehrstedt, Madian Khabsa, Manav Avalani,Manish Bhatt, Martynas Mankus, Matan Hasson, Matthew Lennie, Matthias Reso, Maxim Groshev, MaximNaumov, Maya Lathi, Meghan Keneally, Miao Liu, Michael L. Seltzer, Michal Valko, Michelle Restrepo, MihirPatel, Mik Vyatskov, Mikayel Samvelyan, Mike Clark, Mike Macey, Mike Wang, Miquel Jubert Hermoso,Mo Metanat, Mohammad Rastegari, Munish Bansal, Nandhini Santhanam, Natascha Parks, Natasha White,Navyata Bawa, Nayan Singhal, Nick Egebo, Nicolas Usunier, Nikhil Mehta, Nikolay Pavlovich Laptev, NingDong, Norman Cheng, Oleg Chernoguz, Olivia Hart, Omkar Salpekar, Ozlem Kalinli, Parkin Kent, ParthParekh, Paul Saab, Pavan Balaji, Pedro Rittner, Philip Bontrager, Pierre Roux, Piotr Dollar, Polina Zvyagina,Prashant Ratanchandani, Pritish Yuvraj, Qian Liang, Rachad Alao, Rachel Rodriguez, Raﬁ Ayub, RaghothamMurthy, Raghu Nayani, Rahul Mitra, Rangaprabhu Parthasarathy, Raymond Li, Rebekkah Hogan, RobinBattey, Rocky Wang, Russ Howes, Ruty Rinott, Sachin Mehta, Sachin Siby, Sai Jayesh Bondu, Samyak Datta,Sara Chugh, Sara Hunt, Sargun Dhillon, Sasha Sidorov, Satadru Pan, Saurabh Mahajan, Saurabh Verma, SeijiYamamoto, Sharadh Ramaswamy, Shaun Lindsay, Shaun Lindsay, Sheng Feng, Shenghao Lin, Shengxin CindyZha, Shishir Patil, Shiva Shankar, Shuqiang Zhang, Shuqiang Zhang, Sinong Wang, Sneha Agarwal, SojiSajuyigbe, Soumith Chintala, Stephanie Max, Stephen Chen, Steve Kehoe, Steve Satterﬁeld, SudarshanGovindaprasad, Sumit Gupta, Summer Deng, Sungmin Cho, Sunny Virk, Suraj Subramanian, Sy Choudhury,Sydney Goldman, Tal Remez, Tamar Glaser, Tamara Best, Thilo Koehler, Thomas Robinson, Tianhe Li, TianjunZhang, Tim Matthews, Timothy Chou, Tzook Shaked, Varun Vontimitta, Victoria Ajayi, Victoria Montanez,Vijai Mohan, Vinay Satish Kumar, Vishal Mangla, Vlad Ionescu, Vlad Poenaru, Vlad Tiberiu Mihailescu,Vladimir Ivanov, Wei Li, Wenchen Wang, Wenwen Jiang, Wes Bouaziz, Will Constable, Xiaocheng Tang,Xiaojian Wu, Xiaolan Wang, Xilun Wu, Xinbo Gao, Yaniv Kleinman, Yanjun Chen, Ye Hu, Ye Jia, Ye Qi,Yenda Li, Yilin Zhang, Ying Zhang, Yossi Adi, Youngjin Nam, Yu, Wang, Yu Zhao, Yuchen Hao, Yundi Qian,Yunlu Li, Yuzi He, Zach Rait, Zachary DeVito, Zef Rosnbrick, Zhaoduo Wen, Zhenyu Yang, Zhiwei Zhao,and Zhiyu Ma. The llama 3 herd of models, 2024.
+[14] 聡関根, まや安藤, 美知子後藤, 久美鈴木, 大輔河原, 直也 井之上 健太郎乾. ichikara-instruction llm のための日本語インストラクションデータの作成. 言語処理学会 第 30 回年次大会 発表論文集, 2024.
+[15] Tianyi Zhang*, Varsha Kishore*, Felix Wu*, Kilian Q. Weinberger, and Yoav Artzi. Bertscore: Evaluatingtext generation with bert. In International Conference on Learning Representations, 2020.
+
+
+
+
+A 人手評価で用いたテストデータ
+
+
+
+での事例
+
+表 3 人手評価で用いた 100 件のデータセットの例 1質問正解回答JParaCrawl とは何ですか？
+JParaCrawl は約 4400 万文を超える日英対訳データで、機械翻訳の研究や開発に使用される大規模なデータコーパスです。
+llm-jp-3-13b-instruct JParaCrawl（Japanese ParaCrawl）は、日本のインターネット上の情報を収集するためのクローリングツールです。
+このツールは、ウェブページやブログ、フォーラム、ニュースサイトなど、さまざまなオンラインリソースからデータを取得するために使用されます。
+...コンテキスト長 16384+ 継続学習、 ichikara JParaCrawl は、日本語と英語の対訳文を収集し、公開しているプロジェクトです。
+国立研究開発法人情報通信研究機構(NICT)のグローバルコミュニケーション計画の一環として行われています。
+...+ 継続学習、 one-shot JParaCrawl は、日英対訳文を含む大規模な対訳コーパスであり、約 20万文対の対訳文が収集されています。
+このコーパスは、機械翻訳や自然言語処理の研究に利用され。
+..+ 継続学習、 zero-shot JParaCrawl は、ウェブから大規模に日英対訳コーパスを継続的に構築するプロジェクトです。
+このプロジェクトでは、機械翻訳モデルの精度向上を目的とし、2014 年から日英対訳データを継続的に収集・公開しています。
++ 継続学習、 all-included JParaCrawl は、クラウドソーシングを活用して作成された日英対訳コーパスであり、約 2100 万文対の対訳文を含んでいます。
+このコーパスは、機械翻訳モデルの学習に利用され。
+..図 3 の事例では、「JParaCrawl とは何ですか？」という質問に対して答える QA になっている。
+JParaCrawl は NTT が収集している対訳コーパスで、複数回 ANLP のコーパスに出現している。
+その中でも JParaCrawl v3.0 では、対訳文数が 2100 万越えと記載されており、正解回答文とは異なるものの、all-included の出力は正解と見做すことができる。
+ichikara と one-shot のモデルについては、JParaCrawlを公開している機関名と文対数が誤っている。

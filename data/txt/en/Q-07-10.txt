@@ -1,0 +1,307 @@
+Extraction and Generation Tasks with Knowledge-awareText-to-Text Transfer Transformer
+
+Mohammad Golam Sohrab
+
+1
+
+ Makoto Miwa
+
+1,2
+
+ 
+
+1
+
+Artiﬁcial Intelligence Research Center (AIRC)
+
+
+
+National Institute of Advanced Industrial Science and Technology (AIST)
+
+2
+
+Toyota Technological Institute, Japan
+
+
+
+sohrab.mohammad@aist.go.jp, makoto-miwa@toyota-ti.ac.jp
+
+
+
+Abstract
+
+We introduce knowledge-aware transfer learning with atext-to-text transfer transformer (KAT5) by leveraging atext-to-text transfer transformer (T5) in the Wikipedia do-main.
+In standard transfer learning like T5, a model is ﬁrstpre-trained on an unsupervised data task with a languagemodel objective before ﬁne-tuning it on a downstreamtask.
+In this work, we align large-scale alignments be-tween Wikipedia abstract and Wikidata triples to facilitateour pre-training KAT5 model.
+Experiment result showsthat KAT5 can match or outperform several downstreamtasks, including question answering, entity and relationextraction, summarization and machine translation.
+
+
+1 Introduction
+
+In this work, to better capture the awareness of knowl-edge in language modeling pre-training, we present aknowledge-aware text-to-text transfer transformer thatpacks more information into the T5 model [ 1], which wecall KAT5.
+During transfer learning a model is ﬁrst pre-trained on a large-scale unsupervised data task and the mostsuccessful approaches have been variants of masked lan-guage models (MLMs), which are denoising autoencodersthat are trained to reconstruct text by masking out a randomsubset of the input sequence.
+Integrating knowledge like entity or coreference infor-mation during transfer learning in NLP is not a commonfashion as it needs to label a large-scale dataset.
+Suchlarge-scale label dataset is not available, therefore, it iscommon to pre-train the entire model using data-rich unsu-pervised learning on unlabeled data.
+Our baseline model,T5 investigates diﬀerent objective tasks, including maskedlanguage model (MLM), random span, and deshuﬄing,where the model is limited to exploring integrating knowl-edge during pre-training.
+Here, we push the limits of thismodel by grafting knowledge like entity and co-referenceinformation by mapping Wikipedia and Wikidata duringpre-training.
+We perform large-scale alignments betweenWikipedia abstract and Wikidata triples to facilitate ourpre-training KAT5 model and further research on inte-grating knowledge into large-scale pre-training.
+We showthat initialization with knowledge-aware pre-training is ef-fective for various downstream tasks.
+We ﬁne-tune andevaluate the KAT5 model in joint entity-relation extrac-tion and generation tasks‒ question answering, abstractivesummarization, and machine translation.
+We compare itsperformance with several recent state-of-the-art models.
+The KAT5 implementation is based on Huggingfacetransformers.
+This work is a short version of our previouslypublished KAT5 [2] model, where the question-answeringtask on two datasets are additionally evaluated.
+
+
+2 Model Architecture
+
+We consider the text-to-text transfer transformer – T5 [1]as a baseline encoder-decoder architecture close to the orig-inal architecture of transformer [3].
+
+2.1 KAT5: Knowledge-Aware Text-To-
+
+
+
+Text Transfer Transformer
+
+As an unsupervised objective during pre-training, amodel needs an objective function that does not requirelabels but teaches the model generalizable knowledge andwill be useful to transfer that knowledge into downstreamtasks.
+Apart from casual language modeling objective forpre-training, recently denoising a.k.a. masked languagemodeling (MLM) shows better performance and becomeInput Text: Alain Connes ([ alɛ  kɔn ]; born 1 April 1947 )is a French mathematician , currently Professor at theCollège de France , IHÉS , The Ohio State University andVanderbilt University .
+He was an Invited Professor at theConservatoire national des arts et métiers ( 2000 ).,Sentinel_Mask
+:
+<extra_id_0> ([ alɛ  kɔn ]; born <extra_id_1>) is a <extra_id_2> <extra_id_3> , currently Professor at theCollège de France , IHÉS , <extra_id_4> and <extra_id_5> .<extra_id_6>  was an Invited Professor at the Conservatoirenational des arts et métiers ( <extra_id_7> )
+.,KAT5:
+Knowledge-Aware Text-To-Text Transfer TransformerTarget: <extra_id_0>
+Alain Connes <extra_id_1> 1 April 1947<extra_id_2> French <extra_id_3> mathematician <extra_id_4>The Ohio State University <extra_id_5> Vanderbilt University<extra_id_6>
+He <extra_id_7> 2000Figure1 Pre-training tasks of KAT5a standard unsupervised learning objective in many nat-ural language processing (NLP) tasks.
+In the MLM ob-jective, the model is trained to predict missing or cor-rupted tokens by adding <MASK> in the input sequence.
+Inspired by BERTs MLM objective, T5 follows a ran-dom span masking objective to corrupt 15% of tokensin the input sequence where all consecutive spans ofdropped-out tokens are replaced by a single sentinel to-ken, a.k.a. unique mask tokens.
+We adopt the T5 mask-ing strategies and design an objective that randomly sam-ples and then drops out 15% of entity and coreferencerelated spans in the input sequence using 100 sentinel to-kens.
+Each sentinel token represents a unique mask tokenstarting as <extra_id_0>, <extra_id_1>, …, <extra_id_99> for a given input sequence.
+Fig. 1 shows a knowledge-aware task of KAT5.
+In thisﬁgure, the bold text in the input sequence represents en-tities where the pronoun He indicates the coreference ofAlain
+connes.
+During sentinel masking in KAT5,unique mask tokens are used to corrupt the input text byreplacing the entity and coreference spans.
+Finally, theoutput sequence consists of the dropped-out entity andcoreference spans, delimited by the sentinel tokens usedto replace them in the input.
+
+
+2.2 Pre-training Data Creation
+
+Another key contribution of this paper is to automati-cally create data for pre-training the KAT5 model.
+Thepre-training data set is a crucial component of the transferlearning pipeline.
+During pre-training, the model needsa large amount of data that teaches the model generaliz-able knowledge.
+The T5 model used the Colossal CleanCrawled Corpus (C4) dataset for pre-training by down-loading about 750 GB of text extracted from the Web. Incontrast, our KAT5 model is based on integrating knowl-edge like entity and co-reference information during pre-training.
+One possible way is to create such a knowledge-aware pre-training dataset by aligning Wikipedia abstractand Wikipedia hyperlinks with Wikidata entities.
+Wealigned the Wikipedia abstract and Wikidata entities topre-train the KAT5 model to shed light on this challengingtask.
+We create the knowledge-aware pre-training datasetby adopting the T-REx implementation1）.
+In this imple-mentation, we integrate entity or mention type predictorsusing the spaCy2）model to predict all the span types ofWikipedia links.
+For space limitation, we refer the readersto [2] for more details of pre-training data creation.
+
+
+3 Experimental Settings
+
+
+
+3.1 Datasets
+
+Several datasets for diﬀerent downstream tasks, includ-ing SQuAD 1.1
+[4] and SQuAD 2.0
+[4] datasets for ques-tion answering, CoNLL04
+[5], ADE [6], and NYT [7]datasets for joint entity-relation extraction tasks, XSum [8]and CNN/DailyMail (CNNDM) datasets for summuriza-tion tasks, and the WMT shared-task datasets from Hug-ging Face3）,4）are used to evaluate our KAT5 model.
+Werefer to Appendix A for more details about the datasets.
+
+
+3.2 KAT5 Pre-training and Fine-tuning
+
+To pre-train the KAT5 model, we initialize the modelwith the T5-base checkpoint5）and continue pre-trainingusing the knowledge-aware span denoising objective of T5on the training split of our dataset that was explained inSection 2.2.
+During KAT5 ﬁne-tuning on downstreamdatasets, Like T5 [1], we treat every text processing prob-lem as a test-to-text problem, i.e. giving text as input tothe KAT5 model and producing new text as output.
+Weconsider two learning settings - (1) Single-task learning:1） https://github.com/hadyelsahar/RE-NLG-Dataset2） https://spacy.io3） https://huggingface.co/datasets/wmt144） https://huggingface.co/datasets/wmt165） https://huggingface.co/google-t5/t5-baseTable1 Performance comparison on the SQuAD 1.1 andSQuAD 2.0 datasets.
+ModelSQuAD 1.1 SQuAD 2.0EM F1 EM F1BNA
+[4] 68.0 77.3 59.8 62.6DocQA [4] 71.1 81.0 61.9 64.8DocQA + ELMo [ 4] 78.6 85.8 65.1 67.6T5
+[1]80.8 - - -KAT5 81.5 88.4 78.0 81.5a single model on a single dataset is learned initializingfrom KAT5 checkpoint.
+(2) Multi-task learning:
+Sincethe model is based on our direct baseline T5 model, there-fore, our KAT5 model naturally allows us to train a singlemodel on multiple datasets that can cover many structuredprediction tasks.
+Lear ning parameters for pre-training andﬁne-tuning are discussed in Appendix B.
+
+4 Results
+
+We show that our Knowledge-aware T5 (KAT5) can ef-fectively solve the structure prediction tasks that match orexceed the previous state of the art on multiple datasets.
+To evaluate our model, we adopt TANL [9] evaluationscript for joint entity-relation extraction tasks and Hug-ging Face Transformers evaluation script for question-answering, summarization and translation tasks.
+
+
+4.1 Question Answering
+
+Table 1 shows the question answering performance com-parison of KAT5 model over the SQuAD 1.1 and SquAD2.0 datasets.
+KAT5 outprforms our direct baseline T5model and shows a signiﬁcant improvements over the othermodels in this table.
+
+
+4.2 Joint Entity-Relation Extraction
+
+We tackle the joint entity-relation as a generation taskwhere the model output of KAT5 is a triplet that is presentin the input text.
+With the single-task setup in Table 2,the KAT5 outperforms over the TANL which is our di-rect baseline since TANL framework is initialized withT5 and used the same model parameters.
+We obtain a+0.6/+1.7/+0.2
+and -0.6/+1.0/+0.1 improvement using F1score in the CONLL4/ADE/NYT datasets for entity andrelation extraction tasks respectively.
+TANL, needs 200epochs to achieve the stated results in Table 2 where weﬁne-tune on top of KAT5 for 10 epochs.
+In contrast to ourbaseline approaches, KAT5 shows a better performanceover the SpERT [10], but shows a little drop in comparisonto
+the Rebel
+[11] which is a task speciﬁc model.
+
+
+4.3 Summarization
+
+Table 3 shows the abstractive performance comparisonof KAT5 over the XSum dataset.
+Both the single- andmulti-task settings, the KAT5 outperforms the baselineT5 model.
+The model also outperforms BART and therecent non-autoregressive BERT-NAR-BERT model.
+Ta-ble 4 shows the performance comparison of KAT5 over theCNNDM dataset.
+The model shows an improvement overthe baseline model but shows a little drop in comparisonto the BART model.
+
+
+4.4 Machine Translation
+
+Results of machine translation (MT) experiments aresummarized in Table 5.
+The KAT5 model outperforms thebaseline T5 that obtains a +0.36/+3.01 improvement usingBLEU score in the EN-DE/EN-RO WMT datasets respec-tively.
+In comparison to the non-autoregressive bench-mark, the KAT5 model outperforms all formats of theBERT-NAR-BERT models.
+
+
+5 Discussion
+
+We present Knowledge-aware T5 (KAT5), a novel, sim-ple, and easy-to-implement S2S model by leveraging T5checkpoint during pre-training.
+We demonstrate strongperformances of joint entity-relation extraction in threedatasets (ADE, CONLL04, and NYT), XSum and CN-NDM in summar ization tasks, and English (EN) → Ger-man (DE) and English→Romanian (RO) in machine trans-lation.
+KAT5 is a budget training approach since it needs 10epochs that can achieve similar or somewhat better perfor-mance over the each CONLL04, NYT, and ADE datasetswhere TANL set 200 epochs to achieve the reported scorein Table 2 for all the entity-relation extraction datasets.
+
+
+6 Related Work
+
+T5 [1] - the basic idea underlying this work is to treat ev-ery text processing problem as a text-to-text problem,i.e. taking text as input and producing new text as out-put.
+The model achieves state-of-the-art results on manybenchmarks covering summarization, question answering,Table2 Performance comparison on the CONLL04, ADE, and NYT datasets.
+Bold and underlined denotes the best and second-bestresults within KAT5 and Baseline Models.
+Model ParamsCONLL04 ADE NYTEntity Relation Entity Relation Entity RelationSpERT
+[10] 110M 88.9 71.5 89.3 78.8 - -REBEL_pretraining
+[11] 460M - 75.4 - 82.2 - 92.0- Baseline Model
+-TANL + Single-task
+[9] 220M 89.4 71.4 90.2 80.6 94.9 90.8KAT5
++ Single-task 220M 90.0 69.8 91.9 81.6 95.1 90.9Table3 Performance comparison on the XSum dataset.
+R-1/2/L stands for ROUGE-1/2/L.ModelXSumR-1 R-2 R-LTransformer
+[3] 30.7 10.8 24.5ELMER-Soft [12] 38.3 14.2 29.9BART [13] 38.8 16.2 30.6BERT2BERT
+[14] 37.5 15.2 30.1BnB + additional pre-training [15] 36.1 13.4 30.0- Baseline Model -T5
++ ﬁne-tuning +
+Single-task 39.7 16.5 31.9KAT5 +
+Single-task 39.9 16.7 32.1KAT5 + Multi-task 40.2 17.0 32.2Table4 Performance comparison on the CNN/DailyMail (CN-NDM) dataset.
+Bold and underlined scores denote the best andsecond-best results within KAT5 and Baseline Models.
+ModelCNNDMR-1 R-2 R-LBERTSUMABS
+[16] 41.72 19.39 38.76BERTSUMEXTABS
+[16] 42.13 19.60 39.18ROBERTASHARE
+[14] 40.31 18.91 37.62BART
+[13] 44.16 21.28
+40.90- Baseline Model -T5
+[1] - 19.24 -KAT5
++ Single-task 43.51 20.64 40.66KAT5 +
+Multi-task 43.44 20.28 40.56text classiﬁcation, and more.
+We adopt this approach asour direct baseline by grafting knowledge like entity andcoreference information during pre-training.
+TANL [9] - a framework to solve several structure pre-dictions in a uniﬁed way, with a common architecture andwithout the need for task-speciﬁc modules.
+This is ourbaseline approach for joint entity and relation extractiontasks as the model initializes from the T5-base model likeour approach during pre-training.
+Table5
+Machine translation experiment results in BLEUscores.
+Model EN - DE EN - ROTransformer [3] 27.30 21.53BERT2BERT + mBERT
+[14] 25.80 23.24BnB + mBERT + distilled [15] 27.49 18.94- Baseline Model -T5
+[1] 27.65 26.98KAT5 28.01 29.99REBEL
+[11] - a sequence-to-sequence (S2S) modelbased on BART-large that performs end-to-end relationextraction for more than 200 diﬀerent relation types andshow that how relation extraction can be simpliﬁed by ex-pressing triplets as a sequence of text.
+BART-NAR-BERT (BnB)[15] ‒ a pre-trained non-autoregressive S2S model, which employs BERT as thebackbone for the encoder and decoder for natural languageunderstanding and generation tasks.
+The model outper-formed several SOTA models in non-autoregressive bench-mark and has shown comparable performance in autore-gressive models.
+Since the model follows a S2S manner,we also compare our model over the generative tasks.
+
+
+7 Conclusion
+
+This paper introduces an eﬃcient Knowledge-awareT5 (KAT5) S2S method with encoders and decodersthat integrates entities and their coreferences as knowl-edge dur ing pre-training.
+To introduce such knowledge-aware approach, we perform large-scale alignments be-tween Wikipedia abstract and Wikidata triples to facilitateour pre-training KAT5 model by leveraging T5 model.
+Ex-periment results show that the proposed model outperformsbaselines in most of the downstream tasks.
+In the future,we plan to extend our KAT5 model into a larger parametermodel with more knowledge-aware data.
+
+
+
+Acknowledgement
+
+This paper is based on results obtained from a projectJPNP20006, commissioned by the New Energy and Indus-trial Technology Development Organization (NEDO).
+
+References
+
+
+[1] Colin Raﬀel, Noam Shazeer, Adam Roberts, KatherineLee, Sharan Narang, Michael Matena, Yanqi Zhou, WeiLi, and Peter J. Liu. Exploring the limits of transfer learn-ing with a uniﬁed text-to-text transformer. Journal ofMachine Learning Research, Vol. 21, No. 140, pp.1–67, 2020.
+[2] Mohammad Golam Sohrab and Makoto Miwa. Kat5:Knowledge-aware transfer learning with  a  text-to-text transfer transformer. In Albert Bifet, Tomas Krilav-ičius, Ioanna Miliou, and Slawomir Nowaczyk, editors,Machine Learning and Knowledge Discovery inDatabases. Applied Data Science Track, pp. 157–173, Cham, 2024. Springer Nature Switzerland.
+[3] Ashish Vaswani, Noam Shazeer, Niki Parmar, JakobUszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser,and Illia Polosukhin. Attention is all you need. Advancesin neural information processing systems, Vol. 30,, 2017.
+[4] Pranav Rajpurkar, Jian Zhang, and Percy Liang. Knowwhat you don’t know: Unanswerable questions for squad.In ACL 2018, 2018.
+[5] Dan Roth and Wen-tau Yih. A linear programmingformulation for global inference in natural languagetasks. In Proceedings of the Eighth Conference onCoNLL-2004 at HLT-NAACL 2004, pp. 1–8, Boston,Massachusetts, USA, May 6 - May 7 2004. Association forComputational Linguistics.
+[6] Harsha Gurulingappa, Abdul Mateen Rajput, AngusRoberts, Juliane Fluck, Martin Hofmann-Apitius, andLuca Toldo. Development of a benchmark corpus to sup-port the automatic extraction of drug-related adverse ef-fects from medical case reports. Journal of BiomedicalInformatics, Vol. 45, No. 5, pp. 885–892, 2012.
+[7] Xiangrong Zeng, Daojian Zeng, Shizhu He, Kang Liu,and Jun Zhao. Extracting relational facts by an end-to-endneural model with copy mechanism. In Iryna Gurevychand Yusuke Miyao, editors, Proceedings of the 56thAnnual Meeting of the ACL (Volume 1: Long Pa-pers), pp. 506–514, Melbourne, Australia, July 2018.
+[8] Shashi Narayan, Shay B. Cohen, and Mirella Lapata. Don’tgive me the details, just the summary! topic-aware con-volutional neural networks for extreme summarization.In Ellen Riloﬀ, David Chiang, Julia Hockenmaier, andJun’ichi Tsujii, editors, Proceedings of the 2018 Con-ference on EMNLP, pp. 1797–1807, Brussels, Belgium,October-November 2018. ACL.
+[9] Giovanni Paolini, Ben Athiwaratkun, Jason Krone, Jie Ma,Alessandro Achille, Rishita Anubhai, Cicero Nogueira dosSantos, Bing Xiang, and Stefano Soatto. Structured predic-tion as translation between augmented natural languages.In 9th International Conference on Learning Rep-resentations, ICLR 2021, 2021.
+[10] Markus Eberts and Adrian Ulges. Span-based joint en-tity and relation extraction with transformer pre-training.CoRR, 2019.
+[11] Pere-Lluís Huguet Cabot and Roberto Navigli. REBEL:Relation extraction by end-to-end language generation. InMarie-Francine Moens, Xuanjing Huang, Lucia Specia,and Scott Wen-tau Yih, editors, Findings of the As-sociation for Computational Linguistics: EMNLP2021, pp. 2370–2381. ACL.
+[12] Junyi Li, Tianyi Tang, Wayne Xin Zhao, Jian-Yun Nie,and Ji-Rong Wen. ELMER: A non-autoregressive pre-trained language model for eﬃcient and eﬀective text gen-eration. In Proceedings of the 2022 Conferenceon EMNLP, pp. 1044–1058, Abu Dhabi, United ArabEmirates, December 2022. Association for ComputationalLinguistics.
+[13] Mike Lewis, Yinhan Liu, Naman Goyal, MarjanGhazvininejad, Abdelrahman Mohamed, Omer Levy,Veselin Stoyanov, and Luke Zettlemoyer. BART: Denois-ing sequence-to-sequence pre-training for natural languagegeneration, translation, and comprehension. In Dan Ju-rafsky, Joyce Chai, Natalie Schluter, and Joel Tetreault,editors, Proceedings of the 58th Annual Meetingof the Association for Computational Linguistics,pp. 7871–7880. ACL, July 2020.
+[14] Sascha Rothe, Shashi Narayan, and Aliaksei Severyn.Leveraging pre-trained checkpoints for sequence gener-ation tasks. Transactions of the Association forComputational Linguistics, Vol. 8, pp. 264–280,2020.
+[15] Mohammad Golam Sohrab, Masaki Asada, Mat¯ıss Rikters,and Makoto Miwa. Bert-nar-bert: A non-autoregressivepre-trained sequence-to-sequence model leveraging bertcheckpoints. IEEE Access, Vol. 12, pp. 23–33, 2024.
+[16] Yang Liu and Mirella Lapata. Text summarization withpretrained encoders. In Kentaro Inui, Jing Jiang, Vin-cent Ng, and Xiaojun Wan, editors, Proceedings ofthe 2019 Conference on EMNLP-IJCNLP, pp. 3730–3740, Hong Kong, China, November 2019. ACL.
+[17] Pankaj Gupta, Hinrich Schütze, and Ber nt Andrassy. Tableﬁlling multi-task recurrent neural network for joint entityand relation extraction. In Yuji Matsumoto and RashmiPrasad, editors, Proceedings of COLING 2016, the26th International Conference on ComputationalLinguistics, pp. 2537–2547.
+[18] Giovanni Paolini, Ben Athiwaratkun, Jason Krone, Jie Ma,Alessandro Achille, Rishita Anubhai, Cícero Nogueira dosSantos, Bing Xiang, and Stefano Soatto. Structured predic-tion as translation between augmented natural languages.CoRR, Vol. abs/2101.05779, , 2021.
+[19] Bowen Yu, Zhenyu Zhang, Jianlin Su, Yubin Wang,Tingwen Liu, Bin Wang, and Sujian Li. Joint extractionof entities and relations based on a novel decompositionstrategy. CoRR, Vol. abs/1909.04273, , 2019.
+[20] Chin-Yew Lin. ROUGE: A package for automatic evalua-tion of summaries. In Text Summarization BranchesOut, pp. 74–81, Barcelona, Spain, July 2004. ACL.
+
+
+
+A Dataset Details
+
+
+
+A.1 Question Answering Dataset
+
+SQuAD 1.1
+The Stanford Question AnsweringDataset (SQuAD 1.1)[4] is a large reading comprehen-sion dataset on Wikipedia articles.
+SQuAD 2.0 The SQuAD 2.0
+[4] is a new dataset thatcombines answerable questions from the previous versionof SQuAD (SQuAD 1.1) with 53,775 new, unanswerablequestions about the same paragraphs.
+
+
+A.2 Joint Entity-Relation Extraction
+
+
+
+Dataset
+
+CONLL04
+The CoNLL04
+[5] dataset consists ofsentences extracted from news articles - with fourentity types location, organization, person,and other, and ﬁve relation types (work for,kill, organization based in, live in, andlocated in. We use the 922/231/288 sentences in thetrain/validation/test set based on the split by Gupta [17].ADE The ADE
+[6] dataset consists of 4,272 sen-tences extracted from medical reports– with two drug anddisease entity types and a single relation type effect.This dataset has sentences with nested entities.
+We followthe same settings as TANL [18], conduct a 10-fold cross-validation, and report the average macro-F1 results acrossall ten splits.
+NYT The NYT dataset
+[7] is based on the New YorkTimes corpus, where we use the preprocessed version ofYu
+[19].
+It consists of three entity types location,organization, person and 24 relation types (such asplace of birth, nationality, company, etc.).
+It consists of56,195/5000/5000 sentences in the training/validation/testset.
+
+
+A.3 Summarization Dataset
+
+XSum
+[8] Abstractive text summarization aims toproduce a short version of a document while preservingits salient information content.
+We evaluate the modelsbased on the BBC extreme [8](XSum) dataset.
+This isa news summarization dataset containing 227K news ar-ticles and single-sentence summary pairs.
+We load theXSum datasets from Huggingface6）The evaluation met-6） https://huggingface.co/datasets/EdinburghNLP/xsumric is ROUGE
+[20], including ROUGE-1 (R-1), ROUGE-2(R-2), and ROUGE-L (R-L).
+We adopted the Google Re-search re-implementation of ROUGE7）.
+CNNDM The CNN/DailyMail (CNNDM) dataset isan English-language dataset containing just over 300kunique news articles as written by journalists at CNN andthe Daily Mail.
+We load the CNNDM datasets from Hug-ging Face datasets8）that supports both extractive andabstractive summarization.
+
+
+A.4 Machine Translation
+Dataset
+
+We evaluate our models using two popular benchmarkdata sets from the WMT shared tasks on news translation -English (EN) → German (DE) data from WMT 2014 andEnglish→Romanian (RO) data from WMT 2016.
+We loadthe WMT datasets from Hugging Face datasets9）,10）anduse them directly to train the models without ﬁlter ing.
+Weevaluate the performance by computing BLEU.
+
+
+B Learning Parameters
+
+We use a learning rate of 0.001, a linear warm-up of 5ksteps, a gradient accumulation of 2 steps, and a maximumsequence length of 512 tokens.
+The KAT5 model is trainedon 1.3B tokens, where we employ a batch size of 65,536tokens with a maximum step of 200K steps.
+The originalT5 model was trained on 34B tokens over the C4 corpus,which was 26 times larger than our additional pre-trainingdataset.
+The KAT5 model is optimized end-to-end usingan Adafactor optimizer with a corrupted knowledge-awarespan ratio of 15%.We ﬁne-tune on top of KAT5 for a maximum of 10epochs in all our downstream tasks.
+In the multi-tasksettings of summarization tasks, we add the dataset namefollowed by the task separator is used (for example,xsumsummarize : for XSum dataset and summarize : forCNNDM dataset) as a preﬁx to each input sentence.7） https://github.com/google-research/google-research/tree/master/rouge8） https://huggingface.co/datasets/cnn_dailymail9） https://huggingface.co/datasets/wmt1410） https://huggingface.co/datasets/wmt16

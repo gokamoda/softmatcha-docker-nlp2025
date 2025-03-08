@@ -1,0 +1,270 @@
+ウェーブレット位置符号化
+
+岡佑依 長谷川拓 西田京介 齋藤邦子
+
+
+
+日本電信電話株式会社 NTT 人間情報研究所
+
+
+
+yui.oka@ntt.com
+
+
+
+概要
+
+本研究では、回転行列による位置符号化 RoPE がウェーブレット変換（WT）の一種として解釈できることを示す。
+しかし、RoPE は WT の利点を十分に活用できていない。
+そこで本研究では、正弦波のみに集中していた位置符号化の理論的基盤を拡張し，WT の特性を活かした理論的基盤と新しい位置符号化手法を提案する。
+提案手法は、従来の手法では難しかった最大系列長を超えた符号化を可能にすることを示す。
+
+
+
+1 はじめに
+
+Transformer に基づいた大規模言語モデルは様々な生成タスクにおいて優れた能力を発揮している[1, 2]。
+しかし、事前学習時の計算資源の制約から、入力文の最大系列長（本稿では、𝐿𝑚𝑎 𝑥と定義する）を事前に決める必要があり、その結果、𝐿𝑚𝑎 𝑥よりも長い文を外挿すると性能が大きく下がる。
+これはモデルが事前学習時に 𝐿𝑚 𝑎 𝑥を超える位置の表現を学習していないことが原因である[3]。
+位置の表現の学習には、正弦波位置符号化（SPE）[1]や回転行列による位置符号化（RoPE）[4]など、正弦波のような無限かつ周期性を持つものが有効とされている。
+特に、RoPE は長文を扱う多くの大規模言語モデルで多く採用されている。
+しかしながら，RoPE の外挿性能は低いため、一般的には位置補間手法[5]が適用されるが、これらは事前学習に加えて追加の微調整が必要であり、学習コストがさらにかかってしまう。
+これに対し、線形バイアスを使った位置符号化（ALiBi） [3]は微調整なしで外挿が可能である。
+しかし、ALiBi は、スライディングウィンドウ[6]のようにアテンションの受容野を制限するため[7]、遠い依存関係にある情報は取得できない課題がある。
+本研究では、外挿可能かつアテンションの受容野を制限しない位置符号化について検討する。
+初図 1: 提案手法の概要。
+RPE[8]における学習可能な埋め込みの代わりに、ウェーブレット関数 𝜓𝑎,𝑏に基づいて相対位置(𝑝𝑚,𝑛)𝑇を計算する。
+この例ではリッカーウェーブレットを示している。
+スケール 𝑎とシフト 𝑏 は、ヘッドの次元数 𝑑 によって変わる。
+めに、RoPE は時間周波数解析手法であるウェーブレット変換（WT）[9]の一形態であると解釈できることを示す。
+時間周波数解析は信号を時間と周波数に解析し、時間経過に伴う信号の動的な変化を捉えることができる。
+文内の各トークンの位置を時間として解釈したとき、RoPE は位置の順序に従って変換を行うのではなく、次元の数に従って変換を行うため、時間経過に伴う信号の動的な変化を捉えることができない。
+さらに、WT におけるスケールパラメタに対応する窓サイズは一定であり、RoPE は信号を複数のスケールで分析できるという WT の重要な特性を十分に活用できていない。
+これらの分析から、本研究では WT を位置符号化に適用したウェーブレット位置符号化を提案する。
+位置の順序に沿って WT を実行し複数の窓サイズを導入することで、本来の機能を位置符号化に適用する。
+さらに、相対位置表現（RPE）の方法論[8]に従うことで、提案手法は比較的容易に実装することができる。
+外挿機能の実験結果から、従来の位置符号化と比べて提案手法が有効であることがわかった。
+
+
+2 背景
+
+位置符号化位置符号化は文中における各トークンの位置を表現し、文の先頭からの位置を表現する絶対位置と、文中における各トークンの相対的な位置を表現する相対位置がある。
+RoPE [4]は絶対位置の一種であり、回転行列を使用して位置を計算し、クエリとキーに乗算することで位置を表現する。
+RPE [8]は最大 32 トークンの距離の位置を表す学習可能な埋め込みを使って相対位置を表現する。
+このような相対位置は系列長に依存しない位置表現であるため、外挿に有効である。
+特に、ALiBi [3]は、外挿に有効な位置符号化の一つであり、各ヘッドの注意スコアに線形バイアスを加えることで、すべてのトークンの相対位置を表現する。
+時間周波数解析周波数解析[10]とは、信号や波形を周波数成分に分解し、その特性を調べる手法である。
+しかし、周波数解析では特定の周波数が「いつ」発生するのかという時間情報は得られない。
+これに対し、時間周波数解析[11]は、信号がどの時点でどの周波数成分を持っているかを同時に分析することを可能にする。
+中でもウェーブレット変換（WT）[9, 12]は、複数のスケールや解像度で信号を分析し、柔軟かつ効果的な解析が可能である。
+WTは、高周波数成分に対して高い時間分解能を、低周波数成分に対して高い周波数分解能を適応的に提供できるため、非定常信号の解析に適している。
+
+
+
+3 RoPE とウェーブレット変換
+
+
+
+3.1 ウェーブレット変換（WT）
+
+ウェーブレット（wave-let）[13]は、特定の時間（空間）に局所化し、その中心から離れるにつれて影響が急激に小さくなる波である。
+実数体 ℝ 上で定義された関数 𝜓 が、正方積分関数の空間である正方積分関数空間 𝐿2(𝑅)に属し、∞−∞| 𝜓(𝑥) |2𝑑𝑥 < ∞を満たす場合、式(1)に示すウェーブレット関数と呼ばれる。
+𝜓𝑎,𝑏(𝑡) =1√𝑎𝜓𝑡 − 𝑏𝑎. (1)ここで、𝑏 はシフト、𝑎 > 0 はスケールパラメタである。
+スケールは、波が局在する範囲と、波の振幅を同時に変化させる。
+連続信号から、一定間隔で 𝑇 個の値をサンプリングしたと仮定した時、ウェーブレット変換 （WT）[9]は、𝜓𝑎,𝑏(𝑡)と信号 𝑥(𝑡)の内積を計算することで、信号周波数領域と時間領域に変換する。
+𝑊 (𝑎, 𝑏) =𝑇 −1𝑡=0𝜓𝑎,𝑏(𝑡)𝑥(𝑡). (2)すなわち、WT は信号をスケール 𝑎 とシフト 𝑏 による基底関数が張る空間に射影する。
+例えば、𝑇=4個の離散信号を、スケール 𝑎 = 1、シフト 𝑏 = [0, 2]に変換する場合、式(2)は行列式で表現できる。
+𝑊 (1, 0)𝑊 (1, 2)=𝜓1,0(0) 𝜓1,0(1) 𝜓1,0(2) 𝜓1,0(3)𝜓1,2(−2) 𝜓1,2(−1) 𝜓1,2(0) 𝜓1,2(1)𝑥(0)𝑥(1)𝑥(2)𝑥(3).この時、波が局在する範囲外では、ウェーブレット行列 Ψ の各要素の値は 0 になるか、0 に近づく。
+この範囲は、ウェーブレット関数によって異なる。
+
+3.2 RoPE
+
+簡単化のため、ヘッド次元数 𝑑 = 4 の時の RoPEを式(3)に示す。
+cos 𝑚𝜃1−sin 𝑚𝜃10 0sin 𝑚𝜃1cos 𝑚𝜃10 00 0 cos 𝑚𝜃2−sin 𝑚𝜃20 0 sin 𝑚𝜃2−cos 𝑚𝜃2𝑞𝑚0𝑞𝑚1𝑞𝑚2𝑞𝑚3. (3)この時、𝑞𝑚∈ ℝ1 × 𝑑は次元数が 𝑑 の場合の 𝑚 番目のクエリ、𝜃𝑖= 10000−2(𝑖−1)/𝑑である。
+
+3.3 理論的解釈
+
+この節では、RoPE は WT の一種と捉えることができることを示す。
+初めに、ハールウェーブレット[14]から着想を得た関数 𝜓(𝑡)を定義する。
+𝜓(𝑡) =cos 𝑓 (𝑡) 0 ≤ 𝑡<1,− sin 𝑓 (𝑡) 1 ≤ 𝑡<2,0 otherwise.(4)𝑓 : ℝ → ℝ は、∞−∞| 𝜓 (𝑥) |2𝑑𝑥 < ∞ 及び∞−∞𝜓(𝑡) 𝑑𝑡 =0 を満たす関数とする。
+𝜓(𝑡)の波が局在する範囲は0 ≤ 𝑡<2 であり、それ以外の範囲は 0 となる。
+次に、式(3)で示した RoPE の奇数次元が WT の一種であることを示す。
+𝑑 = 4 個の要素を持つ信号 𝑥(𝑡)に対する WT は、スケール 𝑎 = 1、シフト𝑏 ∈ [𝑏0, 𝑏2, .. , 𝑑𝑑−2] = [𝑏0, 𝑏2]の時、以下のように表現できる。
+𝑊 (1, 𝑏0)𝑊 (1, 𝑏2)=cos 𝜙0−sin 𝜙10 00 0 cos 𝜙2−sin 𝜙3𝑥(0)𝑥(1)𝑥(2)𝑥(3).ここで、𝑏𝑗= 𝑗−𝛿(𝑗)と定義する。
+𝛿(𝑡)は、0 ≤ 𝑡 ≤ 𝑑−1かつ 0 ≤ 𝛿(𝑡) ≤ 1 を満たす単調関数である。
+さらに、𝜙𝑗について、𝑗 が奇数の場合は 𝜙𝑗= 𝑓 (1 +𝛿(𝑗))、偶数の場合は 𝜙𝑗= 𝑓 (𝛿(𝑗 ))とする。
+𝑗 = 0, 2, 4, . . . , 𝑑 −2に対して、𝜙𝑗= 𝜙𝑗+1= 𝑚𝜃𝑗+12となるように 𝑓 を定義した時1）、この WT は式(3)の RoPE の奇数次元の変換行列と同一になる。
+さらに、以下のハール型ウェーブレット 𝜓′(𝑡)を使うと偶数次元の RoPE においても同様に成り立つ。
+𝜓′(𝑡) =sin 𝑓 (𝑡) 0 ≤ 𝑡<1,cos 𝑓 (𝑡) 1 ≤ 𝑡<2,0 otherwise.(5)以上のことから、RoPE は波が 0 ≤ 𝑡 < 2 の範囲に局在するウェーブレットを使った WT と同様の処理をヘッド次元に対して行っている、と解釈できる。
+
+
+4 ウェーブレット位置符号化
+
+ウェーブレット変換は、時間とともに変化する信号の動的な変動を捉えるのに有効であり、周期性にとらわれない自然言語の流動性にも有効であると考えられる。
+さらに、外挿を行う際には、文脈や情報の変化に柔軟に対応できることが重要である。
+このため、WT は外挿にも有効な手法であると考えられる。
+しかし、RoPE を WT とみなすと、以下の点でWT の特性を十分に活用できていない。
+P1 WT は時間軸で変換を行うのに対し、RoPE はヘッド次元軸で変換しており、単語の位置情報を直接扱っていない。
+P2 RoPE はスケール範囲が一定で、多様な分解能を使っていない。
+P3 最も単純でステップ上の変化しかとらえることが出来ないハール型を使用しているため、ノイズの影響を受けやすい。
+そこで、WT の特性を位置符号化に活用したウェーブレット位置符号化を提案する。
+1） 𝜓 (𝑡 )がウェーブレットの許容条件を満たすような 𝑓 (𝑡 )が存在する証明は付録 A に記載。
+
+4.1 方法論
+
+我々は RPE の方法論に基づいて WT を位置符号化に適用する2）．RPE は、クエリと相対位置埋め込みの内部積を計算することで位置を表現する。
+𝑒𝑚,𝑛=𝑞𝑚𝑘𝑇𝑛+ 𝑞𝑚(𝑝𝑚,𝑛)𝑇√𝑑, (6)ここで、𝑞𝑚は長さ 𝐿 の文の 𝑚 番目のクエリ（𝑞𝑚∈ ℝ1×𝑑, 1 ≤ 𝑚 ≤ 𝐿）であり、𝑘𝑛は 𝑛 番目のキー（𝑘𝑛∈ ℝ1×𝑑, 1 ≤ 𝑛 ≤ 𝐿）である。
+ここで、𝑝𝑚,𝑛は，𝑚番目のクエリから 𝑛 番目のキーまでの相対位置である．RPE では、𝑝𝑚,𝑛を表現するために、スケールを固定した学習可能な埋め込みを使用している。
+単語の位置情報 𝑝𝑚,𝑛を表現するために学習可能な埋め込みを使用する代わりに、𝑑-個のウェーブレットを使用して位置を計算する。
+このように RPEの方法論に WT を組み込むことで P1 で指摘した単語の位置情報を使って WT が可能となる。
+複数のスケール 𝑑-個のウェーブレットをスケールパラメタ 𝑎、シフトパラメタ 𝑏 を組み合わせて表現する。
+𝑑 = 128 の時、次の 8 個の 𝑎 と 16 個の 𝑏 の組み合わせ(𝑎, 𝑏) ∈ {20, 21, 22, ...27}×{0, 1, 2, 3, ..., 15}を使う3）。
+これによって P2 で指摘したさまざまなスケールパラメタ(分解能)を活用できるようになる。
+ウェーブレットの変更ウェーブレット関数は、以下のリッカーウェーブレット[15]を使う。
+𝜓(𝑡) = (1 − 𝑡2) exp−𝑡22. (7)我々の方法では RPE のようにクリッピングは行わず、文章の長さ全てに対してウェーブレット関数を使って位置を計算する。
+また、本来のウェーブレットは式(1)のように振幅も変わるが、アテンションスコアへの影響を考え振幅を変更しない。
+これによって P3 で指摘した複雑なウェーブレットを活用できるようになる。
+まとめると、提案手法における相対位置 𝑝𝑚,𝑛は次のように計算される。
+𝑝𝑚,𝑛=1 −𝑚 − 𝑛 − 𝑏𝑎2exp−12𝑚 − 𝑛 − 𝑏𝑎2. (8)2） RoPE を拡張することも検討したが、スケールパラメタの値が 𝑑 以下の値に制限されること、計算コストが増加すること、メモリ使用量が増加すること、相対位置の方が外挿に有効であることを踏まえて、RPE の方法論を採用した。
+3） 最もよかったパラメタの組み合わせをここでは報告している。
+その他のパラメタの結果は付録 D に記載。
+表 1: 節 5.1 における実験結果(PPL)系列長256 512 2512NoPE[18] 23.23 21.53 48.48RoPE(𝜃 = 104)[4] 20.98 19.39 93.94RoPE(𝜃 = 5 × 105) 20.95 19.35 77.90Trans-XL[19] 21.53 19.96 19.05ALiBi[3] 21.32 19.69 18.41Wavelet (提案手法) 20.82 19.19 17.99図 2: 系列長が 1024 の時のアテンションスコアのヒートマップ。
+縦軸がクエリ、横軸がキー.
+
+5 実験
+
+
+
+5.1 小規模なモデルでの評価
+
+実験設定 Transformer ベースの小規模な言語モデル[16]を使って比較評価を行なった。
+学習と評価のデータセットには、WikiText-103[17]を使った。
+外挿実験で用いたパラメタ設定は[3]と同じものを使った4）。
+評価指標には Perplexity（PPL）を用いた。
+また、学習時の最大入力長は 𝐿𝑚 𝑎 𝑥= 512 とし、系列長が 256，512，2512 のそれぞれで検証した。
+ベースラインベースラインとして、𝜃 の値が10000 と 500000 に設定した RoPE と比較した。
+さらに、位置符号化を使わない NoPE[18]，Transformer-XL[19]で採用されている RPE の 𝑝𝑚,𝑛を正弦波に変更した位置符号化、そして、ALiBi[3]と比較する。
+実験結果実験結果を表 3 に示す。
+𝐿𝑚𝑎 𝑥= 512 よりも長い文を外挿した場合でも PPL が下がることから、提案手法が外挿性能が向上することがわかった。
+また、𝐿𝑚𝑎 𝑥よりも短い文についても PPL は下がり、提案した WT が学習済・未学習の両方系列長に対して有効に働いていることを確認できた。
+さらに、式(7)以外の他のウェーブレット関数でも同様の結果であることを確認した5）．受容野の制限図 2 に、アテンションスコアのヒートマップを示す。
+ALiBi はアテンションの受容野を制限しており、遠い単語の情報を捉えれてい4） 詳細な実験設定は付録 B に記載。
+5） 他のウェーブレット関数の実験結果は付録 C に記載。
+表 2: 節 5.2 における実験結果(PPL)系列長4000 8000 16000 32000RoPE(𝜃 = 5 × 105) 9.45 9.33 9.12 8.90Wavelet (提案手法) 9.00 9.01 8.83 8.60ない。
+RoPE は最大入力長 𝐿𝑚 𝑎 𝑥= 512 を超えると、マップに対角線が現れる。
+この対角線は外挿ができていない特徴と考えられる。
+提案手法では、受容野を制限することなく遠い単語の情報を捉えており、対角線のようなものも存在しない。
+よって、提案手法は受容野を制限することなく外挿可能である。
+
+
+5.2 大規模なモデルでの評価
+
+実験設定提案手法が大規模なモデルでも有効かどうかを検証する。
+言語モデル Llama-3-8B6）と同じモデルの事前学習を行った。
+学習データセットにはRedpajama[20]を利用し、評価には Codeparrot[21]を利用した。
+評価指標には Perplexity を用いた。
+また、学習時の最大入力長は 𝐿𝑚𝑎 𝑥= 4098 とした4）．ベースライン Llama-3-8B6）で採用されている 𝜃の値を500000に設定したRoPEと比較する。
+実験結果実験結果を表 2 に示す。
+結果から、系列長に関わらず提案手法の方が RoPE よりも PPL が低いことがわかった7）。
+よって、大規模なモデルにおいても提案手法は有効である可能性がある。
+
+
+
+6 おわりに
+
+本研究では、RoPE が WT の一形態として解釈でき，RoPE では WT の特性を活かせていないことを明らかにした。
+次に、WT の特性が自然言語と外挿に適していると仮定し、WT の特性を活かしたウェーブレット位置符号化を提案した。
+実験結果から、提案手法は受容野を制限することなく位置の表現が可能であることがわかった。
+本研究の最も重要な貢献は、正弦波に集中していた位置符号化の理論的基盤を信号解析手法として確立されている WT に拡張し、新たな研究テーマを開拓したことにある。
+WT を応用した本手法では外挿が可能となることで追加の再学習が不要となり、計算機資源を多く必要とする最大系列長拡張の学習コスト低減という、産業上重要な課題の解決に貢献できる。
+6） https://huggingface.co/meta-llama/Meta-Llama-3-8B7） 要約や文書 QA などの下流タスクを含む LongBench[22]でも評価を行った実験結果は付録 E に記載。
+
+
+
+参考文献
+
+
+[1] Ashish Vaswani, Noam Shazeer, Niki Parmar, JakobUszkoreit, Llion Jones, Aidan N Gomez, L ukasz Kaiser,and Illia Polosukhin. Attention is all you need. In Ad-vances in Neural Information Processing Systems,Vol. 30, 2017.
+[2] Hugo Touvron, Thibaut Lavril, Gautier Izacard, XavierMartinet, Marie-Anne Lachaux, Timoth´ee Lacroix, Bap-tiste Rozi`ere, Naman Goyal, Eric Hambro, Faisal Azhar,Aurelien Rodriguez, Armand Joulin, Edouard Grave, andGuillaume Lample. Llama: Open and eﬃcient foundationlanguage models. ArXiv, Vol. abs/2302.13971, , 2023.
+[3] Oﬁr Press, Noah Smith, and Mike Lewis. Train short, testlong: Attention with linear biases enables input length ex-trapolation. In International Conference on LearningRepresentations, 2022.
+[4] Jianlin Su, Yu Lu, Shengfeng Pan, Bo Wen, and YunfengLiu. Roformer: Enhanced transformer with rotary positionembedding, 2021.
+[5] Bowen Peng, Jeﬀrey Quesnelle, Honglu Fan, and EnricoShippole. YaRN: Eﬃcient context window extension oflarge language models. In The Twelfth InternationalConference on Learning Representations, 2024.
+[6] Iz Beltagy, Matthew E. Peters, and Arman Co-han. Longformer: The long-document transformer.arXiv:2004.05150, 2020.
+[7] Ta-Chung Chi, Ting-Han Fan, Alexander Rudnicky, andPeter Ramadge. Dissecting transformer length extrapola-tion via the lens of receptive ﬁeld analysis. In Proceed-ings of the 61st Annual Meeting of the Associationfor Computational Linguistics (Volume 1: Long Pa-pers), pp. 13522–13537, July 2023.
+[8] Peter Shaw, Jakob Uszkoreit, and Ashish Vaswani. Self-attention with relative position representations. In Pro-ceedings of the 2018 Conference of the NorthAmerican Chapter of the Association for Computa-tional Linguistics: Human Language Technologies,Volume 2 (Short Papers), pp. 464–468. Association forComputational Linguistics, June 2018.
+[9] A. Grossmann and J. Morlet. Decomposition of hardyfunctions into square integrable wavelets of constant shape.SIAM Journal on Mathematical Analysis, Vol. 15,No. 4, pp. 723–736, 1984.
+[10] Ronald Newbold Bracewell and Ronald N Bracewell. TheFourier transform and its applications, Vol. 31999.McGraw-Hill New York, 1986.
+[11] Dennis Gabor. Theory of communication. Journal of theInstitution of Electrical Engineers - Part I: General,Vol. 94, pp. 58–58, 1946.
+[12] S.G. Mallat. A theory for multiresolution signal decompo-sition: the wavelet representation. IEEE Transactions onPattern Analysis and Machine Intelligence, Vol. 11,No. 7, pp. 674–693, 1989.
+[13] J. Morlet, G. Arens, E. Fourgeau, and D. Giard. Wavepropagation and sampling theory; part i, complex signaland scattering in multilayered media. Geophysics, Vol. 47,No. 2, pp. 203–221, 02 1982.
+[14] A. Haar. Zur theorie der orthogonalen funktionensysteme.(erste mitteilung). Mathematische Annalen, Vol. 69,pp. 331–371, 1910.
+[15] Norman Ricker. Wavelet functions and their polynomials.Geophysics, Vol. 9, No. 3, pp. 314–323, 07 1944.
+[16] Alexei Baevski and Michael Auli. Adaptive input repre-sentations for neural language modeling. In InternationalConference on Learning Representations, 2019.
+[17] Stephen Merity, Caiming Xiong, James Bradbury, andRichard Socher. Pointer sentinel mixture models. In Inter-national Conference on Learning Representations,2017.
+[18] Amirhossein Kazemnejad, Inkit Padhi, Karthikeyan Nate-san, Payel Das, and Siva Reddy. The impact of posi-tional encoding on length generalization in transformers.In Thirty-seventh Conference on Neural Informa-tion Processing Systems, 2023.
+[19] Zihang Dai, Zhilin Yang, Yiming Yang, Jaime Carbonell,Quoc Le, and Ruslan Salakhutdinov. Transformer-XL: At-tentive language models beyond a ﬁxed-length context. InAnna Korhonen, David Traum, and Llu´ıs M`arquez, ed-itors, Proceedings of the 57th Annual Meeting ofthe Association for Computational Linguistics, pp.2978–2988, Florence, Italy, July 2019. Association forComputational Linguistics.
+[20] Maurice Weber, Daniel Y Fu, Quentin Gregory Anthony,Yonatan Oren, Shane Adams, Anton Alexandrov, Xi-aozhong Lyu, Huu Nguyen, Xiaozhe Yao, Virginia Adams,Ben Athiwaratkun, Rahul Chalamala, Kezhen Chen, MaxRyabinin, Tri Dao, Percy Liang, Christopher Re, IrinaRish, and Ce Zhang. Redpajama: an open dataset fortraining large language models. In The Thirty-eightConference on Neural Information Processing Sys-tems Datasets and Benchmarks Track, 2024.
+[21] codeparrot. Codeparrot-clean, 2021. https://huggingface.co/datasets/codeparrot/codeparrot-clean/.
+[22] Yushi Bai, Xin Lv, Jiajie Zhang, Hongchang Lyu, JiankaiTang, Zhidian Huang, Zhengxiao Du, Xiao Liu, AohanZeng, Lei Hou, Yuxiao Dong, Jie Tang, and Juanzi Li.LongBench: A bilingual, multitask benchmark for longcontext understanding. In Proceedings of the 62nd An-nual Meeting of the Association for ComputationalLinguistics (Volume 1: Long Papers), pp. 3119–3137,Bangkok, Thailand, August 2024. Association for Compu-tational Linguistics.
+[23] Myle Ott, Sergey Edunov, Alexei Baevski, Angela Fan,Sam Gross, Nathan Ng, David Grangier, and Michael Auli.fairseq: A fast, extensible toolkit for sequence modeling.In Proceedings of NAACL-HLT 2019: Demonstra-tions, 2019.
+
+
+
+
+A ウェーブレットの許容条件
+
+本章では、𝜓(𝑡)がウェーブレットの許容条件を満たす関数 𝑓 が存在することを示す。
+ここでは 0 < 𝑓 (𝑡) ≤2𝑘𝜋(0 ≤ 𝑡 < 2)を満たす単調関数 𝑓 (𝑡)について考える。
+ただし、𝑘 は 𝑚 < 2𝑘𝜋 を満たす最小の自然数とする。
+初めに、0 < 𝑓 (𝑡) ≤ 2𝑘𝜋 を満たす任意の 𝑓 (𝑡)について、∞−∞| 𝜓 (𝑥) |2𝑑𝑥 < ∞ を満たすことは自明である。
+次にゼロ平均性について考える。
+𝑓 (𝑡) = 2𝑘𝜋𝑡(0 ≤ 𝑡 <1), 𝑓 (𝑡) = 2𝑘𝜋(𝑡 − 1)(1 ≤ 𝑡 < 2)とした場合、𝜃 = 𝑓 (𝑡)とおくと、∞−∞𝜓(𝑡)𝑑𝑡 =2𝑘 𝜋0cos 𝜃𝑑𝜃 +2𝑘 𝜋0−sin 𝜃𝑑𝜃 = 0 (9)となり、これはゼロ平均性も満たすため、𝜓 がウェーブレットとなる f が存在すると言える。
+そして、 𝑗 = 0, 2, . . . , 𝑑 − 2 に対して、𝜙𝑗(= 𝑓 (𝛿(𝑗 ))) =𝜙𝑗+1(= 𝑓 (1 + 𝛿(𝑗))) = 2𝑘 𝜋𝛿(𝑡) = 𝑚𝜃𝑗+12を満たす 𝛿(𝑡)が存在することも明らかである。
+つまり 𝛿(𝑗 ) =𝑚𝜃𝑗+122𝑘 𝜋(𝑗 =0, 2, . . . , 𝑑 − 2)を満たす関数を１つ選べば良い。
+
+
+B 実験設定
+
+節 5.1 における実験設定 Transformer ベースの言語モデル[16]を使って比較評価を行なった。
+データセットには、WikiText-103[17]を使った。
+WikiText-103 データセットは、1 億 300 万トークン以上の英語版 Wikipedia の記事から構成される。
+単語埋め込みの次元数 𝑑𝑚𝑜𝑑𝑒𝑙は1024、ヘッド数 𝑛 は 8、ヘッドの次元数 𝑑 は 128、レイヤー数は 16 である。
+外挿実験で用いたパラメタ設定はALiBi の原論文[3]と同じものを使った。
+学習エポック数は 205、バッチサイズは 9216 である。
+学習率は 1.0 とし、学習の過程で 16000step 毎に 1e-7 ずつ更新した。
+実装には文献[3]が提供する fairseq[23]ベースのコード8）を用い、ハイパーパラメタは全てにおいて文献[3]と同じ設定とした。
+また、学習時の最大入力長は 𝐿𝑚𝑎 𝑥= 512 とした。
+節 5.2 における実験設定言語モデル Llama-3-8B9）と同じモデルの事前学習を行った。
+学習データセットには Redpajama[20]の 1B トークン分10）を利用した。
+単語埋め込みの次元数 𝑑𝑚𝑜𝑑𝑒𝑙は 4096、ヘッド数 𝑛 は 32、ヘッドの次元数 𝑑 は 128、レイヤー数は 32 である。
+学習エポック数は 1、バッチサイズは 16 である。
+学習率は 0.0003 とした。
+実装には huggingface が提供するコード11）を用いた。
+また、学習時の最大入力長は 𝐿𝑚𝑎 𝑥= 4096 とした。
+
+
+
+C ウェーブレット例
+
+図 3 にウェーブレットの例を示す。
+スケールとシフトは全て同じである。
+これらのウェーブレットを使った場合の提案手法の性能を評価した。
+結果から、余弦波を組み込んだウェーブレットであるモルレー以外で外挿性能があり、ガウシアンやリッカーが最も外挿性能が高いことがわかった。
+8） https://github.com/ofirpress/attention with linearbiases9） https://huggingface.co/meta-llama/Meta-Llama-3-8B10） https://huggingface.co/datasets/togethercomputer/RedPajama-Data-1T-Sample11） https://github.com/huggingface/transformers図 3: ウェーブレットの例。
+青がリッカー、緑がハール、赤がモルレー、灰色がガウシアンである。
+表 3: 節 5.1 における実験結果系列長256 512 2512Wavelet(Ricker) 20.82 19.19 17.99Haar 20.89 19.27 18.17Morlet 21.28 19.65 26.56Gaussian 20.90 19.30 17.88
+
+D Ablation Study
+
+さまざまなシフトパラメタ、スケールパラメタを組み合わせで実験を行った。
+結果から、スケールパラメタのみ、またはシフトパラメタのみを使う場合よりも組み合わせた方が良い性能を発揮することがわかった。
+また、𝑎 = {20, 21, ..., 27} と 𝑏 = {0, 1, 2, ..., 15} の組み合わせが最も安定して性能が良い。
+表 4: 実験結果。
+学習時の最大系列長は 𝐿𝑡𝑟 𝑎𝑖𝑛= 512.系列長scale 𝑎 shift 𝑏 256 512 2512Ricker {20, 21, ..., 27} {0, 1, 2, ..., 15} 20.82 19.19 17.99Ricker {21, 22..., 28} {0, 1, 2, ..., 15} 20.89 19.25 18.02Ricker {22, 23..., 29} {0, 1, 2, ..., 15} 21.03 19.40 18.07Ricker {20, 21, 22, 23} {0, 1, 2, ..., 31} 21.13 19.55 21.73Ricker {20, 21} {0, 1, 2, ..., 63} 21.60 19.95 70.80Ricker {20, 21..., 215} {0, 1, 2, ..., 7} 20.88 19.24 17.84Ricker {20, 21..., 231} {0, 1, 2, 3} 20.86 19.26 17.84Ricker {20, 21..., 263} {0, 1} 20.88 19.30 18.02Ricker {20, 21..., 2127} {0} 21.10 19.46 18.29Ricker {27} {0, 1, 2, ..., 127} 21.45 19.80 21.31
+
+E LongBench での評価
+
+LongBench では正答率と ROUGE スコアで評価を行う。
+RoPE と提案手法のスコアの差を図 4 に示す。
+青色は提案手法が RoPE を上回ったスコアを、オレンジ色は RoPE が提案手法を上回ったスコアを示している。
+図 4: LongBench における実験結果

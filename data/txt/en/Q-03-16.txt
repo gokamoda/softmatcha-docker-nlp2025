@@ -1,0 +1,226 @@
+A Study on Multi-modal Interaction inVision Large Language Models
+
+Houjing Wei
+
+1
+
+ 趙 羽風
+
+1
+
+ Yuting Shi
+
+1
+
+ Naoya Inoue
+
+1,2
+
+ 
+
+1
+
+北陸先端科学技術大学院大学 
+
+2
+
+RIKEN
+
+
+
+{houjing,yfzhao,s2210096,naoya-i}@jaist.ac.jp
+
+
+
+Abstract
+
+Vision Large Language Models (VLLMs) usually takeinput as a concatenation of image token embeddingsand text token embeddings and conduct causal modeling.
+Based on observations, this paper hypothesizes that in-tensive multimodal interactions happen in the mid-to-latelayers.
+To verify, we apply cosine similarity measurementand norm-based attention analysis.
+Our experiments indi-cate that in the mid-to-late layers of LM decoder, there isa rise in inter-modal similarity and gradual accumulationin attention allocation to visual tokens, suggesting a four-phase inference dynamics against the LM layers, includingI) Alignment, II) Intra-modal Encoding, III) Inter-modalEncoding, and IV) Output Preparation.
+
+
+1 Introduction
+
+Recently, instruction-tuned Language Models (LMs)have demonstrated remarkable performance on cross-modal tasks when incor porated with other modalities,mainly vision [1, 2, 3, 4, 5, 6].
+These VLLMs extendthe instruction-following capability of LMs for handlingmultiple modalities, e.g., a concatenation of image tokensand text tokens, exhibiting impressive abilities, such asdrafting stories based on images and building a websitebased on the hand-sketched image.
+Given their sur pris-ing achievements, how these models bridge the modalitygap to enable information transition between image tokensand text tokens is still underexplored.
+In paper [7], theauthors identify multimodal neurons in Transformer MLPlayers and translate them into semantically related text.
+Another work in [8] indicates that LMs account for mod-eling domain-speciﬁc visual attributes while ﬁne-tuningthe cross-modal projector does not enhance such capabil-ity.
+Recent work explores some speciﬁc aspects of theinner workings of VLLMs via a mechanistic interpretationlens, such as localization and evolution of object-centricvisual tokens, storage and transfer of multi-modal knowl-edge, and cross-modal information ﬂow across LM decoderlayers
+[9, 10, 11].
+Although these works provide perspec-tive insights on the inner dynamics of VLLMs, to the bestof our knowledge, the magnitude of cross-modal interac-tions along LMs’ layers remains unexplored, leading to ourmain research question: How does multi-modal interactionevolve along the layers of the LM decoder in VLLMs?To answer this question, we ﬁrst examine whether imagetokens can be translated into linguistic semantics duringthe language modeling computation.
+Experiment resultsshow that the visual representations are reﬁned towardsthe embedding of interpretable tokens in the LM vocab-ulary space, even though VLLMs are not explicitly pre-trained for next-token prediction.
+We conjecture such aphenomenon might originate from multi-modal interac-tion, that is, the multimodal interaction leads to this re-ﬁnement.
+Then, we propose to investigate the multi-modalinteraction dynamics using similar ity metrics and norm-based attention analysis.
+Speciﬁcally, we ﬁrst investigatethe magnitude of contextualization [12] to characterize thecross-modal dynamics along LMs’ layers.
+Our experi-ments reveal a phase diagram of multimodal contextual-ization as shown in Fig. 1, suggesting that as inputs passthrough successive layers of the Transformer-based de-coder, a four-phase multimodal contextualization appears(Fig.
+3).
+In addition, a norm-based attention analysis isconducted to visualize such multimodal interaction alongLM decoder layers.
+This analysis reveals two patternsduring model inference: gradual attention accumulationagainst Transformer layers and stronger attention focusingon speciﬁc tokens.
+Figure 1
+A four-phase diagram of feed-forward dynamics of LMs in VLLMs.
+I) Alignment of two diﬀerent feature spaces occurs.
+II) Intra-modal Encoding is enhanced while cross-modal encoding is inhibited.
+III)
+Inter-modal Encoding appears and strengthens.
+IV) Output Preparation requires hidden states to be aligned toward output embedding space.
+
+
+2 Preliminary Observation: Pro-
+
+
+
+jecting Visual Tokens into Vocab-
+
+
+
+ulary Space
+
+This section demonstrates to what extent visual tokenscan be converted into linguistic concepts represented inthe language vocabulary space.
+We use LogitLens [13]technique to project intermediate representations of visualtokens into the LM vocabulary space by multiplying themwith the unembedding matrix.
+Speciﬁcally, we extract the hidden representations of32 visual tokens at each layer of LM in InstructBLIP[1],then decode them into language words.
+We deﬁne a visualhidden state as being decoded correctly if its decoded wordmatches the ground-truth caption.
+Therefore, precisionindicates how many correctly decoded words overlap withall decoded words, while recall refers to the proportion ofcorrectly decoded words to ground-truth caption words.
+Precision and recall are computed and plotted in Fig.
+2.It generally presents a continuously rising tendency in mid-to-late layers, indicating the intermediate representationsof visual tokens are progressively morphed into linguisticforms that match with correct ground-truth captions.
+Inthe lower layers (near embedding space), both precisionand recall are nearly negligible, suggesting that raw imagetokens tend to produce irrelevant word distributions.
+In themid-to-late layers (from around 10th), both lines continu-ously climb, reﬂecting an ongoing process of reﬁnementwhere the visual token representations become more se-0 10 20 30 40Transformer Layers0.00.10.20.30.40.50.6AveragedPrecisionRecallFigure 2 Averaged precision and recall for decoded words ofvisual tokens along Transformer layers.
+Results are computed andaveraged on COCO validation set and Winoground dataset, fromwhich we randomly choose 400 image-caption pairs.
+Shadedregions around each curve represent the standard deviation acrossmultiple data samples.mantically coupled with the textual domain.
+Around thedeepest layers (after 30th), we observe a slight variabilitybetween precision and recall, indicating a possible reduc-tion in correctly decoded words.
+Overall, this result shows that representation from thevision modality can be directedly decoded into nature lan-guage, and in mid-to-late layers they are decoded morecorrectly.
+This leads to our hypothesis that the intensiveinter-modal interaction happen in those mid-to-late layers,during which intermediate representations of visual tokensare successively shaped to the most likely linguistic tokens.
+
+
+3 Methodology
+
+We investigate multi-modal interaction by implement-ing the following two approaches, i.e., cosine similaritymeasurements and layer-wise attention analysis, aiming toobtain a comprehensive view of how visual and linguisticrepresentations interact and evolve within the Transformer-based LM decoder in VLLMs.
+Contextualization as Interaction Magnitude.
+Inspiredby [12], we use cosine similarity as a measurement of con-textuality to explore how hidden states from two diﬀerentrepresentation spaces interact in LMs.
+In detail, let 𝑣(𝑙)𝑖and 𝑤(𝑙)𝑗denote the hidden state vectors of tokens 𝑖 and 𝑗,respectively.
+The average cosine similarity for the hiddenstates at each layer 𝑙 in LMs is thus deﬁned as follows:𝑠(𝑙)=1𝑚𝑛𝑚∑𝑖=1𝑛∑𝑗=1cos(𝑣(𝑙)𝑖, 𝑤(𝑙)𝑗), (1)where 𝑚 and 𝑛 indicate the number of tokens in two sets.
+Inter-modal similarity is computed by choosing 𝑣(𝑙)𝑖fromvision tokens and 𝑤(𝑙)𝑗from text tokens.
+Intra-modal sim-ilarity is computed by ensuring 𝑣(𝑙)𝑖and 𝑤(𝑙)𝑗from thesame modality (e.g., both from vision or both from text).Higher similarity suggests that the two sets of vectors oc-cupy closely related subspaces in the representation space,indicating that they may encode similar features.
+Visualization via Norm-based Attention.
+To investigatehow the multimodal information interacts via multi-headself-attention mechanism, considering the faithfulnessproblem of attention score as an explanation [14, 15, 16],we use norm-based attention proposed by [17], which usesthe norm of multi-head attention’s output transformationto scale the attention score to investigate linguistic capa-bilities of Transformer.
+By taking the magnitudes of trans-formed vectors into consideration, this norm-based atten-tion analysis provides a relatively faithful interpretation ofthe contribution of the input vector to the output.
+For a more detailed experimental setup about this sec-tion, we recommend that readers refer to Appendix §A.1.
+
+
+4 Multimodal Inference Dynamics
+
+
+
+in VLLMs
+
+This section investigates the multimodal inference dy-namics along Transformer layers in VLLMs.§4.1 reveals that multimodal interaction evolves as theTransformer layer goes deeper, introducing our ﬁndingof a four-phase multimodal interaction pattern during theInstructBLIPLLaVA-1.5Figure 3 Inter-modal and intra-modal contextualization againstlayer depth, demonstrating our proposed four-phase inference dy-namics.
+A higher value indicates stronger interaction.
+Similarityvalues are averaged over randomly chosen 600 images for eachdataset.
+Shaded regions show standard deviations over randomlysampled images.feed-forward calculation.
+Besides, attention analysis isconducted to visualize the multimodal interaction alongLM layers.
+§4.2 demonstrates that intensive attention pro-gressively emerges in the mid-to-late layers, suggesting aconsistent correlation with the ﬁnding of similarity-basedmulti-modal interaction pattern.
+
+4.1 Four-phase Multimodal Contextual-
+
+
+
+ization
+
+As described in equation (1), we calculate inter-modalsimilarity as well as intra-modal similarity using hiddenstates at each layer of LM decoder in VLLMs.
+Fig. 3 generally exhibits an upward trajectory, showinga consistent trend with the observation from LogitLens;meanwhile, four distinct monotonic intervals are observed.
+Based on this monotonicity depicted, we introduce ourﬁndings of four-phase inference dynamics against LM lay-ers, which coincide with Fig.
+1: I) Alignment, duringwhich an early alignment between two modalities occurs.
+II) Intra-modal Encoding, within which intra-modal sim-ilarity is signiﬁcantly higher than that of inter-modal simi-larity (Fig. 3), indicating the model starts encoding visualtokens and text tokens separately.
+III)
+Inter-modal En-coding shows a swift rise in inter-modal similarity (Fig.
+3),indicating an incremental inter-modal interaction.
+IV)Output preparation presents the global reduction in inter-modal similarity, suggesting the model shifts focus awayInstructBLIPLLaVA-1.5Figure 4 Qualitative analysis of norm-based attention results (id_200 refers to a randomly chosen image).
+Heatmaps showcasenorm-based attention of the last text token (left 4) and the last vision token (right 4) to its preceding tokens along Transformer layers.
+The color intensity (moving from light to dark) indicates the magnitude of attention paid to each token.from multimodal interaction.
+
+
+4.2 Visualization of Multimodal Interac-
+
+
+
+tion
+
+To further examine our ﬁndings regarding the four-phaseinference dynamics between image tokens and text tokens,we employ norm-based attention analysis to elucidate howthe attention allocation between the two modalities changesagainst LM decoder layers in VLLMs.
+To this end, we extract norm-based attention resultsfrom two representative VLLMs, i.e., InstructBLIP andLLaVA-1.5, and plot the attention heatmaps for 100 imagesthat were randomly selected from COCO and Winogrounddatasets, respectively.
+After manually inspecting them,we found almost identical pattern holds.
+We thus show-case the norm-based attention heatmaps of three images(id_200, id_237, id_323) for qualitative analysis.
+Overall, Fig. 4 illustrates the norm-based attention ofthe last text token constantly increasing from the middlelayers.
+Meanwhile, it reveals that image tokens at diﬀerentpositions receive varying degrees of saliency assignment.
+This obser vation holds for both models despite their ar-chitectural diﬀerences.
+In detail, ﬁrst, a gradual accumu-lation of attention degree against layers is observed.
+Inthe early layers, attention tends to be more dispersed.
+Asthe model proceeds to the middle and deeper layers, weobserve stronger attention allocation, especially more fo-cused attention on several speciﬁc tokens.
+This patternsuggests that crucial cross-modal interaction intensiﬁes inthose mid-to-late layers.
+Second, a noticeable disparity inattention across image tokens is observed.
+Certain tokensare attended to much more strongly than others.
+One pos-sible conjecture for explaining this phenomenon could bethat these image tokens are presumably tied to semanticallyrich regions within the image, thus providing critical cluesfor accurate textual predictions.
+
+
+5 Conclusion
+
+This paper proposes to utilize contextualization as ameasurement to explain multimodal interaction in LMsof VLLMs.
+By incorporating other investigation meth-ods, i.e. norm-based attention, our extensive experimentsindicate the multimodal interaction dynamics during themodel’s feed-forward pass.
+
+
+
+Ackknowledgement
+
+This work is supported by the Nakajima Foundation.
+
+References
+
+
+[1] Wenliang Dai, Junnan Li, Dongxu Li, Anthony Meng HuatTiong, Junqi Zhao, Weisheng Wang, Boyang Li, PascaleFung, and Steven Hoi. Instructblip: towards general-purpose vision-language models with instruction tuning. InProceedings of the 37th International Conferenceon Neural Information Processing Systems, NIPS’23, Red Hook, NY, USA, 2024. Curran Associates Inc.
+[2] Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong JaeLee. Visual instruction tuning. Advances in neural in-formation processing systems, Vol. 36, , 2024.
+[3] Haotian Liu, Chunyuan Li, Yuheng Li, and Yong Jae Lee.Improved baselines with visual instruction tuning, 2024.
+[4] Deyao Zhu, Jun Chen, Xiaoqian Shen, Xiang Li, andMohamed Elhoseiny. MiniGPT-4: Enhancing vision-language understanding with advanced large languagemodels. In The Twelfth International Conference onLearning Representations, 2024.
+[5] Jun Chen, Deyao Zhu, Xiaoqian Shen, Xiang Li, ZechunLiu, Pengchuan Zhang, Raghuraman Krishnamoorthi,Vikas Chandra, Yunyang Xiong, and Mohamed Elhoseiny.Minigpt-v2: large language model as a uniﬁed interfacefor vision-language multi-task learning, 2023.
+[6] Jack Merullo, Louis Castricato, Carsten Eickhoﬀ, and ElliePavlick. Linearly mapping from image to text space. arXivpreprint arXiv:2209.15162, 2022.
+[7] Sarah Schwettmann, Neil Chowdhury, Samuel Klein,David Bau, and Antonio Torralba. Multimodal neuronsin pretrained text-only transformers, 2023.
+[8] Gaurav Verma, Minje Choi, Kartik Shar ma, JamelleWatson-Daniels, Sejoon Oh, and Srijan Kumar. Cross-modal projection in multimodal llms doesn’t really projectvisual attributes to textual space. 2024.
+[9] Samyadeep Basu, Martin Grayson, Cecily Morrison, Be-smira Nushi, Soheil Feizi, and Daniela Massiceti. Under-standing information storage and transfer in multi-modallarge language models, 2024.
+[10] Clement Neo, Luke Ong, Philip Torr, Mor Geva, DavidKrueger, and Fazl Barez. Towards interpreting visual in-formation processing in vision-language models. arXivpreprint arXiv:2410.07149, 2024.
+[11] Zhi Zhang, Srishti Yadav, Fengze Han, and EkaterinaShutova. Cross-modal information ﬂow in multimodallarge language models, 2024.
+[12] Kawin Ethayarajh. How contextual are contextualizedword representations? comparing the geometry of bert,elmo, and gpt-2 embeddings. In Proceedings of the2019 Conference on Empirical Methods in Natu-ral Language Processing and the 9th InternationalJoint Conference on Natural Language Processing(EMNLP-IJCNLP), pp. 55–65, 2019.
+[13] nostalgebraist. logit lens on non-gpt2 models. https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens, 2021.
+[14] Kevin Clark. What does bert look at? an analysis of berts attention. arXiv preprint arXiv:1906.04341, 2019.
+[15] Soﬁa Serrano and Noah A Smith. Is attention inter-pretable? arXiv preprint arXiv:1906.03731, 2019.
+[16] Sarthak Jain and Byron C. Wallace. Attention is not ex-planation, 2019.
+[17] Goro Kobayashi, Tatsuki Kuribayashi, Sho Yokoi, andKentaro Inui. Attention is not only a weight: Analyzingtransformers with vector norms. In Bonnie Webber, TrevorCohn, Yulan He, and Yang Liu, editors, Proceedings ofthe 2020 Conference on Empirical Methods in Nat-ural Language Processing (EMNLP), pp. 7057–7075,Online, November 2020. Association for ComputationalLinguistics.
+[18] Junnan Li, Dongxu Li, Silvio Savarese, and Steven Hoi.Blip-2: Bootstrapping language-image pre-training withfrozen image encoders and large language models, 2023.
+[19] Xinlei Chen, Hao Fang, Tsung-Yi Lin, RamakrishnaVedantam, Saurabh Gupta, Piotr Dollar, and C. LawrenceZitnick. Microsoft coco captions: Data collection andevaluation server, 2015.
+[20] Tristan Thrush, Ryan Jiang, Max Bartolo, AmanpreetSingh, Adina Williams, Douwe Kiela, and Candace Ross.Winoground: Probing vision and language models forvisio-linguistic compositionality, 2022.
+
+
+
+A Appendix
+
+
+
+A.1 Experimental Settings
+
+VLLMs usually take image patches and text tokens asinput and generate text as output.
+Based on how visualfeatures are mapped into the language embedding space,they can be broadly categorized into:1)
+Models employingcross-attention mechanisms to enable interaction betweenvision encoder’s outputs and the language embedding spacefor extracting task-relevant image features (e.g., Flamingo,BLIP family); 2) Models using projection layers to mapthe vision encoder’s outputs directly into the language em-bedding space (e.g., Mini-GPT4, LLaVA family).Models.
+We conduct experiments on two represen-tative VLLMs.
+1) InstructBLIP
+[1], which is extendedfrom BLIP-2
+[18], introducing an instruction-aware QueryTransformer to extract task-relevant image features tailoredto the given textual instruction.
+2) LLaVA-1.5
+[3] applyan
+MLP projection as the cross-modal connector on topof CLIP vision encoder, establishing new SOTA baselinesacross 11 VL benchmarks.
+Datasets.
+For evaluation, we use COCO captions val-idation set
+[19] and Winoground dataset
+[20].
+COCO is acommonly used image-caption dataset that contains 164Kimages, each annotated with ﬁve captions.
+Winogroundis a carefully handcrafted probing dataset, comprising 400items, each including two pairs of images and correspond-ing captions.
+Other Details.
+For the similarity experiment, we ran-domly select 600 images respectively from Winogroundand COCO caption validation set.
+For the attention analysisexperiment, we manually examine 100 randomly selectedimage instances from two datasets.

@@ -1,0 +1,472 @@
+Short and long-range comedy generation andunderstanding using Large Language Models
+
+Edison Marrese-Taylor
+
+1, 2
+
+, Machel Reid
+
+3
+
+, Alfredo Solano
+
+2
+
+National Institute of Advanced Industrial Science and Technology
+
+1
+
+Graduate School of Engineering, The University of Tokyo
+
+2
+
+Google DeepMind
+
+3
+
+edison.marrese@aist.go.jp, machelreid@google.com
+
+
+
+
+asolano@weblab.t.u-tokyo.ac.jp
+
+
+
+Abstract
+
+We study the automatic detection and generation of hu-morous and ironic text, both in short and long range scenar-ios.
+For the former, we propose a style-transfer approach,which we utilize to generate humorous news headlines byexploiting a combination of classiﬁcation and generativemodels based on medium-sized language models.
+For thelatter, we introduce a new dataset of full stand-up comedyspecial scripts, which we use as an arena to generate andclassify humorous content using LLMs.
+
+
+1 Introduction
+
+Humor is admittedly an important part of communi-cation.
+From teasing, yet harmless jokes made betweenfriends to the sprinkling of humor in a long presentationto maintain the audiences attention, humor can be seenubiquitously in a large variety of settings, times, and cul-tures.
+Advances in machine learning and natural languageprocessing have contributed to the ability of machines todetect humor, but this remains an open and challengingproblem.
+The linguistic study of humor started as early as theclassical times [1].
+Several theories have been proposed todescribe and explain humor, with work on this subject trac-ing back to Aristotle, and extending to various disciplinessuch as semantics, psychology, and linguistics
+[2, 1, 3].Furthermore, humor is also related to irony and sarcasm,two closely related linguistic phenomena that encompassthe concept of meaning the opposite of what is literallyexpressed.
+There is no consensus in academic research onthe formal deﬁnition, both terms being non-static, depend-ing on diﬀerent factors such as context, domain and evenregion in some cases.
+Humor is often seen as an umbrellaterm for many such phenomena [4], with the diﬃcultiesin understanding them lying in the ability of models incapturing linguistic nuances, context-dependencies and la-tent meaning, due to the richness of dynamic variants andﬁgurative use of language [5].The rise of Large Language Models (LLMs) has latelyled to signiﬁcant advancements in text generation.
+Thedevelopment of conversational AI based on such modelshas made computational humor methods highly relevantand in demand for practical applications [4].
+In light of this,this paper studies the automatic detection and generationof humorous and ironic text for both short and long-termforms.
+For the former, we propose a method based on style-transfer utilizing models with millions of parameters, whilefor the latter, we propose a technique which generatesstand-up comedy transcripts given a prompt, based on lan-guage models with billions of parameters.
+Our results showthat although it is possible for smaller language models togenerate short humorous text in the form of news headlines,we observe inherent limitations which make applicabilitylimited.
+In turn, our long-range humor generation exper-iments suggest that larger language models oﬀer a validmechanism to generate and classify long humorous con-tent, although, again, with clear limitations.
+
+
+2 Related Work
+
+Sarcasm Detection Work on automatically detect-ing sarcasm and irony is extensive and goes back to rule-based systems [6].
+Statistical methods and classic ma-
+
+Short and long-range comedy generation andunderstanding using Large Language Models
+
+Edison Marrese-Taylor
+
+1, 2
+
+, Machel Reid
+
+3
+
+, Alfredo Solano
+
+2
+
+National Institute of Advanced Industrial Science and Technology
+
+1
+
+Graduate School of Engineering, The University of Tokyo
+
+2
+
+Google DeepMind
+
+3
+
+edison.marrese@aist.go.jp, machelreid@google.com
+
+
+
+
+asolano@weblab.t.u-tokyo.ac.jp
+
+
+
+Abstract
+
+We study the automatic detection and generation of hu-morous and ironic text, both in short and long range scenar-ios.
+For the former, we propose a style-transfer approach,which we utilize to generate humorous news headlines byexploiting a combination of classiﬁcation and generativemodels based on medium-sized language models.
+For thelatter, we introduce a new dataset of full stand-up comedyspecial scripts, which we use as an arena to generate andclassify humorous content using LLMs.
+
+
+1 Introduction
+
+Humor is admittedly an important part of communi-cation.
+From teasing, yet harmless jokes made betweenfriends to the sprinkling of humor in a long presentationto maintain the audiences attention, humor can be seenubiquitously in a large variety of settings, times, and cul-tures.
+Advances in machine learning and natural languageprocessing have contributed to the ability of machines todetect humor, but this remains an open and challengingproblem.
+The linguistic study of humor started as early as theclassical times [1].
+Several theories have been proposed todescribe and explain humor, with work on this subject trac-ing back to Aristotle, and extending to various disciplinessuch as semantics, psychology, and linguistics
+[2, 1, 3].Furthermore, humor is also related to irony and sarcasm,two closely related linguistic phenomena that encompassthe concept of meaning the opposite of what is literallyexpressed.
+There is no consensus in academic research onthe formal deﬁnition, both terms being non-static, depend-ing on diﬀerent factors such as context, domain and evenregion in some cases.
+Humor is often seen as an umbrellaterm for many such phenomena [4], with the diﬃcultiesin understanding them lying in the ability of models incapturing linguistic nuances, context-dependencies and la-tent meaning, due to the richness of dynamic variants andﬁgurative use of language [5].The rise of Large Language Models (LLMs) has latelyled to signiﬁcant advancements in text generation.
+Thedevelopment of conversational AI based on such modelshas made computational humor methods highly relevantand in demand for practical applications [4].
+In light of this,this paper studies the automatic detection and generationof humorous and ironic text for both short and long-termforms.
+For the former, we propose a method based on style-transfer utilizing models with millions of parameters, whilefor the latter, we propose a technique which generatesstand-up comedy transcripts given a prompt, based on lan-guage models with billions of parameters.
+Our results showthat although it is possible for smaller language models togenerate short humorous text in the form of news headlines,we observe inherent limitations which make applicabilitylimited.
+In turn, our long-range humor generation exper-iments suggest that larger language models oﬀer a validmechanism to generate and classify long humorous con-tent, although, again, with clear limitations.
+
+
+2 Related Work
+
+Sarcasm Detection Work on automatically detect-ing sarcasm and irony is extensive and goes back to rule-based systems [6].
+Statistical methods and classic ma-chine learning algorithms such as Support Vector Machines[5, 7], Naive Bayes and Decision Trees
+[8] were also uti-lized for this task.
+Also, [9] proposed a model which usesan intra-attentional component in addition to an RNN.
+Acomprehensive survey on automatic sarcasm detection wasdone by [10], while computational irony detection was re-viewed by [11].Humor Detection Work on humor detection ﬁrst re-lates to the task of joke identiﬁcation, where we ﬁnd a largeset of approaches have been employed over the years, in-cluding classical ones like regression trees, as well as morerecent deep learning models like CNNs.
+The approach of[12] recently showed that by training a ROBERTa-based[13] classiﬁer on jokes gathered from multiple sources,each covering a diﬀerent type of humor, one can obtaina robust classiﬁer.
+Some of these claims were recentlydiscussed by [4], who showed that the out-of-domain per-formance of such models is unstable, suggesting that theymay learn non-speciﬁc humor characteristics, while insteadshowing that LLMs demonstrate competitive results and amore stable behavior in this regard
+
+3 Proposed Approach
+
+Short-range humor understanding Previouswork on humor generation and humor classiﬁcation hasmainly focused on short-range text.
+Table 1 shows a sum-mary of well-known datasets in the area.
+From thesedatasets, in this paper we focus speciﬁcally on Humicroed-its[16], a dataset that consists of regular English newsheadlines paired with versions of the same headlines thatcontain simple replacement edits designed to make themfunny.
+Our choice is explained by the fact that Humi-croedits allows us to directly study the role of humor intext generation, as other confounding variablesn such asthe context in which the humorous text is to be produced,are controlled for in this scenario.
+To tackle this task, we propose an approach based on textstyle transfer.
+In this setting, a model changes the style of asource text into a target style, while otherwise changing aslittle as possible about the input.
+While so far this approachhas mainly been used to tackle domains such as sentimentand politeness, in this work we follow [18] and apply theirideas to humor and irony generation, regarding plain textas belonging to the “source” style, and humorous text asthe “target” style.
+Concretely, we adapt LEWIS
+[19] a state-of-the-art edit-based generation model for style transfer.
+This approachworks by generating synthetic data via a domain-speciﬁcpretrained conditional language model, to have a parallelcorpus that can be used to learn how to transform sentencesfrom one style into the other.
+Critically, the generation ofpseudo-parallel data is derived from an attentive-style (hu-mor) classiﬁer, from which style-agnostic templates can beextracted based on the values of the attention.
+This meansthat having a robust humor classiﬁer is of high impor-tance for generation, which further motivates our adoptionof LEWIS as a means to study this phenomenon.
+Ourchoice of model contrasts with [18], who directly relied ontraining a Transformer-based sequence-to-sequence modelon the data but unfortunately did not oﬀer a performancestudy via automatic evaluation, thus providing little insighton how the generation is performed.
+For this part, we follow [12] and train a RoBERTa-based classiﬁer, an inherently attention-based model, forhumor on Weller (puns + Short Jokes + Reddit Hu-mor Full), denoted as 𝑀𝑊, and another equivalent modelsolely on Humicroedits (𝑀𝐻).
+We also consider a sar-casm model, training on SARC 2.0 (𝑀𝑆).
+We choose totrain on this dataset as its contents most adequately matchour evaluation regime— news headlines.
+As seen in Ta-ble 1 other irony/sarcasm dataset contains data that diﬀerssigniﬁcantly in nature from our domain.
+Table 2 summarizes the results of our humor and sar-casm classiﬁcation training eﬀorts.
+We see that our humormodel trained on Weller obtains a classiﬁcation accuracyof 98%, which compares favorably against the value of 93%reported by [12].
+On the other hand, our sarcasm detec-tion model report a 74.1% accuracy on SARC 2.0, whichis competitive with the baseline model from [20], whichreports a value of 75.8%, and with the model by [21] whoobtained an accuracy of 77.3%.
+We point out that whilethese models oﬀer superior performance compared to ourRoBERTa model, we are unfortunately unable to use themfor our experiments with LEWIS as they do not rely onattention.
+We also see that classiﬁers trained on the concatenateddata, following [12] do not perform well across datasets,even across the training portions.
+One key point here isthat 𝑀𝑊obtains a performance of 50.5% on Humicroed-its, which contrasts to an accuracy of 87.4% by 𝑀𝐻. This
+
+Short and long-range comedy generation andunderstanding using Large Language Models
+
+Edison Marrese-Taylor
+
+1, 2
+
+, Machel Reid
+
+3
+
+, Alfredo Solano
+
+2
+
+National Institute of Advanced Industrial Science and Technology
+
+1
+
+Graduate School of Engineering, The University of Tokyo
+
+2
+
+Google DeepMind
+
+3
+
+edison.marrese@aist.go.jp, machelreid@google.com
+
+
+
+
+asolano@weblab.t.u-tokyo.ac.jp
+
+
+
+Abstract
+
+We study the automatic detection and generation of hu-morous and ironic text, both in short and long range scenar-ios.
+For the former, we propose a style-transfer approach,which we utilize to generate humorous news headlines byexploiting a combination of classiﬁcation and generativemodels based on medium-sized language models.
+For thelatter, we introduce a new dataset of full stand-up comedyspecial scripts, which we use as an arena to generate andclassify humorous content using LLMs.
+
+
+1 Introduction
+
+Humor is admittedly an important part of communi-cation.
+From teasing, yet harmless jokes made betweenfriends to the sprinkling of humor in a long presentationto maintain the audiences attention, humor can be seenubiquitously in a large variety of settings, times, and cul-tures.
+Advances in machine learning and natural languageprocessing have contributed to the ability of machines todetect humor, but this remains an open and challengingproblem.
+The linguistic study of humor started as early as theclassical times [1].
+Several theories have been proposed todescribe and explain humor, with work on this subject trac-ing back to Aristotle, and extending to various disciplinessuch as semantics, psychology, and linguistics
+[2, 1, 3].Furthermore, humor is also related to irony and sarcasm,two closely related linguistic phenomena that encompassthe concept of meaning the opposite of what is literallyexpressed.
+There is no consensus in academic research onthe formal deﬁnition, both terms being non-static, depend-ing on diﬀerent factors such as context, domain and evenregion in some cases.
+Humor is often seen as an umbrellaterm for many such phenomena [4], with the diﬃcultiesin understanding them lying in the ability of models incapturing linguistic nuances, context-dependencies and la-tent meaning, due to the richness of dynamic variants andﬁgurative use of language [5].The rise of Large Language Models (LLMs) has latelyled to signiﬁcant advancements in text generation.
+Thedevelopment of conversational AI based on such modelshas made computational humor methods highly relevantand in demand for practical applications [4].
+In light of this,this paper studies the automatic detection and generationof humorous and ironic text for both short and long-termforms.
+For the former, we propose a method based on style-transfer utilizing models with millions of parameters, whilefor the latter, we propose a technique which generatesstand-up comedy transcripts given a prompt, based on lan-guage models with billions of parameters.
+Our results showthat although it is possible for smaller language models togenerate short humorous text in the form of news headlines,we observe inherent limitations which make applicabilitylimited.
+In turn, our long-range humor generation exper-iments suggest that larger language models oﬀer a validmechanism to generate and classify long humorous con-tent, although, again, with clear limitations.
+
+
+2 Related Work
+
+Sarcasm Detection Work on automatically detect-ing sarcasm and irony is extensive and goes back to rule-based systems [6].
+Statistical methods and classic ma-chine learning algorithms such as Support Vector Machines[5, 7], Naive Bayes and Decision Trees
+[8] were also uti-lized for this task.
+Also, [9] proposed a model which usesan intra-attentional component in addition to an RNN.
+Acomprehensive survey on automatic sarcasm detection wasdone by [10], while computational irony detection was re-viewed by [11].Humor Detection Work on humor detection ﬁrst re-lates to the task of joke identiﬁcation, where we ﬁnd a largeset of approaches have been employed over the years, in-cluding classical ones like regression trees, as well as morerecent deep learning models like CNNs.
+The approach of[12] recently showed that by training a ROBERTa-based[13] classiﬁer on jokes gathered from multiple sources,each covering a diﬀerent type of humor, one can obtaina robust classiﬁer.
+Some of these claims were recentlydiscussed by [4], who showed that the out-of-domain per-formance of such models is unstable, suggesting that theymay learn non-speciﬁc humor characteristics, while insteadshowing that LLMs demonstrate competitive results and amore stable behavior in this regard
+
+3 Proposed Approach
+
+Short-range humor understanding Previouswork on humor generation and humor classiﬁcation hasmainly focused on short-range text.
+Table 1 shows a sum-mary of well-known datasets in the area.
+From thesedatasets, in this paper we focus speciﬁcally on Humicroed-its[16], a dataset that consists of regular English newsheadlines paired with versions of the same headlines thatcontain simple replacement edits designed to make themfunny.
+Our choice is explained by the fact that Humi-croedits allows us to directly study the role of humor intext generation, as other confounding variablesn such asthe context in which the humorous text is to be produced,are controlled for in this scenario.
+To tackle this task, we propose an approach based on textstyle transfer.
+In this setting, a model changes the style of asource text into a target style, while otherwise changing aslittle as possible about the input.
+While so far this approachhas mainly been used to tackle domains such as sentimentand politeness, in this work we follow [18] and apply theirideas to humor and irony generation, regarding plain textas belonging to the “source” style, and humorous text asthe “target” style.
+Concretely, we adapt LEWIS
+[19] a state-of-the-art edit-based generation model for style transfer.
+This approachworks by generating synthetic data via a domain-speciﬁcpretrained conditional language model, to have a parallelcorpus that can be used to learn how to transform sentencesfrom one style into the other.
+Critically, the generation ofpseudo-parallel data is derived from an attentive-style (hu-mor) classiﬁer, from which style-agnostic templates can beextracted based on the values of the attention.
+This meansthat having a robust humor classiﬁer is of high impor-tance for generation, which further motivates our adoptionof LEWIS as a means to study this phenomenon.
+Ourchoice of model contrasts with [18], who directly relied ontraining a Transformer-based sequence-to-sequence modelon the data but unfortunately did not oﬀer a performancestudy via automatic evaluation, thus providing little insighton how the generation is performed.
+For this part, we follow [12] and train a RoBERTa-based classiﬁer, an inherently attention-based model, forhumor on Weller (puns + Short Jokes + Reddit Hu-mor Full), denoted as 𝑀𝑊, and another equivalent modelsolely on Humicroedits (𝑀𝐻).
+We also consider a sar-casm model, training on SARC 2.0 (𝑀𝑆).
+We choose totrain on this dataset as its contents most adequately matchour evaluation regime— news headlines.
+As seen in Ta-ble 1 other irony/sarcasm dataset contains data that diﬀerssigniﬁcantly in nature from our domain.
+Table 2 summarizes the results of our humor and sar-casm classiﬁcation training eﬀorts.
+We see that our humormodel trained on Weller obtains a classiﬁcation accuracyof 98%, which compares favorably against the value of 93%reported by [12].
+On the other hand, our sarcasm detec-tion model report a 74.1% accuracy on SARC 2.0, whichis competitive with the baseline model from [20], whichreports a value of 75.8%, and with the model by [21] whoobtained an accuracy of 77.3%.
+We point out that whilethese models oﬀer superior performance compared to ourRoBERTa model, we are unfortunately unable to use themfor our experiments with LEWIS as they do not rely onattention.
+We also see that classiﬁers trained on the concatenateddata, following [12] do not perform well across datasets,even across the training portions.
+One key point here isthat 𝑀𝑊obtains a performance of 50.5% on Humicroed-its, which contrasts to an accuracy of 87.4% by 𝑀𝐻. ThisTable 1 Summary datasets on Humor and Irony/Sarcasm detection relevant to our work.
+In the table, “Human★” means that thisdata was provided or annotated directly by humans, “Self” means that the annotations are automatically derived from the context (e.g.presence of a hashtag on Twitter, or extracted from a source such as a subreddit), “MTurk” indicates that the data was annotated bymeans of crowdsourcing via Amazon Mechanical Turk.
+Task Dataset Size Mean Length Source AnnotationsHumorPuns
+[14] 4,827 14 ± 5 punoftheday.com Human★Short Jokes
+[15] 405,400 22 ± 12 Kaggle/WMT Human★Reddit Humor
+[12] 20,046 72 ± 122 Reddit SelfWeller [12] 429,668 25 ± 31 Various VariousHumicroedits
+[16] 40,638 15 ± 5 Reddit MTurkScraps from the loft (ours) 416 11,654 ± 4,441 Blog SelfIrony SARC 2.0
+[17] 321,748 30 ± 18 Reddit SelfTable 2 Out-of-domain performance of our trained hu-mor/sarcasm classiﬁers based on RoBERTa.
+Results are reportedon the test por tions of each dataset.
+Dataset Accuracy𝑀𝑊𝑀𝐻𝑀𝑆Puns 94.7 68.2 50.6Short Jokes 98.8 60.6 56.2Reddit Humor 61.8 51.0 44.1Weller 98.0 60.5 56.0Humicroedits 50.5 87.4 49.7SARC 2.0 49.6 49.0 74.1shows that while RoBERTa is able to adequately modelregularities in this dataset by directly ﬁnetuning on it, themodel remains unable to perform the task when ﬁnetuningon Weller.
+This provides further evidence supportingclaims by [4], that these techniques lead to limited gener-alization capabilities.
+Once the style-agnostic templates have been extracted foreach dataset, they are fed to the denoising models for eachdomain to generate synthetic parallel data.
+As denoisingmodels we utilize the pretrained BART
+[22], and a versionﬁnetuned on our data — Weller and SARC 2.0 for Humorand Sarcasm, respectively.
+Finally, we train a sequence-to-sequence model on the synthetic parallel data, learningto map original sentences to their in-ﬁlled templates.
+Forthis ﬁnal step, we again rely on pre-trained BART, whichwe ﬁnetune in our data.
+For evaluation of the humor generation model, we followprevious work [19] and utilize BLEU [23] and BERTScore[24] measured against the reference “target” sentence toevaluate lexical overlap with human annotation.
+In addi-tion to this, we measure Self-BLEU and Self-BERTScore,meaning we compare our generated sentence against thesource, to measure content preservation.
+Table 3 summarizes the results we obtained on the hu-morous news headline generation using our style-transferTable 3 Summary of our results on comedy generation basedon our style-transfer using LEWIS.
+In the table, LEWIS𝐻andLEWIS𝑆denote the models trained on humor and irony data,respectively and LEWIS is the original model
+[19].
+Hum., Yelpand Polite denote the dataset by [16], [25] and [26], respectively.
+These last two values are taken directly from [19].Model Data BLEU S-BLEU BScore S-BScoreLEWIS𝐻Hum.
+21.4 27.7 0.431 0.360LEWIS𝑆Hum.
+47.8 60.6 0.649 0.770LEWIS
+Yelp 24.0 58.5 50.0 72.2LEWIS Polite - 75.3 - 81.4approach.
+Our ﬁnal LEWIS models are trained on a syn-thetic parallel cor pus of 1,731,589 and 314,352 examplesfor humor and sarcasm respectively.
+As shown on thetable, we see that models are able to obtain reasonableperformance, with BLEU and BERTScore comparable tothose obtained by this model on style transfer for sentimentand politeness, showing the eﬀectiveness of our approach.
+We also speciﬁcally see that our sarcasm-based model isable to outperform the humor-based model, with a higherlexical overlap with the source headline.
+Overall, this sug-gests that headlines on our dataset are more aligned withthe speciﬁc phenomena of sarcasm.
+Long-range humor understanding We ﬁnd thatone major shortcoming of the approach presented above isits innate inability to handle long contexts when generatinghumorous text.
+[5] argues that indeed the diﬃculties inunderstanding and generating humor are due to context-dependencies and latent meaning, due to dynamic variantsand ﬁgurative use of language.
+Following this line ofargument, we believe that understanding and generatingsuch short text may be of limited interest.
+In light of this issue, we turn our interest to a diﬀerent set-ting: stand-up comedy.
+Stand-up is a comedic performancewhere a person addresses a live audience directly from thestage.
+Our interest in this style of performance spawns from
+
+Short and long-range comedy generation andunderstanding using Large Language Models
+
+Edison Marrese-Taylor
+
+1, 2
+
+, Machel Reid
+
+3
+
+, Alfredo Solano
+
+2
+
+National Institute of Advanced Industrial Science and Technology
+
+1
+
+Graduate School of Engineering, The University of Tokyo
+
+2
+
+Google DeepMind
+
+3
+
+edison.marrese@aist.go.jp, machelreid@google.com
+
+
+
+
+asolano@weblab.t.u-tokyo.ac.jp
+
+
+
+Abstract
+
+We study the automatic detection and generation of hu-morous and ironic text, both in short and long range scenar-ios.
+For the former, we propose a style-transfer approach,which we utilize to generate humorous news headlines byexploiting a combination of classiﬁcation and generativemodels based on medium-sized language models.
+For thelatter, we introduce a new dataset of full stand-up comedyspecial scripts, which we use as an arena to generate andclassify humorous content using LLMs.
+
+
+1 Introduction
+
+Humor is admittedly an important part of communi-cation.
+From teasing, yet harmless jokes made betweenfriends to the sprinkling of humor in a long presentationto maintain the audiences attention, humor can be seenubiquitously in a large variety of settings, times, and cul-tures.
+Advances in machine learning and natural languageprocessing have contributed to the ability of machines todetect humor, but this remains an open and challengingproblem.
+The linguistic study of humor started as early as theclassical times [1].
+Several theories have been proposed todescribe and explain humor, with work on this subject trac-ing back to Aristotle, and extending to various disciplinessuch as semantics, psychology, and linguistics
+[2, 1, 3].Furthermore, humor is also related to irony and sarcasm,two closely related linguistic phenomena that encompassthe concept of meaning the opposite of what is literallyexpressed.
+There is no consensus in academic research onthe formal deﬁnition, both terms being non-static, depend-ing on diﬀerent factors such as context, domain and evenregion in some cases.
+Humor is often seen as an umbrellaterm for many such phenomena [4], with the diﬃcultiesin understanding them lying in the ability of models incapturing linguistic nuances, context-dependencies and la-tent meaning, due to the richness of dynamic variants andﬁgurative use of language [5].The rise of Large Language Models (LLMs) has latelyled to signiﬁcant advancements in text generation.
+Thedevelopment of conversational AI based on such modelshas made computational humor methods highly relevantand in demand for practical applications [4].
+In light of this,this paper studies the automatic detection and generationof humorous and ironic text for both short and long-termforms.
+For the former, we propose a method based on style-transfer utilizing models with millions of parameters, whilefor the latter, we propose a technique which generatesstand-up comedy transcripts given a prompt, based on lan-guage models with billions of parameters.
+Our results showthat although it is possible for smaller language models togenerate short humorous text in the form of news headlines,we observe inherent limitations which make applicabilitylimited.
+In turn, our long-range humor generation exper-iments suggest that larger language models oﬀer a validmechanism to generate and classify long humorous con-tent, although, again, with clear limitations.
+
+
+2 Related Work
+
+Sarcasm Detection Work on automatically detect-ing sarcasm and irony is extensive and goes back to rule-based systems [6].
+Statistical methods and classic ma-chine learning algorithms such as Support Vector Machines[5, 7], Naive Bayes and Decision Trees
+[8] were also uti-lized for this task.
+Also, [9] proposed a model which usesan intra-attentional component in addition to an RNN.
+Acomprehensive survey on automatic sarcasm detection wasdone by [10], while computational irony detection was re-viewed by [11].Humor Detection Work on humor detection ﬁrst re-lates to the task of joke identiﬁcation, where we ﬁnd a largeset of approaches have been employed over the years, in-cluding classical ones like regression trees, as well as morerecent deep learning models like CNNs.
+The approach of[12] recently showed that by training a ROBERTa-based[13] classiﬁer on jokes gathered from multiple sources,each covering a diﬀerent type of humor, one can obtaina robust classiﬁer.
+Some of these claims were recentlydiscussed by [4], who showed that the out-of-domain per-formance of such models is unstable, suggesting that theymay learn non-speciﬁc humor characteristics, while insteadshowing that LLMs demonstrate competitive results and amore stable behavior in this regard
+
+3 Proposed Approach
+
+Short-range humor understanding Previouswork on humor generation and humor classiﬁcation hasmainly focused on short-range text.
+Table 1 shows a sum-mary of well-known datasets in the area.
+From thesedatasets, in this paper we focus speciﬁcally on Humicroed-its[16], a dataset that consists of regular English newsheadlines paired with versions of the same headlines thatcontain simple replacement edits designed to make themfunny.
+Our choice is explained by the fact that Humi-croedits allows us to directly study the role of humor intext generation, as other confounding variablesn such asthe context in which the humorous text is to be produced,are controlled for in this scenario.
+To tackle this task, we propose an approach based on textstyle transfer.
+In this setting, a model changes the style of asource text into a target style, while otherwise changing aslittle as possible about the input.
+While so far this approachhas mainly been used to tackle domains such as sentimentand politeness, in this work we follow [18] and apply theirideas to humor and irony generation, regarding plain textas belonging to the “source” style, and humorous text asthe “target” style.
+Concretely, we adapt LEWIS
+[19] a state-of-the-art edit-based generation model for style transfer.
+This approachworks by generating synthetic data via a domain-speciﬁcpretrained conditional language model, to have a parallelcorpus that can be used to learn how to transform sentencesfrom one style into the other.
+Critically, the generation ofpseudo-parallel data is derived from an attentive-style (hu-mor) classiﬁer, from which style-agnostic templates can beextracted based on the values of the attention.
+This meansthat having a robust humor classiﬁer is of high impor-tance for generation, which further motivates our adoptionof LEWIS as a means to study this phenomenon.
+Ourchoice of model contrasts with [18], who directly relied ontraining a Transformer-based sequence-to-sequence modelon the data but unfortunately did not oﬀer a performancestudy via automatic evaluation, thus providing little insighton how the generation is performed.
+For this part, we follow [12] and train a RoBERTa-based classiﬁer, an inherently attention-based model, forhumor on Weller (puns + Short Jokes + Reddit Hu-mor Full), denoted as 𝑀𝑊, and another equivalent modelsolely on Humicroedits (𝑀𝐻).
+We also consider a sar-casm model, training on SARC 2.0 (𝑀𝑆).
+We choose totrain on this dataset as its contents most adequately matchour evaluation regime— news headlines.
+As seen in Ta-ble 1 other irony/sarcasm dataset contains data that diﬀerssigniﬁcantly in nature from our domain.
+Table 2 summarizes the results of our humor and sar-casm classiﬁcation training eﬀorts.
+We see that our humormodel trained on Weller obtains a classiﬁcation accuracyof 98%, which compares favorably against the value of 93%reported by [12].
+On the other hand, our sarcasm detec-tion model report a 74.1% accuracy on SARC 2.0, whichis competitive with the baseline model from [20], whichreports a value of 75.8%, and with the model by [21] whoobtained an accuracy of 77.3%.
+We point out that whilethese models oﬀer superior performance compared to ourRoBERTa model, we are unfortunately unable to use themfor our experiments with LEWIS as they do not rely onattention.
+We also see that classiﬁers trained on the concatenateddata, following [12] do not perform well across datasets,even across the training portions.
+One key point here isthat 𝑀𝑊obtains a performance of 50.5% on Humicroed-its, which contrasts to an accuracy of 87.4% by 𝑀𝐻. ThisTable 1 Summary datasets on Humor and Irony/Sarcasm detection relevant to our work.
+In the table, “Human★” means that thisdata was provided or annotated directly by humans, “Self” means that the annotations are automatically derived from the context (e.g.presence of a hashtag on Twitter, or extracted from a source such as a subreddit), “MTurk” indicates that the data was annotated bymeans of crowdsourcing via Amazon Mechanical Turk.
+Task Dataset Size Mean Length Source AnnotationsHumorPuns
+[14] 4,827 14 ± 5 punoftheday.com Human★Short Jokes
+[15] 405,400 22 ± 12 Kaggle/WMT Human★Reddit Humor
+[12] 20,046 72 ± 122 Reddit SelfWeller [12] 429,668 25 ± 31 Various VariousHumicroedits
+[16] 40,638 15 ± 5 Reddit MTurkScraps from the loft (ours) 416 11,654 ± 4,441 Blog SelfIrony SARC 2.0
+[17] 321,748 30 ± 18 Reddit SelfTable 2 Out-of-domain performance of our trained hu-mor/sarcasm classiﬁers based on RoBERTa.
+Results are reportedon the test por tions of each dataset.
+Dataset Accuracy𝑀𝑊𝑀𝐻𝑀𝑆Puns 94.7 68.2 50.6Short Jokes 98.8 60.6 56.2Reddit Humor 61.8 51.0 44.1Weller 98.0 60.5 56.0Humicroedits 50.5 87.4 49.7SARC 2.0 49.6 49.0 74.1shows that while RoBERTa is able to adequately modelregularities in this dataset by directly ﬁnetuning on it, themodel remains unable to perform the task when ﬁnetuningon Weller.
+This provides further evidence supportingclaims by [4], that these techniques lead to limited gener-alization capabilities.
+Once the style-agnostic templates have been extracted foreach dataset, they are fed to the denoising models for eachdomain to generate synthetic parallel data.
+As denoisingmodels we utilize the pretrained BART
+[22], and a versionﬁnetuned on our data — Weller and SARC 2.0 for Humorand Sarcasm, respectively.
+Finally, we train a sequence-to-sequence model on the synthetic parallel data, learningto map original sentences to their in-ﬁlled templates.
+Forthis ﬁnal step, we again rely on pre-trained BART, whichwe ﬁnetune in our data.
+For evaluation of the humor generation model, we followprevious work [19] and utilize BLEU [23] and BERTScore[24] measured against the reference “target” sentence toevaluate lexical overlap with human annotation.
+In addi-tion to this, we measure Self-BLEU and Self-BERTScore,meaning we compare our generated sentence against thesource, to measure content preservation.
+Table 3 summarizes the results we obtained on the hu-morous news headline generation using our style-transferTable 3 Summary of our results on comedy generation basedon our style-transfer using LEWIS.
+In the table, LEWIS𝐻andLEWIS𝑆denote the models trained on humor and irony data,respectively and LEWIS is the original model
+[19].
+Hum., Yelpand Polite denote the dataset by [16], [25] and [26], respectively.
+These last two values are taken directly from [19].Model Data BLEU S-BLEU BScore S-BScoreLEWIS𝐻Hum.
+21.4 27.7 0.431 0.360LEWIS𝑆Hum.
+47.8 60.6 0.649 0.770LEWIS
+Yelp 24.0 58.5 50.0 72.2LEWIS Polite - 75.3 - 81.4approach.
+Our ﬁnal LEWIS models are trained on a syn-thetic parallel cor pus of 1,731,589 and 314,352 examplesfor humor and sarcasm respectively.
+As shown on thetable, we see that models are able to obtain reasonableperformance, with BLEU and BERTScore comparable tothose obtained by this model on style transfer for sentimentand politeness, showing the eﬀectiveness of our approach.
+We also speciﬁcally see that our sarcasm-based model isable to outperform the humor-based model, with a higherlexical overlap with the source headline.
+Overall, this sug-gests that headlines on our dataset are more aligned withthe speciﬁc phenomena of sarcasm.
+Long-range humor understanding We ﬁnd thatone major shortcoming of the approach presented above isits innate inability to handle long contexts when generatinghumorous text.
+[5] argues that indeed the diﬃculties inunderstanding and generating humor are due to context-dependencies and latent meaning, due to dynamic variantsand ﬁgurative use of language.
+Following this line ofargument, we believe that understanding and generatingsuch short text may be of limited interest.
+In light of this issue, we turn our interest to a diﬀerent set-ting: stand-up comedy.
+Stand-up is a comedic performancewhere a person addresses a live audience directly from thestage.
+Our interest in this style of performance spawns fromTable 4 Performance on our long-range comedy generationand classiﬁcation on Scraps from the loft via our LLM-basedapproach.
+In the Table, P, R and F1 are short for Precision, Recalland F1-Score.
+Model BLEU BERTScore P R F1GPT2 (1.5B) - - - - -+ ﬁnetuning 15.9 0.815 0.209 0.468 0.273LLama 2 (7B) 2.8 0.793 - - -+ ﬁnetuning 14.1 0.809 0.117 0.357 0.165Llama 2 (13B) 6.1 0.796 - - -+
+ﬁnetuning
+13/8
+0.807 0.219 0.546 0.301the fact that stand-up usually consists of a wide variety ofhumor variations, including but not limited to one-liners,stories and general observations.
+To collect stand-up com-edy transcripts, we rely on scrapsfromtheloft.com,an international magazine that focuses on entertainmentand pop culture, oﬀering reviews and essays as well asstand-up transcripts.
+From this website, we obtain fulltranscripts of 416 stand-up comedy specials.
+For eachtranscript, we collect its title and the name of the come-dian(s).
+We utilize 340 scripts for training, and 76 fortesting.
+To tackle long-range humor generation, we adopt anLLM-based approach in a chat-based scenario.
+Con-cretely, we propose to generate comedic content by in-structing/prompting such models to do so.
+To create suit-able prompts that can direct a given model to generatecomedic content, we ﬁrst propose to automatically obtainsummarized versions of each stand-up transcript, as wellas an explanation of the intent of the performer.
+The ideais to create instructions that contain the critical elementsthat need to be accounted for when generating.
+Once wehave obtained these summaries, we use an LLM to obtaina prompt that can can successfully capture the details ofthe required output.
+For the above steps, in this paper we rely on ChatGPT(gpt3.5-turbo-16k) and proceed as follows.
+First we askthe model to, given a full comedy transcript, generate asummary and the intent of the comedian with the prompt:“{𝑡𝑟 𝑎𝑛𝑠𝑐𝑟𝑖 𝑝𝑡} Summarize the above and tell me what theintent of the comedian is within three lines.”.
+Once we haveobtained the summar ized content, and in the same chatsession, we ask the model to generate suitable instructionsusing the prompt “Now rewrite the above as an instructionyou would give a comedian to reproduce the routine”.
+For the empirical study, we consider the recently-released LLama 2 models [27], speciﬁcally the instruction-tuned versions.
+We utilize the 7B and 13B models, whichwe quantize to 4-bits and ﬁnetune using QLoRA
+[28] inorder to ﬁt our GPU memory.
+Each model is ﬁnetuned di-rectly on the training portion of our data, where the input tothe model is the prompt, and the output is the full stand-upspecial.
+As baselines, we consider a GPT2-xl ﬁnetuned inour data, as well as base versions of the larger models.
+In addition to performing long-range comedy generationin this fashion, we also study how well the above LLMscan classify long-range humor into genres.
+To this end,we rely on Wikipedia comedy genres, which we map toour example using the names of the comedian.
+We designa diﬀerent prompt where we ask the model to classify thestand-up directly, as follows: “### User: Could you pleaseprovide me with the comedy categories that best describethe comedy script below?
+{ 𝑡𝑟𝑎𝑛𝑠𝑐𝑟𝑖 𝑝𝑡} ### Agent: Class1 ||| Class 2 ...”.
+Models are then trained in the samefashion as above.
+Table 4 summarizes our results on comedy generationand classiﬁcation, respectively.
+We see that GPT-2 of-fers competitive performance on both tasks, showing thatmedium-sized LLMs are able, to some extent, to generatelong humorous content.
+While these results are encourag-ing, they also suggest that little progress has been made inthis sense, as results on our task do not improve with modelscale, from hundreds of millions to billions of parameters,an indication of the complexity in understanding humorcomputationally.
+
+
+4 Conclusions
+
+We study the automatic detection and generation of hu-morous text.
+We show that while current models are ableto generate short-range humorous content, there are limi-tations with this approach.
+We then propose a long-rangescenario for comedy generation based on stand-up specials.
+We show that LLMs are able to tackle both tasks.
+While theresults we have obtained are encouraging, they also clearlysuggests the limitations of current models and datasets.
+
+
+References
+
+[1] Salvatore Attardo.
+Humor in language.
+In Oxford ResearchEncyclopedia of Linguistics. 2017.[2]
+Victor Raskin.
+Linguistic heuristics of humor: a script-basedsemantic approach.
+International journal of the sociologyof language, Vol. 1987, No. 65, pp.
+11–26, 1987.[3]
+Jon E Roeckelein.
+The psychology of humor: A ref-
+
+erence guide and annotated bibliography. GreenwoodPress/Greenwood Publishing Group, 2002.[4] Alexander Baranov, Vladimir Kniazhevsky, and Pavel Braslavski.You told me that joke twice: A systematic investigation of trans-ferability and robustness of humor detection models. In HoudaBouamor, Juan Pino, and Kalika Bali, editors, Proceedings ofthe 2023 Conference on Empirical Methods in NaturalLanguage Processing, pp. 13701–13715, Singapore, Decem-ber 2023. Association for Computational Linguistics.[5] Aditya Joshi, Vinita Sharma, and Pushpak Bhattacharyya. Harness-ing Context Incongruity for Sarcasm Detection. Proceedingsof the 53rd Annual Meeting of the Association for Com-putational Linguistics and the 7th International JointConference on Natural Language Processing (Short Pa-pers), Vol. 51, No. 4, pp. 757–762, 2015.[6] Santosh Kumar Bharti, Korra Sathya Babu, and Sanjay KumarJena. Parsing-based Sarcasm Sentiment Recognition in TwitterData. Proceedings of the 2015 IEEE/ACM InternationalConference on Advances in Social Networks Analysisand Mining 2015 - ASONAM ’15, pp. 1373–1380, 2015.[7] Piyoros Tungthamthiti, Kiyoaki Shirai, and Masnizah Mohd.Recognition of Sarcasm in Microblogging Based on SentimentAnalysis and Coherence Identiﬁcation. Journal of Natural Lan-guage Processing, Vol. 23, No. 5, pp. 383–405, 2010.[8] Antonio Reyes, Paolo Rosso, and Tony Veale. A multidimensionalapproach for detecting irony in Twitter. Language Resourcesand Evaluation, Vol. 47, No. 1, pp. 239–268, 2013.[9] Yi Tay, Anh Tuan Luu, , Siu Cheung Hui, and Jian Su. Reason-ing with sarcasm by reading in-between. In Proceedings ofthe 56th Annual Meeting of the Association for Compu-tational Linguistics (Volume 1: Long Papers), pp. 1010–1020. Association for Computational Linguistics, 2018.[10] Aditya Joshi, Pushpak Bhattacharyya, and Mark James Carman.Automatic Sarcasm Detection: A Survey. Vol. 50, No. 5, 2016.[11] Byron C. Wallace. Computational irony: A survey and new per-spectives. Artiﬁcial Intellig ence Review, Vol. 43, No. 4, pp.467–483, 2015.[12] Orion Weller and Kevin Seppi. Humor Detection: A TransformerGets the Last Laugh. In Proceedings of the 2019 Conferenceon Empirical Methods in Natural Language Processingand the 9th International Joint Conference on NaturalLanguage Processing (EMNLP-IJCNLP), pp. 3621–3625,Hong Kong, China, November 2019. Association for Computa-tional Linguistics.[13] Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Mandar Joshi,Danqi Chen, Omer Levy, Mike Lewis, Luke Zettlemoyer, andVeselin Stoyanov. RoBERTa: A Robustly Optimized BERT Pre-training Approach. arXiv:1907.11692 [cs], July 2019.[14] Diyi Yang, Alon Lavie, Chris Dyer, and Eduard Hovy. Humorrecognition and humor anchor extraction. In Proceedings of the2015 Conference on Empirical Methods in Natural Lan-guage Processing, pp. 2367–2376, Lisbon, Portugal, Septem-ber 2015. Association for Computational Linguistics.[15] Peng-Yu Chen and Von-Wun Soo. Humor Recognition Us-ing Deep Learning. In Proceedings of the 2018 Confer-ence of the North American Chapter of the Associationfor Computational Linguistics: Human Language Tech-nologies, Volume 2 (Short Papers), pp. 113–117, New Or-leans, Louisiana, June 2018. Association for Computational Lin-guistics.[16] Nabil Hossain, John Krumm, and Michael Gamon. “PresidentVows to Cut \textlessTaxes\textgreater Hair”: Dataset and Anal-ysis of Creative Text Editing for Humorous Headlines. In Pro-ceedings of the 2019 Conference of the North AmericanChapter of the Association for Computational Linguis-tics: Human Language Technologies, Volume 1 (Longand Short Papers), pp. 133–142, Minneapolis, Minnesota, June2019. Association for Computational Linguistics.[17] Mikhail Khodak, Nikunj Saunshi, and Kiran Vodrahalli. ALarge Self-Annotated Corpus for Sarcasm. In Proceedings ofthe Eleventh International Conference on Language Re-sources and Evaluation (LREC 2018), Miyazaki, Japan, May2018. European Language Resources Association (ELRA).[18] Orion Weller, Nancy Fulda, and Kevin Seppi. Can Humor Predic-tion Datasets be used for Humor Generation? Humorous HeadlineGeneration via Style Transfer. In Proceedings of the SecondWorkshop on Figurative Language Processing, pp. 186–191, Online, July 2020. Association for Computational Linguistics.[19] Machel Reid and Victor Zhong. LEWIS: Levenshtein editing forunsupervised text style transfer. In Chengqing Zong, Fei Xia, Wen-jie Li, and Roberto Navigli, editors, Findings of the Associ-ation for Computational Linguistics: ACL-IJCNLP 2021,pp. 3932–3944, Online, August 2021. Association for Computa-tional Linguistics.[20] Mikhail Khodak, Nikunj Saunshi, and Kiran Vodrahalli. A LargeSelf-Annotated Corpus for Sarcasm. 2017.[21] Suzana Ili´c, Edison Marrese-Taylor, Jorge Balazs, and Yutaka Mat-suo. Deep contextualized word representations for detecting sar-casm and irony. In Proceedings of the 9th Workshop onComputational Approaches to Subjectivity, Sentimentand Social Media Analysis, pp. 2–7, Brussels, Belgium, 2018.Association for Computational Linguistics.[22] Mike Lewis, Yinhan Liu, Naman Goyal, Marjan Ghazvininejad,Abdelrahman Mohamed, Omer Levy, Veselin Stoyanov, and LukeZettlemoyer. BART: Denoising sequence-to-sequence pre-trainingfor natural language generation, translation, and comprehension. InDan Jurafsky, Joyce Chai, Natalie Schluter, and Joel Tetreault, ed-itors, Proceedings of the 58th Annual Meeting of the As-sociation for Computational Linguistics, pp. 7871–7880,Online, July 2020. Association for Computational Linguistics.[23] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu.Bleu: a method for automatic evaluation of machine translation. InProceedings of the 40th Annual Meeting of the Associ-ation for Computational Linguistics, pp. 311–318, Philadel-phia, Pennsylvania, USA, July 2002. Association for Computa-tional Linguistics.[24] Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q. Weinberger,and Yoav Artzi. BERTScore: Evaluating Text Generation withBERT. In International Conference on Learning Repre-sentations, September 2019.[25] Tianxiao Shen, Tao Lei, Regina Barzilay, and Tommi Jaakkola.Style transfer from non-parallel text by cross-alignment. InI. Guyon, U. Von Luxburg, S. Bengio, H. Wallach, R. Fergus,S. Vishwanathan, and R. Garnett, editors, Advances in Neu-ral Information Processing Systems, Vol. 30. Curran Asso-ciates, Inc., 2017.[26] Aman Madaan, Amrith Setlur, Tanmay Parekh, Barnabas Poczos,Graham Neubig, Yiming Yang, Ruslan Salakhutdinov, Alan WBlack, and Shrimai Prabhumoye. Politeness transfer: A tag andgenerate approach. In Dan Jurafsky, Joyce Chai, Natalie Schluter,and Joel Tetreault, editors, Proceedings of the 58th AnnualMeeting of the Association for Computational Linguis-tics, pp. 1869–1881, Online, July 2020. Association for Compu-tational Linguistics.[27] Hugo Touvron and LLama 2 Team. Llama 2: Open foundation andﬁne-tuned chat models, 2023.[28] Tim Dettmers, Artidoro Pagnoni, Ari Holtzman, and Luke Zettle-moyer. Qlora: Eﬃcient ﬁnetuning of quantized llms. In A. Oh,T. Naumann, A. Globerson, K. Saenko, M. Hardt, and S. Levine,editors, Advances in Neural Information Processing Sys-tems, Vol. 36, pp. 10088–10115. Curran Associates, Inc., 2023.

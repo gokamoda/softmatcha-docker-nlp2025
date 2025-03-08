@@ -1,0 +1,206 @@
+Modal DTS による様相従属化の分析
+
+飯村葵 水野輝之 戸次大介
+
+
+
+お茶の水女子大学
+
+
+
+{iimura.aoi, bekki}@is.ocha.ac.jp
+
+
+
+mizuno.teruyuki@ocha.ac.jp
+
+
+
+概要
+
+本研究は、依存型理論に基づく自然言語の意味の理論である依存型意味論を通して、様相表現(modalexpressions)の分析を試みる。
+依存型意味論は、照応や前提が絡む複雑な言語表現に対応可能であることが示されてきたが、物事の可能性(possibility)や必然性(necessity)に関わる様相表現への分析の拡張は依然開拓の余地がある。
+そこで本論文は、依存型意味論を様相型で拡張した Modal DTS を提案する。
+これにより、照応とモダリティが相互作用する様相従属化(modal subordination)をはじめ、前提を伴う様相従属化についても分析を与えるなど、依存型意味論が対象とする言語現象を拡大した。
+
+
+1 はじめに
+
+自然言語の意味解釈に関わる、複雑な言語現象に明示的な説明を与えるために、形式意味論では様々な理論的枠組みが提案されてきた[1, 2]。
+そのような枠組みの一つに、本研究で採用する依存型意味論(dependent type semantics, DTS)[3]がある。
+DTS は依存型理論(dependent type theory, DTT)[4]に基づいた自然言語の意味の理論である。
+項と型が相互に作用しない単純型理論[5]と異なり、DTT は「項に依存した型」を記述できる。
+DTS では文の意味表示がこの DTT の型と対応する。
+「項に依存した型」が存在することにより、型の内部で先行文脈中の項の参照が可能となり、照応解決(anaphora resolution)や前提束縛(presupposition binding)について、いずれも証明探索(proof search)の問題に還元されるという特徴がある。
+複雑な言語現象に分析を与える DTS だが、様相表現(modal expressions)に関する経験的研究は Tanaka[6]を除きこれまであまりなされておらず、説明対象は様相表現を含まない命題に限定されていた。
+そこで本研究は、DTS を様相型により拡張することで様相表現を伴う現象に分析を与えることを目指した。
+様相表現とは、物事の可能性(possibility)や必然性(necessity)に関わる言語表現であり、形式意味論における主要な研究対象の一つである。
+様相表現を伴う現象の一つに、様相従属化(modal subordination)がある。
+様相従属化は様相表現を伴う談話における照応現象であり Roberts [7]により指摘されて以来 vanRooij [8]や Asher and McCready [9]など多数の分析が試みられてきた。
+様相従属化の例を示す。
+(1)[A wolf]𝑖might come in. #It𝑖growls.(2)[A wolf]𝑖might come in. It𝑖would growl.様相表現を伴う談話では(1)の二文目が示すようにE タイプ照応[10]が到達可能ではなくなることがある1）．(1)は代名詞 it が、a wolf を E タイプ照応の先行詞とすることができない。
+一方、二文目に wouldを加えた(2)は代名詞 it が、前半の文で might のスコープ内で導入された a wolf を先行詞とすることができる。
+様相表現は形式意味論における説明対象の一つの中心であることから、様相表現と照応が相互作用する様相従属化について、照応の理論である DTS の枠組みで分析を与えることが期待される。
+これに対して、飯村ら[11]は部分的な成功を収めたが、前提を伴う様相従属化の分析に課題を抱えていた。
+以下に例を示す。
+(3)[A man]𝑖might be married. He𝑖would accompanyhis partner.前提の分析は、前提投射(presupposition projection)を検討する必要がある。
+前提投射は、前提を持つ言語表現が様相表現等の他の言語表現と組み合わせられたとき全体としてどのような前提を持つか、という問題である。
+たとえば(3)は married により引き起こされた A man has a partner. が、与えられた文脈に1） 文頭に置かれた「#」は続く文が不適切であることを示すおいて成立することが前提となる。
+飯村ら[11]ではこの前提について証明項を探索することが困難であった。
+本論文では、飯村ら[11]における様相型を再定義し、前提を伴う様相従属化について説明を試みる。
+
+
+2 依存型意味論 (DTS)
+
+
+
+2.1 依存型の例
+
+依存型の例として、紙面の都合上 Π 型と Σ 型のみを解説する。
+Π は関数型、Σ は直積型の一般化で、それぞれ型に対する全称量化子と存在量化子のように振る舞う。
+Π 型と Σ 型の表記を図 1 に示す。
+(𝑥 : 𝐴) → 𝐵𝑥 : 𝐴𝐵図 1 Π 型(左)と Σ 型(右)の表記Π 型は後件の型 𝐵 において前件の型 𝐴 をもつ変項 𝑥に依存した型が、Σ 型は第二要素の型 𝐵 において第一要素の型 𝐴 を持つ変項 𝑥 に依存した型が、それぞれ構成可能である。
+
+2.2 DTS による照応の分析
+
+DTS は、未指定型(underspeciﬁed type)[12]を DTTに加えることで照応解決を可能にする。
+ここでは例として A wolf came in. It growled. における照応の解決過程を示す。
+図 2 は照応解決前の意味表示である。
+𝜋1は Σ 型の第一要素を取り出す操作である。
+𝑣 :𝑢 :𝑥 : entitywolf(𝑥)comein(𝜋1(𝑢))𝑤@𝑧 : entity¬ human(𝑧)growl(𝜋1(𝑤))図 2 A wolf came in. It growled. の意味表示文の意味表示の型は、DTT における type でなければならないという制約(semantic felicity condition)がある。
+この制約を満たすか調べるために型検査(typechecking)を行い、その過程で未指定型に伴う変項を具体的な証明に置き換える操作が照応解決にあたる。
+例では「何らかの entity 𝑧 が ¬ human(𝑧)である」という型の証明項を探索することになり、この証明項が存在すれば前述の制約も満たされる。
+探索した証明項を型検査の証明図に代入した結果、図 3の意味表示を得る。
+このように、DTS における照応解決は証明探索の問題に還元される。
+𝑣 :𝑢 :𝑥 : entitywolf(𝑥)comein(𝜋1(𝑢))
+growl(𝜋1𝜋1(𝑣))図 3 A wolf came in. It growled. の照応解決結果
+
+3 提案
+
+
+
+3.1 Modal DTS
+
+本研究が様相型として採用するのは possibility に対応する ^ (diamond)と necessity に対応する □ (box)である。
+might や would のような様相表現が ^ と □により表される。
+Ψ を文脈として図 4 に例を示す。
+𝑣: ⟨Ψ⟩𝑢 :𝑥 : entitywolf(𝑥)comein(𝜋1(𝑢))
+[Ψ]𝑤@𝑧 : entity¬ human(𝑧)growl(𝜋1(𝑤))図 4 (2) A wolf might come in. It would growl. の意味表示possibility にあたる ⟨Ψ ⟩ は Ψ において “A wolf comesin.” となる世界が存在することを表す。
+necessity にあたる[Ψ]は Ψ におけるすべての世界で “It growls.”となることを表す。
+Modal DTS では、DTS における文脈を用いて可能世界(possible world)に言及する。
+
+
+3.2 Contextual Modal Type Theory
+
+§ 3.1 で提案した Modal DTS は、DTS における依存型と Contextual Modal Type Theory (CMTT)[13]における様相型を独自に融合した枠組みである。
+CMTTは、直観主義様相論理(Intuitionistic Modal Logic)に対して、構成的な手法で possibility と necessity に意味の説明を与える理論である。
+Modal DTS における ^
+と
+□ は、CMTT におけるContextual Possibility と Contextual Necessity の定義に従う。
+Contextual Possibility は、possible world に対する存在量化を表す 𝐴 poss ⟨Ψ⟩ を新たに定義した体系である。
+𝐴 poss ⟨Ψ ⟩ は、Ψ と 𝐴 が同時に true となる世界が存在することを表し ⟨Ψ ⟩ 𝐴 により内在化されている。
+Contextual Necessity は[Ψ] 𝐴 を定義し、Ψ におけるすべての世界で 𝐴 が true となることを表す。
+DTS の拡張にあたり新たに、CMTT の構造規則、^ と □ に関する規則、poss に関する規則を追加する2）．^ と □ に関する規則は、形成則を独自に定義2） 規則一覧は https://github.com/iimuraaoi/modal dts.gitを参照されたいΨ context...𝑧 : entitymale(𝑧): type𝑣 : ⟨Ψ⟩𝑢 :𝑥 : entityman(𝑥)married(𝜋1(𝑢))Ψ1...𝑧 : entitymale(𝑧)true𝑤@𝑧 : entitymale(𝑧)𝑠@𝑦 : entitypartnerOf(𝑦,𝜋1(𝑤))accompany(𝜋1(𝑤), 𝜋1(𝑠)): type(@)[Ψ]𝑤@𝑧 : entitymale(𝑧)𝑠@𝑦 : entitypartnerOf(𝑦,𝜋1(𝑤))accompany(𝜋1(𝑤), 𝜋1(𝑠)): type( □ 𝐹 ), 1図 5 (3) A man might be married. He would accompany his partner. の型検査の一部し導入則と除去則を CMTT から採用する。
+poss に関する規則は、形成則と除去則を独自に定義し導入則を CMTT から採用する。
+
+
+4 分析
+
+本節では、前提を伴う様相従属化を対象に、前節で提案した Modal DTS を用いて分析を与える。
+以下の文(3)を例に取り上げ、型検査の過程で証明探索の問題に還元する DTS の分析(§ 2)に従い解説する。
+(3)[A man]𝑖might be married. He𝑖would accompanyhis partner.前提を伴う様相従属化は、照応と前提、様相表現が相互作用する現象である。
+(3)は、代名詞 he が a manを E タイプ照応の先行詞とするという照応と、一文目によりフィルターされる A man has a partner. という前提について might や would を伴う状態で分析を与える必要がある。
+照応解決と前提束縛がいずれも証明探索の問題に還元される DTS の枠組みに従い、図 6 の意味表示において未指定型に伴う二つの変項𝑤 と 𝑠 を具体的な証明に置き換えることを目指す。
+𝑣: ⟨Ψ⟩𝑢 :𝑥 : entityman(𝑥)married(𝜋1(𝑢))
+[Ψ]𝑤@𝑧 : entitymale(𝑧)𝑠@𝑦 : entitypartnerOf(𝑦,𝜋1(𝑤))accompany(𝜋1(𝑤), 𝜋1(𝑠))
+図 6 分析前の意味表示図 5 に示したのは(3)の型検査の一部である。
+§ 2 で述べた流れと同様にまずは型検査を行う。
+文の意味表示の型が type であるという制約を満たすか調べるため、証明図を下から追う。
+最下段は、図 6 の意味表示において、第二要素にあたる二文目の意味表示である。
+DTT において、Σ 型の意味表示全体の型をtype とするには、第一要素と第二要素の型がそれぞれ type でなくてはならない。
+独自に定義した( □ 𝐹 )により、二文目の意味表示から様相表現の部分を分け，□ として作用していた would の文脈である Ψ を証明に使用する。
+続いて、二つの未指定型それぞれについて well-formed 性を確認するために推論規則(@)を適用する。
+図 5 は照応に関する未指定型について適用した証明図である。
+照応については「何らかの entity 𝑧 が¬ human(𝑧)である」という型の証明項を探索する問題に還元される。
+紙面の都合上、照応に関する証明探索の詳細は割愛するが、未指定型に伴う変項 𝑤が再帰的に置き換えられた結果、図 7 の意味表示を得る。
+𝐷 は、様相表現が外れた一文目の意味表示の証明項である。
+𝑣: ⟨Ψ⟩𝑢 :𝑥 : entityman(𝑥)married(𝜋1(𝑢))
+[Ψ]𝑠@𝑦 : entitypartnerOf(𝑦,𝜋1𝜋1(𝐷))accompany(𝜋1𝜋1(𝐷), 𝜋1(𝑠))
+図 7 分析途中の意味表示次に前提に関する証明探索を行う。
+前提については「何らかの entity 𝑦 が partnerOf(𝑦, 𝜋1𝜋1(𝐷))である」という型の証明項を探索する問題に還元される。
+ここで partnerOf(𝑦, 𝜋1𝜋1(𝐷))は 𝑦 が 𝜋1𝜋1(𝐷)つまり a𝑣 : ⟨Ψ⟩𝑢 :𝑥 : entityman(𝑥)married(𝜋1(𝑢))𝜎′: Ψ1𝜎 : Ψ2𝜎′: Ψ( 𝑤 )𝑣′:𝑢 :𝑥 : entityman(𝑥)married(𝜋1(𝑢))2⟨ 𝜎′, 𝑣′⟩ :𝑢 :𝑥 : entityman(𝑥)married(𝜋1(𝑢))
+p oss ⟨ 𝜎′: Ψ ⟩( poss 𝐼 )letdia ( 𝑣, ⟨ 𝜎, 𝑣′⟩.⟨ 𝜎′, 𝑣′⟩ ) :𝑢 :𝑥 : entityman(𝑥)married(𝜋1(𝑢))
+p oss ⟨ 𝜎′: Ψ ⟩( ^ 𝐸 ), 2p2 ( letdia ( 𝑣, ⟨ 𝜎, 𝑣′⟩.⟨ 𝜎′, 𝑣′⟩ )) :𝑢 :𝑥 : entityman(𝑥)married(𝜋1(𝑢))( poss 𝐸 )図 8 (3) A man might be married. He would accompany his partner. の証明探索の一部man の partner であることを表す。
+証明探索の方針は、まず様相表現が外れた一文目の意味表示の証明項 𝐷 を探索することで、様相表現を含まない一般的な証明探索に帰着させることである。
+以上の方針は前述した照応に関する証明探索にも共通する。
+証明項 𝐷 の探索を図 8 に示す。
+二文目は一文目に依存してよいことから、二文目の証明には一文目の意味表示が利用できる。
+^ を伴う一文目の意味表示を利用するため( ^ 𝐸 )を適用する。
+( ^ 𝐸 )の適用には、CMTT に由来する poss 環境に導入された文の意味表示が必要となる。
+そこで( poss I )を適用する。
+poss 環境の導入には、二文目の様相表現[Ψ]について( □ 𝐹 )により与えられた文脈 𝜎′: Ψ を用いる。
+図 8 では、最後に( poss E )を適用し poss 環境を除去することで、様相表現が外れた一文目の意味表示の証明項が探索される。
+その結果、様相表現を含まない一般的な証明探索に帰着する。
+つまり、既存の依存型の規則のみを使用して、「何らかの entity 𝑦 が partnerOf(𝑦, 𝜋1𝜋1(𝐷))である」という型の証明項を探索すればよい。
+その際，「married ならば partner がいる」という情報を関数 𝑔 として文脈に用いる。
+探索した証明項は型検査の証明図に代入され、変項 𝑠 が再帰的に置き換えられる。
+照応に関する証明探索と併せて、未指定型に伴う二つの変項 𝑤 と 𝑠 が具体的な証明に置き換えられ、図 9 の意味表示を得る。
+Modal DTS による分析は以上である。
+前提を含まない様相従属化の分析は付録(A)を参照されたい。
+𝑣: ⟨Ψ⟩𝑢:𝑥 : entityman(𝑥)married(𝜋1(𝑢))
+[Ψ] accompany(𝜋1𝜋1(𝐷), 𝜋1(𝑔(𝜋1𝜋1(𝐷), 𝜋2(𝐷))))図 9 分析後の意味表示証明探索に使用した( poss E )は独自に定義した規則であり、適用には「poss 環境に導入する文脈の証明項が( poss E )適用前の全体の証明項に自由変項として現れること」を制約に課す。
+たとえば図 8では以下を満たすことから適用が許可される。
+𝜎′∈ letdia ( 𝑣, ⟨ 𝜎, 𝑣′⟩.⟨ 𝜎′, 𝑣′⟩ )この制約は言い換えれば「前件に様相表現を伴う場合は後件に様相表現を伴うことを要求する」という作用を持つ。
+つまり、前件にのみ様相表現を伴う文たとえば(1)に対して「容認可能ではない」という説明を与えることにつながる。
+
+
+5 おわりに
+
+本研究は、DTS を様相型で拡張した Modal DTS を提案し、前提を伴う様相従属化を対象として説明を与えた。
+拡張にあたり飯村ら[11]における様相型を再定義した。
+これにより、DTS が扱う照応や前提と様相表現の相互作用ついて、DTS の枠組みに基づく統一的な分析を可能とした。
+今後の課題は、Modal DTS における様相表現の文脈について検討することである。
+現状の分析(§ 4)では、様相表現 might や would に関する文脈 Ψ がどのように定められているか明確でない。
+また、mightや would と異なる世界を文脈とする様相表現 may やwill を伴う文(4)(5)についても統一的に説明できることが望ましい。
+(4)[A wolf]𝑖might come in. #It𝑖may growl.(5)[A wolf]𝑖might come in. #It𝑖will growl.形式意味論では、様相従属化に対して多数の分析が試みられており[6, 7, 8, 9, 14, 15]、将来的にはこれらの分析と経験的な比較を行う必要がある。
+
+
+
+謝辞
+
+本研究は、JST CREST JPMJCR20D2、および JSPS科研費 JP23H03452 の助成を受けたものである。
+
+参考文献
+
+
+[1] Richard Montague. The proper treatment of quantiﬁcationin ordinary english. In Patrick Suppes, Julius Moravcsik,and Jaakko Hintikka, editors, Approaches to NaturalLanguage, pp. 221–242. Dordrecht, 1973.
+[2] Hans Kamp. A theory of truth and discourse representa-tion. In Formal methods in the study of language.Mathematical Centre, 1981.
+[3] Daisuke Bekki and Koji Mineshima. Context-passing andunderspeciﬁcation in dependent type semantics. In Ster-gios Chatzikyriakidis and Zhaohui Luo, editors, Studiesof Linguistics and Philosophy, pp. 11–41. Springer In-ternational Publishing, 2017.
+[4] Per Martin-L¨of. Intuitionistic type theor y. Vol. 17. Bib-liopolis, 1984.
+[5] Hank Barendregt. Lambda calculi with types. In Hand-book of Logic in Computer Science, Vol. 2, pp. 117–309. Oxford Science Publications, 1992.
+[6] Ribeka Tanaka, Koji Mineshima, and Daisuke Bekki. Re-solving modal anaphora in dependent type semantics. InNew Frontiers in Artiﬁcial Intelligence, pp. 83–98.Springer, 2015.
+[7] Craige Roberts. Modal subordination and pronominalanaphora in discourse. In Linguistics and Philosophy,Vol. 12, pp. 683–721. Springer, 1989.
+[8] Robert van Rooij. A modal analysis of presupposition andmodal subordination. In Journal of Semantics, Vol. 22,pp. 281–305. Oxford University Press, 2005.
+[9] Nicholas Asher and Eric McCready. Were, would, mightand a compositional account of counterfactuals. In Jour-nal of Semantics, Vol. 24, pp. 93–129. Oxford UniversityPress, 2007.
+[10] Gareth Evans. Pronouns. Linguistic Inquiry, Vol. 11, pp.337–362, 1980.
+[11] 飯村葵, 戸次大介. 依存型意味論によるモダリティと照応の統一的分析に向けて. 言語処理学会第 30 回年次大会発表論文集, pp. 408–413. 2024.
+[12] Daisuke Bekki. A proof-theoretic analysis of weakcrossover. In New Frontiers in Artiﬁcial Intelligence,pp. 228–241. Springer, 2023.
+[13] Aleksandar Nanevski, Frank Pfenning, and Brigitte Pien-tka. Contextual modal type theory. In ACM Transactionson Computational Logic, Vol. 9, pp. 1–49. Associationfor Computing Machinery, 2008.
+[14] Anette Frank and Hans Kamp. On context dependencein modal constructions. In Proceedings of Semanticsand Linguistic Theory, Vol. 7, pp. 151–168. LinguisticSociety of America, 1997.
+[15] Stefan Kaufmann. Dynamic context management. In For-malizing the Dynamics of Information, pp. 171–188.The University of Chicago Press, 2000.
+
+
+
+
+付録
+
+
+
+A 様相従属化 A wolf would come in. It might growl. の分析例
+
+𝑣: [Ψ]𝑢 :𝑥 : entitywolf(𝑥)comein(𝜋1(𝑢))⟨Ψ⟩𝑤@𝑧 : entity¬ human(𝑧)growl(𝜋1(𝑤))
+図 10照応解決前の意味表示𝑣: [Ψ]𝑢 :𝑥 : entitywolf(𝑥)comein(𝜋1(𝑢))⟨Ψ⟩ growl(𝜋1𝜋1(𝐷))図11照応解決後の意味表示Ψ context...𝑧 : entity¬ human(𝑧): type𝑣 : [Ψ]𝑢 :𝑥 : entitywolf(𝑥)comein(𝜋1(𝑢))Ψ1...𝑧 : entity¬ human(𝑧)true𝑤@𝑧 : entity¬ human(𝑧)growl(𝜋1(𝑤)): type(@)⟨Ψ⟩𝑤@𝑧 : entity¬ human(𝑧)growl(𝜋1(𝑤)): type( □ 𝐹 ), 1図 12 A wolf would come in. It might growl. の型検査の一部𝑣 : [Ψ]𝑢 :𝑥 : entitywolf(𝑥)comein(𝜋1(𝑢))
+𝜎′: Ψ1𝜎′: Ψ1𝑣′::𝑢 :𝑥 : entitywolf(𝑥)comein(𝜋1(𝑢))
+[Ψ]2clo ( 𝑣′, 𝜎′) :𝑢 :𝑥 : entitywolf(𝑥)comein(𝜋1(𝑢))( 𝑐𝑡 𝑥 ℎ 𝑦 𝑝 )⟨ 𝜎′, clo ( 𝑣′, 𝜎′) ⟩ :𝑢 :𝑥 : entitywolf(𝑥)comein(𝜋1(𝑢))
+p oss ⟨ 𝜎′: Ψ ⟩( poss 𝐼 )letbox ( 𝑣, 𝑣′.⟨ 𝜎′, clo ( 𝑣′, 𝜎′) ⟩ ) :𝑢 :𝑥 : entitywolf(𝑥)comein(𝜋1(𝑢))
+p oss ⟨ 𝜎′: Ψ ⟩( ^ 𝐸 ), 2p2 ( letbox ( 𝑣, 𝑣′.⟨ 𝜎′, clo ( 𝑣′, 𝜎′) ⟩ )) :𝑢 :𝑥 : entitywolf(𝑥)comein(𝜋1(𝑢))( poss 𝐸 )図 13 A wolf would come in. It might growl. の証明探索の一部

@@ -1,0 +1,188 @@
+災害時のソーシャルメディアを対象とした 場所参照表現の抽出における過去事例の適用  六瀬聡宏1 宇津圭祐1 内田理1 1東海大学情報理工学部情報メディア学科 trokuse@tokai.ac.jp, utsu@utsuken.net, o-uchida@tokai.ac.jp   概要 場所参照表現を抽出するタスクについて、次の設定を検証した。
+災害発生直後のソーシャルメディアを対象とし、過去の災害時に流通した投稿で学習したモデルの利用可能性を検証する。
+国内で発生した6 つの事例を含む災害データセットを構築し、以下の研究課題を設定した．RQ1.災害種別および事例間で場所参照表現の性質は異なるのか．RQ2.過去の災害時の投稿をどのように利用すればよいか。
+本研究の結論は RQ1.検証した災害種別間では大きな差はない。
+RQ2.全事例を使うよりも、少量で同等かそれ以上の性能を得られる事例の組み合わせがある。
+1 はじめに 大規模災害時に被害を最小限に抑えるためには、迅速に被災地の状況を把握することが重要である．このような背景から、速報性の高いソーシャルメディアの利活用が検討されている[1]。
+しかし、利活用には課題がある。
+ソーシャルメディア上に流通する投稿は膨大であり、効率的な選別が必要である[2]。
+また、投稿で言及されている場所の特定が難しいことが挙げられる[3]。
+これらの課題に対し先行研究では、表 1 のような場所を参照する表現（場所参照表現）を抽出するモデルの構築を検証した[4][5]。
+投稿で言及されている箇所を特定し、地図上に紐づけることで、災害時の意思決定を支援できる[6]。
+しかし、災害時は初動対応がその後に大きく影響するため[7]、モデルの学習に必要なデータの収集・ 整備はボトルネックになりうる。
+つまり、災害時におけるソーシャルメディア利活用において、発災から短い時間で運用が可能であることは重要な要件である。
+このような背景から、本研究では、過去の災害時に流通した投稿で学習したモデルの利用可能性を検証した（図 1）。
+検証にあたり、我々は次の研究課題を設定した．RQ1.災害種別および事例間で場所参照表現の性質はどのように異なるのか．RQ2.新たに発生した災害に対し、過去の災害時の投稿をどのように利用すればよいか。
+国内で発生した 6 つの大雨・台風を対象に、データセットを構築し、研究課題について検証した結果を示す． 2 場所参照表現の抽出 本章では、場所参照表現の抽出に関連した研究を調査し、本研究の立ち位置を示す。
+場所参照表現の抽出は、テキストから位置情報を抽出するジオパーシングの一部であり、2 つの手順から構成される[8]。
+テキストから場所を参照する表現の抽出と、抽出した場所参照表現を一意に特定する曖昧性解消[9]である。
+本研究の対象である、場所参照表現の抽出は感染症の流行[10]や観光資源の調査[11]などの目的にも利用される。
+また、対象となるテキストも旅行記[12]や、ソーシャルメディアなど多岐にわたる。
+
+
+
+2.1 災害時への適用 
+
+本研究と同様に災害時のソーシャルメディアを対象に場所参照表現を抽出する研究には、Khanal ら[13]や Kumar [14]らが挙げられる。  
+表  1 場所参照表現を含む投稿の例  図  1 過去の災害データを利用した学習の例  本文 (1) @USERNAME 氾濫した金目川の様子 <URL> (2) 駅前は水没して通れないから足止め #武蔵小杉 これらの研究との違いは、過去に発生した災害時に流通した投稿を活用する点である。
+災害対応では迅速な対応が重要なため、発生と同時にデータを収集しモデルを構築する想定は現実的ではない。
+このような背景から、Suwaileh ら[15]はアラブ諸国で発生した災害に対して、他の災害時に流通したソーシャルメディア上の投稿の利用を検証した。
+Suwailehらの研究と本研究は、他の事例を利用する点が共通しているが、対象とする災害の範囲が異なる。
+Suwaileh らは爆破テロやパンデミックなどを含めた危機的状況も含め災害として扱っているが、本研究は自然災害を対象としている。
+他にも、地域差による災害の頻度や性質が異なる点や、利用する言語の違いから個別に検証することが望ましい。 
+
+2.2 ドメイン適応 
+
+本研究や Suwaileh らのような、ある事例で得られた知識を、別の事例へ効果的に転用を試みる問題設定はドメイン適用と呼ばれている[16]。
+本研究は、知識を転移する先の事例のラベル付きデータが利用できない教師なしドメイン適用に該当する[17]。
+発災から短い時間で運用する必要があるため、ラベルなしデータも利用できないか、極めて少量である。
+従って、本研究は過去の災害時で学習したモデルのみ、新たに発生した災害へ適用するパラメータ転移[16]の検証と位置づけられる。
+3 問題設定 本研究では場所参照表現の抽出を、投稿に含まれる場所を参照する表現を全て抽出し、その種類を特定するタスクに設定した。
+場所参照表現は複数の単語にまたがる場合があるため、投稿を単語列とみなし、各単語を BILOU[18]のいずれかのラベルに割り当てる系列ラベリング問題として扱う。
+BILOU の特徴は、他の系列ラベルの定義と比較して、単語の境界情報を明示的に扱うことができる。
+例えば、BIO[19]では、B は場所参照表現の先頭、I を中間とし、場所参照表現でない場合は O を割り当てる。
+BIOに対し、BILOU は末端を示す L と、場所参照表現が一単語の場合に U を割り当てることが可能である。
+また、場所参照表現の種類についても予測する。
+種類の詳細は 4.2 節で述べる。
+つまり、本研究の問題設定は、投稿に含まれる各単語に対し、<場所参照表現の種類>-<系列ラベル>の組み合わせから構成されるマルチクラス分類問題である。
+なお、モデルの学習時は、新たに発生した災害の投稿はラベルの有無に関わらず、利用できない。
+過去に発生した災害の事例集合から、1 つ以上の事例を含む部分集合を選択して学習する。
+従って、評価時には学習時とは別の事例にモデルを適用し、性能を計測する。
+4 データセット 4.1 
+
+データ収集 
+
+3 章の問題設定に基づいて研究課題を検証するため、検証用データを収集する。
+今回は特に被害の大きかった 6 つの大雨・台風を対象とした。
+対象には、各地で河川が氾濫・決壊した令和元年東日本台風などが含まれる。
+収集の方針として、災害発生直前から発災直後までを対象に、潜在的なリスクや被災地の状況を取得するように設計した。
+収集には Twitter Search API を利用し、収集方針に従って、キーワードと収集期間を指定した。
+キーワードは Olteanu ら[20]を参考に、台風や大雨など災害に関連したキーワードを指定した。
+収集期間は、次の時間を起点として 24 時間以内とした。
+l 豪雨：気象庁から最初に大雨特別警報が発表された時刻から 6 時間前 l 台風：気象庁から日本国内に上陸の発表があった時刻から 6 時間前 事例および収集条件の詳細は付録 A・B の通り。
+4.2 
+
+アノテーション 
+
+収集した投稿に対する場所参照表現のアノテーションは Matsuda ら[21]らのスキームを参照した。
+場所参照表現の例を表 1 に示す。
+災害時には対応を推進する組織やその役割によって必要な情報が異なるため、路線名や河川名が細かく分かれているクラス定義を採用した。
+アノテーションは著者 1 名によって作業し、事例ごとに 8,000 件の投稿を準備した。  
+表  2 場所参照表現のクラス定義 種別名 クラス名 場所参照表現の例 地名 LOCATION 長崎県、 倉敷市、 北山町 施設名 FACILITY 熊駅、 東海大学、 朝倉医院 路線名 RAILWAY 京浜東北線、 山手線、 南武線 河川名 RIVER 球磨川、 阿武隈川、 長良川 道路名 ROAD 国道 4 号線、 東北道、 首都高 4.3 
+
+データ集計 
+
+RQ1.災害種別および事例間で場所参照表現の性質はどのように異なるのかを調査するため、アノテーション結果を集計し比較した。
+各事例を区別するため、災害種別の ID（大雨：HR、台風：TY）と，発災日時が古い順に数字を付与した（付録 A)。
+まず、場所参照表現を含む投稿と、投稿内の場所参照表現を集計した。
+詳細を表 3 に示す。
+集計の結果、大雨と台風で場所参照表現を含む投稿と、投稿内の場所参照表現の種類数に約 2 倍の差がある。
+次に、事例ごとに 4.2 節で定義したクラスに従ってクラス分布を集計した（図 2）。
+一部のクラスで割合に違いはあるが、LOCATION と FACILITY が大半を占める傾向は共通している。
+また、先行研究にて他の災害種別とも比較した。
+地震[22]と大雪[23]の際に流通する投稿には RIVER に該当する場所参照表現がほとんど含まれず、地震の場合は場所参照表現の約 9 割が LOCATION である。
+これらの結果を総合すると、大雨と台風で性質に差はある。
+しかし、他の災害種別と比較すると、クラス分布に大きな差はない。
+本研究ではモデルの学習は可能と判断した。
+5 実験設定 実験で使用する評価と実装について述べる。
+評価にはモデルの正確性を測る適合率と、網羅性を測る再現率、およびその両方を考慮した F1 を利用した。
+指標の定義は CoNLL-2003 Shared Task[24]を参照し、4 章で構築したデータセットで各指標を計測した。
+データセットはモデルの学習(80%)、評価(10%)、開発(10%)に分割した。
+次は実装について述べる。
+基盤モデルは BERT[25]を採用した。
+災害時に流通する膨大な投稿を扱うため、スケーラビリティと性能のバランスを考慮して決定した。
+実験には cl-tohoku/bert-base-japanese-v2iを使用し、Deviln ら[25]に従って分類層やハイパーパラメータを設定した。
+今回は開発用データセットでバッチサイズを 8、学習率を 3e-5，エポック数を 10 に調整した。
+6 実験 本章では、RQ2.新たに発生した災害に対し、過去の災害時の投稿をどのように利用すればよいかを検証した。
+今回は次の方針で実験した。
+まず、ベース i  https://huggingface.co/tohoku-nlp/bert-base-japanese-v2 ラインを得るために予備実験をした。
+新たに発生した災害時の投稿で学習・推論し、その結果を他の実験時のベースラインとした。
+次に、この実験結果と、過去の災害を利用した場合の実験結果を比較した。
+まず、単一の事例のみを利用して学習した場合を実験し、複数の災害を組み合わせた場合では性能に影響が生じるかを検証した。
+6.1 
+
+ベースライン実験 
+
+この実験では、同じ事例でモデルを学習し評価する。
+新しく発生した災害で投稿を収集し、検証用データが構築できた場合との比較を目的としている。
+この結果と、過去の災害時の投稿を利用した場合の差を比較し、過去の災害の活用方法を検証する。
+今回は発災日時が新しい、大雨（HR3）と台風（TY3）の評価結果をベースラインとした。
+詳細は表 4 の通り。
+また、参考値として、他の事例で同様に評価した結果を付録 C に示す。
+表 4 の結果をベースラインとして、同等かそれ以上の性能の獲得を目指す。  
+表  3 場所参照表現(LM)の集計結果 事例 投稿数 LM を含む 投稿数(割合) LM の合計 (種類数) HR1 8,000 2,472 (30.9%) 4,795(1,978) HR2 8,000 2,696 (33.7%) 5,586(1,737) HR3 8,000 3,264 (40.8%) 6,834(1,711) TY1 8,000 1,432(17.9%) 2,309(1,087) TY2 8,000 1,528(19.1%) 2,668(1,163) TY3 8,000 1,744(21.8%) 3,110(1,384) AVG 8,000 2,189(27.4%) 4,217(1,510)  図  2 場所参照表現のクラス分布  表  4 ベースライン実験の結果 学習 評価 適合率 再現率 F1 HR3 HR3 0.817 0.851 0.834 TY3 TY3 0.665 0.784 0.720 6.2 
+
+単一事例による実験 
+
+過去の災害利用にあたり、単一の事例のみで学習したモデルの性能を評価した。
+結果を図 3 と 4 に示す。
+今回は各事例で学習したモデルを HR3 と TY3に適用し、実験結果から F1 を抜粋した。
+さらに、ベースラインの F1 を補助線として引いた。
+この補助線を参考に、ベースラインに対する優劣を論じる。
+適合率・再現率を含む実験結果は付録 D の通り。
+実験の結果、単一の事例を利用した場合では、全ての事例で HR3 や TY3 で学習したモデルと同等か、それ以上の性能を得られた。
+また、災害種別が異なる場合でも、良好な結果を示している。
+6.3 
+
+複数事例による実験 
+
+各事例を単体で利用して良好な結果が得られたため、複数の事例を組み合わせた場合の影響を検証した。
+今回の設定は以下の通り。
+l  HR3 以外の大雨の全事例(HR) l  TY3 以外の台風の全事例(TY) l 異なる災害種別の組み合わせ(HR1+TY1 など) l 全ての事例(ALL) 実験時には 2 つの事例のデータセットを結合する。
+なお、ALL は HR と TY を結合しているため他の設定よりも学習時の事例数は 2 倍になる。
+実験結果は6.2 節と同様に F 値を抜粋し、図 5 と 6 に示す。
+実験の結果、事例を組み合わせた場合の傾向は災害種別で異なることがわかった。
+事例を組み合わせることにより、学習に利用できる投稿の量や、含まれる場所参照表現の種類が増えるため、性能の向上が期待できる。
+しかし、大雨の場合、ほとんどの組み合わせでベースラインの性能を下回った。
+一方で、台風の場合は逆の傾向を示している。
+また、性能が ALL よりも高いか、同等になる組み合わせを確認した。
+詳細は付録 E に示す。
+6.4 
+
+結論 
+
+過去の災害を利用する場合は、利用できる全ての事例を使うよりも、部分的に組み合わせることが有効である。
+実験では、事例を単体で利用した場合でも良好な結果が得られ、わずかだが事例間で優劣が観察できた。
+また、複数の事例を利用する場合、最も性能が高い性能が得られる組み合わせは災害種別で異なる。
+さらに、利用できる全ての事例を使った場合よりも、性能が高い組み合わせが存在する。
+従って、過去の災害事例を場所参照表現抽出モデルの学習に利用する場合、全事例より少量で同等かそれ以上の結果を得られる事例の組み合わせがある。
+7 まとめ 災害時のソーシャルメディアを対象とした場所参照表現の抽出において、過去の災害時に流通した投稿の利用可能性について検証した。
+検証の結果、過去の災害からモデルを学習するには、全ての事例を利用するのではなく、最適な組み合わせを検証する必要がある。
+最適な組み合わせを得る方法は興味深い研究課題だが、今後の課題である。
+また、ソーシャルメディアの投稿については信憑性については議論[26]があり、独立した検証が必要である。  
+図  3 単一事例による実験結果（大雨  HR3）  図  4 単一事例による実験結果（台風  TY3）  図  5 複数事例による実験結果（大雨  HR3）  図  6 複数事例による実験結果（台風  TY3）
+
+謝辞 本研究は、科研費基盤研究(C) 22K12277 の助成を受けて実施した。 
+
+参考文献 
+
+
+[1]  Uchida, O., Utsu, K.: Utilization of Social Media at the Time of Disaster. IEICE ESS Fundamentals Rev. pp. 13, 301–311 (2020). 
+[2]  Yamada, S., Utsu, K., Uchida, O.: An Analysis of Tweets During the 2018 Osaka North Earthquake in Japan -A Brief Report. In: Proc. 2018 5th International Conference on Information and Communication Technologies for Disaster Management (ICT-DM). pp. 1–5 (2018). 
+[3]  Han, B., Cook, P., Baldwin, T.: Geolocation Prediction in Social Media Data by Finding Location Indicative Words. In: Kay, M. and Boitet, C. (eds.) Proceedings of COLING 2012. pp. 1045–1062. The COLING 2012 Organizing Committee, Mumbai, India (2012). 
+[4]  Middleton, S.E., Middleton, L., Modafferi, S.: Real-Time Crisis Mapping of Natural Disasters Using Social Media. IEEE Intelligent Systems. 29, 9–17 (2014). 
+[5]  Al-Olimat, H., Thirunarayan, K., Shalin, V., Sheth, A.: Location Name Extraction from Targeted Text Streams using Gazetteer-based Statistical Language Models. In: Proc. 27th International Conference on Computational Linguistics. pp. 1986–1997. Association for Computational Linguistics, Santa Fe, New Mexico, USA (2018). 
+[6]  Uchida,  O.,  Rokuse,  T.,  Tomita,  Kajita,  Y.,  Yamamoto,  Y.,   Toriumi, F., Semaan, B., Robertson, S., Miller, M.: Classification and Mapping of Disaster Relevant Tweets for Providing Useful Information for Victims During Disasters. IIEEJ Trans. Image Electronics and Visual Computing, 3, pp. 224–232 (2015). 
+[7]  Meier, P.: Digital Humanitarians: How Big Data Is Changing the Face of Humanitarian Response. (2015). 
+[8]  Hu, X., Zhou, Z., Li, H., Hu, Y., Gu, F., Kersten, J., Fan, H., Klan, F.: Location Reference Recognition from Texts: A Survey and Comparison. ACM Computing Surveys. 56, 1–37 (2023). 
+[9]  Ireson, N., Ciravegna, F.: Toponym Resolution in Social Media. In: Patel-Schneider, P.F., Pan, Y., Hitzler, P., Mika, P., Zhang, L., Pan, J.Z., Horrocks, I., and Glimm, B. (eds.) The Semantic Web – ISWC 2010. pp. 370–385. Springer Berlin Heidelberg, Berlin, Heidelberg (2010). 
+[10]  Davari, M., Kosseim, L., Bui, T.: TIMBERT: Toponym Identifier For The Medical Domain Based on BERT. In: Proceedings of the 28th International Conference on Computational Linguistics. pp. 662–668. International Committee on Computational Linguistics, Barcelona, Spain (Online) (2020). 
+[11]  Yuan,  H.,  Xu,  H.,  Qian,  Y.,  Li,  Y.:  Make  your  travel  smarter: Summarizing urban tourism information from massive blog data. International Journal of Information Management. 36, 1306–1319 (2016). 
+[12]  Higashiyama, S.,  Ouchi, H.,  Teranishi, H.,  Otomo,  H.,  Ide, Y., Yamamoto, A., Shindo, H., Matsuda, Y., Wakamiya, S., Inoue, N., Yamada, I., Watanabe, T.: Arukikata Travelogue Dataset with Geographic Entity Mention, Coreference, and Link Annotation. In: Graham, Y. and Purver, M. (eds.) Findings of the Association for Computational Linguistics: EACL 2024. pp. 513–532. Association for Computational Linguistics, St. Julian’s, Malta (2024). 
+[13]  Khanal, S., Caragea, D.: Multi-task Learning to Enable Location Mention Identification in the Early Hours of a Crisis Event. In: Moens, M.-F., Huang, X., Specia, L., and Yih, S.W. (eds.) Findings of the Association for Computational Linguistics: EMNLP 2021. pp. 4051–4056. Association for Computational Linguistics, Punta Cana, Dominican Republic (2021) 
+[14]  Kumar,  A.,  Singh,  J.P.:  Location  reference  identification  from tweets during emergencies: A deep learning approach. International Journal of Disaster Risk Reduction. 33, 365–375 (2019). 
+[15]  Suwaileh,  R.,  Imran,  M.,  Elsayed,  T.:  IDRISI-RA:  The  First Arabic Location Mention Recognition Dataset of Disaster Tweets. In: Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers). pp. 16298–16317. Association for Computational Linguistics, Toronto, Canada (2023). 
+[16]  Weiss, K., Khoshgoftaar, T.M., Wang, D.: A  survey of transfer learning. Journal of Big Data. 1, 1–40 (2016). 
+[17]  Kouw, W.M., Loog, M.: A Review of Domain Adaptation without Target Labels. IEEE Transactions on Pattern Analysis and Machine Intelligence. 43, 766–785 (2021). 
+[18]  Ratinov, L., Roth, D.: Design Challenges and Misconceptions in Named Entity Recognition. In: Stevenson, S. and Carreras, X. (eds.) Proceedings of the Thirteenth Conference on Computational Natural Language Learning (CoNLL-2009). pp. 147–155. Association for Computational Linguistics, Boulder, Colorado (2009). 
+[19]  Ramshaw, L., Marcus, M.: Text Chunking using Transformation-Based Learning. In: Third Workshop on Very Large Corpora (1995). 
+[20]  Olteanu,  A.,  Castillo,  C.,  Diaz,  F.,  Vieweg,  S.:  CrisisLex:  A lexicon for collecting and filtering Microblogged communications in crises. Proceedings of the 8th International Conference on Weblogs and Social Media, ICWSM 2014. 376–385 (2014). 
+[21]  Matsuda,  K.,  Sasaki,  A.,  Okazaki,  N.,  Inui,  K.:  Annotating Geographical Entities on Microblog Text. In: Proc. 9th Linguistic Annotation Workshop. pp. 85–94. Association for Computational Linguistics, Denver, Colorado, USA (2015). 
+[22]  六瀬聡宏,  宇津圭祐,  内田理:  豪雪時の災害ツイートを対象とした場所参照表現の抽出. 電子情報通信学会技術研究報告; 信学技報. 124, 11–16 (2024). 
+[23]  六瀬聡宏,  宇津圭祐,  内田理:  地震発生直後にソーシャルメディア上を流通する場所参照表現の抽出. 電子情報通信学会技術研究報告; 信学技報. 124, 23–28 (2024). 
+[24]  Tjong  Kim  Sang,  E.F.,  De  Meulder,  F.:  Introduction  to  the CoNLL-2003 Shared Task: Language-Independent Named Entity Recognition. In: Proceedings of the Seventh Conference on Natural Language Learning at HLT-NAACL 2003. pp. 142–147 (2003). 
+[25]  Devlin, J., Chang,  M.-W., Lee, K., Toutanova, K.: BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding. In: Proc. 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long and Short Papers). pp. 4171–4186. Association for Computational Linguistics, Minneapolis, Minnesota (2019). 
+[26]  榊剛史:  災害時における流言拡散とその悪影響の低減に向けて. 人工知能. 38, 37–44 (2023).              
+
+付録A 対象とした災害の事例と収集開始時刻 災害種別 事例 ID 事例 収集開始時刻 大雨 HR1 平成 30 年 7 月豪雨(西日本豪雨) 2018/07/06 11:10 HR2 令和元年 8 月豪雨 2019/08/27 23:50 HR3 令和 2 年 7 月豪雨(熊本豪雨) 2020/07/03 22:50 台風 TY1 平成 30 年台風第 21 号 2018/09/04 06:00 TY2 令和元年台風第 15 号（令和元年房総半島台風） 2019/09/08 23:00 TY3 令和元年台風第 19 号（令和元年東日本年台風） 2019/10/12 13:00  付録B 収集に利用したキーワード 台風 OR 大雨 OR 倒壊 OR 全壊 OR 被害状況 OR 崩壊 OR 崩落 OR 半壊 OR 落木 OR 倒木 OR 落石 OR 冠水 OR 氾濫 OR 水没 OR 増水 OR 浸水 OR 洪水 OR 断水 OR 地滑り OR 山崩れ OR 土砂崩れ OR 崖崩れ OR がけ崩れ OR 土砂流入 OR  地崩れ OR (運転(取りやめ OR 取り止め OR 見合わせ OR 見合せ OR 見あわせ)) OR 帰宅困難 OR 帰宅難民 OR 足止め OR 帰れない OR 帰れなくなった OR 通信障害 OR 停電 OR 救助 OR  避難 OR 通行止 OR 通行不 OR 通行規制 OR 渋滞 OR 運休 OR 突風 OR 強風 OR 暴風 OR 横転 OR 高潮 OR 高波 OR 津波  付録C ベースライン実験の結果（詳細） 学習 評価 適合率 再現率 F1 HR1
+HR1 0.749 0.789 0.768 HR2 HR2 0.756 0.792 0.774 HR3 HR3 0.817 0.851 0.834  学習 評価 適合率 再現率 F1 TY1 TY1 0.690 0.750 0.719 TY2 TY2 0.719 0.782 0.750 TY3 TY3 0.665 0.784 0.720  (a)大雨 (b)台風  付録D 単一の事例に基づく実験結果（詳細） 学習 評価 適合率 再現率 F1 HR1 HR3 0.825 0.856 0.840 HR2 0.835 0.865 0.849 TY1 0.830 0.860 0.844 TY2 0.836 0.858 0.847  学習 評価 適合率 再現率 F1 HR1 TY3 0.686 0.788 0.734 HR2 0.663 0.806 0.727 TY1 0.671 0.799 0.729 TY1 0.685 0.806 0.740  (a)大雨 (b)台風  付録E 複数の事例に基づく実験結果（詳細） 学習 評価 適合率 再現率 F1 ALL HR3 0.828 0.842 0.835 HR 0.833 0.854 0.844 TY 0.808 0.786 0.797 HR1+TY1 0.802 0.813 0.808 HR1+TY2 0.832 0.834 0.833 HR2+TY1 0.824 0.824 0.824 HR2+TY2 0.809 0.829 0.819  学習 評価 適合率 再現率 F1 ALL TY3 0.714 0.82 0.763 HR 0.712 0.802 0.754 TY 0.702 0.799 0.747 HR1+TY1 0.684 0.795 0.735 HR1+TY2 0.717 0.795 0.754 HR2+TY1 0.743 0.795 0.768 HR2+TY2 0.717 0.799 0.756  (a)大雨 (b)台風  

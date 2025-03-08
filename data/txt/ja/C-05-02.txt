@@ -1,0 +1,179 @@
+拡散モデルを用いたテキスト生成における「崩壊問題」と時刻埋め込みの影響
+
+野坂 瞭太 松崎 拓也
+
+
+
+東京理科大学大学院
+
+
+
+1424519@ed.tus.ac.jp matuzaki@rs.tus.ac.jp
+
+
+
+概要
+
+拡散モデルは、ランダムノイズに対して「ノイズ除去」を繰り返し行うことで徐々に良いサンプルを出力する、生成モデルの一種である。
+テキスト生成に応用する際の課題として、生成の過程において、ある回数以降のノイズ除去でサンプルの改善に失敗し、生成結果を崩壊させていく現象がある。
+本研究は、この現象に関して、これまで注目の薄かった時刻の埋め込みに焦点を当て、その影響を調査した。
+結果として、時刻の埋め込みがこの「崩壊問題」の一因であることを示し、崩壊を抑制する正則化を提案する。
+
+
+1 はじめに
+
+デノイジング拡散確率モデル（Denoising DiﬀusionProbabilistic Models; DDPMs）[1]は、画像をはじめとした連続データにおいて成功を収めた生成モデルで、埋め込み表現を介して離散データを生成する研究も盛んに行われている。
+DDPM は、まず時刻 𝑇 でランダムノイズをサンプリングし、以降時刻 0 に向けて「ノイズ除去」を段階的に行うことで、徐々に美しいサンプルを出力する。
+テキストを対象とする拡散言語モデル（Diﬀusion Language Models; DLMs）においては、一段階のノイズ除去を「ノイズを完全に除去し、小さいノイズを改めて付加する」ことで表現することが一般的である[2]。
+現在の DLM は品質に難があり実用レベルに至っていない。
+原因の一つとして、生成中、ある時刻を超えると「完全なノイズ除去」タスクに躓き始め、却ってサンプルを崩壊させていく現象が存在する[3]。
+本稿ではこれを崩壊問題と呼ぶ。
+「改めて付加するノイズ」は徐々に小さくするため、ノイズ除去タスクは生成の過程が進むのに伴って易しくなっていくべきであり、この振る舞いは期待に反している。
+先行研究では生成を複数回行い MinimumBayes-Risk decoding [4]等を用いて比較的良いサンプルを選定する試みが行われている[2][5][6]が、拡散モデルの長所である生成結果の多様性とのトレードオフがある。
+生成時にデータに付加するノイズの大きさをアドホックに調整することで崩壊を回避するような試み[3]は、DLM の可能性を示唆しつつもDDPM の枠組みから外れるため汎用性に乏しく、根本的な解決が待たれている。
+生成の各ステップにおいてモデルにはノイズ付き単語埋め込みとともに現在時刻を表す時刻埋め込みを入力する。
+単語埋め込みに正則化を加えると一定の改善が見られるという報告[3]はあるが、時刻埋め込みがモデルに与える影響は未だ明らかでない。
+本研究は、拡散モデル本来の「徐々に美しいデータを生成する」挙動をテキスト生成において実現することを目的として時刻埋め込みに着目し、単語埋め込みとの関係を調査した。
+まず、時刻埋め込みが単語埋め込みを損壊する度合いを定義し、実際に情報を失わせていることを明らかにする。
+加えて、崩壊問題の解決策として両埋め込みに相互に作用する正則化を提案し、その有効性を示す。
+
+
+
+2 準備
+
+
+
+2.1 デノイジング拡散確率モデル
+
+DDPM は以下の 2 種類の過程に基づく[1]。
+拡散過程訓練データ z0∼ 𝑞(z0)に対し、次のMarkov 過程でノイズ付加を行う。
+𝑞(z𝑡| z𝑡 −1) =Nz𝑡;√𝛼𝑡z𝑡 −1, 𝛽𝑡𝐼0 < 𝛽1< ··· < 𝛽𝑇< 1, 𝛼𝑡= 1 − 𝛽𝑡はノイズの大きさを決めるハイパーパラメータで、ノイズスケジュールという。
+¯𝛼𝑡=Î𝑡𝑠 =1𝛼𝑠,¯𝛽𝑡= 1 − ¯𝛼𝑡とおくと𝑞(z𝑡| z0) =Nz𝑡;p¯𝛼𝑡z0,¯𝛽𝑡𝐼(1)図 1 時刻 0.2𝑇 および 0.8𝑇 におけるノイズ付加の様子。
+円はサンプリングされる主なベクトルの領域を表す（時刻が進むにつれ、原点方向に近づき、半径は大きくなる)。
+図 2 時刻埋め込みによる平行移動が分離を損なわせる様子。
+時刻 𝑡 においてノイズを付した “write” と時刻 𝑡′においてノイズを付した “watch”, “look” が混同される。が成り立つ。
+z𝑡が含む z0の情報は次第に減少し、十分大きな 𝑇 に対して z𝑇はN(0, 𝐼)に従うと見做せる。
+サンプリングした {z𝑡}𝑇𝑡=0を用いてノイズを除去するモデル 𝑝𝜃(z𝑡 −1| z𝑡)を訓練する。
+生成過程ランダムノイズ z𝑇∼N(0, 𝐼)をサンプリングし、モデル 𝑝𝜃(z𝑡 −1| z𝑡)を用いてノイズ除去を時刻 𝑡 = 𝑇, ..., 1 において順に行うことで、新たなデータ z0を出力する。
+
+2.2 拡散言語モデル
+
+DLM は、まず単語埋め込みの系列 z0= [z0𝑖]𝐿𝑖=1をDDPM によって生成し、それを離散化することで単語列 y = [𝑦𝑖]𝐿𝑖=1を得る[2]。
+生成過程において、時刻𝑡 ではノイズを完全に除去した後 𝑡 − 1 回分のノイズ付加を行うことで一段階のノイズ除去を行う。
+𝑝𝜃(z𝑡 −1| z𝑡) = 𝑞(z𝑡 −1| z0= z𝜃(z𝑡, 𝑡))z𝜃(z𝑡, 𝑡)= Transformer(u𝜙(z𝑡, 𝑡))z𝜃は任意の時刻 𝑡 のノイズ付き単語埋め込み列 z𝑡から z0を予測するモデルで、Transformer [7]を利用する．u𝜙は z𝑡に時刻の情報を付加するモデルで、典型的には各 z𝑡𝑖に時刻埋め込み u𝑡を足し合わせる。
+u𝜙(z𝑡, 𝑡)=[z𝑡𝑖+ u𝑡]𝐿𝑖=1ノイズ除去に関する損失Ldenoiseは DDPM から導出される。
+単語列の生成モデルとしての DLM において、DDPM で生成する z0は最終的な生成データである単語列 y に対する隠れ変数の役割を果たす。
+Ldenoiseは主に z0と z𝜃(z𝑡, 𝑡)の 2 乗誤差からなるので，Ldenoiseのみを小さくする方向に単語埋め込みを調整したとすると、全ての単語埋め込みが 1 点に集まるような無意味な配置が好まれると考えられる。
+したがって、隠れ変数 z0𝑖と単語 𝑦𝑖の適切な対応付けを学習するための信号として、ノイズ除去損失とは別に単語埋め込みが適切に分離されていることを促進するような損失を考える必要がある。
+そこで、単語埋め込み w𝑘を単語 𝑘 ∈ {1, ..., 𝑉} に丸める確率分布を、すべての単語埋め込みとの内積の Softmax𝑝𝜙(𝑘 | w𝑘) =exp⟨w𝑘, w𝑘⟩Í𝑉ℓ=1exp⟨w𝑘, wℓ⟩で定義し、訓練はLdenoiseと 𝑝𝜙の負の対数尤度Lroundとの和Ltotalを最小化する：Ltotal=Ldenoise+LroundLround= 𝔼y,z0"−𝐿Õ𝑖=1log 𝑝𝜙(𝑦𝑖| z0𝑖)#.
+
+3 手法
+
+モデルは丸め損失によって隠れ変数 z0𝑖と単語 𝑦𝑖の対応付けを学習するが、特にノイズが小さい時刻において、ノイズ除去の直接の対象となる u𝜙(z𝑡, 𝑡)の各要素（以降入力ベクトルと呼ぶ）が表す単語も正しく分離できなければならない。
+本節では、ノイズ除去のヒントとなるべき時刻埋め込みが実際にはノイズ付き単語埋め込みをさらに破壊してしまうことで Transformer がノイズ除去に失敗するという仮説を立て、検証方法および崩壊を抑制するための新しい正則化を説明する。
+
+3.1 曖昧性スコア
+
+ノイズ付加は単語埋め込みを原点方向に縮めガウシアンノイズを足すことで行われる（図 1）。
+モデルはその逆操作を学習するので、生成過程が進むにつれて入力 z𝑡𝑖に対して出力される z0𝑖の分散が小さくなっていき、次第に生成結果が確定する。
+しかし、Transformer に入力する際に時刻埋め込みによる平行移動が行われるため、実際の入力ベクトル z𝑡𝑖+u𝑡が異なる時刻における無関係な単語と混同される可能性がある（図 2）。
+ノイズ除去にあたって Transformerはすべての入力ベクトル z𝑡1+ u𝑡, ..., z𝑡 𝐿+ u𝑡から時刻 𝑡 を暗黙的に推定していると考えられることから、本研究では、時刻 𝑡 における混同を u𝑡を中心として調査する。
+混同の度合いを式(2)で定義し、以降これを曖昧性スコアと呼ぶ。
+Ambig(𝑡, 𝑡′)=1𝑉2𝑉Õ𝑘=1𝑉Õℓ=1cos(w𝑘, wℓ)− cosp¯𝛼𝑡w𝑘,p¯𝛼𝑡′wℓ+ u𝑡′− u𝑡(2)cos は単語埋め込みの cos 類似度である。
+式(1)より√¯𝛼𝑡w𝑘は 𝑞(z𝑡𝑖| z0𝑖= w𝑘)の期待値であるから、√¯𝛼𝑡w𝑘+ u𝑡は時刻 𝑡 において単語 𝑘 を表す入力ベクトルの期待値にあたる。
+第 2 項の cos を、u𝑡を中心とした√¯𝛼𝑡w𝑘+ u𝑡と√¯𝛼𝑡′wℓ+ u𝑡′の類似度と解釈すると、Ambig(𝑡, 𝑡′)は時刻 𝑡 から見たときに時刻 𝑡′の各単語が表す言語的な意味が本来の意味から平均的にどの程度変化するかを表す。
+単語埋め込み空間と時刻埋め込み空間が直交しているときAmbig(𝑡, 𝑡′)= 0 となる。
+
+
+
+3.2 分離を強調する正則化
+
+入力ベクトルの分離を強く促進する正則化を𝑝𝜃(𝑘 | w𝑘)の尤度に倣い式(3)で定義する。
+ldisambig(𝑘, w𝑘, 𝑡, 𝑡′)=exp√¯𝛼𝑡w𝑘+ u𝑡,√¯𝛼𝑡′w𝑘+ u𝑡′Í𝑉ℓ=1exp√¯𝛼𝑡w𝑘+ u𝑡,√¯𝛼𝑡′wℓ+ u𝑡′(3)式(1)より√¯𝛼𝑡w𝑘は 𝑞(z𝑡𝑖| z0𝑖= w𝑘)の期待値であるから、ldisambigを大きくすることは時刻 𝑡 において単語 𝑘 を表す入力ベクトルが時刻 𝑡′における入力ベクトルと平均的に分離されることを促す。
+¯𝛼0= 1, u0= 0 と定めると 𝑡 = 𝑡′= 0 のとき 𝑝𝜃(𝑘 | w𝑘)の尤度に一致するので、丸めに関する従来の損失の一般化になっている。
+本稿では、ノイズが多い時刻では混同をしてもよく、生成が進んだ時刻での混同を特に抑えたいという直感をもとに、𝑡′= 0 に固定して実験を行う。
+したがってLdisambig= 𝔼y,z0,𝑡"−𝐿Õ𝑖=1logldisambig(𝑦𝑖, z0𝑖, 𝑡, 0)#を最小化する。
+
+
+4 実験
+
+
+
+4.1 実験設定
+
+ノイズ除去モデル z𝜃として 12 層 Encoder-Decoder型 Transformer を用いた。
+Encoder には言い換えあるいは平易化の元文を入力する。
+一般的な設定に従い、最大時刻 𝑇 = 2000、ノイズスケジュールはsqrt [2]とした（詳細は付録 A)。
+データセット言い換え（Paraphrasing）タスクにQuora Question Pairs [8]を、平易化（Text Simpliﬁcation）タスクに Wiki-Auto [9]を利用する。
+評価指標 BLEU [10]および BERTScore [11]でタスクに対する精度を、Self-BLEU [12]で生成結果の多様性を評価する。
+ベースライン参考として標準的な DLM であるDiﬀuSeq [5]と比較する。
+著者らが公開している生成例を評価した。
+本研究におけるLdisambigを導入しなかった場合のモデルは DiﬀuSeq と類似のアーキテクチャであり同程度の性能が見込まれる。
+
+
+4.2 結果と考察
+
+最終的な生成結果の評価を表 1 に、生成過程における途中経過の評価、すなわち各 𝑡 = 𝑇, . .., 1 に対する z𝜃(z𝑡, 𝑡)の評価を図 3 に示す。
+標準的な DLM では、生成品質を表す BLEU, BERTScore が悪化していく崩壊問題が起きていること（実例は付録 B），提案手法によってそれを抑制できていることが確認できる。
+特に Quora Question Pairs では崩壊を抑制する以上にサンプルの品質を向上させる様子が見られる。
+曖昧性スコアを図 4 に示す。
+𝑡 = 𝑡′に近づくほど曖昧性スコアは小さくなるが、これは近い時刻の埋め込み同士は近くなるよう自然に学習されるためと考えられる。
+いずれの場合も 𝑡 = 𝑡′から離れるほど混同が強まるが、Ldisambigの導入によって特にノイズが小さい時刻ほど曖昧性を解消できていることが認められる。
+Self-BLEU は提案手法によって悪化し、一般に拡散モデルに期待される生成結果の多様性を損なう結果となった。
+しかし、図 3 によれば Self-BLEUの向上はLdisambigの有無に関わらず崩壊（BLEU,BERTScore の悪化）に伴っており、これまで DLMに報告されてきた多様さはサンプルを破損させることによる見かけのものであることが示唆される。
+崩表 1 最終ステップの出力の評価。
+括弧内は生成中の最良の値との差。
+Quora Question Pairs Wiki-AutoBLEU BERTScore Self-BLEU BLEU BERTScore Self-BLEUDiﬀuSeq 22.95 79.30 32.90 38.46 77.81 56.79正則化なし 23.61(−1.77)79.59(−1.90)48.20(+0.00)36.67(−7.24)75.83(−5.79)63.18(+0.00)正則化あり 26.45(−0.47)82.44(−1.03)69.31(+9.19)40.49(−1.57)79.87(−1.28)87.75(+9.87)図 3 生成中の z𝜃(z𝑡, 𝑡)の評価（Quora Question Pairs）図 4 曖昧性スコア（Quora Question Pairs）壊を許容したとしても、Self-BLEU は BLEU と同程度の値になることが理想的と考えられ、テキストを多様に生成するには拡散モデルにおいても一層の工夫が必要である。
+BLEU, BERTScore に関しては生成過程の早い段階で最良のサンプルが現れ、半分以上の時刻が崩壊に費やされている。
+生成速度の向上を目的として時刻をスキップする試み1）が広く行われているが、左記の事実は、代わりに生成過程を中断することが有効に働く可能性を示している2）。
+ただし、最良のサンプルをランタイムに特定することは容易ではなく、崩壊問題の解決は依然として喫緊の課題である。
+
+
+5 おわりに
+
+本研究は、DLM の課題の一つである崩壊問題の解決を目指し、時刻埋め込みがその一因であることを指摘した。
+さらに、単語・時刻埋め込みの双方に及ぶ包括的な正則化を提案し、改善を確認した。
+今後の展望としては、さらに効果的な損失の設計や、平行移動以外の方法による時刻埋め込みの使用が挙げられる。
+1） ノイズ除去を 𝑝𝜃(z𝑡 −𝑐| z𝑡) = 𝑞 (z𝑡 −𝑐| z0= z𝜃(z𝑡, 𝑡))で定め，𝑇/𝑐 ステップかけて生成する。
+2） 類似の結果として、等間隔ではなくノイズが大きい時刻を多めに経由するようなスキップを行うと通常の生成過程よりも高品質なサンプルが得られるという報告[13]がある。
+
+
+
+参考文献
+
+
+[1] Jonathan Ho, Ajay Jain, and Pieter Abbeel. DenoisingDiﬀusion Probabilistic Models. In Pro ceedings of the34th International Conference on Neural Informa-tion Processing Systems, NIPS ’20, Red Hook, NY,USA, 2020. Curran Associates Inc.
+[2] Xiang Lisa Li, John Thickstun, Ishaan Gulrajani, PercyLiang, and Tatsunori B. Hashimoto. Diﬀusion-LM Im-proves Controllable Text Generation. In Proceedings ofthe 36th International Conference on Neural Infor-mation Processing Systems, NIPS ’22, Red Hook, NY,USA, 2024. Curran Associates Inc.
+[3] Zhujin Gao, Junliang Guo, Xu Tan, Yongxin Zhu, FangZhang, Jiang Bian, and Linli Xu. Empowering DiﬀusionModels on the Embedding Space for Text Generation. InKevin Duh, Helena Gomez, and Steven Bethard, editors,Proceedings of the 2024 Conference of the NorthAmerican Chapter of the Association for Computa-tional Linguistics: Human Language Technologies(Volume 1: Long Papers), pp. 4664–4683, MexicoCity, Mexico, June 2024. Association for ComputationalLinguistics.
+[4] Shankar Kumar and William Byrne. Minimum Bayes-RiskDecoding for Statistical Machine Translation. In Proceed-ings of the Human Language Technology Confer-ence of the North American Chapter of the Associ-ation for Computational Linguistics: HLT-NAACL2004, pp. 169–176, Boston, Massachusetts, USA, May 2- May 7 2004. Association for Computational Linguistics.
+[5] Shansan Gong, Mukai Li, Jiangtao Feng, Zhiyong Wu,and Lingpeng Kong. DiﬀuSeq: Sequence to SequenceText Generation with Diﬀusion Models. In The EleventhInternational Conference on Learning Representa-tions, 2023.
+[6] Hongyi Yuan, Zheng Yuan, Chuanqi Tan, Fei Huang, andSongfang Huang. Text Diﬀusion Model with Encoder-Decoder Transformers for Sequence-to-Sequence Genera-tion. In Kevin Duh, Helena Gomez, and Steven Bethard,editors, Proceedings of the 2024 Conference ofthe North American Chapter of the Associationfor Computational Linguistics: Human LanguageTechnologies (Volume 1: Long Papers), pp. 22–39,Mexico City, Mexico, June 2024. Association for Compu-tational Linguistics.
+[7] Ashish Vaswani, Noam Shazeer, Niki Parmar, JakobUszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser,and Illia Polosukhin. Attention Is All You Need. In Pro-ceedings of the 31st International Conference onNeural Information Processing Systems, NIPS’17, p.6000–6010, Red Hook, NY, USA, 2017. Curran AssociatesInc.
+[8] DataCanary, hilﬁalkaﬀ, Lili Jiang, Meg Risdal, NikhilDandekar, and tomtung. Quora Question Pairs, 2017. Kag-gle.
+[9] Chao Jiang, Mounica Maddela, Wuwei Lan, Yang Zhong,and Wei Xu. Neural CRF Model for Sentence Alignmentin Text Simpliﬁcation. In Dan Jurafsky, Joyce Chai, Na-talie Schluter, and Joel Tetreault, editors, Proceedingsof the 58th Annual Meeting of the Associationfor Computational Linguistics, pp. 7943–7960, Online,July 2020. Association for Computational Linguistics.
+[10] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-JingZhu. BLEU: a Method for Automatic Evaluation of Ma-chine Translation. In Pierre Isabelle, Eugene Charniak, andDekang Lin, editors, Proceedings of the 40th AnnualMeeting of the Association for Computational Lin-guistics, pp. 311–318, Philadelphia, Pennsylvania, USA,July 2002. Association for Computational Linguistics.
+[11] Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q. Wein-berger, and Yoav Artzi. BERTScore: Evaluating TextGeneration with BERT. In International Conferenceon Learning Representations, 2020.
+[12] Yaoming Zhu, Sidi Lu, Lei Zheng, Jiaxian Guo, WeinanZhang, Jun Wang, and Yong Yu. Texygen: A Benchmark-ing Platform for Text Generation Models. In The 41stInternational ACM SIGIR Conference on Research& Development in Information Retrieval, SIGIR ’18,pp. 1097–1100, New York, NY, USA, 2018. Associationfor Computing Machinery.
+[13] Zecheng Tang, Pinzheng Wang, Keyan Zhou, Juntao Li,Ziqiang Cao, and Min Zhang. Can Diﬀusion ModelAchieve Better Performance in Text Generation ? Bridg-ing the Gap between Training and Inference ! In AnnaRogers, Jordan Boyd-Graber, and Naoaki Okazaki, editors,Findings of the Association for Computational Lin-guistics: ACL 2023, pp. 11359–11386, Toronto, Canada,July 2023. Association for Computational Linguistics.
+
+表 2 ハイパーパラメータ単語・時刻埋め込みの次元 128Transformer の入出力の次元 768Transformer のフィードフォワード層の次元 3072入力の長さ 64出力の長さ 64表 3 崩壊問題が生じた生成過程の z𝜃(z𝑡, 𝑡)と最終的な出力（Wiki-Auto）。
+特殊トークンは省略。
+入力 Unicode is a computing industry standard for theconsistent encoding, representation, and handling oftext expressed in most of the world’s writing systems.正解 Unicode is a standard for encoding computer text inmost of the internationally used writing systems intobytes.𝑡 = 2000 Unicode is a the in the for the and....1800 Unicode is a computing industry standard for theconsistent encoding,..1600 Unicode is a computing industry standard for world’swriting systems.1400 Unicode is a computing industry of the world’s writ-ing systems.1200 Unicode is a computing industry standard for the’swriting systems.1000 Unicode is one of the for some of the writing systems.800 Unicode is one of the for in of the writing century.600 Unicode is one at school for the of the is.400 Unicode is one at school for local in the consistentRoman.200 Unicode is one at school for the in the consistent the.出力 Unicode is one at school for rain in one a Roman.入力 The North
+London line (NLL) is a railway line whichpasses through the inner suburbs of west, north-westand north London, England between Richmond inthe south-west and Stratford in the east, avoidingcentral London.正解 The North London line is a railway line of the Lon-don Overground.𝑡 = 2000 The North London line (NLL) is a the,.....1800 The North London line is aLL, is a railway line.1600 The North London line (NLL) is a railway line.1400 The North London line (NLL) is a railway line.1200 The North London line is anLL, north- railway line.1000 The North London line (NLL) is a railway line.800 The North London line is an a railway line in railwayline.600 The North London line is an important railway usedin railway line.400 The North London line is an, railway London inrailway line.200 The North London line is an R central London inPrime simple.出力 The North London line is an of central London intheinson.
+
+A 実験詳細
+
+ハイパーパラメータは表 2 の通りである。
+単語埋め込み、時刻埋め込みはともに学習する。
+トークナイザには facebook/bart-base3）を利用した。
+<pad>の埋め込みも学習し、出力の長さは <pad> の生成によって調整される。
+BERTScore は microsoft/deberta-xlarge-mnli を用いて計算した。
+Self-BLEU の計算の際には生成を3 回行った。
+曖昧性スコアはデータセットに含まれる単語の 1/10 から算出した。
+
+
+
+B 崩壊の例
+
+崩壊問題が生じた生成過程の実例を表 3 に示す。
+3） ここで挙げるモデルはすべて Hugging Facehttps://huggingface.co/ で公開されているものを指す。

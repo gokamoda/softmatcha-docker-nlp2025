@@ -1,0 +1,203 @@
+RNN の回帰行列を凍結しても統語構造の獲得は損なわれない
+
+上田亮
+
+1∗
+
+栗林樹生
+
+2
+
+神藤駿介
+
+1
+
+乾健太郎
+
+2,3,41
+
+東京大学
+
+2
+
+MBZUAI
+
+3
+
+東北大学
+
+4
+
+理化学研究所
+
+
+
+{ryoryoueda,skando}@is.s.u-tokyo.ac.jp
+
+
+
+{Tatsuki.Kuribayashi,Kentaro.Inui}@mbzuai.ac.ae
+
+
+
+概要
+
+人間と同様の言語能力を達成するために必要十分な構造しか持たないニューラル言語モデルはどのようなものか？ 可能な限り簡素なニューラル言語モデルを出発点としてこの問いに取り組むべく、本稿は Reservoir Computing の基本的なモデルであるEcho State Network（ESN）と呼ばれる回帰型のモデルを再訪し、ESN やそれを少し拡張した言語モデルの能力を検証する。
+実験の結果、適切な初期化のもとでは埋め込み層と出力層のみ訓練し、回帰行列は凍結したとしても統語構造の獲得が損なわれないことが示唆された。
+
+
+1 はじめに
+
+近年、Transformer [1]をベースとする大規模言語モデル（Large Language Model; LLM）が、その言語モデリング性能や汎用性の高さから自然言語処理（NLP）分野で多大な成功をおさめ注目を集めている。
+その一方で、人間レベルの言語能力を達成するための必要十分条件は何だったのかという科学的な問いに対して、この成功単体は答えておらず、例えば，Transformer ほど複雑なニューラルネットワークアーキテクチャを使う必要は必ずしもなかったのかもしれない。
+本稿では、そのような問題意識から、考え得る限り最もシンプルな回帰型のモデルとして、ReservoirComputing 分野の基本的なモデルである Echo StateNetwork（ESN）[2, 3, 4]を再訪する。
+ESN に基づく言語モデルや、それを少し拡張したモデルがどの程度の言語モデリング能力や統語構造獲得能力を有するのかを検証し、今後の模索の足がかりとすることを狙う。
+ESN は、回帰型ニューラルネットワーク（RNN）の一種である。
+Simple RNN (SRN)に近い構造をもち、特にランダム初期化したあと出力層以外∗MBZUAI 滞在中の成果。のパラメタ(埋め込み行列と回帰行列)を全て固定(凍結)したまま訓練するモデルであり、主に時系列データを扱う研究分野で用いられてきた[5]。
+出力層以外凍結するという著しい制約は、可能な限りシンプルなニューラル言語モデルの出発点とするのに相応しいと考えられる。
+実は、NLP 分野においても、ESN 文分類器が十分に強力なベースラインモデルとなるという指摘[6]や、機械翻訳タスクやマスク言語モデリングにおいて Transformer の一部の層を凍結したまま訓練したとしても、通常のTransformer に匹敵する性能が維持されうるという報告[7]がある。
+実験においては、人間の子どもが 13 歳までに暴露されるであろう 1 億単語程度の規模のデータセットを用いて ESN 言語モデルの訓練・評価を行い、訓練後の ESN 言語モデルの統語構造獲得能力をBLiMP データセット[8]上で評価する。
+また、元のESN 言語モデルでは性能に限界があることが分かったため、出力層と埋め込み層を訓練可能とする場合（ESN+i）についても検証を行った。
+少なくとも我々の実験設定のもとでは、ESN+i 言語モデルは、同データで訓練した Transformer 言語モデルと同等かそれ以上の統語獲得能力を示すことが明らかになり、テキストに基づく言語モデルの統語獲得において，（i）RNN のような再帰性、（ii）隠れ状態が無秩序に変化しないよう適切に過去の情報を忘却する性質（Echo State Property; ESP）をもつように適切に回帰行列を初期化すること、（iii）単語埋め込みの学習が少なくとも必要であり、RNN 回帰行列の訓練は必ずしも必要条件ではないことが示唆される。
+なお、今回の設定で最も優れた性能を発揮したのは LSTM であり、ゲート機構の必要性なども今後検討に値するだろう。
+また今回、ESN および ESN+iにおいて様々なモデルサイズを試したが、性能に関して明確なスケーリング則を確認することはできなかった。
+データセット規模やエポック数の制約の影響も有り得るが、初期化手順やアーキテクチャ、モダリティに改善の余地が残っている可能性もある。
+例えば、回帰行列に脳のような small-world 性やscale-free 性をもたせる[9, 10]、層を重ねて深いネットワークにする[11]、マルチモーダルなデータを用いるなどの改善方法があり得る。
+
+2 ESN 言語モデル
+
+時系列データ（文データ）𝒔 = {𝒖𝑡∈ ℝ𝑁voc}𝑇𝑡=1が与えられたとき、各時刻 𝑡 における ESN の隠れ状態𝒉𝑡∈ ℝ𝑁recと出力ベクトル 𝒐𝑡∈ ℝ𝑁vocは典型的には以下のように表される[4]：𝒉𝑡= (1 − 𝑎)𝒉𝑡 −1+ 𝑎 𝑓 (𝑾rec𝒉𝑡 −1+ 𝑾in𝒖𝑡)(1)𝒐𝑡= 𝑾out𝒉𝑡+ 𝒃out. (2)ここで、 𝑓 (·)は要素ごとの（非線形）写像であり、tanh や ReLU が良く用いられる。
+𝑎 ∈ (0, 1]は漏れ率と呼ばれる超パラメタであり、残差接続に似た機構をもたらす。
+行列 𝑾rec∈ ℝ𝑁rec×𝑁recと 𝑾in∈ ℝ𝑁rec×𝑁vocはランダム初期化後に固定（凍結）し、基本的に訓練中には動かさない（ただし、本稿では、追加で 𝑾inを訓練可能とした条件下での実験も行う）。
+一方で、行列 𝑾out∈ ℝ𝑁voc×𝑁rec及びベクトル 𝒃out∈ ℝ𝑁vocは訓練を通して最適化される。
+行列 𝑾in, 𝑾recの初期化行列 𝑾inはスケール𝜎in> 0 を超パラメタとして以下のように初期化する：(𝑾in)𝑖 𝑗i.i.d∼N(0, 𝜎2in)(3)𝑾recは 𝜌rec∈ (0, 1)，𝜆rec∈ [0, 1)を超パラメタとして以下のように初期化する：𝑾rec=𝜌rec𝜌(𝑾rand⊙ 𝑾mask)𝑾rand⊙ 𝑾mask. (4)ただし、(𝑾rand)𝑖 𝑗i.i.d∼N(0, 1),(𝑾mask)𝑖 𝑗i.i.d∼ Bernoulli(1 −𝜆rec)(5)である。⊙ は要素ごとの積（Hadamard 積）であり、𝜌(·)は行列のスペクトル半径である。
+𝜌recは 𝑾recのスペクトル半径を決める超パラメタであり、経験則として 1 に達しないギリギリの値にするのが良いとされている。
+スペクトル半径は固有値の絶対値の最大値であり、直感的には隠れ状態 𝒉𝑡 −1をどの程度 “拡大” しうるかをを定めている。
+これが大きすぎると過去のノイズを拡大して無秩序な状態に陥るリスクがあるが、1 未満であれば過去の情報を適切に忘却することによって程よい状態が保たれやすくなる。
+このような性質はしばしば Echo State Property（ESP）と呼ばれる。
+𝜆recは行列の疎性を制御し、ニューロン結合のトポロジーを複雑にし、リッチなダイナミクスを生む効果があるとされる1）．文データ 𝒔 のフォーマット文データ 𝒔 = {𝒖𝑡}𝑇𝑡=1において、各 𝒖𝑡は one-hot 符号化されたベクトルである。
+𝒖1は必ず文の始まりを意味する特別な記号（BOS），𝒖𝑇は必ず文の終わりを意味する特別な記号（EOS）であるとする。
+目的関数 ESN の研究ではリッジ回帰で 𝑾outの値を求めることが多いのだが、本稿では近年の言語モデリングの一般的なプラクティスに倣い、文の対数尤度最大化の問題として定式化し、勾配法によって訓練する：maximize𝜽tr𝔼𝑝data(𝒔 )[log 𝑝(𝒔 | 𝜽tr; 𝜽fr)](6)ここで、𝜽tr, 𝜽frはそれぞれ訓練可能パラメタ、凍結パラメタであり、log 𝑝(𝒔 | 𝜽tr; 𝜽fr) =∑𝑇 −1𝑡=1log 𝑝(𝒖𝑡+1|𝒖1:𝑡, 𝜽tr; 𝜽fr)=∑𝑇 −1𝑡=1⟨𝒖𝑡+1, log Softmax(𝒐𝑡)⟩.(7)である。
+
+
+3 ESN 言語モデルを用いる意義
+
+Transformer が圧倒的な性能を誇るこの時代に、あえて ESN を用いる意義は第 1 節でも触れた通りであるが、本節では補足的な説明を加える。
+Transformer のアーキテクチャは自己注意機構、全結合層、残差接続、正規化層、またそれらを多層化したものからなる複雑な構造をしており、言語の認知モデルを考える上でこれほどリッチなアーキテクチャを採用する必要は必ずしもないと考えられる。
+このような複雑な機構をもつモデルは一般に解釈が難しく、どのようにして言語モデリングや統語構造を学習しているのかを理解するのは困難である場合が多い2）。
+一方で、ESN は非常に簡素な連続時間微分方程式で記述されるニューロンモデルの自然な離散化として導けることが知られている。
+このことを確かめるため、一時的に 𝑡 を連続な時間変数として、1） また、疎行列を伴う行列演算は PyTorch ライブラリの提供する torch.sparse によって高速化可能な場合がある。
+今回は利用できなかったが、今後活用する予定である。
+2） 所謂 BERTology も一定の注目を集めてはいるが（[12]など）、これは最早 “Transformer を知るための科学” になってしまっていると言わざるを得ないだろう。
+ニューロンモデルを以下のように定式化する[13]：𝑑𝒉𝑡𝑑𝑡=1𝛾(−𝛼𝒉𝑡+ 𝑓 (𝑾rec𝒉𝑡+ 𝑾in𝒖𝑡)). (8)これは入力信号（𝑾in𝒖𝑡）、ニューロン間の結合（𝑾rec）、ニューロンの活性化（ 𝑓 (···)）、ニューロンの興奮状態の減衰（−𝛼𝒉𝑡）から成る、これ以上ないくらいシンプルなニューロンモデルである。
+これを時間幅 𝛿 で離散化すると、𝒉𝑡=(1 −𝛼𝛿𝛾)𝒉𝑡 −1+𝛿𝛾𝑓 (𝑾rec𝒉𝑡 −1+ 𝑾in𝒖𝑡)(9)となる。
+ここで 𝛼 = 1，𝛿/𝛾 = 𝑎 と置き直したものがESN である。
+実は、ESN を用いた計算心理言語学研究は過去に度々行われていた[14, 15, 16]のだが、深層学習モデルが勾配爆発や勾配消失の問題を克服するにつれ、ESN は suboptimal なモデルとみなされ次第に用いられなくなってきたようである[17, 18]。
+しかしながら、元々暗に効率的な圧縮表現の獲得を期待されて発展してきた深層学習のトレンドは、今や大規模化（スケーリング）に移りつつある。
+もしもモデルの細かな構造よりも大きさこそが重要であるのならば、この時代にあえて ESN をはじめとするシンプルな回帰型のモデルを再訪し、その限界を再検証することには一定の意義があると考える。
+
+
+4 実験
+
+
+
+4.1 実験設定
+
+訓練用データセットとその前処理近年の計算心理言語学分野におけるトレンドの 1 つであるBabyLM Challenge [19, 20]の提供するデータセット（2023 年版）を訓練用（train）、評価用（dev）データセットとして用いる。
+訓練用データは 100M 単語、評価用データは 10M 単語程度の規模である。
+元のテキストファイルは文ごとに分割されていないため，NLTKライブラリの提供する文分割器3）を用いて分割した4）。
+更にそれを GPT2 のトークナイザ(gpt2)5）を用いてトークナイズした。
+このとき文ごとのトークン系列の最大長は 128 とし、長さが 6 未3） https://www.nltk.org/api/nltk.tokenize.senttokenize.html4） spaCy ライブラリの文分割器の方がより正確な分割を期待できるが、今回は時間的な制約もあり、ルールベースで高速な処理ができる NLTK の文分割器を用いることにした。
+5） https://huggingface.co/docs/transformers/model doc/gpt2#transformers.GPT2Tokenizer満になったものはデータから取り除いた（BOS とEOS を付与したため実質的な最小長は 4)。
+統語構造把握能力の評価言語モデルが統語構造をどの程度正しく把握できるているかを測るため、BLiMP [8]を用いた。
+BLiMP は統語論に基づく様々な言語現象に関する英語文のミニマルぺアを集めたデータセットである。
+ESN 言語モデル超パラメタに関してはそれぞれ 𝑎 = 0.8, 𝑓 = ReLU, 𝜎in= 1, 𝜌rec= 0.993, 𝜆rec=0.5, 𝑁rec∈ {64, 128, 256, 512, 1024, 2048}とした6）．出力層に加えて埋め込み行列を訓練可能とする ESN+i言語モデルについても同じ超パラメタを採用した。
+比較対象 OpenAI による事前学習済みの GPT2言語モデル（GPT2 OpenAI)，BabyLM Challenge データセットを用いて初めから訓練し直した GPT2 言語モデル（GPT2 Scracth）、そして埋め込み次元・隠れ状態サイズ 512 の LSTM 言語モデルを比較対象とする。
+言語モデルの訓練方法今回は各言語モデルを 1エポックだけ訓練させることとした。
+バッチサイズを 32 とし、Optimizer には AdamW [21]7）を用い、既定値をそのまま利用した（
+例えば学習率は 0.001，荷重減衰は 0.01）。
+また、ESN，ESN+i，LSTM においては埋め込み層直後と出力層直前にパラメタ 0.1の Dropout を適用した8）．
+
+4.2 実験結果
+
+表 1 に各言語モデルの訓練パラメタ数、総パラメタ数、訓練時の損失、検証時の損失、BLiMP（全体）スコアを示す。
+GPT2 OpenAI の BLiMP 全体スコアが最も高いが、これは訓練データの規模の違いを考慮すれば当然である（このモデルサイズで達成可能な BLiMP スコアの限界を推し量るのには有用である)。
+GPT2 OpenAI を除いて、訓練損失、評価損失、BLiMP スコア全てにおいて最も良い結果を出したのは LSTM であった。
+GPT2 Scratch が LSTMより劣っているのは、エポック数の制限から学習が収束しきっていないことや、単純化のため学習率スケジューリングや勾配クリッピングのヒューリスティクスを省いたことなどが原因と考えられる。
+ESN の成績はどのモデルサイズにおいても GPT26） 時間の許す限り Optuna で探索して得た暫定的なものであるため、改善の余地を残している可能性がある。
+7） https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html8） GPT2 Scratch については既定値のパラメタを用いた。
+表 1 各言語モデルの訓練パラメタ数、総パラメタ数、訓練時の損失、評価損失、及び BLiMP の全体スコア。
+訓練損失が評価損失よりも大きいのは、評価損失は 1 エポック後に計算しているのに対し訓練損失は 1 エポック全体の平均を取っていることに加え、訓練時は Dropout によりランダムネスの影響があるためであると考えられる。
+GPT2 は厳密には回帰行列を持たないが、所謂 causal attention が回帰的な役割をもつため ✓ マークをつけている。
+読みやすさのため GPT2Scratch の BLiMP スコアに下線を引き、それより高い ESN+i のスコアは太字にしている。
+埋め込み訓練回帰行列訓練訓練/総パラメタ数[M]訓練損失 ↓ 評価損失 ↓BLiMP ↑[%]ESN (64) 3/6 6.35 5.94 53.2ESN (128) 6/12 6.18 5.76 54.5ESN (256) 12/25 6.03 5.59 53.5ESN (512) 25/51 5.98 5.51 55.6ESN (1024) 51/104 6.09 5.56 54.5ESN (2048) 102/210 6.66 6.03 53.2ESN+i (64) ✓ 6/6 5.26 4.75 58.0ESN+i (128) ✓ 12/12 5.08 4.61 60.4ESN+i (256) ✓ 25/25 4.95 4.50 60.8ESN+i (512) ✓ 51/51 4.87 4.43 61.5ESN+i (1024) ✓ 102/104 4.84 4.40 62.4ESN+i (2048) ✓ 205/210 4.88 4.43 62.2GPT2 Scratch ✓ ✓ 124/124 5.64 4.81 58.6LSTM (512) ✓ ✓ 53/53 4.50 4.12 68.4GPT2 OpenAI ✓ ✓ 124/124 - - 82.2Scratch に劣後しており、十分な学習能力を伴っていないことが示唆される。
+一方で、埋め込み行列を訓練可能とした ESN+i 言語モデルは 𝑁rec≥ 128 のとき GPT2 Scratch を上回る成績を出している。
+特に、𝑁rec≤ 1024 に関しては GPT2 よりもモデルサイズが小さいのにも関わらずである。
+以上の結果から、元の ESN 言語モデルは Transformer に劣後するものの、追加で埋め込み行列の訓練を許せば Transformerと同等以上の性能をもつことが示唆される。
+
+
+
+5 まとめと今後の展望
+
+本稿では、可能な限りシンプルなニューラル言語モデルから出発して、人間レベルの言語能力を獲得を達成するために必要十分な要素が何であるのかを探求するのを目的として、Reservoir Computing 分野の基本的なモデルである Echo State Network (ESN)を再訪し、ESN に基づく言語モデルやそれを少し拡張したモデルがどの程度統語構造を獲得する能力を持っているかについての検証を行った。
+実験の結果、ESN をそのまま用いる場合では Transformerに劣後するものの、追加で埋め込み行列 𝑾inの訓練を許せば Transformer と同等以上の性能をもつことが明らかになった。
+これは、少なくとも必要十分な言語獲得能力を探求する科学的な研究においては、Transformer のような複雑なアーキテクチャを言語モデルとして採用する必要は必ずしもないことを示唆している。
+特に(i) RNN のような再帰性、(ii)過去の情報を適切に忘却できる（ESP）ような回帰行列𝑾recの初期化、(iii)埋め込み行列 𝑾inの訓練が少なくとも必要であることが示唆され、回帰行列の訓練は必ずしも必要でないことが示唆された9）。
+なお、我々の今回の設定で最も優れた性能を発揮したのはLSTM であった。
+ゲート機構の必要性についても今後議論する価値があるだろう。
+また、原義通りの ESN では十分な性能を発揮できず、埋め込み行列の訓練を許さなければならなかった原因の候補の1つとして、one-hot符号化が考えられる。
+ESN を用いる典型的な研究では連続的に変化する時系列データが入出力として用いられるが，one-hot 符号系列は不連続に変化する。
+また、単語の類似度情報を一切持たないため構造の発見が困難になり得る。
+さらに、ESN，ESN+i において様々なモデルサイズを試したが、性能に関して明確なスケーリング則は認められなかった。
+データセット規模やエポック数の制約の影響もあり得るが、初期化手順や、アーキテクチャ、モダリティに改善の余地が残っている可能性もある。
+今後、回帰行列に脳のような small-world 性や scale-free 性をもたせる、層を重ねて深くする、マルチモーダルな訓練データを用いるなどの改善案を検討する予定である。
+9） ESP の重要性を補強するため、スペクトル半径 𝜌recを変化させた際の実験結果を付録 A に掲載した。
+
+
+
+謝辞
+
+本研究は JSPS 科研費 JP23KJ0768，JST ACT-X（JPMJAX24C5）の助成を受けたものです。
+
+参考文献
+
+
+[1] Ashish Vaswani, Noam Shazeer, Niki Parmar, JakobUszkoreit, Llion Jones, Aidan N Gomez, L ukasz Kaiser,and Illia Polosukhin. Attention is all you need. In Ad-vances in Neural Information Processing Systems,Vol. 30. Curran Associates, Inc., 2017.
+[2] Herbert Jaeger. The “echo state” approach to analysingand training recurrent neural networks. Technical report,German National Research Center for Information Tech-nology GMD Technical Report 148, 2001. Erratum noteavailable at https://www.ai.rug.nl/minds/uploads/EchoStatesTechRepErratum.pdf.
+[3] Mantas Lukoˇseviˇcius and Herbert Jaeger. Reservoir com-puting approaches to recurrent neural network training.Computer Science Review, Vol. 3, No. 3, pp. 127–149,2009.
+[4] Mantas Lukoˇseviˇcius. A Practical Guide to ApplyingEcho State Networks, pp. 659–686. Springer BerlinHeidelberg, Berlin, Heidelberg, 2012.
+[5] Gouhei Tanaka, Toshiyuki Yamane, Jean Benoit H´eroux,Ryosho Nakane, Naoki Kanazawa, Seiji Takeda, HidetoshiNumata, Daiju Nakano, and Akira Hirose. Recent ad-vances in physical reservoir computing: A review. NeuralNetworks, Vol. 115, pp. 100–123, 2019.
+[6] John Wieting and Douwe Kiela. No training required: Ex-ploring random encoders for sentence classiﬁcation. In 7thInternational Conference on Learning Representa-tions, ICLR 2019, New Orleans, LA, USA, May 6-9,2019. OpenReview.net, 2019.
+[7] Sheng Shen, Alexei Baevski, Ari S. Morcos, Kurt Keutzer,Michael Auli, and Douwe Kiela. Reservoir transform-ers. In Proceedings of the 59th Annual Meeting ofthe Association for Computational Linguistics andthe 11th International Joint Conference on Natu-ral Language Processing, ACL/IJCNLP 2021, (Vol-ume 1: Long Papers), Virtual Event, August 1-6,2021, pp. 4294–4309. Association for Computational Lin-guistics, 2021.
+[8] Alex Warstadt, Alicia Parrish, Haokun Liu, Anhad Mo-hananey, Wei Peng, Sheng-Fu Wang, and Samuel R. Bow-man. Blimp: The benchmark of linguistic minimal pairsfor english. Trans. Assoc. Comput. Linguistics, Vol. 8,pp. 377–392, 2020.
+[9] Zhidong Deng and Yi Zhang. Collective behavior of asmall-world recurrent neural system with scale-free distri-bution. IEEE Trans. Neural Networks, Vol. 18, No. 5,pp. 1364–1375, 2007.
+[10] Yuji Kawai, Jihoon Park, and Minoru Asada. A small-world topology enhances the echo state property and signalpropagation in reservoir computing. Neural Networks,Vol. 112, pp. 15–23, 2019.
+[11] Claudio Gallicchio, Alessio Micheli, and Luca Pedrelli.Deep reservoir computing: A critical experimental analy-sis. Neurocomputing, Vol. 268, pp. 87–99, 2017.
+[12] Ian Tenney, Dipanjan Das, and Ellie Pavlick. BERT re-discovers the classical NLP pipeline. In Proceedings ofthe 57th Conference of the Association for Com-putational Linguistics, ACL 2019, Florence, Italy,July 28- August 2, 2019, Volume 1: Long Papers,pp. 4593–4601. Association for Computational Linguis-tics, 2019.
+[13] Herbert Jaeger, Mantas Lukoˇseviˇcius, Dan Popovici, andUdo Siewert. Optimization and applications of echo statenetworks with leaky-integrator neurons. Neural Net-works, Vol. 20, No. 3, pp. 335–352, 2007. Echo StateNetworks and Liquid State Machines.
+[14] Matthew H. Tong, Adam D. Bickett, Eric M. Christiansen,and Garrison W. Cottrell. Learning grammatical structurewith echo state networks. Neural Networks, Vol. 20,No. 3, pp. 424–432, 2007.
+[15] Stefan L. Frank and MichalˇCerˇnansk´y. Generalization andsystematicity in echo state networks. Proceedings of theAnnual Meeting of the Cognitive Science Society,Vol. 30, No. 30, 2008.
+[16] Stefan L. Frank and Rens Bod. Insensitivity of the humansentence-processing system to hierarchical structure. Psy-chological Science, Vol. 22, No. 6, pp. 829–834, 2011.PMID: 21586764.
+[17] Kristina Gulordava, Piotr Bojanowski, Edouard Grave, TalLinzen, and Marco Baroni. Colorless green recurrent net-works dream hierarchically. In Proceedings of the 2018Conference of the North American Chapter of theAssociation for Computational Linguistics: HumanLanguage Technologies, NAACL-HLT 2018, NewOrleans, Louisiana, USA, June 1-6, 2018, Volume1 (Long Papers), pp. 1195–1205. Association for Com-putational Linguistics, 2018.
+[18] Ethan Wilcox, Jon Gauthier, Jennifer Hu, Peng Qian,and Roger Levy. On the predictive power of neural lan-guage models for human real-time comprehension be-havior. In Proceedings of the 42th Annual Meet-ing of the Cognitive Science Society - Developinga Mind: Learning in Humans, Animals, and Ma-chines, CogSci 2020, virtual, July 29 - August 1,2020. cognitivesciencesociety.org, 2020.
+[19] Alex Warstadt, Leshem Choshen, Aaron Mueller, AdinaWilliams, Ethan Wilcox, and Chengxu Zhuang. Call forpapers - the babylm challenge: Sample-eﬃcient pretrain-ing on a developmentally plausible corpus. CoRR, Vol.abs/2301.11796, , 2023.
+[20] Leshem Choshen, Ryan Cotterell, Michael Y. Hu, TalLinzen, Aaron Mueller, Candace Ross, Alex Warstadt,Ethan Wilcox, Adina Williams, and Chengxu Zhuang. [callfor papers] the 2nd babylm challenge: Sample-eﬃcientpretraining on a developmentally plausible corpus.CoRR,Vol. abs/2404.06214, , 2024.
+[21] Ilya Loshchilov and Frank Hutter. Decoupled weight de-cay regularization. In 7th International Conferenceon Learning Representations, ICLR 2019, New Or-leans, LA, USA, May 6-9, 2019. OpenReview.net,2019.
+
+
+
+
+A スペクトル半径を変化させた際の実験結果
+
+表 2 超パラメタの 1 つであるスペクトル半径 𝜌recを変化させた際の、ESN+i 言語モデル（𝑁rec= 512）の訓練時の損失、評価損失、及び BLiMP の全体スコア。
+訓練損失が評価損失よりも大きいのは、評価損失は 1 エポック後に計算しているのに対し訓練損失は 1 エポック全体の平均を取っていることに加え、訓練時は Dropout によりランダムネスの影響があるためであると考えられる。
+埋め込み訓練回帰行列訓練スペクトル半径 𝜌rec訓練損失 ↓ 評価損失 ↓BLiMP ↑[%]ESN+i (512) ✓ 0.5 4.94 4.52 60.6ESN+i (512) ✓ 0.6 4.91 4.49 61.0ESN+i (512) ✓ 0.7 4.89 4.47 61.3ESN+i (512) ✓ 0.8 4.88 4.45 61.1ESN+i (512) ✓ 0.9 4.87 4.44 61.1ESN+i (512) ✓ 1.0 4.87 4.43 61.5ESN+i (512) ✓ 1.1 4.87 4.43 61.3ESN+i (512) ✓ 1.2 4.89 4.43 61.5ESN+i (512) ✓ 1.3 4.90 4.44 61.5ESN+i (512) ✓ 1.4 4.92 4.45 62.0ESN+i (512) ✓ 1.5 1.14 × 1064.45 61.8ESN+i (512) ✓ 1.6 7.80 × 10182.31 × 101758.9ESN+i (512) ✓ 1.7 2.10 × 10307.80 × 102855.2超パラメタの 1 つであるスペクトル半径 𝜌recを変化させた際の、ESN+i 言語モデル（𝑁rec= 512）の結果を表 2 に示す。
+表から読み取れるように、スペクトル半径 𝜌recが大きすぎても小さすぎても十分な性能が発揮されず、𝜌rec≈ 1 付近で最も言語モデリングの性能が良くなることが分かる。
+スペクトル半径 𝜌recが小さすぎる場合はモデルが十分に学習しきれていない（underﬁt している）。
+逆に、スペクトル半径 𝜌recが大きすぎる場合（今回の場合は 𝜌rec≥ 1.5）、損失が極端に大きな値になってしまい有意味な学習ができていないことが示唆される。
+これは、隠れ状態 𝒉𝑡が無秩序に “拡大” される傾向によって Echo State Property（ESP）が損なわれてしまったためであると考えられる。
+また、興味深いことに、ESP を保つための一般的な経験則である 𝜌rec< 1 を多少逸脱しても（今回の場合は1.4 まで）性能が保たれている。
+これは、今回の研究において ReLU(·)を非線形関数として用いたことに起因すると考えられる。
+例えば、𝒙 をゼロを平均とするランダムなベクトルとする場合、𝒚 = ReLU(𝒙) = max(𝒙, 0)の成分の約半数はゼロになると考えられるため、おおよそ√2∥𝒚∥2≈ ∥𝒙∥2が成り立つと考えられる。
+従って、𝜌rec<√2 ≈ 1.41 の範囲内であれば、隠れ状態が無秩序に “拡大” されてしまうリスクは低いと考えられる。
+ただし、他の非線形関数を採用する場合に同様の議論が成り立つとは限らないため、やはり 𝜌rec< 1 を経験則としておくのが安全なのであろう。

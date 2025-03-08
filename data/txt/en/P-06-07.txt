@@ -1,0 +1,187 @@
+Zero-shot Entity Recognition for Polymer BiodegradabilityInformation: GPT-4o on PolyBD
+
+Shanshan Liu
+
+1
+
+Masashi Ishii
+
+2
+
+Yuji Matsumoto
+
+11
+
+Center for Advanced Intelligence Project, RIKEN
+
+2
+
+Material Database Group, MaDIS, NIMS
+
+
+
+{shanshan.liu, yuji.matsumoto}@riken.jp
+
+
+
+ishii.masashi@nims.go.jp
+
+
+
+
+Abstract
+
+To investigate polymer biodeg radability information ex-traction, we constructed PolyBD, a manually annotateddataset containing entity annotations of 100 journal ar-ticles.
+We evaluated the performance of GPT-4o insentence-level entity recognition under a zero-shot settingon PolyBD.
+While GPT-4o achieved strong overall results,its performance diﬀered markedly between nested entities(those contained within other entities) and non-nested enti-ties (all others).
+Speciﬁcally, it achieved a recall of 78% fornested entities but only 56% for non-nested entities.
+Theseresults underscore both the capabilities and limitations ofadvanced large language models in addressing real-worldextraction tasks.
+
+
+1 Introduction
+
+Figure 1 An annotated sentence in PolyBD.Information extraction techniques have been widely ap-plied across scientiﬁc domains
+[1], including biomedicine[2], chemistry [3], and computer science [4].
+However,certain ﬁelds remain under-explored despite the criticalimportance of domain-speciﬁc information for societal andenvironmental advancement.
+This work sheds light on thepolymer biodegradability information, which is essentialfor advancing material innovation, improving waste man-agement, and informing policy and industrial practices.
+The development of automated tools for extracting poly-mer biodegradability data can greatly improve the eﬃ-ciency, accessibility, and applicability of existing research,thereby accelerating scientiﬁc advancement and practicalimplementation.
+This study, conducted in collaborationwith material domain experts, aims to foster knowledgeintegration for enhanced material circulation.
+To support the development of accurate, domain-speciﬁcmodels, we present PolyBD, an on-progressing dataset fo-cused on polymer biodegradability.
+The dataset consistsof 100 research articles documenting interactions betweenmicroorganisms or enzymes and polymers.
+Each articlehas been manually segmented into sentences and annotatedat the entity level, capturing polymers, bacteria, fungi, andenzymes (see Figure 1).To improve the utility of annotations for domain experts,entities were annotated at multiple hierarchical levels.
+Forexample, as illustrated in Figure 1, both "Chromobacteriumviscosum" (species) and "Chromobacterium" (genus) areannotated.
+Future annotation eﬀorts will link these bac-terium entities to their corresponding ontology entries.
+Thepolymer "polybutylene succinate-co-adipate" will be asso-ciated with genus- and species-level annotations duringthe relation annotation process, enabling a comprehensiveunderstanding of polymer-bacterium interactions.
+PolyBD contains a substantial number of nested enti-ties ― entities contained within others, such as "Chro-mobacterium" and "Rhizopus" in Figure 1 ― presentingconsiderable challenges for extraction.
+Methods capableof addressing nested Named Entity Recognition (NER) arescarce, particularly in specialized domains [5].
+Given theknowledge-intensive nature of this task ― distinguishingFigure 2
+An example illustrating our ultimate goal in constructing PolyBD involves annotating polymer biodegradability informationas events with six attributes given a paragraph.
+Table 1 Type distributions within the PolyBD dataset.
+Entity Type An Example CountPolymer poly(butylenes succinate)
+3327Bacterium C. acidovorans TB35 4928Fungus Rhizopus niveus 1637Enzyme Lipase F 3742All - 13634between entities such as bacteria and fungi often requiresmore than contextual sentence cues ― and the superior per-formance of recent Large Language Model (LLM)-basedNER approaches in zero- and few-shot scenarios, we se-lected GPT-4o1）as the baseline to evaluate the complexityand challenges of our task.
+Our contributions are:•
+To the best of our knowledge, we present the ﬁrstdataset dedicated to information extraction on poly-mer biodegradability.•
+We report experimental results for named entityrecognition on the PolyBD dataset using GPT-4o ina zero-shot setting, aiming to advance research andapplications in this domain.•
+Our analysis reveals a signiﬁcant performance gapbetween non-nested and nested entities by GPT-4o,highlighting the need for further investigation.
+
+
+2 Dataset - PolyBD
+
+We are constr ucting a dataset of 100 journal articlesthat investigate the interactions between polymers, mi-croorganisms, and enzymes in the context of polymerbiodegradability.
+This dataset is named PolyBD (PolymerBiodegradability dataset).
+PolyBD is structured to identify1）
+https://openai.com/index/hello-gpt-4o/Figure 3 Prompt template for NER.Figure 4 Prompt template with three examples of nested enti-ties for NER.which polymers are degraded by speciﬁc bacterium or fun-gus, what enzyme is involved, the conditions under whichdegradation occurs, and the resulting eﬀects.
+PolyBD is designed for a task akin to event extraction,where each event comprises six attributes: Polymer, Bac-terium, Fungus, Enzyme, Condition, and Result, but lacksan event trigger.
+To improve reliability and usability, bac-terium and fungus entities will be aligned with the NCBITaxonomy Database2）, and enzyme entities will be alignedwith the ENZYME Ontology3）in future annotation pro-cesses.
+An example of the input and structured output data2）
+https://www.ncbi.nlm.nih.gov/taxonomy3） https://enzyme.expasy.org/we will construct is shown in Figure 2.At this stage, we manually segmented sentences (17,357sentences) and annotated entities (22,777 entities) acrossall papers.
+Four entity types were deﬁned and annotated:Polymer, Bacterium, Fungus, and Enzyme.
+Due to chal-lenges in entity-level annotation, Condition and Result at-tributes are excluded from the current NER task.
+3,638sentences out of the whole dataset containing at least oneBacterium/Fungus/Enzyme entity are selected for evalua-tion, covering 13,634 entities.
+The statistics of entity typesare presented in Table 1.
+PolyBD features a signiﬁcantproportion (32%) of nested entities.
+
+
+3 Experiments
+
+
+
+3.1 Zero-shot NER
+
+For a given input sentence, we applied zero-shot prompt-ing with GPT-4o to perform sentence-level NER usingtwo distinct prompts, aiming to evaluate whether explicitlyhighlighting nested entities in the task instruction improvesthe LLM’s performance of recognizing them.
+Prompt 1(Figure 3) provides a straightforward instruction to per-form NER, specifying the extraction of nested entities andtargeted entity types.
+Prompt 2 (Figure 4) is expanded onPrompt 1 by including three illustrative examples of nestedentities, clarifying the deﬁnition of nested entities, and de-tailing the expected output format.
+GPT-4o was accessedvia OpenAI’s API with default settings.
+
+
+3.2 Evaluation
+
+We evaluated model performance using Precision (P),Recall (R), and Micro F1 (F1), and reported results undertwo criteria for correct prediction: (i) Expression:
+Anentity is considered correct if it matches the expression ofa gold entity in the sentence.
+(ii) Expression + Type:
+Anentity is correct if it matches both the expression and typeof a gold entity in the sentence.
+Under the "Expression" criterion, entities sharing thesame expression but diﬀering in type or location wereconsolidated.
+Similarly, under the "Expression + Type"criterion, entities with the same expression and type butdiﬀering locations were merged.
+For instance, if two enti-ties, ["PCL", "Polymer", [40, 43]] and ["PCL", "Polymer",[50, 53]], were present in a sentence, they were uniﬁed asa single entity ["PCL", "Polymer"] under the "ExpressionTable 2 NER Results by GPT-4o.
+Prompt Criterion P(%) R(%)
+F1(%)1 Expression 85.20 58.10 69.09Expression+Type 84.59 57.69 68.602 Expression 88.73 67.02 76.36Expression+Type 88.25 66.65 75.94Combined Expression 83.86 76.94 80.25Expression+Type 83.30 76.56 79.78Table 3 Recalls(%) of nested and non-nested entities byGPT-4o.
+Prompt Criterion Non-nested Nested △R1 Expression 78.51 14.95 63.56Expression+Type 77.93 14.93 63.002 Expression 72.24 56.21 16.03Expression+Type 71.77 56.09 15.68+ Type" criterion.
+Gold entities can be categorized as nested or non-nested.
+Nested entities are fully contained within other entities,while non-nested entities represent all other gold entities.
+For instance, in the span "Chromobacterium viscosum","Chromobacterium" is a nested entity, and "Chromobac-terium viscosum" is a non-nested entity.
+Recall was re-ported separately for each category to facilitate compara-tive analysis.
+
+
+4 Results
+
+As presented in Table 2, GPT-4o performs adequatelywhen tasked with identifying entity expressions, withoutconsidering entity types or positional information.
+It alsodemonstrates strong performance in identifying both entityexpressions and types.
+Huge performance gap between nested and non-nested entities.
+We report the recalls of nested and non-nested entities in Table 3.
+When we provide no examplesof nested entities, the recall of nested entities is very low(14.95% and 14.93%), much lower than the performanceon non-nested entities (78.51% and 77.93%).
+Despite thePrompt 1 requests predictions for nested entities (“identifyall named entities ... including nested entities”), GPT-4ostill misses most of nested entities.
+Providing examples inthe prompt successfully enhances performance on nestedentities, reducing the gap to non-nested entities.
+However,the recall on non-nested entities decreased from 78.51%to 72.24% when we only ask expressions are aligned withgold entities, indicating that examples obviously broughtTable 4 Results for various entity types were obtained usingthe "Expression+Type" criterion, combining predictions obtainedby two prompts.
+Entity Type P(%) R(%)
+F1(%)Polymer 80.33 74.20 77.14Bacterium 87.33 82.46 84.82Fungus 88.91 83.65 86.20Enzyme 77.29 67.32 71.96Table 5 NER results when an entity is cor rect if it matches theexpression, type and location of a gold entity by GPT-4o.
+Prompt P(%) R(%)
+F1(%)1 4.96 3.27 3.942 4.97 3.68 4.23some negative eﬀects.
+Combined the predictions of two prompts.
+Giventhat Prompt 1 is eﬀective for non-nested entities and Prompt2 excels with nested entities, and both prompts demonstratehigh precision, we combine their results to improve recall.
+The combined outcomes are shown in Table2, resultingin an F1 score of approximately 80%.
+In the zero-shotscenario, these results are promising, indicating that auto-matic extraction of polymer biodegradability informationis feasible.
+This sets the stage for further research on eventextraction with robust NER performance.
+Small diﬀerences between two evaluation crite-ria.
+Entity expression and type prediction marginally re-duces precision and recall compared to scenarios focusingsolely on expression prediction,
+irrespective of the promptor whether the gold entities are nested or non-nested.
+Asexpected, an LLM leverages internal knowledge to performwell in entity type prediction.
+Enzyme and Polymer entities v.s. Bacterium andFungus entities.
+GPT-4o demonstrated strong perfor-mance in recognizing bacterium and fungus entities (F1scores > 80%) but showed suboptimal results for enzymeand polymer entities (see Table 4).
+We analyzed generatedoutputs and found the potential factors to bring about thisphenomenon.
+Scientiﬁc papers typically refer to bacter iaand fungi using their scientiﬁc names (e.g., Bacillus sub-tilis) or abbreviated forms (e.g., B. subtilis), facilitatingrecognition by LLMs if these names are present in the pre-trained data.
+Many false negatives arise from incompletescientiﬁc names.
+For instance, while GPT-4o successfullyrecognizes "B. subtilis strain MZA-75", it fails to identify"strain MZA-75" when the species name is omitted.
+Sim-ilarly, sample identiﬁers (e.g., "H-237") often representspeciﬁc bacterial or fungal types, but without suﬃcientcontextual information, they are hard to recognize.
+On thecontrary, the poor performance in enzyme recognition is at-tributed to two factors.
+First, general enzyme terms, such as"dehydrogenase", "esterase", and "oxidase" are frequentlyoverlooked.
+Second, gene-enzyme names are misclassi-ﬁed; for example, "pueA" gene, which encodes the "PueA"enzyme, is incorrectly predicted as an enzyme.
+Polymerentity recognition exhibits similar challenges.
+Our futurework will extend NER from sentence-level to paragraph-level contexts and incor porate targeted examples in few-shot learning scenarios.
+These enhancements are expectedto improve performance across categories.
+Unable to provided precise entity oﬀsets.
+Asshown in Table 5, most predicted positions of entities donot correspond to the actual locations of the entities, eventhough the expressions and types are correct.
+This dis-crepancy is widespread, with only 546 of 10,111 predictedpositions (5.4%) accurately corresponding to the predictedexpressions.
+Although our task does not require the loca-tion of the entity, it is important to highlight the limitationsof GPT-4 in this context.
+Researchers should take appro-priate precautions when employing LLM-based methodsfor NER tasks that necessitate location information.
+What about GPT-4o-mini?
+Given the higher costand time requirements of GPT-4o, we provide experimentalresults achieved by GPT-4o-mini in the Appendix A forreference.
+These results indicate a signiﬁcant per formancegap on nested-entities between GPT-4o and GPT-4o-mini,with the latter proving insuﬃcient for our task.
+
+
+5 Conclusion
+
+In this study, we introduced PolyBD, a dataset speciﬁ-cally curated for extracting polymer biodegradability infor-mation, and conducted sentence-level named entity recog-nition using GPT-4o in a zero-shot setting, aiming to ad-vance research and practical applications in this domain.
+Our ﬁndings indicated that GPT-4o demonstrates robust in-ternal knowledge for identifying bacterium and fungus en-tities but shows limitations in recognizing polymer and en-zyme entities involved in polymer biodegradation.
+Further-more, a notable performance disparity is observed betweennon-nested and nested entities, underscoring the need forfurther investigation.
+
+
+
+References
+
+
+[1] Derong Xu, Wei Chen, Wenjun Peng, Chao Zhang, TongXu, Xiangyu Zhao, Xian Wu, Yefeng Zheng, Yang Wang,and Enhong Chen. Large language models for generativeinformation extraction: a survey. Frontiers of ComputerScience, Vol. 18, No. 6, p. 186357, Nov 2024.
+[2] Eugenio Cesario, Car mela Comito, and Ester Zumpano. Asurvey of the recent trends in deep learning for literaturebased discovery in the biomedical domain. Neurocom-puting, Vol. 568, p. 127079, 2024.
+[3] Alain C. Vaucher, Federico Zipoli, Joppe Geluykens,Vishnu H. Nair, Philippe Schwaller, and Teodoro Laino.Automated extraction of chemical synthesis actions fromexperimental procedures. Nature Communications,Vol. 11, No. 3601, 2020. https://doi.org/10.1038/s41467-020-17266-6.
+[4] Isabelle Augenstein, Mrinal Das, Sebastian Riedel, Lak-shmi Vikraman, and Andrew McCallum. SemEval 2017task 10: ScienceIE - extracting keyphrases and relationsfrom scientiﬁc publications. In Steven Bethard, MarineCarpuat, Marianna Apidianaki, Saif M. Mohammad, DanielCer, and David Jurgens, editors, Proceedings of the11th International Workshop on Semantic Evalua-tion (SemEval-2017), pp. 546–555, Vancouver, Canada,August 2017. Association for Computational Linguistics.
+[5] Meishan Zhang, Bin Wang, Hao Fei, and Min Zhang. In-context learning for few-shot nested named entity recogni-tion. In ICASSP 2024 - 2024 IEEE International Con-ference on Acoustics, Speech and Signal Processing(ICASSP), pp. 10026–10030, 2024.
+
+Table 6 NER Results by GPT-4o and GPT-4o-mini.GPT-4o
+GPT-4o-miniPrompt Criterion P(%) R(%) F1(%) P(%) R(%)
+F1(%)1 Expression 85.20 58.10 69.09 79.29 60.71 68.77Expression+Type 84.59 57.69 68.60 77.21 59.11 66.962 Expression 88.73 67.02 76.36 85.02 58.01 68.97Expression+Type 88.25 66.65 75.94 83.23 56.89 67.59Combined Expression 83.86 76.94 80.25 77.40 71.85 74.52Expression+Type 83.30 76.56 79.78 75.02 70.54 72.71Table 7 Recalls(%) of nested and non-nested entities by GPT-4o and GPT-4o-mini.GPT-4o GPT-4o-miniPrompt Criterion Non-nested Nested △R Non-nested Nested △R1 Expression 78.51 14.95 63.56 81.92 16.01 65.91Expression+Type 77.93 14.93 63.00 79.73 15.76 63.972 Expression 72.24 56.21 16.03 68.45 36.37 32.08Expression+Type 71.77 56.09 15.68 67.18 35.63 31.55
+
+A NER Results by GPT-4o-mini
+
+In this section, we present the experimental results by GPT-4o-mini in Table 6 and Table 7, obtained under the samesettings as GPT-4o.
+When prompted with Prompt 1, GPT-4o-mini demonstrated higher recall than GPT-4o for both nested and non-nestedentities.
+However, unlike the huge improvement observed for nested entities and slightly worse performance on non-nestedentities when transitioning from Prompt 1 to Prompt 2, GPT-4o-mini exhibited a pronounced decline in recall for non-nested entities, signiﬁcantly impacted by examples of nested entities added to the prompt.
+Combining predictions fromthe two prompts resulted in precision falling below 80%, which is suboptimal for tasks requiring high factual accuracy.

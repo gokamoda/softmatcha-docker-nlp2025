@@ -1,0 +1,434 @@
+対照損失による追加学習が BERT のファインチューニングにもたらす効果
+
+竹中 誠
+
+1
+
+ 瀧 雅人
+
+21
+
+三菱電機株式会社 
+
+2
+
+立教大学
+
+
+
+Takenaka.Makoto@bc.MitsubishiElectric.co.jp taki m@rikkyo.ac.jp
+
+
+
+概要
+
+本研究では、事前学習済み BERT に対する対照損失による追加学習が、下流タスクのファインチューニングに与える影響を実験的に調査する。
+実験では、事前学習済み BERT と、それを SimCSE で学習したモデルをファインチューニングするときの学習の安定性とモデルの可塑性の二つの観点で分析した。
+実験の結果、SimCSE で追加学習したモデルでは、( 𝑖 )大きい学習率でのファインチューニングがより安定的になり、( 𝑖𝑖 )パラメータに関するフィッシャー情報行列の有効ランクが回復することで、モデルの可塑性が向上することがわかった。
+1 はじめにBERT[1]のような事前学習済み言語モデルは、様々な自然言語処理タスクに広く用いられている代表的な手法の一つである。
+しかし事前学習済みモデルをそのまま用いると、任意の文ペアの類似度が大きくなり十分な表現力を持たないことが知られている[2]。
+これを改善するために、様々な手法が提案されている。
+文埋め込みに後処理を施す手法として、文埋め込みを等方的なガウス分布に変換する手法[2]や、文埋め込みの白色化[3]などが提案されている。
+BERT を追加学習する手法としては、対照損失を用いる手法が広く利用されている[4, 5, 6, 7, 8]。
+これらの多くの手法は、文埋め込みの異方性を解消することを主な目的とするため、STS タスクなどの意味的類似度タスクでは顕著な性能向上をもたらす一方で、事前学習済み BERT を下流タスクでファインチューニングする場合の性能向上は限定的である[9, 5, 6, 10, 7]。
+そこで一つの疑問が生じる。
+意味的類似度タスクなど BERT の埋め込みをそのまま利用するタスクで顕著な性能向上をもたらす手法は、ファインチューニングにどのような影響を及ぼすのか．BERT の活用方法としてファインチューニングして用いることは一般的であるにもかかわらず、この疑問にはあまり注意が払われてこなかった。
+そこで本研究では、対照損失による追加学習が下流タスクのファインチューニングにどのような影響を及ぼすのかを調査することを目的とする。
+本研究の貢献は以下である。
+• SimCSE による追加学習は、損失関数のヘシアンのランクを回復させる効果を持つことを実験的に示した。
+• SimCSE による追加学習は、ファインチューニング中のヘシアンのランクの一様性を維持させる効果を持つことを実験的に示した。
+• これらの効果がファインチューニングの安定化や下流タスクにおける性能向上をもたらす可能性があることを定性的に示した。
+2 分析方針本研究では、代表的な対照学習手法であるSimCSE[5]1）が下流タスクのファインチューニングにおよぼす影響を、安定性と可塑性の二つの観点で分析する。
+2.1 SimCSESimCSE では以下で定義される InfoNCE[11]損失を最小化する。
+L= −1𝑁𝑁Õ𝑖=1logexp(sim(h𝑖, h+𝑖)/𝜏)Í𝑁𝑗=1exp(sim(h𝑖, h𝑗)/𝜏)ここで、𝑁 はミニバッチ内のサンプル数を表し、h𝑖は入力文 𝑖 の埋め込みベクトル、h+𝑖は文 𝑖 に対する正例であり SimCSE では同じ入力文に対し異なるドロップアウトマスクを適用した埋め込みを正例とする。
+また、h𝑗は文 𝑖 に対する負例であり、教師な1） 本研究では教師なし SimCSE に限定する。
+― 2215 ―
+
+対照損失による追加学習が BERT のファインチューニングにもたらす効果
+
+竹中 誠
+
+1
+
+ 瀧 雅人
+
+21
+
+三菱電機株式会社 
+
+2
+
+立教大学
+
+
+
+Takenaka.Makoto@bc.MitsubishiElectric.co.jp taki m@rikkyo.ac.jp
+
+
+
+概要
+
+本研究では、事前学習済み BERT に対する対照損失による追加学習が、下流タスクのファインチューニングに与える影響を実験的に調査する。
+実験では、事前学習済み BERT と、それを SimCSE で学習したモデルをファインチューニングするときの学習の安定性とモデルの可塑性の二つの観点で分析した。
+実験の結果、SimCSE で追加学習したモデルでは、( 𝑖 )大きい学習率でのファインチューニングがより安定的になり、( 𝑖𝑖 )パラメータに関するフィッシャー情報行列の有効ランクが回復することで、モデルの可塑性が向上することがわかった。
+1 はじめにBERT[1]のような事前学習済み言語モデルは、様々な自然言語処理タスクに広く用いられている代表的な手法の一つである。
+しかし事前学習済みモデルをそのまま用いると、任意の文ペアの類似度が大きくなり十分な表現力を持たないことが知られている[2]。
+これを改善するために、様々な手法が提案されている。
+文埋め込みに後処理を施す手法として、文埋め込みを等方的なガウス分布に変換する手法[2]や、文埋め込みの白色化[3]などが提案されている。
+BERT を追加学習する手法としては、対照損失を用いる手法が広く利用されている[4, 5, 6, 7, 8]。
+これらの多くの手法は、文埋め込みの異方性を解消することを主な目的とするため、STS タスクなどの意味的類似度タスクでは顕著な性能向上をもたらす一方で、事前学習済み BERT を下流タスクでファインチューニングする場合の性能向上は限定的である[9, 5, 6, 10, 7]。
+そこで一つの疑問が生じる。
+意味的類似度タスクなど BERT の埋め込みをそのまま利用するタスクで顕著な性能向上をもたらす手法は、ファインチューニングにどのような影響を及ぼすのか．BERT の活用方法としてファインチューニングして用いることは一般的であるにもかかわらず、この疑問にはあまり注意が払われてこなかった。
+そこで本研究では、対照損失による追加学習が下流タスクのファインチューニングにどのような影響を及ぼすのかを調査することを目的とする。
+本研究の貢献は以下である。
+• SimCSE による追加学習は、損失関数のヘシアンのランクを回復させる効果を持つことを実験的に示した。
+• SimCSE による追加学習は、ファインチューニング中のヘシアンのランクの一様性を維持させる効果を持つことを実験的に示した。
+• これらの効果がファインチューニングの安定化や下流タスクにおける性能向上をもたらす可能性があることを定性的に示した。
+2 分析方針本研究では、代表的な対照学習手法であるSimCSE[5]1）が下流タスクのファインチューニングにおよぼす影響を、安定性と可塑性の二つの観点で分析する。
+2.1 SimCSESimCSE では以下で定義される InfoNCE[11]損失を最小化する。
+L= −1𝑁𝑁Õ𝑖=1logexp(sim(h𝑖, h+𝑖)/𝜏)Í𝑁𝑗=1exp(sim(h𝑖, h𝑗)/𝜏)ここで、𝑁 はミニバッチ内のサンプル数を表し、h𝑖は入力文 𝑖 の埋め込みベクトル、h+𝑖は文 𝑖 に対する正例であり SimCSE では同じ入力文に対し異なるドロップアウトマスクを適用した埋め込みを正例とする。
+また、h𝑗は文 𝑖 に対する負例であり、教師な1） 本研究では教師なし SimCSE に限定する。
+― 2215 ―し SimCSE ではミニバッチ内の他の文の埋め込みを利用する。
+sim(u, v)は、ベクトル u と v の類似度でSimCSE ではコサイン類似度が使用される。
+最後に、𝜏 は温度パラメータである。
+SimCSE では、正例対（h𝑖と h+𝑖）、つまり似た意味の文の類似度を最大化し、そうでない負例対（h𝑖と h𝑗）との類似度を最小化するように最適化を行う。
+2.2 安定性モデル 𝑓 の安定性 𝑆( 𝑓 )は[12]を踏襲し、異なるランダムシード 𝑟 でファインチューニングして得られる複数のモデル { 𝑓𝑟} の評価指標のばらつきとして定義する:𝑆( 𝑓 ) =pVar𝑟[𝐴𝑐𝑐𝑢𝑟𝑎𝑐𝑦( 𝑓𝑟)].本稿では RTE タスクの validation データにおけるAccuracy のばらつきで評価する。
+BERT のファインチューニングは、層数が多くなるほど勾配消失の影響が顕著になり学習は不安定になる[12]。
+したがって本稿の実験では 24 層の large モデルを分析対象とする。
+2.3 可塑性モデルの可塑性とは、異なるタスクで継続学習するときのモデルの新しいタスクへの適応性のことである。
+[13]では、損失関数のヘシアン H = ∇2𝜽𝐿(𝜽)の有効ランクが大きいほどモデルの可塑性は大きくなることが示されている。
+有効ランクは H の固有値{𝜆𝑖, 𝑖 = 1, . . . , 𝑑} を降順に並べたときの累積寄与率が99%を超える最小のインデックスとして定義する:erank(H) = minn𝑗Í𝑗𝑖=1𝜆𝑖Í𝑑𝑖=1𝜆𝑖> 0.99o,(𝜆1> 𝜆2> · · · > 𝜆𝑑).直観的には、ヘシアンの有効ランクは損失関数上の最適化方向の有効な自由度と解釈することができる。
+つまり、継続学習の際の新しいタスクにおける有効ランクは、そのタスクへの適応性を測る指標になり得る。
+本研究ではこの性質に着目し、損失関数のヘシアンの有効ランクで追加学習の可塑性の特徴付けを試みる。
+一般に大規模モデルのヘシアンの計算コストは膨大である。
+本稿の計算対象である BERT の場合、パラメータ数はO(108)であるためヘシアンを保持するだけでも 1016相当の RAM やストレージが必要となり計算困難である。
+そこで本研究では、ヘシアンを経験フィッシャー情報行列ˆF で近似する。
+H ≈ˆF =1𝑁𝑁Õ𝑖=1∇𝜽log 𝑝(y𝑖|x𝑖; 𝜽)∇𝜽log 𝑝(y𝑖|x𝑖; 𝜽)⊤.ここで 𝑁 はバッチサイズ、𝜽 ∈ ℝ𝑑はモデルパラメータ、(x𝑖, y𝑖)はデータ点、∇𝜽log 𝑝(y𝑖|x𝑖; 𝜽)は各データ点の対数尤度の勾配である。
+G = ∇𝜽log 𝑝(y𝑖|x𝑖; 𝜽) ∈ℝ𝑑×𝑁とおくとˆF = GGT∈ ℝ𝑑×𝑑と書ける。
+G はミニバッチ内の各データ点における 𝑑 次元の勾配ベクトルを並べた行列である。
+erank(ˆF)の評価は rank(ˆF) = rank(GGT) = rank(GTG)の関係を使うと GTG ∈ ℝ𝑁 × 𝑁の固有値分解に帰着することができ計算コストを大幅に低減できる(∵ 𝑁 ≪ 𝑑)。
+なお、本稿ではˆF は層毎にブロック対角可能(ˆF ≈ diag(ˆF1,ˆF2, . . . ,ˆF𝐿))であることを仮定し、各層の経験フィッシャーˆF𝑙∈ [1,24]= GT𝑙G𝑙の有効ランクを評価する。
+BERT のファインチューニングでは下位層に比べて上位層がより変更を受けることが知られており[14, 15, 16]、本稿の実験でも層毎の振る舞いの違いを観察するためである。
+3 実験3.1 SimCSE
+
+モデルの学習
+
+事前学習済み BERT モデルは hugging face から入手可能な google-bert/bert-large-uncased2）を用いる。
+SimCSE モデルの学習は原著論文[5]の実装とコーパス3）を使用し、google-bert/bert-large-uncased に対して追加学習したものを用いる。
+SimCSE 学習時のハイパーパラメータは[5]に従う。
+ただし、ドロップアウト率は 𝑝 ∈ {0.05, 0.1, 0.3, 0.5} としてそれぞれ学習する。
+[5]では STS タスクでの性能が最大となるように実験的に 𝑝 = 0.1 が提案されている。
+以降では、google-bert/bert-large-uncased をたんに vanilla，SimCSEモデルは𝑝の値を指定してSimCSE(0.1)などと表記する。
+3.2 ファインチューニングファインチューニングタスクは RTE[17, 18, 19, 20]を使用する。
+RTE タスクはデータ数が比較的少なく学習が不安定であることが報告されているため[12]、学習の安定性の分析タスクとして適当であると判断した。
+バッチサイズを 16 として、3 エ2） https://huggingface.co/google-bert/bert-large-uncased3） https://github.com/princeton-nlp/SimCSE― 2216 ―
+
+対照損失による追加学習が BERT のファインチューニングにもたらす効果
+
+竹中 誠
+
+1
+
+ 瀧 雅人
+
+21
+
+三菱電機株式会社 
+
+2
+
+立教大学
+
+
+
+Takenaka.Makoto@bc.MitsubishiElectric.co.jp taki m@rikkyo.ac.jp
+
+
+
+概要
+
+本研究では、事前学習済み BERT に対する対照損失による追加学習が、下流タスクのファインチューニングに与える影響を実験的に調査する。
+実験では、事前学習済み BERT と、それを SimCSE で学習したモデルをファインチューニングするときの学習の安定性とモデルの可塑性の二つの観点で分析した。
+実験の結果、SimCSE で追加学習したモデルでは、( 𝑖 )大きい学習率でのファインチューニングがより安定的になり、( 𝑖𝑖 )パラメータに関するフィッシャー情報行列の有効ランクが回復することで、モデルの可塑性が向上することがわかった。
+1 はじめにBERT[1]のような事前学習済み言語モデルは、様々な自然言語処理タスクに広く用いられている代表的な手法の一つである。
+しかし事前学習済みモデルをそのまま用いると、任意の文ペアの類似度が大きくなり十分な表現力を持たないことが知られている[2]。
+これを改善するために、様々な手法が提案されている。
+文埋め込みに後処理を施す手法として、文埋め込みを等方的なガウス分布に変換する手法[2]や、文埋め込みの白色化[3]などが提案されている。
+BERT を追加学習する手法としては、対照損失を用いる手法が広く利用されている[4, 5, 6, 7, 8]。
+これらの多くの手法は、文埋め込みの異方性を解消することを主な目的とするため、STS タスクなどの意味的類似度タスクでは顕著な性能向上をもたらす一方で、事前学習済み BERT を下流タスクでファインチューニングする場合の性能向上は限定的である[9, 5, 6, 10, 7]。
+そこで一つの疑問が生じる。
+意味的類似度タスクなど BERT の埋め込みをそのまま利用するタスクで顕著な性能向上をもたらす手法は、ファインチューニングにどのような影響を及ぼすのか．BERT の活用方法としてファインチューニングして用いることは一般的であるにもかかわらず、この疑問にはあまり注意が払われてこなかった。
+そこで本研究では、対照損失による追加学習が下流タスクのファインチューニングにどのような影響を及ぼすのかを調査することを目的とする。
+本研究の貢献は以下である。
+• SimCSE による追加学習は、損失関数のヘシアンのランクを回復させる効果を持つことを実験的に示した。
+• SimCSE による追加学習は、ファインチューニング中のヘシアンのランクの一様性を維持させる効果を持つことを実験的に示した。
+• これらの効果がファインチューニングの安定化や下流タスクにおける性能向上をもたらす可能性があることを定性的に示した。
+2 分析方針本研究では、代表的な対照学習手法であるSimCSE[5]1）が下流タスクのファインチューニングにおよぼす影響を、安定性と可塑性の二つの観点で分析する。
+2.1 SimCSESimCSE では以下で定義される InfoNCE[11]損失を最小化する。
+L= −1𝑁𝑁Õ𝑖=1logexp(sim(h𝑖, h+𝑖)/𝜏)Í𝑁𝑗=1exp(sim(h𝑖, h𝑗)/𝜏)ここで、𝑁 はミニバッチ内のサンプル数を表し、h𝑖は入力文 𝑖 の埋め込みベクトル、h+𝑖は文 𝑖 に対する正例であり SimCSE では同じ入力文に対し異なるドロップアウトマスクを適用した埋め込みを正例とする。
+また、h𝑗は文 𝑖 に対する負例であり、教師な1） 本研究では教師なし SimCSE に限定する。
+― 2215 ―し SimCSE ではミニバッチ内の他の文の埋め込みを利用する。
+sim(u, v)は、ベクトル u と v の類似度でSimCSE ではコサイン類似度が使用される。
+最後に、𝜏 は温度パラメータである。
+SimCSE では、正例対（h𝑖と h+𝑖）、つまり似た意味の文の類似度を最大化し、そうでない負例対（h𝑖と h𝑗）との類似度を最小化するように最適化を行う。
+2.2 安定性モデル 𝑓 の安定性 𝑆( 𝑓 )は[12]を踏襲し、異なるランダムシード 𝑟 でファインチューニングして得られる複数のモデル { 𝑓𝑟} の評価指標のばらつきとして定義する:𝑆( 𝑓 ) =pVar𝑟[𝐴𝑐𝑐𝑢𝑟𝑎𝑐𝑦( 𝑓𝑟)].本稿では RTE タスクの validation データにおけるAccuracy のばらつきで評価する。
+BERT のファインチューニングは、層数が多くなるほど勾配消失の影響が顕著になり学習は不安定になる[12]。
+したがって本稿の実験では 24 層の large モデルを分析対象とする。
+2.3 可塑性モデルの可塑性とは、異なるタスクで継続学習するときのモデルの新しいタスクへの適応性のことである。
+[13]では、損失関数のヘシアン H = ∇2𝜽𝐿(𝜽)の有効ランクが大きいほどモデルの可塑性は大きくなることが示されている。
+有効ランクは H の固有値{𝜆𝑖, 𝑖 = 1, . . . , 𝑑} を降順に並べたときの累積寄与率が99%を超える最小のインデックスとして定義する:erank(H) = minn𝑗Í𝑗𝑖=1𝜆𝑖Í𝑑𝑖=1𝜆𝑖> 0.99o,(𝜆1> 𝜆2> · · · > 𝜆𝑑).直観的には、ヘシアンの有効ランクは損失関数上の最適化方向の有効な自由度と解釈することができる。
+つまり、継続学習の際の新しいタスクにおける有効ランクは、そのタスクへの適応性を測る指標になり得る。
+本研究ではこの性質に着目し、損失関数のヘシアンの有効ランクで追加学習の可塑性の特徴付けを試みる。
+一般に大規模モデルのヘシアンの計算コストは膨大である。
+本稿の計算対象である BERT の場合、パラメータ数はO(108)であるためヘシアンを保持するだけでも 1016相当の RAM やストレージが必要となり計算困難である。
+そこで本研究では、ヘシアンを経験フィッシャー情報行列ˆF で近似する。
+H ≈ˆF =1𝑁𝑁Õ𝑖=1∇𝜽log 𝑝(y𝑖|x𝑖; 𝜽)∇𝜽log 𝑝(y𝑖|x𝑖; 𝜽)⊤.ここで 𝑁 はバッチサイズ、𝜽 ∈ ℝ𝑑はモデルパラメータ、(x𝑖, y𝑖)はデータ点、∇𝜽log 𝑝(y𝑖|x𝑖; 𝜽)は各データ点の対数尤度の勾配である。
+G = ∇𝜽log 𝑝(y𝑖|x𝑖; 𝜽) ∈ℝ𝑑×𝑁とおくとˆF = GGT∈ ℝ𝑑×𝑑と書ける。
+G はミニバッチ内の各データ点における 𝑑 次元の勾配ベクトルを並べた行列である。
+erank(ˆF)の評価は rank(ˆF) = rank(GGT) = rank(GTG)の関係を使うと GTG ∈ ℝ𝑁 × 𝑁の固有値分解に帰着することができ計算コストを大幅に低減できる(∵ 𝑁 ≪ 𝑑)。
+なお、本稿ではˆF は層毎にブロック対角可能(ˆF ≈ diag(ˆF1,ˆF2, . . . ,ˆF𝐿))であることを仮定し、各層の経験フィッシャーˆF𝑙∈ [1,24]= GT𝑙G𝑙の有効ランクを評価する。
+BERT のファインチューニングでは下位層に比べて上位層がより変更を受けることが知られており[14, 15, 16]、本稿の実験でも層毎の振る舞いの違いを観察するためである。
+3 実験3.1 SimCSE
+
+モデルの学習
+
+事前学習済み BERT モデルは hugging face から入手可能な google-bert/bert-large-uncased2）を用いる。
+SimCSE モデルの学習は原著論文[5]の実装とコーパス3）を使用し、google-bert/bert-large-uncased に対して追加学習したものを用いる。
+SimCSE 学習時のハイパーパラメータは[5]に従う。
+ただし、ドロップアウト率は 𝑝 ∈ {0.05, 0.1, 0.3, 0.5} としてそれぞれ学習する。
+[5]では STS タスクでの性能が最大となるように実験的に 𝑝 = 0.1 が提案されている。
+以降では、google-bert/bert-large-uncased をたんに vanilla，SimCSEモデルは𝑝の値を指定してSimCSE(0.1)などと表記する。
+3.2 ファインチューニングファインチューニングタスクは RTE[17, 18, 19, 20]を使用する。
+RTE タスクはデータ数が比較的少なく学習が不安定であることが報告されているため[12]、学習の安定性の分析タスクとして適当であると判断した。
+バッチサイズを 16 として、3 エ2） https://huggingface.co/google-bert/bert-large-uncased3） https://github.com/princeton-nlp/SimCSE― 2216 ―0.5 1.0 1.5 2.0 2.5 3.0Learning Rate1e 50.550.600.650.70AccuracySimCSE (0.05)SimCSE (0.1)SimCSE (0.3)SimCSE (0.4)SimCSE (0.5)vanillamajority baseline図 1: RTE タスクにおける正解率の学習率依存性。
+学習率を上げていくと SimCSE(0.05)や SimCSE(0.1)に比して vanilla がより早く減衰する。
+エラーバーは 30 回試行の 95%信頼区間。
+表 1: Performance Comparison on diﬀerent learning ratesLearning rate 1e−5 2e−5Model 𝑆( 𝑓 ) mean max #failure 𝑆( 𝑓 ) mean max #failurevanilla 9.6 64.6 74.0 7/30 3.2 50.5 56.7 25/30SimCSE (0.1) 2.2 70.8 74.0 0/30 9.5 58.3 72.9 14/30ポック学習する。
+最大学習率は[5e−6, 3e−5]の区間から実験に応じて何点か指定する。
+学習率のスケジューリングは、0.3 エポック時点で最大学習率となるように 0 から線形ウォームアップ、その後 3 エポック時点で 0 になるように線形減衰させる。
+オプティマイザーは AdamW[21]、ハイパーパラメータはtransformers.AdamW クラス4）のデフォルト値を指定する。
+ただしバイアス補正は無効化する。
+これは、バイアス補正による学習の安定化によって SimCSEの効果が見えづらくなることを防ぐためである。
+ファインチューニングの成否[12]を踏襲し、検証データにおける majoritybaseline をファインチューニング成否の閾値とする。
+majority baseline とは、学習データに含まれる最多ラベルを常に予測結果としたときの評価値のことで、RTE タスクの場合は正解率 0.53 以下のときファインチューニング失敗と定義する。
+4 結果SimCSE は学習率の安定領域が広い学習率と正解率の関係を図 1 に示す。
+また、表 1に最大学習率 1e−5, 2e−5 における、正解率の平均、4） https://huggingface.co/docs/transformers/v4.44.2/en/main classes/optimizer schedules#transformers.AdamW0°15°30°45°60°75°90°105°0.00.20.40.60.81.014794141188235282329376423468success, simcse, 2e-5(a)成功(SimCSE)0°15°30°45°60°75°90°105°0.00.20.40.60.81.014794141188235282329376423468failure, simcse, 2e-5(b)失敗(SimCSE)0°15°30°45°60°75°90°105°0.00.20.40.60.81.014794141188235282329376423468failure, vanilla, 2e-5(c)失敗(vanilla)図 2: ファインチューニングの最適化軌跡。
+各点の横の数値はステップ数、色は訓練損失値を表す。
+47 ステップまでが学習率のウォームアップ期間であり、それ以降は学習終了時に学習率 0 となるように線形減衰する。
+灰色の背景は学習失敗を意味する。
+標準偏差、最大値、失敗回数を示す。
+1e−5 では、正解率の最大値は同程度であるが標準偏差と平均値はSimCSE (0.1)が有利である。
+2e−5 では、vanilla の方が標準偏差は小さいが、これは vanilla ではほとんどの試行でファインチューニングに失敗しているためである。
+以上の結果より SimCSE (0.1)はより大きな学習率に対してもより安定であるといえる。
+SimCSE の学習初期の最適化軌跡は等方的図 2 にファインチューニング中の軌跡を(𝑟𝑡, 𝜑𝑡) =∥Δ 𝜃𝑡∥∥Δ 𝜃𝑖𝑛𝑖𝑡∥,cos−1Δ 𝜃𝑡·Δ 𝜃𝑖𝑛𝑖𝑡∥Δ 𝜃𝑡∥ ∥Δ 𝜃𝑖𝑛𝑖𝑡∥の 2 次元極座標で表示する。
+ここで、𝑡 はファインチューニングのステップ数、Δ𝜃𝑡= 𝜃𝑡− 𝜃𝑓 𝑖𝑛である。
+この可視化手法は[22]で提案された方法で、学習の終点からみたときの初期値に対するパラメータ空間の軌跡を表している。
+図 2b 図 2c より、学習失敗時は学習初期において 𝜑 方向に大きく変位していることがわかる。
+学習率のスケジュールは 0 から最大学習率まで線形にウォームアップするため学習初期においては学習率は小さい。
+よって、ウォームアップ中の大きな偏角はパラメータ空間の特定方向に偏って変位したことを意味する。
+この振る舞いはパラメータ空間の曲率が大きいことを示唆する。
+一方、学習成功時の軌跡図 2a は、学習初期には等方的に 𝜃𝑓 𝑖𝑛に向かう。
+これは学習初期にパラメータ空間がより平坦であることを示唆する。
+SimCSE の erank(
+
+ˆ
+
+
+
+F) はより大きい
+
+各モデルのファインチューニング前の各層のerank(ˆF𝑙)を図 3 に示す。
+ここで、有効ランクは最大ランクで正規化している。
+図より、SimCSE(0.05)やSimCSE(0.1)，SimCSE(0.3)はすべての層で vanilla と比べて有効ランクは大きい。
+また、SimCSE(0.5)は、出力側で erank(ˆF𝑙)が大きく減少し層方向の非一様性が増大している。
+この結果と図 1 より、可塑性は― 2217 ―
+
+対照損失による追加学習が BERT のファインチューニングにもたらす効果
+
+竹中 誠
+
+1
+
+ 瀧 雅人
+
+21
+
+三菱電機株式会社 
+
+2
+
+立教大学
+
+
+
+Takenaka.Makoto@bc.MitsubishiElectric.co.jp taki m@rikkyo.ac.jp
+
+
+
+概要
+
+本研究では、事前学習済み BERT に対する対照損失による追加学習が、下流タスクのファインチューニングに与える影響を実験的に調査する。
+実験では、事前学習済み BERT と、それを SimCSE で学習したモデルをファインチューニングするときの学習の安定性とモデルの可塑性の二つの観点で分析した。
+実験の結果、SimCSE で追加学習したモデルでは、( 𝑖 )大きい学習率でのファインチューニングがより安定的になり、( 𝑖𝑖 )パラメータに関するフィッシャー情報行列の有効ランクが回復することで、モデルの可塑性が向上することがわかった。
+1 はじめにBERT[1]のような事前学習済み言語モデルは、様々な自然言語処理タスクに広く用いられている代表的な手法の一つである。
+しかし事前学習済みモデルをそのまま用いると、任意の文ペアの類似度が大きくなり十分な表現力を持たないことが知られている[2]。
+これを改善するために、様々な手法が提案されている。
+文埋め込みに後処理を施す手法として、文埋め込みを等方的なガウス分布に変換する手法[2]や、文埋め込みの白色化[3]などが提案されている。
+BERT を追加学習する手法としては、対照損失を用いる手法が広く利用されている[4, 5, 6, 7, 8]。
+これらの多くの手法は、文埋め込みの異方性を解消することを主な目的とするため、STS タスクなどの意味的類似度タスクでは顕著な性能向上をもたらす一方で、事前学習済み BERT を下流タスクでファインチューニングする場合の性能向上は限定的である[9, 5, 6, 10, 7]。
+そこで一つの疑問が生じる。
+意味的類似度タスクなど BERT の埋め込みをそのまま利用するタスクで顕著な性能向上をもたらす手法は、ファインチューニングにどのような影響を及ぼすのか．BERT の活用方法としてファインチューニングして用いることは一般的であるにもかかわらず、この疑問にはあまり注意が払われてこなかった。
+そこで本研究では、対照損失による追加学習が下流タスクのファインチューニングにどのような影響を及ぼすのかを調査することを目的とする。
+本研究の貢献は以下である。
+• SimCSE による追加学習は、損失関数のヘシアンのランクを回復させる効果を持つことを実験的に示した。
+• SimCSE による追加学習は、ファインチューニング中のヘシアンのランクの一様性を維持させる効果を持つことを実験的に示した。
+• これらの効果がファインチューニングの安定化や下流タスクにおける性能向上をもたらす可能性があることを定性的に示した。
+2 分析方針本研究では、代表的な対照学習手法であるSimCSE[5]1）が下流タスクのファインチューニングにおよぼす影響を、安定性と可塑性の二つの観点で分析する。
+2.1 SimCSESimCSE では以下で定義される InfoNCE[11]損失を最小化する。
+L= −1𝑁𝑁Õ𝑖=1logexp(sim(h𝑖, h+𝑖)/𝜏)Í𝑁𝑗=1exp(sim(h𝑖, h𝑗)/𝜏)ここで、𝑁 はミニバッチ内のサンプル数を表し、h𝑖は入力文 𝑖 の埋め込みベクトル、h+𝑖は文 𝑖 に対する正例であり SimCSE では同じ入力文に対し異なるドロップアウトマスクを適用した埋め込みを正例とする。
+また、h𝑗は文 𝑖 に対する負例であり、教師な1） 本研究では教師なし SimCSE に限定する。
+― 2215 ―し SimCSE ではミニバッチ内の他の文の埋め込みを利用する。
+sim(u, v)は、ベクトル u と v の類似度でSimCSE ではコサイン類似度が使用される。
+最後に、𝜏 は温度パラメータである。
+SimCSE では、正例対（h𝑖と h+𝑖）、つまり似た意味の文の類似度を最大化し、そうでない負例対（h𝑖と h𝑗）との類似度を最小化するように最適化を行う。
+2.2 安定性モデル 𝑓 の安定性 𝑆( 𝑓 )は[12]を踏襲し、異なるランダムシード 𝑟 でファインチューニングして得られる複数のモデル { 𝑓𝑟} の評価指標のばらつきとして定義する:𝑆( 𝑓 ) =pVar𝑟[𝐴𝑐𝑐𝑢𝑟𝑎𝑐𝑦( 𝑓𝑟)].本稿では RTE タスクの validation データにおけるAccuracy のばらつきで評価する。
+BERT のファインチューニングは、層数が多くなるほど勾配消失の影響が顕著になり学習は不安定になる[12]。
+したがって本稿の実験では 24 層の large モデルを分析対象とする。
+2.3 可塑性モデルの可塑性とは、異なるタスクで継続学習するときのモデルの新しいタスクへの適応性のことである。
+[13]では、損失関数のヘシアン H = ∇2𝜽𝐿(𝜽)の有効ランクが大きいほどモデルの可塑性は大きくなることが示されている。
+有効ランクは H の固有値{𝜆𝑖, 𝑖 = 1, . . . , 𝑑} を降順に並べたときの累積寄与率が99%を超える最小のインデックスとして定義する:erank(H) = minn𝑗Í𝑗𝑖=1𝜆𝑖Í𝑑𝑖=1𝜆𝑖> 0.99o,(𝜆1> 𝜆2> · · · > 𝜆𝑑).直観的には、ヘシアンの有効ランクは損失関数上の最適化方向の有効な自由度と解釈することができる。
+つまり、継続学習の際の新しいタスクにおける有効ランクは、そのタスクへの適応性を測る指標になり得る。
+本研究ではこの性質に着目し、損失関数のヘシアンの有効ランクで追加学習の可塑性の特徴付けを試みる。
+一般に大規模モデルのヘシアンの計算コストは膨大である。
+本稿の計算対象である BERT の場合、パラメータ数はO(108)であるためヘシアンを保持するだけでも 1016相当の RAM やストレージが必要となり計算困難である。
+そこで本研究では、ヘシアンを経験フィッシャー情報行列ˆF で近似する。
+H ≈ˆF =1𝑁𝑁Õ𝑖=1∇𝜽log 𝑝(y𝑖|x𝑖; 𝜽)∇𝜽log 𝑝(y𝑖|x𝑖; 𝜽)⊤.ここで 𝑁 はバッチサイズ、𝜽 ∈ ℝ𝑑はモデルパラメータ、(x𝑖, y𝑖)はデータ点、∇𝜽log 𝑝(y𝑖|x𝑖; 𝜽)は各データ点の対数尤度の勾配である。
+G = ∇𝜽log 𝑝(y𝑖|x𝑖; 𝜽) ∈ℝ𝑑×𝑁とおくとˆF = GGT∈ ℝ𝑑×𝑑と書ける。
+G はミニバッチ内の各データ点における 𝑑 次元の勾配ベクトルを並べた行列である。
+erank(ˆF)の評価は rank(ˆF) = rank(GGT) = rank(GTG)の関係を使うと GTG ∈ ℝ𝑁 × 𝑁の固有値分解に帰着することができ計算コストを大幅に低減できる(∵ 𝑁 ≪ 𝑑)。
+なお、本稿ではˆF は層毎にブロック対角可能(ˆF ≈ diag(ˆF1,ˆF2, . . . ,ˆF𝐿))であることを仮定し、各層の経験フィッシャーˆF𝑙∈ [1,24]= GT𝑙G𝑙の有効ランクを評価する。
+BERT のファインチューニングでは下位層に比べて上位層がより変更を受けることが知られており[14, 15, 16]、本稿の実験でも層毎の振る舞いの違いを観察するためである。
+3 実験3.1 SimCSE
+
+モデルの学習
+
+事前学習済み BERT モデルは hugging face から入手可能な google-bert/bert-large-uncased2）を用いる。
+SimCSE モデルの学習は原著論文[5]の実装とコーパス3）を使用し、google-bert/bert-large-uncased に対して追加学習したものを用いる。
+SimCSE 学習時のハイパーパラメータは[5]に従う。
+ただし、ドロップアウト率は 𝑝 ∈ {0.05, 0.1, 0.3, 0.5} としてそれぞれ学習する。
+[5]では STS タスクでの性能が最大となるように実験的に 𝑝 = 0.1 が提案されている。
+以降では、google-bert/bert-large-uncased をたんに vanilla，SimCSEモデルは𝑝の値を指定してSimCSE(0.1)などと表記する。
+3.2 ファインチューニングファインチューニングタスクは RTE[17, 18, 19, 20]を使用する。
+RTE タスクはデータ数が比較的少なく学習が不安定であることが報告されているため[12]、学習の安定性の分析タスクとして適当であると判断した。
+バッチサイズを 16 として、3 エ2） https://huggingface.co/google-bert/bert-large-uncased3） https://github.com/princeton-nlp/SimCSE― 2216 ―0.5 1.0 1.5 2.0 2.5 3.0Learning Rate1e 50.550.600.650.70AccuracySimCSE (0.05)SimCSE (0.1)SimCSE (0.3)SimCSE (0.4)SimCSE (0.5)vanillamajority baseline図 1: RTE タスクにおける正解率の学習率依存性。
+学習率を上げていくと SimCSE(0.05)や SimCSE(0.1)に比して vanilla がより早く減衰する。
+エラーバーは 30 回試行の 95%信頼区間。
+表 1: Performance Comparison on diﬀerent learning ratesLearning rate 1e−5 2e−5Model 𝑆( 𝑓 ) mean max #failure 𝑆( 𝑓 ) mean max #failurevanilla 9.6 64.6 74.0 7/30 3.2 50.5 56.7 25/30SimCSE (0.1) 2.2 70.8 74.0 0/30 9.5 58.3 72.9 14/30ポック学習する。
+最大学習率は[5e−6, 3e−5]の区間から実験に応じて何点か指定する。
+学習率のスケジューリングは、0.3 エポック時点で最大学習率となるように 0 から線形ウォームアップ、その後 3 エポック時点で 0 になるように線形減衰させる。
+オプティマイザーは AdamW[21]、ハイパーパラメータはtransformers.AdamW クラス4）のデフォルト値を指定する。
+ただしバイアス補正は無効化する。
+これは、バイアス補正による学習の安定化によって SimCSEの効果が見えづらくなることを防ぐためである。
+ファインチューニングの成否[12]を踏襲し、検証データにおける majoritybaseline をファインチューニング成否の閾値とする。
+majority baseline とは、学習データに含まれる最多ラベルを常に予測結果としたときの評価値のことで、RTE タスクの場合は正解率 0.53 以下のときファインチューニング失敗と定義する。
+4 結果SimCSE は学習率の安定領域が広い学習率と正解率の関係を図 1 に示す。
+また、表 1に最大学習率 1e−5, 2e−5 における、正解率の平均、4） https://huggingface.co/docs/transformers/v4.44.2/en/main classes/optimizer schedules#transformers.AdamW0°15°30°45°60°75°90°105°0.00.20.40.60.81.014794141188235282329376423468success, simcse, 2e-5(a)成功(SimCSE)0°15°30°45°60°75°90°105°0.00.20.40.60.81.014794141188235282329376423468failure, simcse, 2e-5(b)失敗(SimCSE)0°15°30°45°60°75°90°105°0.00.20.40.60.81.014794141188235282329376423468failure, vanilla, 2e-5(c)失敗(vanilla)図 2: ファインチューニングの最適化軌跡。
+各点の横の数値はステップ数、色は訓練損失値を表す。
+47 ステップまでが学習率のウォームアップ期間であり、それ以降は学習終了時に学習率 0 となるように線形減衰する。
+灰色の背景は学習失敗を意味する。
+標準偏差、最大値、失敗回数を示す。
+1e−5 では、正解率の最大値は同程度であるが標準偏差と平均値はSimCSE (0.1)が有利である。
+2e−5 では、vanilla の方が標準偏差は小さいが、これは vanilla ではほとんどの試行でファインチューニングに失敗しているためである。
+以上の結果より SimCSE (0.1)はより大きな学習率に対してもより安定であるといえる。
+SimCSE の学習初期の最適化軌跡は等方的図 2 にファインチューニング中の軌跡を(𝑟𝑡, 𝜑𝑡) =∥Δ 𝜃𝑡∥∥Δ 𝜃𝑖𝑛𝑖𝑡∥,cos−1Δ 𝜃𝑡·Δ 𝜃𝑖𝑛𝑖𝑡∥Δ 𝜃𝑡∥ ∥Δ 𝜃𝑖𝑛𝑖𝑡∥の 2 次元極座標で表示する。
+ここで、𝑡 はファインチューニングのステップ数、Δ𝜃𝑡= 𝜃𝑡− 𝜃𝑓 𝑖𝑛である。
+この可視化手法は[22]で提案された方法で、学習の終点からみたときの初期値に対するパラメータ空間の軌跡を表している。
+図 2b 図 2c より、学習失敗時は学習初期において 𝜑 方向に大きく変位していることがわかる。
+学習率のスケジュールは 0 から最大学習率まで線形にウォームアップするため学習初期においては学習率は小さい。
+よって、ウォームアップ中の大きな偏角はパラメータ空間の特定方向に偏って変位したことを意味する。
+この振る舞いはパラメータ空間の曲率が大きいことを示唆する。
+一方、学習成功時の軌跡図 2a は、学習初期には等方的に 𝜃𝑓 𝑖𝑛に向かう。
+これは学習初期にパラメータ空間がより平坦であることを示唆する。
+SimCSE の erank(
+
+ˆ
+
+
+
+F) はより大きい
+
+各モデルのファインチューニング前の各層のerank(ˆF𝑙)を図 3 に示す。
+ここで、有効ランクは最大ランクで正規化している。
+図より、SimCSE(0.05)やSimCSE(0.1)，SimCSE(0.3)はすべての層で vanilla と比べて有効ランクは大きい。
+また、SimCSE(0.5)は、出力側で erank(ˆF𝑙)が大きく減少し層方向の非一様性が増大している。
+この結果と図 1 より、可塑性は― 2217 ―0 5 10 15 20 25layer_id0.00.20.40.60.81.0Nomalized effrank(F)SimCSE(0.05)SimCSE(0.1)SimCSE(0.3)SimCSE(0.4)SimCSE(0.5)vanilla図 3: erank(ˆF𝑙)の平均（30 回試行）。
+帯は 95%信頼区間。
+最大ランクで規格化している。
+横軸は BERT の各層に対応しており数字が小さいほど入力側に近いことを意味する。
+表 2: BERT 全体のˆF の有効ランク。
+SimCSE(0.1)などは単に 0.1と表記する。
+Model 0.05 0.1 0.3 0.4 0.5 vanillaerank(ˆF) 23.20 23.43 23.39 21.23 8.17 20.06erank(ˆF𝑙)の大きさや非一様性に依存していることが示唆される。
+以上より、適切なドロップアウト率によって SimCSE で追加学習することは erank(ˆF𝑙)の回復をもたらし結果として可塑性が向上していることが示唆される。
+また、BERT 全体の erank(ˆF)は表 2となる5）．𝑝 が小さい領域で erank(ˆF)は vanilla より大きくなり可塑性が大きいことが示唆される。
+この結果は図 1 の結果と概ね整合していることがわかる。
+
+
+
+ファインチューニングの成功時は erank(
+
+
+
+ˆ
+
+
+
+F)
+
+
+
+は保存される
+
+ファインチューニング中の erank(ˆF𝑙)の進化を図 4 に示す。
+ここでは、{SimCSE(0.1), vanilla} × {1e−5, 2e−5, 3e−5} の 6 パターンを示す。
+図より、最も性能が良い(Sim-CSE(0.1), lr=1e-5)のときは、erank(ˆF𝑙)の値と層方向の一様性は学習後も保存されている。
+最大学習率を上げると層方向の非一様性が増大し、(vanilla, 2e−5)と 3e−5 の両モデルで学習が失敗する。
+学習失敗時では、ある時刻を皮切りに中層〜上位層において層方向の非一様性がさらに増大し erank(ˆF𝑙)が崩壊する。
+これより、ファインチューニングの失敗は erank(ˆF𝑙)のランク崩壊として現れることがわかる。
+上記の結果より、SimCSE による追加学習にはerank(ˆF𝑙)の層方向の非一様性の増大を抑制し、結果5）ˆF がブロック対角可能の仮定のもとでは、rank (ˆF) =Í𝑙rank(ˆF𝑙)0 5 10 15 20 25layer_id0.00.20.40.60.81.0Nomalized effrank(F)SimCSE(0.1), lr=1e-5, Acc=0.710 5 10 15 20 25layer_id0.00.20.40.60.81.0Nomalized effrank(F)vanilla, lr=1e-5, Acc=0.680 5 10 15 20 25layer_id0.00.20.40.60.81.0Nomalized effrank(F)SimCSE(0.1), lr=2e-5, Acc=0.700 5 10 15 20 25layer_id0.00.20.40.60.81.0Nomalized effrank(F)vanilla, lr=2e-5, Acc=0.530 5 10 15 20 25layer_id0.00.20.40.60.81.0Nomalized effrank(F)SimCSE(0.1), lr=3e-5, Acc=0.530 5 10 15 20 25layer_id0.00.20.40.60.81.0Nomalized effrank(F)vanilla, lr=3e-5, Acc=0.5312344794141188235282329376423468図 4: ファインチューニング中の erank(ˆF𝑙)の進化。
+横軸はBERT の各層に対応し、数字の小さい方が入力側を意味する。
+左列が SimCSE(0.1)、右列が vanilla、上から最大学習率が1e−5, 2e−5, 3e−5 のときの結果である。
+また線の色はステップ数、灰色の背景は学習失敗を表す。
+的に崩壊を遅らせる効果があることが示唆される。
+5 おわりに本研究では、BERT に対する SimCSE による追加学習がファインチューニングにもたらす影響を実験的に調査した。
+実験では、パラメータに関する曲率情報を保持するフィッシャー情報行列の有効ランクに着目し、安定性と可塑性の観点で分析した。
+実験の結果、適切な設定での SimCSE による追加学習には( 𝑖 )大きい学習率でのファインチューニングの安定化効果と( 𝑖𝑖 ) erank(ˆF)の回復をもたらすことで可塑性を向上させる効果があることがわかった。
+今後の課題としては、( 𝑖 )フィッシャー情報行列のブロック対角近似の妥当性の議論、(𝑖𝑖 )他のモデルやタスク、追加学習手法による検証、(𝑖𝑖𝑖)本稿の実験では簡単のため学習率のみ変更したが、バッチサイズとはどのような関係にあるのかの調査、(𝑖𝑣)対照損失による追加学習が有効ランクの回復をもたらすメカニズムの原理的解明、が挙げられる。
+― 2218 ―
+
+
+
+参考文献
+
+
+[1] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and KristinaToutanova. BERT: Pre-training of deep bidirectional transform-ers for language understanding. In Jill Burstein, Christy Doran,and Thamar Solorio, editors, Proceedings of the 2019 Con-ference of the North American Chapter of the Associationfor Computational Linguistics: Human Languag e Technolo-gies, Volume 1 (Long and Short Papers), pp. 4171–4186, 2019.
+[2] Bohan Li, Hao Zhou, Junxian He, Mingxuan Wang, Yiming Yang,and Lei Li. On the sentence embeddings from pre-trained languagemodels. In Bonnie Webber, Trevor Cohn, Yulan He, and YangLiu, editors, Proceedings of the 2020 Conference on Empir-ical Methods in Natural Language Processing (EMNLP), pp.9119–9130, 2020.
+[3] Jianlin Su, Jiarun Cao, Weijie Liu, and Yangyiwen Ou. Whiten-ing Sentence Representations for Better Semantics and Faster Re-trieval. arXiv preprint arXiv:2103.15316, 2021.
+[4] Yuanmeng Yan, Rumei Li, Sirui Wang, Fuzheng Zhang, Wei Wu,and Weiran Xu. ConSERT: A contrastive framework for self-supervised sentence representation transfer. In Chengqing Zong,Fei Xia, Wenjie Li, and Roberto Navigli, editors, Proceedingsof the 59th Annual Meeting of the Association for Compu-tational Linguistics and the 11th International Joint Confer-ence on Natural Language Processing (Volume 1: Long Pa-pers), pp. 5065–5075, 2021.
+[5] Tianyu Gao, Xingcheng Yao, and Danqi Chen. SimCSE: Simplecontrastive learning of sentence embeddings. In Marie-FrancineMoens, Xuanjing Huang, Lucia Specia, and Scott Wen-tau Yih,editors, Proceedings of the 2021 Conference on EmpiricalMethods in Natural Language Processing, pp. 6894–6910,2021.
+[6] Jiahao Xu, Wei Shao, Lihui Chen, and Lemao Liu. SimCSE++:Improving contrastive learning for sentence embeddings from twoperspectives. In Houda Bouamor, Juan Pino, and Kalika Bali,editors, Proceedings of the 2023 Conference on EmpiricalMethods in Natural Language Processing, pp. 12028–12040,2023.
+[7] Yuhao Zhang, Hongji Zhu, Yongliang Wang, Nan Xu, Xiaobo Li,and Binqiang Zhao. A contrastive framework for learning sentencerepresentations from pairwise and triple-wise perspective in angu-lar space. In Smaranda Muresan, Preslav Nakov, and Aline Villav-icencio, editors,Proceedings of the 60th Annual Meeting ofthe Association for Computational Linguistics (Volume 1:Long Papers), pp. 4892–4903, 2022.
+[8] Nils Reimers and Iryna Gurevych. Sentence-BERT: Sentence em-beddings using Siamese BERT-networks. In Kentaro Inui, JingJiang, Vincent Ng, and Xiaojun Wan, editors, Proceedings of the2019 Conference on Empirical Methods in Natural LanguageProcessing and the 9th International Joint Conference onNatural Language Processing (EMNLP-IJCNLP), pp. 3982–3992, 2019.
+[9] Mingxin Li, Richong Zhang, and Zhijie Nie. Towards better under-standing of contrastive sentence representation learning: A uniﬁedparadigm for gradient. In Lun-Wei Ku, Andre Martins, and VivekSrikumar, editors, Proceedings of the 62nd Annual Meetingof the Association for Computational Linguistics (Volume1: Long Papers), pp. 14506–14521, 2024.
+[10] Junjie Huang, Duyu Tang, Wanjun Zhong, Shuai Lu, Linjun Shou,Ming Gong, Daxin Jiang, and Nan Duan. WhiteningBERT: An easyunsupervised sentence embedding approach. In Marie-FrancineMoens, Xuanjing Huang, Lucia Specia, and Scott Wen-tau Yih,editors, Findings of the Association for Computational Lin-guistics: EMNLP 2021, pp. 238–244, 2021.
+[11] Aaron van den Oord, Yazhe Li, and Oriol Vinyals. RepresentationLearning with Contrastive Predictive Coding. arXiv e-prints, p.arXiv:1807.03748, 2018.
+[12] Marius Mosbach, Maksym Andriushchenko, and Dietrich Klakow.On the stability of ﬁne-tuning BERT: Misconceptions, explana-tions, and strong baselines. In International Conference onLearning Representations, 2021.
+[13] Alex Lewandowski, Haruto Tanaka, Dale Schuurmans, and Mar-los C. Machado. Directions of Curvature as an Explanation forLoss of Plasticity. arXiv e-prints, p. arXiv:2312.00246, 2023.
+[14] Amil Merchant, Elahe Rahimtoroghi, Ellie Pavlick, and Ian Ten-ney. What happens to BERT embeddings during ﬁne-tuning? InAfra Alishahi, Yonatan Belinkov, Grzegorz Chrupa la, DieuwkeHupkes, Yuval Pinter, and Hassan Sajjad, editors, Proceedingsof the Third BlackboxNLP Workshop on Analyzing and In-terpreting Neural Networks for NLP, pp. 33–44, 2020.
+[15] Yaru Hao, Li Dong, Furu Wei, and Ke Xu. Investigating learningdynamics of BERT ﬁne-tuning. In Kam-Fai Wong, Kevin Knight,and Hua Wu, editors, Proceedings of the 1st Conference of theAsia-Paciﬁc Chapter of the Association for ComputationalLinguistics and the 10th International Joint Conference onNatural Language Processing, pp. 87–92, 2020.
+[16] Yichu Zhou and Vivek Srikumar. A closer look at how ﬁne-tuning changes BERT. In Smaranda Muresan, Preslav Nakov, andAline Villavicencio, editors, Proceedings of the 60th AnnualMeeting of the Association for Computational Linguistics(Volume 1: Long Papers), pp. 1046–1061, 2022.
+[17] Ido Dagan, Oren Glickman, and Bernardo Magnini. The pascalrecognising textual entailment challenge. In Joaquin Qui˜nonero-Candela, Ido Dagan, Bernardo Magnini, and Florence d’Alch´e Buc,editors, Machine Learning Challenges. Evaluating PredictiveUncertainty, Visual Object Classiﬁcation, and RecognisingTectual Entailment, pp. 177–190, 2006.
+[18] Roy Bar-Haim, Ido Dagan, Bill Dolan, Lisa Ferro, Danilo Gi-ampiccolo, Bernardo Magnini, and Idan Szpektor. The secondpascal recognising textual entailment challenge. 2006.
+[19] Danilo Giampiccolo, Bernardo Magnini, Ido Dagan, and BillDolan. The third PASCAL recognizing textual entailment chal-lenge. In Satoshi Sekine, Kentaro Inui, Ido Dagan, Bill Dolan,Danilo Giampiccolo, and Bernardo Magnini, editors, Proceed-ings of the ACL-PASCAL Workshop on Textual Entailmentand Paraphrasing, pp. 1–9, 2007.
+[20] Luisa Bentivogli, Bernardo Magnini, Ido Dagan, Hoa Trang Dang,and Danilo Giampiccolo. The ﬁfth PASCAL recognizing textualentailment challenge. In Proceedings of the Second Text Anal-ysis Conference, TAC 2009, Gaithersburg, Maryland, USA,November 16-17, 2009, 2009.
+[21] Ilya Loshchilov and Frank Hutter. Decoupled weight decay reg-ularization. In International Conference on Learning Repre-sentations, 2019.
+[22] Namuk Park and Songkuk Kim. How do vision transformers work?In International Conference on Learning Representations,2022.― 2219 ―

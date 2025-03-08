@@ -1,0 +1,229 @@
+Towards Automated Detection of Hype in BiomedicalResearch
+
+Bojan Batalo
+
+1∗
+
+ Erica K. Shimomoto
+
+1†∗
+
+ Neil Millar
+
+21
+
+National Institute of Advanced Industrial Science and Technology  
+
+2
+
+University of Tsukuba
+
+
+
+{bojan.batalo,kidoshimomoto.e}@aist.go.jp
+
+
+
+{millar.neil}@u.tsukuba.ac.jp
+
+
+
+Abstract
+
+The use of promotional language (’hype’) in biomedicalresearch is increasing.
+Examples include adjectives such asgroundbreaking, unparalleled, novel and innovative.
+Suchlanguage can undermine objective evaluation of evidence,impede development of research and erode trust in science.
+In this pilot study, we show that (1) formalizing annotationguidelines may help humans reliably annotate such adjec-tives as ’hype’ or ’not hype’, and (2) that using an annotateddataset following the guidelines to train machine learningmodels yields promising results for automatic detection ofpromotional language.
+
+
+1 Introduction
+
+The language of biomedical research is becoming in-creasingly promotional – a phenomenon referred to as’hype’
+[1].
+For example, investigators promote the sig-niﬁcance and novelty of their research using exaggeratedterms (e.g. revolutionary).
+They describe research prob-lems in dramatic terms (daunting).
+They amplify the scaleand rigor of their methods (extensive, robust) and the util-ity of the results (actionable, impactful).Increasing use ofhype has been demonstrated in biomedical funding appli-cations [2] and journal publications
+[3], while comparabletrends are evident in other research ﬁelds [4].
+Figure 1shows examples of ‘hype’ in sentences.
+Hype in science is a cause for concern.
+As the for-mer editor-in-chief of JAMA Network journals points out,words such as ground-breaking, transformative, or un-precedented are rarely justiﬁed, and may undermine ob-jective assessment, impeding the development of furtherstudies, policies, clinical practice, and knowledge transla-∗Authors contributed equally to this work.
+Our study clearly shows that meticulous hemostasis before closure is critically essential for the appropriate and comprehensive management of these patients.
+A thorough investigation was conducted on the papers athand.
+Ten publications were meticulously selected basedon stringent qualifying criteria.
+Adjective stacking!Remove 'critically' or replace with 'necessary'Gratuitous!Remove or replace with 'carefully'Figure 1: Example sentences containing heavily promo-tional adjectives.
+Stacking adjectives to increase the ur-gency or gratuitous ampliﬁcation of research rigor are someexamples of ‘hype’.tion [5].
+Moreover, promotional and conﬁdent languagecan bias readers’ evaluation of research, [6, 7], and publictrust in science is eroded when promotional language cre-ates unrealistic expectations or misrepresents ﬁndings [8].To combat salesmanship in science, diﬀerent approachesare needed, and among these, technological solutions (e.g.,systems to detect, assess, and provide feedback on promo-tional language) may be one means to foster objectivity andaccountability.
+However, whether a given word or phraseis promotional depends on the context.
+For instance, ad-jectives like essential and meticulous can promote signiﬁ-cance or rigor, but they may also occur in a neutral contextor technical phrase (e.g., essential fatty acid, meticuloushemostasis).
+At the same time, words with similar mean-ings can vary in promotional intensity (e.g., new vs. novelvs.
+innovative vs. groundbreaking etc.).Previously, we deﬁned the concept of hype as ‘hyper-bolic and/or subjective language that authors use to glam-orize, promote, embellish and/or exaggerate aspects oftheir research’.
+We have created raw corpora of scien-tiﬁc texts [1, 2, 9], used these to identify a lexicon of 140adjectives that can carry promotional meaning in biomed-ical texts
+[2, 10].
+In that work, adjectives were deemedpotentially hype if over 30% of occurrences were, aftermanually examining them, promotional.
+Although our lexicon of terms can help identify can-didates, discussions about whether a speciﬁc term consti-tutes hyper remain problematic.
+For annotators, deter min-ing whether a word is used with the intention to promoteinvolves subjective judgment based on context and inter-pretation.
+Moreover, our overarching deﬁnition of hypehas proved inadequate for distinguishing ambiguous cases,forcing annotators to rely on intuition and group discussion.
+In this work, we propose some formal annotation guide-lines that can be used to determine whether an adjectiveis used in a promotional manner based on its semantics,function, and context.
+Furthermore, we manually annotatea dataset of 550 sentences containing potentially promo-tional adjectives using these guidelines and discuss anno-tation disagreements.
+Finally, we formulate hype classiﬁcation as a text classi-ﬁcation task, and test some classical natural language pro-cessing methods such as Multinomial Naive Bayes, Mul-tivariate Bernoulli, Suppor t Vector Machines, via bag-of-words approach and using word embeddings.
+
+
+2 Dataset annotation
+
+The starting point of our work is the corpus of raw textscompiled by Millar et al.
+[2], which compr ises 901,717 ab-stracts of successfully funded grant applications submittedto and approved by the National Institutes of Health (NIH)in the United States.
+The NIH corpus has 335 millionwords, out of which are 36.4 million adjectives.
+In previ-ous studies, Millar et al.
+[2] have identiﬁed 140 adjectivesthat they deemed to be ‘potentially hype’ according to asimple, broad guideline deﬁned as: “If the adjective haspositive value judgment , and can be removed or replacedwithout loss in meaning, it is potentially hype”.
+The 140 identiﬁed ‘potentially hype’ adjectives havebeen divided into eight groups, based on the aspect of re-search they are promoting: importance, novelty, rigour,scale, utility, quality, attitude, problem.
+As the startingpoint, we select the novelty group of adjectives, which em-phasize the novelty and innovation of proposed research, anaspect of research reinforced by the academic peer-reviewsystem and the competitive funding process.
+This adjec-tive group comprises 11 members: creative, emerging,ﬁrst, groundbreaking, innovative, latest, novel, revolution-ary, unique, unparalleled, unprecedented.
+To compile our dataset, we use the CQPweb [11] tosearch for novelty adjectives through the recent NIH corpusabstracts, covering years from 2016 to 2020.
+This searchyielded a total of 161,469 occurrences, covering 84,299abstracts.
+Due to time and resource constraints, we limitourselves to a smaller corpus, which can be annotated andmanually examined by the three authors in a reasonabletime frame.
+We randomly choose 50 samples per adjective,resulting in 550 samples, covering 545 abstracts.
+
+
+2.1 Annotation guidelines
+
+One of the authors, Neil Millar, a linguist, designed theinitial annotation guidelines based on his experience andexpertise in linguistics and hype research.
+The guidelinescomprise several steps that might require high proﬁciencyin the English language but are designed to be easy to followand can be applied sequentially.
+We assume looking at anadjective within the context of a sentence; with this startingpoint, the annotation guidelines are as follows.1.
+Value-judgement - Does the adjective imply pos-itive value judgment?
+Most do, including priorityclaims (e.g., "ﬁrst method to...").
+If yes, proceed tosteps 2-6.
+If no, the adjective not hype.2.
+Hyperbolic - Is the adjective hyperbolic or exagger-ated?
+This contains, but is not limited to, a pre-determined set of adjectives: revolutionary, unprece-dented, unparalleled, groundbreaking.
+If yes, theadjective is hype.3.
+Gratuitous - Does the adjective add little to thepropositional content?
+If removed, and the proposi-tional content and structural integrity of the sentencewould remain unchanged (typically when adjective isused in attributive relationship), the adjective is hype.
+If removed, and the propositional content of the sen-tence would be substantially altered, the adjective isnot hype.4.
+Ampliﬁed - Is the strength of an adjective ampliﬁedthrough the use of modiﬁers such as truly, highly,completely?
+If yes, the adjective is hype.5.
+Coordinated - Is the adjective coordinated with otherpotentially hype adjectives (e.g., "innovative and cre-ative researcher")?
+If yes, then the adjective is hype.creativeemergingfirstgroundbreakinginnovativelatestnovelrevolutionaryuniqueunprecedented0510152025No. of disagreementsBeforeAfterFigure 2: Disagreements between annotators, before andafter the discussion.
+Disagreements were largely resolved,except for emerging and latest.6.
+Broader context - When ambiguous, considerwhether the sentence contains other instances of po-tential hype or overt ampliﬁcation?
+If yes, the adjec-tive is hype.
+Guidelines can help a human annotator determinewhether an adjective is ‘hype’, depending on the context.
+However, in some cases, the guidelines may prove insuf-ﬁcient and require further discussion.
+Examples of theannotation guidelines are given in Appendix A.
+
+2.2 Annotation process
+
+Authors annotated the dataset separately, without inter-ference.
+After the initial stage, a discussion session washeld to resolve conﬂicts and reevaluate annotation guide-lines.
+The initial stage resulted in fair amounts of disagree-ment, as indicated by the pairwise Cohen’s Kappa in Ta-ble 1.
+The disag reement level diﬀers for each adjective; abreakdown is provided in Figure 2.
+For adjectives corre-sponding to the hyperbolic guideline, the disagreementswere minimal; fur ther, innovative is rarely disagreed upon,as well as ﬁrst, adjective most commonly used as a num-bering device (e.g., ﬁrst weeks of therapy).
+Adjectivessuch as emerging and latest were the most diﬃcult, andthe guidelines proved insuﬃcient to fully categorize them.
+They are often used to refer to emerging phenomena whenestablishing context for the proposed research or the latestpublications presented at a scientiﬁc conference; in thesecases, it is required to look at the broader context to deter-mine if their use is highly promotional or not.
+Table 1: Pairwise Cohen’s Kappa between the annotatorsA, B and C. Adjusted agreement values after the discussionstage are displayed in brackets.
+A B CA – 0.61 (0.94) 0.78 (0.98)B 0.61 (0.94) – 0.60 (0.95)C 0.78 (0.98) 0.60 (0.95) –Table 2: Final annotations for each adjective in the dataset.
+Adjective Hype Not hype Hype %creative 33 15 68emerging 22 23 48ﬁrst 17 33 34groundbreaking 50 0 100innovative 41 9 82latest 28 19 59novel 18 31
+36revolutionary 50 0
+100unique 33 15 68unparalleled 50 0
+100unprecedented
+50 0 100After the discussion stage, the initial 119 disagreementswere largely resolved.
+The 13 samples that were not agreedupon were discarded from the dataset, and raised issuesregarding the quality of the guidelines, especially for ad-jectives emerging, latest, unique, and creative.
+This process yielded a dataset of 537 sentences withpotential hype adjectives, 392 deemed as hype, and 145not hype by the authors.
+Some adjectives are more likelyto carry promotional intention, while for others, it greatlydepends on the context, as seen in Table 2.
+
+
+3 Preliminary experiments
+
+To understand the diﬃculty of this task, we conductpreliminary experiments using several traditional text clas-siﬁcation methods.
+Namely, we use Multinomial NaiveBayes (MNB), Multivariate Bernoulli Naive Bayes (MVB),Latent Semantic Analysis (LSA), and Support Vector Ma-chines with a linear kernel (SVC).
+As features, we considerbag-of-words of unigrams and the averaged word embed-ding obtained via GloVe1）.
+Finally, we obtain a prelimi-nary human baseline.
+The dataset was split into a development and hold-outtest set in an 8:2 ratio in a stratiﬁed manner.
+A hyper-parameter search was performed on the development setthrough 10-fold cross-validation, and the performance of1）
+glove.42B.300d(a) Human (b) GloVe + SVCFigure 3: Confusion matrices for the human baseline vs.the best performing method.
+While both had similar Recallon ‘hype’ sentences, GloVe + SVC struggles to correctlydetect ‘not hype’ sentences.the best estimator on the hold-out test set is reported.
+Hu-man baseline was obtained by asking a voluntary researcherto manually go through the hold-out test set; we did notsupply them with our annotation guidelines, as we wantedto see what they would deem promotional.
+Results are inTable 3.
+Precision, Recall, and F1-score were weighted toaccount for data imbalance.
+All tested methods had similar performances.
+Interest-ingly, methods based on BoWwere still capable of perform-ing reasonably well.
+Furthermore, GloVe + SVC led to thebest performance, but it still is behind the human baseline.
+This result indicates hype detection requires more complexlanguage modeling than BoW features.
+A note of caution is due here since our dataset containsabout 73% of ‘hype’ samples.
+Therefore, these modelscould just be predicting ‘hype’ 100% of the time.
+To betterunderstand this matter, we also analyzed their confusionmatrices.
+For the sake of space, we show only the ones forSVC + GloVe, the best-performing model, and the humanbaseline in Figure 3.
+We can see that models struggle tocorrectly detect ‘not hype’ sentences, when compared tothe human baseline, although GloVe embeddings helpedslightly alleviate this issue.
+Another point to bear in mind is that given that some ad-jectives, such as grundbreaking and revolutionary only ap-peared in sentences labeled as ‘hype’, they possibly biasedthe results towards only classifying sentences as ‘hype’, aswe can observe in Figure 4.Interestingly, we can see that even though the humanbaseline did better than the tested methods, its accuracy isnot much higher.
+This result highlights the complexity ofthis task, showing how hype detection can be tricky evenfor humans.
+Therefore, it is likely we need to improve ourcreativeemergingfirstgroundbreakinginnovativelatestnovelrevolutionaryuniqueunparalleledunprecedented020406080100Accuracy per adjective (%)Figure 4: Accuracy per adjective according to MNB +BoW.Table 3: Performance in terms of Accuracy (Acc.),weighted Precision (Prec.), weighted Recall (Rec.) andweighted F1-score (F1)Method Feature Acc.
+Pre.
+Rec. F1Human - 0.824 0.819 0.824 0.821MNBBoW0.741
+0.713 0.741 0.716MVB 0.741 0.713 0.741 0.716LSA 0.685 0.671 0.685 0.677SVC 0.759 0.736 0.759 0.717SVC GloVe 0.796 0.784 0.796 0.781annotation guidelines for more precise detection.
+
+
+4 Conclusion
+
+To the best of our knowledge, this is the ﬁrst attemptto reduce subjectivity in identifying promotional languagein scientiﬁc texts.
+We developed formal annotation guide-lines and applied them to a set of texts from the NIHarchive.
+Multiple machine learning models were used forthe deﬁned text classiﬁcation task, determining whethera sentence containing a potentially promotional adjectiveis ’hype’ or ’not hype’.
+The results indicate potential butrequire further feature engineering, a better look at con-text (via more advanced word embeddings), or the use ofcontextual models such as LLMs.
+For future work, weplan on upgrading our guidelines to reﬂect issues raised inthis research, expanding the current dataset with additionalannotations before further application and development ofclassiﬁcation models.
+
+
+
+Acknowledgement
+
+This study was supported by g rant No. 21K02919 fromthe Japan Society for the Promotion of Science. Thanks toLincon S. Souza for his help in the annotation process.
+
+References
+
+
+[1] Neil Millar, Francoise Salager-Meyer, and Brian Budgell.it is important to reinforce the importance of…:hypein reports of randomized controlled trials. English forSpeciﬁc Purposes, Vol. 54, pp. 139–151, 2019.
+[2] Neil Millar, Bojan Batalo, and Brian Budgell. Trendsin the use of promotional language (hype) in abstracts ofsuccessful national institutes of health grant applications,1985-2020. JAMA network open, Vol. 5, No. 8, pp.e2228676–e2228676, 2022.
+[3] Christiaan H Vinkers, Joeri K Tijdink, and Willem M Otte.Use of positive and negative words in scientiﬁc pubmedabstracts between 1974 and 2014: retrospective analysis.Bmj, Vol. 351, , 2015.
+[4] Nils B Weidmann, Sabine Otto, and Lukas Kawerau. Theuse of positive words in political science language. PS:Political Science & Politics, Vol. 51, No. 3, pp. 625–628, 2018.
+[5] Howard Bauchner. Hype, the responsibility of authorsand editors, and the subjective interpretation of evidence.JAMA Network Open, Vol. 6, No. 12, pp. e2349125–e2349125, 2023.
+[6] Peter Van den Besselaar and Charlie Mom. The eﬀect ofwriting style on success in grant applications. Journal ofInformetrics, Vol. 16, No. 1, p. 101257, 2022.
+[7] Hao Peng, Huilian Sophie Qiu, Henrik Barslund Fosse,and Brian Uzzi. Promotional language and the adop-tion of innovative ideas in science. Proceedings of theNational Academy of Sciences, Vol. 121, No. 25, p.e2320066121, 2024.
+[8] Kristen Intemann. Understanding the problem ofhype:Exaggeration, values, and trust in science. CanadianJournal of Philosophy, Vol. 52, No. 3, pp. 279–294,2022.
+[9] Neil Millar, Bojan Batalo, and Brian Budgell. Promotionallanguage (hype) in abstracts of publications of nationalinstitutes of health–funded research, 1985-2020. JAMANetwork Open, Vol. 6, No. 12, pp. e2348706–e2348706,2023.
+[10] Neil Millar, Bojan Batalo, and Brian Budgell. Trends in theuse of promotional language (hype) in national institutesof health funding opportunity announcements, 1992-2020.JAMA Network Open, Vol. 5, No. 11, pp. e2243221–e2243221, 2022.
+[11] Andrew Hardie. Cqpweb―combining power, ﬂexibilityand usability in a corpus analysis tool. Internationaljournal of corpus linguistics, Vol. 17, No. 3, pp. 380–409, 2012.
+
+
+
+A Some examples in the annota-
+
+
+
+tion guidelines
+
+Guideline 1: Value-judgement.
+Does the adjectiveimply positive value judgment?• YES - Most adjectives will imply a value judgement.
+This includes priority claims:– Our study will be the ﬁrst to ...•
+NO - Typically, acronyms, technical/domain-speciﬁcmeaning, and literal meaning:– To aid these eﬀorts, Creative Scientist, Inc.(CSI)...
+–
+Our curriculum emphasizes the development ofcritical and creative independent thinking...– In the ﬁrst aim we test the hypothesis...
+Guideline 2: Hyperbolic.
+Is the adjective hyperbolicor exaggerated?• YES - A relatively unambiguous class that can (likely)be pre-determined:– revolutionary; unprecedented; unparalleled;groundbreakingGuideline 3: Gratuitous.
+Is the adjective gratuitous,adding little to the propositional content?• YES (1) - If removed, the propositional content andstructural integrity of the sentence would remain ba-sically unchanged (typically when adjective used inattributive relationship).
+– To address this, we developed 2 innovative tech-nologies.
+–
+Delivering SGR interventions via text messagingis an innovative way to increase the reach of thiscessation intervention...•
+YES (2) - Represents a tautology or is redundant?– discovered a novel gene...
+•
+NO (1) -
+If removed the propositional content of thesentence would be substantially altered.
+– This is a high risk and high impact project thatuses a novel approach to aggressively treat local- regional disease.•
+NO (2) -
+The sentence gives justiﬁcation for the claim(typically when adjective used in predicative relation-ship).
+– The proposed study is innovative because no pre-vious research has identiﬁed how MBC...
+Guideline 4: Ampliﬁed.
+Is the strength of the adjec-tive ampliﬁed?• YES - The strength of the adjective made strongerthrough the use of modiﬁers:– truly novel; highly innovative; completelyunique; etc.
+Guideline 5: Coordinated.
+Is the adjective COOR-DINATED with other hype candidates?•
+YES - Adjective is co-ordinated with one or morehype candidates (adjective stacking):– ...innovative and creative leader...– ...creative, collaborative, and culturally diversetranslational scientists...
+Guideline 6: Broader context.
+When ambiguous,consider whether the sentence contains other instances ofpotential hype or
+overt ampliﬁcation.•
+This transformative work will be the ﬁrst study toachieve this level of• The faculty has an outstanding track record of cre-ative and high - proﬁle research , superb mentoring ,and robust research funding , and thus attracts out-standing trainees

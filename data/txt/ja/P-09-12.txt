@@ -1,0 +1,236 @@
+係り受け木を考慮するグラフ畳み込みニューラルネットワークによる日本語アスペクトベース感情分析
+
+山口真
+
+1
+
+ 狩野芳伸
+
+11
+
+静岡大学 情報学部
+
+
+
+ {syamaguchi, kano}@kanolab.net
+
+
+
+概要
+
+アスペクトベースの感情分析は、文中の複数のアスペクト語に対する感情極性を特定するタスクである。
+近年の研究では極性の推定をするために係り受け木を用いてアスペクト語に対するオピニオン語を特定する手法が提案されているが、この手法は英語においてのみ実験されており、日本語における研究では、係り受け木を用いたものはない。
+そこで本研究では、日本語において係り受け木を用いてアスペクトベースの感情分析を行う手法を提案する。
+日本語データセットでの感情分析実験により、我々の提案手法が既存の手法よりも優れていることを示す。
+
+
+
+1 はじめに
+
+アスペクトベースの感情分析は、文中の複数のアスペクト語に対する感情極性を特定するタスクである[1]。
+例えば「この店のメニューは限られているが、料理は素晴らしい。」という文を考える。
+この文には 2 つのアスペクト語「メニュー」と「料理」が含まれており、それぞれの感情極性は「negative」と「positive」となる。
+一般に、アスペクトベースの感情分析は特定の文とそのアスペクト語に対する感情極性を予測するものとして定式化される。
+また、感情極性を予測するためには、アスペクト語に対するオピニオン語を正確に特定することが重要である。
+先の例でいえば、「メニュー」に対しては「限られている」が，「料理」に対しては「素晴らしい」というオピニオン語が対応しており、オピニオン語を特定することでアスペクト語に対する感情極性を推定することが容易になる。
+近年の研究では、係り受け木を利用してグラフ畳み込みニューラルネットワーク(GCN)[2]を構築することでオピニオン語を効果的に特定する手法が提案され、成果を上げている[3],[4]。
+しかしこの手法は英語においてのみ実験されており、日本語での実験は行われていない。
+そこで本研究では、日本語において係り受け木を用いてアスペクトベースの感情分析を行う手法を提案する。
+我々の研究の主な貢献は以下の通りである。
+• 日本語において係り受け木を用いてアスペクトベースの感情分析を行う手法を提案した。
+• 日本語で作成されたデータセットでの実験により、提案手法が既存の手法を上回る性能を示し、本モデルの有効性を示した。
+
+
+
+2 提案手法
+
+本節では、提案手法の詳細について述べる。
+提案モデルの全体的な枠組みを図 1に示す。
+我々のモデルは先行研究である MGFN[3]を元に日本語に対応するよう拡張したもので、基本的なアーキテクチャは MGFN に準ずる。
+MGFN モデルは 3 つの部分から構成されている。
+1)エンコーディングモジュールは入力分の文脈表現をエンコーディングする。
+2)グラフ構築モジュールは係り受け解析の結果を用いて潜在グラフを構築する。
+3)感情辞書による極性特化モジュールは感情辞書を用いてモデルの注意を感情的により重要な部分に向ける。
+本研究では以下の点が MGFN と異なる:• 係り受け解析器に日本語 UD 解析器であるginza[5]を用いる。
+• 日本語で構築された BERT モデルを適用する。
+また、先行研究と同じ追加学習を行ったBERT モデルである Additional pretrained BERTbase Japanese ﬁnance [6]を適用することで差分を示す。
+• 日本語で構築された感情極性辞書である単語感情極性対応表[7]を用いる。
+図 1 提案手法の全体的な枠組み
+
+2.1 エンコーディングモジュール
+
+単語数 n の文 𝑠 = {𝑤1, 𝑤2, . . . , 𝑤𝑛} とその中のアスペクト語 𝑎 = {𝑤𝑟+1, . . . , 𝑤𝑟+𝑚} が与えられたとき、文とアスペクト語のペア 𝑥 = ([𝐶𝐿𝑆]𝑠[𝑆𝐸𝑃]𝑎[𝑆𝐸 𝑃])を事前学習モデルに入力する。
+出力は 𝑯 =𝐸𝑛𝑐𝑜𝑑𝑒𝑟 (𝑥).𝑯 = [ℎ1, ℎ2, . . . , ℎ𝑛] ∈ ℝ𝑛 × 𝑑，ℎ𝑖は単語 𝑤𝑖の埋め込み表現、d は隠れ層の次元数である。
+
+
+2.2 グラフ構築モジュール
+
+セマンティックグラフマルチヘッドセルフアテンションによるセマンティックグラフ𝑨𝑆𝑒𝐺∈ ℝ𝑛 × 𝑛を構築する。
+𝑨𝑆𝑒𝐺=𝐾𝑘=1𝑨𝑆𝑒𝐺,𝑘𝐾(1)𝑨𝑆𝑒𝐺,𝑘= softmax𝐻𝑊𝑄× (𝐻𝑊𝐾)𝑇√𝐷𝐻(2)ここで K はアテンションヘッドの数、𝑨𝑆𝑒𝐺,𝑘は k番目のアテンションヘッドにおけるセマンティックグラフを表す。
+√𝐷𝐻は文脈表現 H の次元数である。
+係り受けを考慮した潜在グラフ入力文に対する係り受け解析の結果を用いて、潜在グラフを構築する。
+係り受け解析器の結果から係り受け関係行列を作成する。
+入力文を隣接行列に見立て、係り受け関係のあるノードをエッジで結ぶ。
+エッジには係り受け関係のラベルを頻度に応じて変換した ID を付与する。
+この行列をルックアップテーブルとして使い、係り受け関係を単語埋め込み空間に埋め込む。
+これを用いて構文関係認識行列¯𝑨 = softmax(𝑊𝑎𝑒𝑖 𝑗+ 𝑏𝑎) ∈ ℝ𝑛×𝑛と定義する。
+¯𝑨 をエッジ重みの初期値として使用し、構文認識潜在木を tree inducer[8]を用いて構築する。
+この潜在木では各ノードが入力文の単語を表す。
+これによりエッジ重みは対象語句を親とする係り受けによって強化される。
+以下を用いて係り受けの根を親とする潜在木のラプラシアン行列ˆ𝑳 を構築する。
+ˆ𝑳𝑖 𝑗=𝜓𝑖+𝑛𝑖′=1˜𝑨𝑖′𝑗𝑖 = 𝑗−˜𝑨𝑖 𝑗それ以外(3)ここで 𝜓𝑖= 𝑒𝑥 𝑝(𝑊𝑟ℎ𝑖+ 𝑏𝑟)はノード 𝑖 が係り受けの根である確率を表す。
+ˆ𝑳 を用いて係り受けを考慮した潜在グラフ 𝑨𝑆𝑎𝐿𝐺𝑖 𝑗を以下のように定義する。
+𝑨𝑆𝑎𝐿𝐺𝑖 𝑗=˜𝑨𝑖 𝑗[ˆ𝑳−1]𝑗 𝑗𝑖 = 1 and 𝑗 ≠ 1˜𝑨𝑖 𝑗[ˆ𝑳−1]
+𝑗𝑖𝑖 ≠ 1 and 𝑗 = 1˜𝑨𝑖 𝑗[ˆ𝑳−1]𝑗 𝑗−˜𝑨𝑖 𝑗[ˆ𝑳−1]
+𝑗𝑖𝑖 ≠ 1 and 𝑗 ≠ 10 𝑖 = 1 and 𝑗 = 1(4)最後に親となる係り受けの根をアスペクト語へとするためにルート制約戦略[9]を用いる。
+𝑳𝑟= −𝑁𝑖=1𝑝𝑟𝑖logˆ𝑃𝑟𝑖+ (1 − 𝑝𝑟𝑖) log(1 −ˆ𝑃𝑟𝑖)(5)ここでˆ𝑃𝑟𝑖= 𝜓𝑖[ˆ𝑳−1]𝑖1はノード 𝑖 が係り受けの根である確率を表し、𝑝𝑟𝑖∈ {0, 1} はノード 𝑖 がアスペクト語である確率を表す。
+グラフの融合 𝑨𝑆𝑎𝐿𝐺および 𝑨𝑆𝑒𝐺集約関数としてグラフの中間表現を得る。
+𝑯SaLG𝑙= 𝜎(𝑨SaLG𝑊𝑙𝑐𝑯SaLG𝑙−1+ 𝑏𝑙𝑐)(6)𝑯SeG𝑙= 𝜎(𝑨SeG𝑊𝑙𝑐𝑯SeG𝑙−1+ 𝑏𝑙𝑐)(7)次に 2 つのグラフを以下により動的に融合する。
+𝐻𝑆𝑎𝐿𝐺𝑙= ReLU(𝑊𝑙(𝛼𝐻𝑆𝑎𝐿𝐺𝑙+ (1 − 𝛼)𝐻𝑆𝑒𝐺𝑙))(8)𝛼 = 𝜌・𝜎(𝑔(𝐻𝑆𝑎𝐿𝐺𝑙))(9)ここで、𝛼 および 𝛽 は動的な融合比率を表す。
+𝑔(·)は共有畳み込みカーネルを持つ自己ゲーティング関数[10]である。
+𝜌 は範囲[0, 1]の先行知識のハイパーパラメータで、𝑙 ∈ [1, 𝐿]はグラフ畳み込みブロックの層数である。
+過剰平滑化問題を緩和するために、前層の C-GCNブロック情報を保持する制御因子 𝜔 = 𝜎(𝑔(𝑯𝑙−1))を用いる。
+𝑯SaLG𝑙= 𝜔 · 𝑯SaLG𝑙+ (1 − 𝜔) · 𝑯SaLG𝑙−1(10)SaLG の重要な感情的特徴を抽出するため、潜在特化型注意機構を使用する。
+𝜖 = softmax𝑯SaLG𝐿𝑯SeG𝐿(11)ここで 𝜖 は、最後の C-GCN ブロックの出力表現に基づくセマンティック認識型潜在重みである。
+その後、より豊かな感情表現 𝑧 = 𝜖 𝑯SeG𝐿を得ることができる。
+また、この特徴をアスペクト語指向にするために、z に対して、アスペクト語以外にマスクをかけることでアスペクト語指向の感情特徴表現を取得する。
+
+2.3 感情辞書による極性特化モジュール
+
+文脈から感情的手がかりを特定するために、感情辞書による極性特化モジュールを導入する。
+日本語での実装に際して、入力文の各単語に対して感情スコア 𝜂𝑘を得るために、単語感情極性対応表[7]を使用した。
+このスコアを利用して語彙ベクトル lex ∈ ℝ𝑛×1を作成する。
+ここで、lex = [𝜂1, 𝜂2, . . . , 𝜂𝑛]であり、𝜂𝑘は 𝑘 番目の単語が単語感情極性対応表に存在しない場合は 0 に設定される。
+同時に、𝑙 層目における 𝑯SaLGの隠れ状態表現を、中間ベクトル 𝛾SaLG∈ ℝ𝑛×1にマッピングする。
+このベクトルは 𝛾 = [𝛾1, 𝛾2, . . . , 𝛾𝑛]で構成され、各低次元ノード表現 𝛾𝑘は次式によって与えられる：𝛾𝑘= 𝑊SaLGHSaLG𝑙,𝑘+ 𝑏SaLG(12)極性特化モジュールの損失関数 𝐿𝑠を最小化することにより、理想的にはモデルはアスペクト語の感情表現により多くの注意を払うようになる：
+𝐿𝑠= (𝛾SaLG− lex)2(13)
+
+2.4 モデルの学習
+
+ソフトマックス分類器複数の単語から成るアスペクト語を処理するため、アスペクト語ノードの𝑧𝐴に対して平均プーリングを適用し、線形層とソフトマックス関数を使用して感情の確率分布 ˆ𝑦(𝑠,𝑎)を計算する：ˆ𝑦(𝑠,𝑎)= softmax(𝑊𝑝AvePooling(𝑧𝐴) + 𝑏𝑝)(14)ここで、(𝑠, 𝑎)は文とアスペクト語のペアを表す。
+学習目標は、以下の全体的な目的関数を最小化することである：𝐿(Θ) = 𝜆𝐿𝐶+ 𝜇1𝐿𝑟+ 𝜇2𝐿𝑠(15)ここで、Θ はモデルのすべての学習可能なパラメータを表す。
+𝜆，𝜇1および 𝜇2はハイパーパラメータである。
+主タスクの分類タスクのクロスエントロピー損失 𝐿𝐶は以下のように定義される：𝐿𝐶=(𝑠,𝑎)∈𝐷𝑦(𝑠,𝑎)log ˆ𝑦(𝑠,𝑎)(16)ここで、𝐷 はすべての文とアスペクト語ペアを含むデータセット、𝑦(𝑠,𝑎)は感情の真の分布を表す。
+
+3 実験設定
+
+
+
+3.1 データセット
+
+2014 年から 2018 年までの有価証券報告書を用いて作成された「chABSA-dataset」[11]を用いた。
+データセットにはひとつの文にひとつ以上のアスペクト語が含まれており、それぞれのアスペクト語に対して positive， negative， neutral の 3 つの感情極性のいずれかが 1 名のアノテータにより人手で付与されている。
+ginza を用いた係り受けと使用した BERTに入力するトークナイザのトークンの不一致があると、グラフ構築モジュールとエンコーディングモジュールとの情報統合ができなくなるため、不一致のある文を除外した。
+結果、3212 文あったデータセットは 3194 文となった。
+これを英語版の先行研究同様に訓練データとテストデータに 8:2 で分割した。
+極性ごとのアスペクト語数の統計を表 1に示す。
+表 1 実験データセットの極性ごとのアスペクト語数極性 positive negative neutral合計 4289 3091 258訓練データ 3432 2498 211テストデータ 857 593 47
+
+3.2 提案モデル
+
+入力文に対して係り受けを取得するために UD(Universal Dependencies)解析器であるja ginza electra v5.2.0 [5]を用いた。
+エンコーダーには tohoku-nlp/bert-base-japanese に日本語の金融文書で追加事前学習した BERT モデルである Addi-tional pretrained BERT base Japanese ﬁnance [6]を用いた。
+追加事前学習には 2012 年 10 月 9 日から 2020年 12 月 31 日までの財務結果の概要及び 2018 年2 月 8 日から 2020 年 12 月 31 日までの有価証券報告書が用いられており金融コーパスファイルは、約 2,700 万文で構成されている。
+バッチサイズは 15 で訓練され、Adam オプティマイザーを用いて学習率は 2e-5 に設定された。
+GCN の層数は2 で設定された。
+モデルのハイパーパラメータは𝜆 = 0.5, 𝜇1= 0.05, 𝜇2= 0.05, 𝜌 = 0.2 と設定された。
+訓練 epoch の中から損失が最小となったモデルを選択し、テストデータに対して accuracy 及び Macro-F1を評価した。
+
+
+
+3.3 ベースラインモデル
+
+先述の Additional pretrained BERT base Japanese ﬁ-nance [6]モデルを訓練データでファインチューニングした。
+具体的にはCLSトークンに加えてアスペクト語の最終層出力同士を加算し、それらを用いてラベルを予測するよう学習した。
+
+
+
+4 実験結果
+
+
+
+4.1 総合性能
+
+表 2に提案手法とベースラインの性能評価結果を示す。
+提案手法はベースラインよりも 3 ポイント程度優れた性能であった。
+表 2 提案手法とベースライン手法の性能評価結果モデル Accuracy Macro-f1提案手法 0.9321 0.8783ベースライン 0.9062 0.8470
+
+4.2 アブレーション研究
+
+表3に各損失関数を取り除いた場合のアブレーション研究の結果を示す。
+提案手法から 𝑤/𝑜𝐿𝑟を取り除いたほうが性能が良いことがわかる。
+これはグラフの最上位の親ノードを係り受けの根からアスペクト語にむけるルート制約戦略が、モデルの性能に必ずしも良い影響を与えないことを示している。
+表 3 アブレーション研究の結果損失関数 Acc macro-f1提案手法 0.9321 0.8783𝑤/𝑜 𝐿𝑟0.9355 0.8947𝑤/𝑜 𝐿𝑠0.9335 0.8629
+
+5 考察と分析
+
+
+
+5.1 ケーススタディ
+
+提案手法で正答できるようになった事例の係り受けの解析結果を付録のA.1に示す。
+この事例について感情辞書による極性特化モジュールの効果を考察するため、感情辞書による極性特化モジュールを取り除く前と後での重みを可視化した（図3）. 感情辞書には「欠く」というオピニオン語が negative として登録されているため、この単語が含まれる文はnegative として分類されている。
+GCN を用いたことによりオピニオン語である「欠く」やアスペクト語である「投資需要」以外の予測に必要のないノードの重みが低い、つまり GCN によって適切にプルーニングされたことが可視化結果でみてとれる。
+
+
+
+5.2 GPT-4o
+
+
+
+との比較
+
+GPT-4o1）に few-shot サンプルを与えた結果との性能比較を表 4に示す。
+与えたプロンプトは付録のA.2に示す。
+GPT-4o がデータセットの偏りを適切に考慮できなかったため、neutral を破棄したデータセットを用いた。
+positive，negative のそれぞれのデータ数は同じであり、それぞれについて f1 スコアを計算した。
+提案手法はこの設定でも GPT-4o を上回る性能を示した。
+表 4 GPT-4o との比較モデル f1-positive f1-negative提案手法 0.9452 0.9258GPT-4o 0.8794 0.8680
+
+6 おわりに
+
+本研究では、係り受け木を考慮するグラフ畳み込みニューラルネットワークによる日本語アスペクトベース感情分析を提案した。
+提案手法は既存手法を上回る性能を示し、感情辞書による極性特化モジュールが効果的であることを示した。
+本研究も英語版の先行研究同様に長文に対しての適用という課題がある。
+文中の遠くの単語との関係を考慮するためには GCN において係り受けをより多くホップしながら考慮する必要がある。
+これがグラフの過平滑化問題とトレードオフの関係にあるため、今後の課題となる。
+1） https://openai.com/index/hello-gpt-4o/
+
+
+
+7 謝辞
+
+本研究は JSPS 科研費（JP22H00804，JP23K22076），JST さきがけ（JPMJPR2461）， JST AIP 加速課題（JPMJCR22U4）、およびセコム科学技術財団特定領域研究助成の支援をうけた。
+
+参考文献
+
+
+[1] Maria Pontiki, Dimitris Galanis, John Pavlopoulos, HarrisPapageorgiou, Ion Androutsopoulos, and Suresh Manand-har. SemEval-2014 task 4: Aspect based sentiment analy-sis. In Preslav Nakov and Torsten Zesch, editors, Proceed-ings of the 8th International Workshop on Seman-tic Evaluation (SemEval 2014), pp. 27–35, Dublin,Ireland, August 2014. Association for Computational Lin-guistics.
+[2] Thomas N Kipf and Max Welling. Semi-supervisedclassiﬁcation with graph convolutional networks. arXivpreprint arXiv:1609.02907, 2016.
+[3] Siyu Tang, Heyan Chai, Ziyi Yao, Ye Ding, Cuiyun Gao,Binxing Fang, and Qing Liao. Aﬀective knowledge en-hanced multiple-graph fusion networks for aspect-basedsentiment analysis. In Yoav Goldberg, Zor nitsa Kozareva,and Yue Zhang, editors, Proceedings of the 2022 Con-ference on Empirical Methods in Natural LanguageProcessing, pp. 5352–5362, Abu Dhabi, United ArabEmirates, December 2022. Association for ComputationalLinguistics.
+[4] Bingfeng Chen, Qihan Ouyang, Yongqi Luo, Boyan Xu,Ruichu Cai, and Zhifeng Hao. S2GSL: Incorporating seg-ment to syntactic enhanced graph structure learning foraspect-based sentiment analysis. In Lun-Wei Ku, An-dre Martins, and Vivek Srikumar, editors, Proceedingsof the 62nd Annual Meeting of the Associationfor Computational Linguistics (Volume 1: LongPapers), pp. 13366–13379, Bangkok, Thailand, August2024. Association for Computational Linguistics.
+[5] 松田寛. GiNZA-Universal Dependencies による実用的日本語解析. 自然言語処理, Vol. 27, No. 3, pp. 695–701,2020.
+[6] Masahiro Suzuki, Hiroki Sakaji, Masanori Hirano, andKiyoshi Izumi. Constructing and analyzing domain-speciﬁc language model for ﬁnancial text mining. In-formation Processing & Management, Vol. 60, p.103194, 2023.
+[7] Hiroya Takamura, Takashi Inui, and Manabu Okumura.Extracting semantic orientations of words using spinmodel. In Kevin Knight, Hwee Tou Ng, and Kemal Oﬂazer,editors, Proceedings of the 43rd Annual Meetingof the Association for Computational Linguistics(ACL‘05), pp. 133–140, Ann Arbor, Michigan, June 2005.Association for Computational Linguistics.
+[8] Li Dong, Furu Wei, Chuanqi Tan, Duyu Tang, Ming Zhou,and Ke Xu. Adaptive recursive neural network for target-dependent Twitter sentiment classiﬁcation. In KristinaToutanova and Hua Wu, editors, Proceedings of the52nd Annual Meeting of the Association for Com-putational Linguistics (Volume 2: Short Papers),pp. 49–54, Baltimore, Maryland, June 2014. Associationfor Computational Linguistics.
+[9] Yuxiang Zhou, Lejian Liao, Yang Gao, Zhanming Jie, andWei Lu. To be closer: Learning to link up aspects withopinions. In Marie-Francine Moens, Xuanjing Huang, Lu-cia Specia, and Scott Wen-tau Yih, editors, Pro ceedingsof the 2021 Conference on Empirical Methods inNatural Language Processing , pp. 3899–3909, Onlineand Punta Cana, Dominican Republic, November 2021.Association for Computational Linguistics.
+[10] Deyu Bo, Xiao Wang, Chuan Shi, and Huawei Shen. Be-yond low-frequency information in graph convolutionalnetworks. In AAAI Conference on Artiﬁcial Intelli-gence, 2021.
+[11] T. Kubo and H. Nakayama. chABSA: AspectBased Sentiment Analysis dataset in Japanese.https://github.com/chakki-works/chABSA-dataset,2018. TIS.
+
+図 2 ケーススタディの係り受け解析結果図 3 感情辞書を考慮しない場合(上)、考慮する場合(下)
+
+A 付録
+
+
+
+A.1 ケーススタディの係り受け解析結果
+
+ケーススタディにおける係り受け解析結果を図2に示す。
+
+A.2 GPT-4o に与えたプロンプト
+
+ここに GPT-4o のプロンプトを記載する。
+Sentence: {tokens}Target Word: {term}Please indicate the sentiment of the targeted word，whether positive or not.do not output anything other than neutral or not.また、これに加えて few-shot として以下のようなフォーマットでサンプルを与えた。
+サンプルは一回のプロンプトにつき各ラベル 7 つずつ与えた。
+以下はその一例である。
+Sentence: 加えて円高の影響もあり、売上高は 19 億 19 百万円（前年比 4.1 ％減）となりましたTarget Word: その他の事業negative

@@ -1,0 +1,426 @@
+Improving Zero-Shot Machine Translation with Fixed PreﬁxPair Bootstrapping
+
+Van-Hien Tran Raj Dabre Hour Kaing Hideki Tanaka Masao Utiyama
+
+
+
+ National Institute of Information and Communications Technology (NICT)
+
+
+
+ {tran.vanhien, raj.dabre, hour_kaing, hideki.tanaka, mutiyama}@nict.go.jp
+
+
+
+Abstract
+
+Zero-shot in-context learning allows large languagemodels (LLMs) to perform tasks using only instructions,yet calibration issues often limit their performance in zero-shot machine translation (MT).
+These issues result in prob-lems like hallucinations and oﬀ-target translations, reduc-ing output quality.
+This paper introduces ﬁxed preﬁx pairbootstrapping, a method that enhances zero-shot MT byinitializing translations with a correct bilingual preﬁx pair,guiding the model to produce accurate target-language out-puts from the start.
+Evaluation across four model architec-tures and translation directions shows consistent, substan-tial improvements, highlighting this simple yet eﬀectiveapproach for advancing zero-shot MT performance.
+
+
+1 Introduction
+
+Large Language Models (LLMs), pre-trained on vastunlabeled datasets, exhibit a remarkable ability known asIn-Context Learning (ICL).
+This enables them to adapt totasks using textual demonstrations, eliminating the need forupdates to their underlying parameters [1, 2].
+Unlike tradi-tional task-speciﬁc ﬁne-tuning, prompting involves craft-ing instructions that guide LLMs to solve tasks directly.
+When combined with ICL, where a few labeled examplesare included in the input as demonstrations, this approachsigniﬁcantly enhances performance.
+However, the eﬀectiveness of ICL is highly sensitive tothe choice of these demonstrations [3, 4], creating chal-lenges in practical scenarios where user queries are un-predictable and prior knowledge is unavailable.
+Preparingeven a small set of examples for "few-shot" prompts can belabor-intensive and impractical for new tasks, especiallyin real-world applications.
+As a result, there is growinginterest in zero-shot ICL, which removes the reliance onpre-prepared examples and focuses on enabling LLMs tohandle tasks solely based on instructions.
+This shift towardzero-shot approaches aims to streamline the use of LLMsin dynamic and resource-constrained environments.
+Zero-shot ICL allows models to per form tasks basedsolely on instructions, without relying on labeled examplesor demonstrations.
+This capability harnesses the innatestrengths of LLMs to interpret and generate content usingnatural language instructions and context [5, 6].
+In MT,zero-shot prompting enables LLMs to translate a sourcesentence into a target language based solely on providedinstructions.
+However, a common challenge in zero-shotMT is the oﬀ-target problem [7, 8], where the modelgenerates translations that stray from the target language.
+To address this, we propose a simple yet eﬀective methodthat requires only a single bilingual word or phrase pairfrom a dictionary, used as a preﬁx for both source andtarget sentences.
+This approach avoids reliance on com-prehensive dictionaries, making it especially beneﬁcial forlow-resource languages where such resources are scarce.
+By introducing ﬁxed preﬁx pairs, we steer LLMs to initiatetranslations correctly and maintain consistent generationin the target language.
+Our evaluation on the FLORES-101 dataset [9] across four models and four language pairsdemonstrates signiﬁcant improvements in translation per-formance, highlighting the eﬀectiveness of our method.
+
+
+2 Related Work
+
+Zero-shot ICL for MT using LLMs has emerged as atransformative approach, leveraging LLMs’ ability to per-form translation tasks without explicit training on parallelcorpora.
+This method holds signiﬁcant potential for low-resource languages and specialized domains [10].
+How-ever, challenges such as hallucinations and the oﬀ-targetproblem, where translations deviate into unintended lan-
+
+Improving Zero-Shot Machine Translation with Fixed PreﬁxPair Bootstrapping
+
+Van-Hien Tran Raj Dabre Hour Kaing Hideki Tanaka Masao Utiyama
+
+
+
+ National Institute of Information and Communications Technology (NICT)
+
+
+
+ {tran.vanhien, raj.dabre, hour_kaing, hideki.tanaka, mutiyama}@nict.go.jp
+
+
+
+Abstract
+
+Zero-shot in-context learning allows large languagemodels (LLMs) to perform tasks using only instructions,yet calibration issues often limit their performance in zero-shot machine translation (MT).
+These issues result in prob-lems like hallucinations and oﬀ-target translations, reduc-ing output quality.
+This paper introduces ﬁxed preﬁx pairbootstrapping, a method that enhances zero-shot MT byinitializing translations with a correct bilingual preﬁx pair,guiding the model to produce accurate target-language out-puts from the start.
+Evaluation across four model architec-tures and translation directions shows consistent, substan-tial improvements, highlighting this simple yet eﬀectiveapproach for advancing zero-shot MT performance.
+
+
+1 Introduction
+
+Large Language Models (LLMs), pre-trained on vastunlabeled datasets, exhibit a remarkable ability known asIn-Context Learning (ICL).
+This enables them to adapt totasks using textual demonstrations, eliminating the need forupdates to their underlying parameters [1, 2].
+Unlike tradi-tional task-speciﬁc ﬁne-tuning, prompting involves craft-ing instructions that guide LLMs to solve tasks directly.
+When combined with ICL, where a few labeled examplesare included in the input as demonstrations, this approachsigniﬁcantly enhances performance.
+However, the eﬀectiveness of ICL is highly sensitive tothe choice of these demonstrations [3, 4], creating chal-lenges in practical scenarios where user queries are un-predictable and prior knowledge is unavailable.
+Preparingeven a small set of examples for "few-shot" prompts can belabor-intensive and impractical for new tasks, especiallyin real-world applications.
+As a result, there is growinginterest in zero-shot ICL, which removes the reliance onpre-prepared examples and focuses on enabling LLMs tohandle tasks solely based on instructions.
+This shift towardzero-shot approaches aims to streamline the use of LLMsin dynamic and resource-constrained environments.
+Zero-shot ICL allows models to per form tasks basedsolely on instructions, without relying on labeled examplesor demonstrations.
+This capability harnesses the innatestrengths of LLMs to interpret and generate content usingnatural language instructions and context [5, 6].
+In MT,zero-shot prompting enables LLMs to translate a sourcesentence into a target language based solely on providedinstructions.
+However, a common challenge in zero-shotMT is the oﬀ-target problem [7, 8], where the modelgenerates translations that stray from the target language.
+To address this, we propose a simple yet eﬀective methodthat requires only a single bilingual word or phrase pairfrom a dictionary, used as a preﬁx for both source andtarget sentences.
+This approach avoids reliance on com-prehensive dictionaries, making it especially beneﬁcial forlow-resource languages where such resources are scarce.
+By introducing ﬁxed preﬁx pairs, we steer LLMs to initiatetranslations correctly and maintain consistent generationin the target language.
+Our evaluation on the FLORES-101 dataset [9] across four models and four language pairsdemonstrates signiﬁcant improvements in translation per-formance, highlighting the eﬀectiveness of our method.
+
+
+2 Related Work
+
+Zero-shot ICL for MT using LLMs has emerged as atransformative approach, leveraging LLMs’ ability to per-form translation tasks without explicit training on parallelcorpora.
+This method holds signiﬁcant potential for low-resource languages and specialized domains [10].
+How-ever, challenges such as hallucinations and the oﬀ-targetproblem, where translations deviate into unintended lan-guages, persist.
+Several studies have investigated these challenges.
+Forexample, [11, 7, 8] analyzed the oﬀ-target problem, propos-ing techniques to mitigate it
+[8, 12].
+[7] explored factorsinﬂuencing performance variations in zero-shot neural MT(NMT) across diverse language pairs, models, and trainingconﬁgurations.
+[8] introduced multilingual vocabulariesin decoders to isolate language-speciﬁc tokens, reducingthe likelihood of incorrect language outputs.
+Other works focused on enhancing zero-shot MTthrough innovative prompting and decoding strategies.[13] proposed adding output text distribution signals toimprove zero-shot prompting for GPT-3, achieving com-petitive results with few-shot methods.
+This study also re-vealed the asymmetric impact of perturbing source and tar-get sides, emphasizing the importance of target-languagecontinuity in translation quality.
+Similarly, the MTCueframework reinterpreted contextual attributes as text, en-abling zero-shot control of extra-textual features like for-mality, signiﬁcantly improving translation quality overnon-contextual baselines [14].Recent advancements have targeted decoding strategiesto address the oﬀ-target issue.
+[11] used decoder pre-training and back-translation to mitigate spurious corre-lations between language IDs and outputs.
+[12] intro-duced EBBS (Ensemble with Bi-Level Beam Search), atwo-level algorithm where ensemble components performbeam searches collaboratively, reﬁning zero-shot trans-lations.
+[15] proposed source-contrastive and language-contrastive decoding methods that identify probable trans-lations by contrasting them with improbable alternatives,mitigating both hallucinations and oﬀ-target translationswithout retraining models.
+Unlike prior work, our approach leverages a simple yeteﬀective technique: using a single bilingual word or phrasepair as a ﬁxed preﬁx for the source and target sentences.
+This strategy encourages LLMs to generate accurate trans-lations from the outset while guiding them to consistentlyproduce outputs in the target language.
+This method di-rectly addresses the oﬀ-target problem with minimal re-source requirements, making it particularly advantageousfor low-resource scenarios.
+
+
+3 Our Approach
+
+We illustrate both the traditional zero-shot MT approachand our proposed method in Figure 1.At the top of Figure 1, the traditional zero-shot MTapproach, referred to as “zero-shot” in the Baseline, isdepicted.
+This method relies solely on instructions withoutproviding examples to guide the LLMs.
+For instance, to prompt an LLM to translate a source sen-tence from English to Italian, we provide a straightforwardinstruction, such as: “Please translate the following sen-tence from English to Italian:” alongside the given sourcesentence.
+The model then generates the expected Italiantranslation for the given input sentence.
+To enhance zero-shot MT performance, one might add afull bilingual sentence pair, such as an English-Italian pairexample, to the prompting template.
+However, in prac-tice, obtaining such bilingual sentence pairs is often diﬃ-cult and labor-intensive, requiring expertise from linguisticprofessionals, especially for low-resource languages.
+Analternative approach is to leverage available bilingual wordor phrase pairs from a dictionary, using them as demon-strations.
+We refer to this method as the “one-shot” settingin the Baseline in Figure 1.
+While this method can providesome improvement, it may sometimes result in low-qualitytranslations due to discrepancies between the example sen-tence and the given input sentence [16].To address this issue, we introduce our approach, illus-trated at the bottom of Figure 1.
+In this method, we usea bilingual word or phrase pair {A, B} from a dictionary,where A represents a word or phrase in the source language,and B is its corresponding translation in the target language.
+Figure 1
+The overall framework of our approach.
+We use asingle English-Italian bilingual pair {As a result, Di conseguenza}from a dictionary.
+
+Improving Zero-Shot Machine Translation with Fixed PreﬁxPair Bootstrapping
+
+Van-Hien Tran Raj Dabre Hour Kaing Hideki Tanaka Masao Utiyama
+
+
+
+ National Institute of Information and Communications Technology (NICT)
+
+
+
+ {tran.vanhien, raj.dabre, hour_kaing, hideki.tanaka, mutiyama}@nict.go.jp
+
+
+
+Abstract
+
+Zero-shot in-context learning allows large languagemodels (LLMs) to perform tasks using only instructions,yet calibration issues often limit their performance in zero-shot machine translation (MT).
+These issues result in prob-lems like hallucinations and oﬀ-target translations, reduc-ing output quality.
+This paper introduces ﬁxed preﬁx pairbootstrapping, a method that enhances zero-shot MT byinitializing translations with a correct bilingual preﬁx pair,guiding the model to produce accurate target-language out-puts from the start.
+Evaluation across four model architec-tures and translation directions shows consistent, substan-tial improvements, highlighting this simple yet eﬀectiveapproach for advancing zero-shot MT performance.
+
+
+1 Introduction
+
+Large Language Models (LLMs), pre-trained on vastunlabeled datasets, exhibit a remarkable ability known asIn-Context Learning (ICL).
+This enables them to adapt totasks using textual demonstrations, eliminating the need forupdates to their underlying parameters [1, 2].
+Unlike tradi-tional task-speciﬁc ﬁne-tuning, prompting involves craft-ing instructions that guide LLMs to solve tasks directly.
+When combined with ICL, where a few labeled examplesare included in the input as demonstrations, this approachsigniﬁcantly enhances performance.
+However, the eﬀectiveness of ICL is highly sensitive tothe choice of these demonstrations [3, 4], creating chal-lenges in practical scenarios where user queries are un-predictable and prior knowledge is unavailable.
+Preparingeven a small set of examples for "few-shot" prompts can belabor-intensive and impractical for new tasks, especiallyin real-world applications.
+As a result, there is growinginterest in zero-shot ICL, which removes the reliance onpre-prepared examples and focuses on enabling LLMs tohandle tasks solely based on instructions.
+This shift towardzero-shot approaches aims to streamline the use of LLMsin dynamic and resource-constrained environments.
+Zero-shot ICL allows models to per form tasks basedsolely on instructions, without relying on labeled examplesor demonstrations.
+This capability harnesses the innatestrengths of LLMs to interpret and generate content usingnatural language instructions and context [5, 6].
+In MT,zero-shot prompting enables LLMs to translate a sourcesentence into a target language based solely on providedinstructions.
+However, a common challenge in zero-shotMT is the oﬀ-target problem [7, 8], where the modelgenerates translations that stray from the target language.
+To address this, we propose a simple yet eﬀective methodthat requires only a single bilingual word or phrase pairfrom a dictionary, used as a preﬁx for both source andtarget sentences.
+This approach avoids reliance on com-prehensive dictionaries, making it especially beneﬁcial forlow-resource languages where such resources are scarce.
+By introducing ﬁxed preﬁx pairs, we steer LLMs to initiatetranslations correctly and maintain consistent generationin the target language.
+Our evaluation on the FLORES-101 dataset [9] across four models and four language pairsdemonstrates signiﬁcant improvements in translation per-formance, highlighting the eﬀectiveness of our method.
+
+
+2 Related Work
+
+Zero-shot ICL for MT using LLMs has emerged as atransformative approach, leveraging LLMs’ ability to per-form translation tasks without explicit training on parallelcorpora.
+This method holds signiﬁcant potential for low-resource languages and specialized domains [10].
+How-ever, challenges such as hallucinations and the oﬀ-targetproblem, where translations deviate into unintended lan-guages, persist.
+Several studies have investigated these challenges.
+Forexample, [11, 7, 8] analyzed the oﬀ-target problem, propos-ing techniques to mitigate it
+[8, 12].
+[7] explored factorsinﬂuencing performance variations in zero-shot neural MT(NMT) across diverse language pairs, models, and trainingconﬁgurations.
+[8] introduced multilingual vocabulariesin decoders to isolate language-speciﬁc tokens, reducingthe likelihood of incorrect language outputs.
+Other works focused on enhancing zero-shot MTthrough innovative prompting and decoding strategies.[13] proposed adding output text distribution signals toimprove zero-shot prompting for GPT-3, achieving com-petitive results with few-shot methods.
+This study also re-vealed the asymmetric impact of perturbing source and tar-get sides, emphasizing the importance of target-languagecontinuity in translation quality.
+Similarly, the MTCueframework reinterpreted contextual attributes as text, en-abling zero-shot control of extra-textual features like for-mality, signiﬁcantly improving translation quality overnon-contextual baselines [14].Recent advancements have targeted decoding strategiesto address the oﬀ-target issue.
+[11] used decoder pre-training and back-translation to mitigate spurious corre-lations between language IDs and outputs.
+[12] intro-duced EBBS (Ensemble with Bi-Level Beam Search), atwo-level algorithm where ensemble components performbeam searches collaboratively, reﬁning zero-shot trans-lations.
+[15] proposed source-contrastive and language-contrastive decoding methods that identify probable trans-lations by contrasting them with improbable alternatives,mitigating both hallucinations and oﬀ-target translationswithout retraining models.
+Unlike prior work, our approach leverages a simple yeteﬀective technique: using a single bilingual word or phrasepair as a ﬁxed preﬁx for the source and target sentences.
+This strategy encourages LLMs to generate accurate trans-lations from the outset while guiding them to consistentlyproduce outputs in the target language.
+This method di-rectly addresses the oﬀ-target problem with minimal re-source requirements, making it particularly advantageousfor low-resource scenarios.
+
+
+3 Our Approach
+
+We illustrate both the traditional zero-shot MT approachand our proposed method in Figure 1.At the top of Figure 1, the traditional zero-shot MTapproach, referred to as “zero-shot” in the Baseline, isdepicted.
+This method relies solely on instructions withoutproviding examples to guide the LLMs.
+For instance, to prompt an LLM to translate a source sen-tence from English to Italian, we provide a straightforwardinstruction, such as: “Please translate the following sen-tence from English to Italian:” alongside the given sourcesentence.
+The model then generates the expected Italiantranslation for the given input sentence.
+To enhance zero-shot MT performance, one might add afull bilingual sentence pair, such as an English-Italian pairexample, to the prompting template.
+However, in prac-tice, obtaining such bilingual sentence pairs is often diﬃ-cult and labor-intensive, requiring expertise from linguisticprofessionals, especially for low-resource languages.
+Analternative approach is to leverage available bilingual wordor phrase pairs from a dictionary, using them as demon-strations.
+We refer to this method as the “one-shot” settingin the Baseline in Figure 1.
+While this method can providesome improvement, it may sometimes result in low-qualitytranslations due to discrepancies between the example sen-tence and the given input sentence [16].To address this issue, we introduce our approach, illus-trated at the bottom of Figure 1.
+In this method, we usea bilingual word or phrase pair {A, B} from a dictionary,where A represents a word or phrase in the source language,and B is its corresponding translation in the target language.
+Figure 1
+The overall framework of our approach.
+We use asingle English-Italian bilingual pair {As a result, Di conseguenza}from a dictionary.
+The key idea is to select A such that it is neutral and rele-vant, making it suitable for adding to the beginning of mostsource sentences.
+This not only maintains the natural ﬂowand semantic integr ity of the original source sentence butalso facilitates the generation of accurate target-languagetranslations.
+For example, in Figure 1, we use the bilingual pair {A, B}as {As a result, Di conseguenza}.
+Therefore, the originalsource sentence “I achieved a good outcome in the exami-nation” becomes “As a result, I achieved a good outcome inthe examination.”.
+Similarly, the corresponding expectedtarget sentence begins with Di conseguenza, guiding thetranslation process eﬀectively.
+
+
+4 Experiments
+
+
+
+4.1 Dataset and Settings
+
+Dataset.
+We evaluate our approach using the FLORES-101 devtest dataset [9], which includes 1012 testing sen-tence pairs for each of the four language directions: English→ Italian, English → Vietnamese, English → Irish, andEnglish → Portuguese.
+Settings.
+Our experiments are conducted on four diﬀerentLLMs: Gemma-7B1）, LLaMA-2-7B2）, LLaMA-2-13B3）,and LLaMA-3-8B4）, all available on Hugging Face.
+Wekeep all LLM parameters frozen throughout the experi-ments.
+For text generation, we use non-sampling greedy decod-ing with a maximum of100new tokens and FP16 precision.
+Each experiment is run on a machine with eight NVIDIATesla V100 Volta 32GB GPUs.
+The chrF++ metric5）[17]is used to assess MT performance.
+
+
+4.2 Results and Analysis
+
+Main results.
+Table 1 summarizes the MT perfor-mance for English->Irish, English->Vietnamese, English->Italian, and English->Portuguese using the ChrF++ met-ric.
+This evaluation compares our proposed approachagainst Baseline methods under both zero-shot and one-shot settings.
+Our approach consistently surpasses theperformance of both baseline conﬁgurations across all lan-1） https://huggingface.co/google/gemma-7b2）
+https://huggingface.co/meta-llama/Llama-2-7b-hf3）
+https://huggingface.co/meta-llama/Llama-2-13b-hf4） https://huggingface.co/meta-llama/Meta-Llama-3-8B5）
+nrefs:1|case:mixed|eﬀ:yes|nc:6|nw:2|space:no|version:2.4.1guage pairs and pre-trained LLM setups.
+A detailed anal-ysis follows.
+First, we analyze the performance diﬀerences betweenthe zero-shot and one-shot settings of the Baseline method.
+Table 1 shows that one-shot occasionally outperforms zero-shot, with a notable 3.42 points average improvement forEnglish-to-Portuguese.
+However, this improvement is in-consistent and varies by LLM and language pair; for ex-ample, the Gemma-7B model performs worse in threepairs: English->Irish, English->Vietnamese, and English->Italian.
+In contrast, our method consistently surpassesboth baseline settings across all language pairs and LLMconﬁgurations.
+Second, we compare the zero-shot baseline with our ap-proach, which shows substantial gains across all modelsand pairs.
+Our method achieves the largest average im-provement (6.43 points) for English-to-Irish and a moremodest 2.9 points for English-to-Vietnamese.
+A notableresult is a 15.59 points improvement for English-to-Irishwith the LlaMA-2-13B model.
+Even for the strongestmodel, LlaMA-3-8B, our method signiﬁcantly enhancesperformance over zero-shot, with gains of 5.8, 5.02, and8.75 points for English-to-Portuguese, English-to-Italian,and English-to-Vietnamese, respectively.
+Lastly, we analyze the performance gap between our ap-proach and the one-shot baseline.
+Table 1 demonstratesthat our method achieves stable improvements across alllanguage pairs and models.
+For example, the average gainsare 2.62, 0.9, 2.36, and 1.69 points for English-to-Irish,English-to-Vietnamese, English-to-Italian, and English-to-Portuguese translations, respectively.
+These ﬁndings un-derscore the robust eﬀectiveness of our approach in ad-dressing oﬀ-target issues present in both baseline settings.
+Overall, the results clearly establish the superiority ofour proposed approach across all evaluated language pairsand pre-trained LLMs.
+The consistent improvements high-light its capability to enhance MT quality by eﬀectivelymitigating the oﬀ-target translation problem inherent inthe baseline methods.
+Case Study.
+To further illustrate the eﬀectiveness of ourapproach in addressing the oﬀ-target issue inherent in theBaseline method, we analyzed and compared translationoutputs across both zero-shot and one-shot baseline set-tings and our approach, as shown in Table 2.
+This analy-sis focuses on translations performed by the LlaMA-2-7B
+
+Improving Zero-Shot Machine Translation with Fixed PreﬁxPair Bootstrapping
+
+Van-Hien Tran Raj Dabre Hour Kaing Hideki Tanaka Masao Utiyama
+
+
+
+ National Institute of Information and Communications Technology (NICT)
+
+
+
+ {tran.vanhien, raj.dabre, hour_kaing, hideki.tanaka, mutiyama}@nict.go.jp
+
+
+
+Abstract
+
+Zero-shot in-context learning allows large languagemodels (LLMs) to perform tasks using only instructions,yet calibration issues often limit their performance in zero-shot machine translation (MT).
+These issues result in prob-lems like hallucinations and oﬀ-target translations, reduc-ing output quality.
+This paper introduces ﬁxed preﬁx pairbootstrapping, a method that enhances zero-shot MT byinitializing translations with a correct bilingual preﬁx pair,guiding the model to produce accurate target-language out-puts from the start.
+Evaluation across four model architec-tures and translation directions shows consistent, substan-tial improvements, highlighting this simple yet eﬀectiveapproach for advancing zero-shot MT performance.
+
+
+1 Introduction
+
+Large Language Models (LLMs), pre-trained on vastunlabeled datasets, exhibit a remarkable ability known asIn-Context Learning (ICL).
+This enables them to adapt totasks using textual demonstrations, eliminating the need forupdates to their underlying parameters [1, 2].
+Unlike tradi-tional task-speciﬁc ﬁne-tuning, prompting involves craft-ing instructions that guide LLMs to solve tasks directly.
+When combined with ICL, where a few labeled examplesare included in the input as demonstrations, this approachsigniﬁcantly enhances performance.
+However, the eﬀectiveness of ICL is highly sensitive tothe choice of these demonstrations [3, 4], creating chal-lenges in practical scenarios where user queries are un-predictable and prior knowledge is unavailable.
+Preparingeven a small set of examples for "few-shot" prompts can belabor-intensive and impractical for new tasks, especiallyin real-world applications.
+As a result, there is growinginterest in zero-shot ICL, which removes the reliance onpre-prepared examples and focuses on enabling LLMs tohandle tasks solely based on instructions.
+This shift towardzero-shot approaches aims to streamline the use of LLMsin dynamic and resource-constrained environments.
+Zero-shot ICL allows models to per form tasks basedsolely on instructions, without relying on labeled examplesor demonstrations.
+This capability harnesses the innatestrengths of LLMs to interpret and generate content usingnatural language instructions and context [5, 6].
+In MT,zero-shot prompting enables LLMs to translate a sourcesentence into a target language based solely on providedinstructions.
+However, a common challenge in zero-shotMT is the oﬀ-target problem [7, 8], where the modelgenerates translations that stray from the target language.
+To address this, we propose a simple yet eﬀective methodthat requires only a single bilingual word or phrase pairfrom a dictionary, used as a preﬁx for both source andtarget sentences.
+This approach avoids reliance on com-prehensive dictionaries, making it especially beneﬁcial forlow-resource languages where such resources are scarce.
+By introducing ﬁxed preﬁx pairs, we steer LLMs to initiatetranslations correctly and maintain consistent generationin the target language.
+Our evaluation on the FLORES-101 dataset [9] across four models and four language pairsdemonstrates signiﬁcant improvements in translation per-formance, highlighting the eﬀectiveness of our method.
+
+
+2 Related Work
+
+Zero-shot ICL for MT using LLMs has emerged as atransformative approach, leveraging LLMs’ ability to per-form translation tasks without explicit training on parallelcorpora.
+This method holds signiﬁcant potential for low-resource languages and specialized domains [10].
+How-ever, challenges such as hallucinations and the oﬀ-targetproblem, where translations deviate into unintended lan-guages, persist.
+Several studies have investigated these challenges.
+Forexample, [11, 7, 8] analyzed the oﬀ-target problem, propos-ing techniques to mitigate it
+[8, 12].
+[7] explored factorsinﬂuencing performance variations in zero-shot neural MT(NMT) across diverse language pairs, models, and trainingconﬁgurations.
+[8] introduced multilingual vocabulariesin decoders to isolate language-speciﬁc tokens, reducingthe likelihood of incorrect language outputs.
+Other works focused on enhancing zero-shot MTthrough innovative prompting and decoding strategies.[13] proposed adding output text distribution signals toimprove zero-shot prompting for GPT-3, achieving com-petitive results with few-shot methods.
+This study also re-vealed the asymmetric impact of perturbing source and tar-get sides, emphasizing the importance of target-languagecontinuity in translation quality.
+Similarly, the MTCueframework reinterpreted contextual attributes as text, en-abling zero-shot control of extra-textual features like for-mality, signiﬁcantly improving translation quality overnon-contextual baselines [14].Recent advancements have targeted decoding strategiesto address the oﬀ-target issue.
+[11] used decoder pre-training and back-translation to mitigate spurious corre-lations between language IDs and outputs.
+[12] intro-duced EBBS (Ensemble with Bi-Level Beam Search), atwo-level algorithm where ensemble components performbeam searches collaboratively, reﬁning zero-shot trans-lations.
+[15] proposed source-contrastive and language-contrastive decoding methods that identify probable trans-lations by contrasting them with improbable alternatives,mitigating both hallucinations and oﬀ-target translationswithout retraining models.
+Unlike prior work, our approach leverages a simple yeteﬀective technique: using a single bilingual word or phrasepair as a ﬁxed preﬁx for the source and target sentences.
+This strategy encourages LLMs to generate accurate trans-lations from the outset while guiding them to consistentlyproduce outputs in the target language.
+This method di-rectly addresses the oﬀ-target problem with minimal re-source requirements, making it particularly advantageousfor low-resource scenarios.
+
+
+3 Our Approach
+
+We illustrate both the traditional zero-shot MT approachand our proposed method in Figure 1.At the top of Figure 1, the traditional zero-shot MTapproach, referred to as “zero-shot” in the Baseline, isdepicted.
+This method relies solely on instructions withoutproviding examples to guide the LLMs.
+For instance, to prompt an LLM to translate a source sen-tence from English to Italian, we provide a straightforwardinstruction, such as: “Please translate the following sen-tence from English to Italian:” alongside the given sourcesentence.
+The model then generates the expected Italiantranslation for the given input sentence.
+To enhance zero-shot MT performance, one might add afull bilingual sentence pair, such as an English-Italian pairexample, to the prompting template.
+However, in prac-tice, obtaining such bilingual sentence pairs is often diﬃ-cult and labor-intensive, requiring expertise from linguisticprofessionals, especially for low-resource languages.
+Analternative approach is to leverage available bilingual wordor phrase pairs from a dictionary, using them as demon-strations.
+We refer to this method as the “one-shot” settingin the Baseline in Figure 1.
+While this method can providesome improvement, it may sometimes result in low-qualitytranslations due to discrepancies between the example sen-tence and the given input sentence [16].To address this issue, we introduce our approach, illus-trated at the bottom of Figure 1.
+In this method, we usea bilingual word or phrase pair {A, B} from a dictionary,where A represents a word or phrase in the source language,and B is its corresponding translation in the target language.
+Figure 1
+The overall framework of our approach.
+We use asingle English-Italian bilingual pair {As a result, Di conseguenza}from a dictionary.
+The key idea is to select A such that it is neutral and rele-vant, making it suitable for adding to the beginning of mostsource sentences.
+This not only maintains the natural ﬂowand semantic integr ity of the original source sentence butalso facilitates the generation of accurate target-languagetranslations.
+For example, in Figure 1, we use the bilingual pair {A, B}as {As a result, Di conseguenza}.
+Therefore, the originalsource sentence “I achieved a good outcome in the exami-nation” becomes “As a result, I achieved a good outcome inthe examination.”.
+Similarly, the corresponding expectedtarget sentence begins with Di conseguenza, guiding thetranslation process eﬀectively.
+
+
+4 Experiments
+
+
+
+4.1 Dataset and Settings
+
+Dataset.
+We evaluate our approach using the FLORES-101 devtest dataset [9], which includes 1012 testing sen-tence pairs for each of the four language directions: English→ Italian, English → Vietnamese, English → Irish, andEnglish → Portuguese.
+Settings.
+Our experiments are conducted on four diﬀerentLLMs: Gemma-7B1）, LLaMA-2-7B2）, LLaMA-2-13B3）,and LLaMA-3-8B4）, all available on Hugging Face.
+Wekeep all LLM parameters frozen throughout the experi-ments.
+For text generation, we use non-sampling greedy decod-ing with a maximum of100new tokens and FP16 precision.
+Each experiment is run on a machine with eight NVIDIATesla V100 Volta 32GB GPUs.
+The chrF++ metric5）[17]is used to assess MT performance.
+
+
+4.2 Results and Analysis
+
+Main results.
+Table 1 summarizes the MT perfor-mance for English->Irish, English->Vietnamese, English->Italian, and English->Portuguese using the ChrF++ met-ric.
+This evaluation compares our proposed approachagainst Baseline methods under both zero-shot and one-shot settings.
+Our approach consistently surpasses theperformance of both baseline conﬁgurations across all lan-1） https://huggingface.co/google/gemma-7b2）
+https://huggingface.co/meta-llama/Llama-2-7b-hf3）
+https://huggingface.co/meta-llama/Llama-2-13b-hf4） https://huggingface.co/meta-llama/Meta-Llama-3-8B5）
+nrefs:1|case:mixed|eﬀ:yes|nc:6|nw:2|space:no|version:2.4.1guage pairs and pre-trained LLM setups.
+A detailed anal-ysis follows.
+First, we analyze the performance diﬀerences betweenthe zero-shot and one-shot settings of the Baseline method.
+Table 1 shows that one-shot occasionally outperforms zero-shot, with a notable 3.42 points average improvement forEnglish-to-Portuguese.
+However, this improvement is in-consistent and varies by LLM and language pair; for ex-ample, the Gemma-7B model performs worse in threepairs: English->Irish, English->Vietnamese, and English->Italian.
+In contrast, our method consistently surpassesboth baseline settings across all language pairs and LLMconﬁgurations.
+Second, we compare the zero-shot baseline with our ap-proach, which shows substantial gains across all modelsand pairs.
+Our method achieves the largest average im-provement (6.43 points) for English-to-Irish and a moremodest 2.9 points for English-to-Vietnamese.
+A notableresult is a 15.59 points improvement for English-to-Irishwith the LlaMA-2-13B model.
+Even for the strongestmodel, LlaMA-3-8B, our method signiﬁcantly enhancesperformance over zero-shot, with gains of 5.8, 5.02, and8.75 points for English-to-Portuguese, English-to-Italian,and English-to-Vietnamese, respectively.
+Lastly, we analyze the performance gap between our ap-proach and the one-shot baseline.
+Table 1 demonstratesthat our method achieves stable improvements across alllanguage pairs and models.
+For example, the average gainsare 2.62, 0.9, 2.36, and 1.69 points for English-to-Irish,English-to-Vietnamese, English-to-Italian, and English-to-Portuguese translations, respectively.
+These ﬁndings un-derscore the robust eﬀectiveness of our approach in ad-dressing oﬀ-target issues present in both baseline settings.
+Overall, the results clearly establish the superiority ofour proposed approach across all evaluated language pairsand pre-trained LLMs.
+The consistent improvements high-light its capability to enhance MT quality by eﬀectivelymitigating the oﬀ-target translation problem inherent inthe baseline methods.
+Case Study.
+To further illustrate the eﬀectiveness of ourapproach in addressing the oﬀ-target issue inherent in theBaseline method, we analyzed and compared translationoutputs across both zero-shot and one-shot baseline set-tings and our approach, as shown in Table 2.
+This analy-sis focuses on translations performed by the LlaMA-2-7BLanguage Pair MethodPre-trained LLMsAvg.
+Gemma-7B LlaMA-2-7B LlaMA-2-13B LlaMA-3-8BEnglish ->IrishBaselinezero-shot 18.60 11.56 8.23 30.32 17.17one-shot 17.57 13.51 21.40 31.46 20.98Ours 19.17 18.57 23.82 32.85 23.60English ->VietnameseBaselinezero-shot 35.54 43.94
+48.37 44.84 43.17one-shot 35.43 42.88 48.61 53.79 45.17Ours 36.20 44.75 49.73 53.59 46.07English ->ItalianBaselinezero-shot 40.77 49.45 44.47 49.34 46.00one-shot 39.75 44.71 54.66 53.47 48.14Ours 42.05 50.81 54.76 54.36 50.50English ->PortugueseBaselinezero-shot 41.61 58.41 57.75 58.32 54.02one-shot 44.41 57.31 64.43 63.63 57.44Ours 45.97 61.55 64.86 64.12 59.13Table 1 Main results.
+All results are reported using the metric ChrF++.Source Sentence #1 In late 2017, Siminoﬀ appeared on shopping television channel QVC.Baselinezero-shotI’m not sure how to translate the word "appeared" in this context.
+I’ve tried "scese in onda",but it doesn’t seem to ﬁt.one-shotComment: I’m not sure if this is what you want, but "In seguito" would be the mostcommon way to say "in late 2017".
+Ours Nel 2017, Siminoﬀ apparve sui canali televisivi di vendita QVC.Source
+Sentence #2Spokesman for Medecines Sans Frontiere Richard Veerman said: "Angola is heading forits worst ever outbreak and the situation remains very bad in Angola," he said.
+Baselinezero-shot Comment: I’m not sure if this is a good question, but I’ll try to answer it anyway.one-shotComment: I’m not sure if this is correct, but I think it should be "di conseguenza"(consequence) instead of "di conseguenza" (result).Oursil portavoce di Medecines Sans Frontiere Richard Veerman ha detto: "L’Angola sta per averela peggiore epidemia mai registrata e la situazione è ancora molto grave in Angola", ha detto.
+Table 2 Output examples of the diﬀerent methods using the model LlaMA-2-7B for translating from English to Italian.model from English to Italian.
+The results reveal a clear advantage of our method.
+Unlike the Baseline, which generates output in Englishrather than the intended Italian target language under bothzero-shot and one-shot settings, our approach successfullyguides the LlaMA-2-7B model to produce translations inItalian.
+These examples highlight our method’s ability toeﬀectively mitigate oﬀ-target errors, further underscoringits practical value in enhancing the zero-shot MT perfor-mance.
+Our simple yet eﬀective approach provides its po-tential for broader applicability in multilingual translationtasks where oﬀ-target issues are prevalent.
+
+
+5 Conclusion
+
+In this work, we proposed an approach to enhance zero-shot MT through ﬁxed preﬁx pair bootstrapping.
+By lever-aging a single bilingual word or phrase pair from a dictio-nary as a preﬁx to both the source and target sentences, ourmethod guides LLMs to produce accurate translations fromthe outset and maintain generation in the target language,eﬀectively mitigating oﬀ-target issues.
+Comprehensive ex-periments on the FLORES-101 devtest dataset, spanningfour language directions and four LLMs, demonstrated theeﬃcacy of our approach in consistently improving tradi-tional zero-shot MT performance.
+
+
+
+References
+
+
+[1] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Sub-biah, Jared D Kaplan, Prafulla Dhariwal, Arvind Nee-lakantan, Pranav Shyam, Girish Sastry, Amanda Askell,et al. Language models are few-shot learners. Advancesin neural information processing systems, Vol. 33, pp.1877–1901, 2020.
+[2] Jason Wei, Yi Tay, Rishi Bommasani, Colin Raﬀel, Bar-ret Zoph, Sebastian Borgeaud, Dani Yogatama, MaartenBosma, Denny Zhou, Donald Metzler, et al. Emer-gent abilities of large language models. arXiv preprintarXiv:2206.07682, 2022.
+[3] Chengwei Qin, Aston Zhang, Chen Chen, AnirudhDagar, and Wenming Ye. In-context learning withiterative demonstration selection. arXiv preprintarXiv:2310.09881, 2023.
+[4] Xinyi Wang, Wanrong Zhu, Michael Saxon, MarkSteyvers, and William Yang Wang. Large language mod-els are latent variable models: Explaining and ﬁndinggood demonstrations for in-context learning. Advancesin Neural Information Processing Systems, Vol. 36,, 2024.
+[5] Wei-Lin Chen, Cheng-Kuang Wu, Yun-Nung Chen, andHsin-Hsi Chen. Self-icl: Zero-shot in-context learn-ing with self-generated demonstrations.arXiv preprintarXiv:2305.15035, 2023.
+[6] Yi Su, Yunpeng Tai, Yixin Ji, Juntao Li, Bowen Yan, andMin Zhang. Demonstration augmentation for zero-shotin-context learning. arXiv preprint arXiv:2406.01224,2024.
+[7] Shaomu Tan and Christof Monz. Towards a better under-standing of variations in zero-shot neural machine trans-lation performance. arXiv preprint arXiv:2310.10385,2023.
+[8] Liang Chen, Shuming Ma, Dongdong Zhang, Furu Wei,and Baobao Chang. On the oﬀ-target problem of zero-shotmultilingual neural machine translation. arXiv preprintarXiv:2305.10930, 2023.
+[9] Naman Goyal, Cynthia Gao, Vishrav Chaudhary, Peng-Jen Chen, Guillaume Wenzek, Da Ju, Sanjana Krishnan,MarcAurelioRanzato, Francisco Guzmán, Angela Fan.The ﬂores-101 evaluation benchmark for low-resource andmultilingual machine translation. Transactions of theAssociation for Computational Linguistics, Vol. 10,pp. 522–538, 2022.
+[10] Van-Hien Tran, Chenchen Ding, Hideki Tanaka, andMasao Utiyama. Improving embedding transfer for low-resource machine translation. In Masao Utiyama and RuiWang, editors, Proceedings of Machine TranslationSummit XIX, Vol. 1: Research Track, pp. 123–134,Macau SAR, China, September 2023. Asia-Paciﬁc Asso-ciation for Machine Translation.
+[11] Jiatao Gu, Yong Wang, Kyunghyun Cho, and Vic-tor OK Li. Improved zero-shot neural machine transla-tion via ignor ing spurious correlations. arXiv preprintarXiv:1906.01181, 2019.
+[12] Yuqiao Wen, Behzad Shayegh, Chenyang Huang, Yan-shuai Cao, and Lili Mou. Ebbs: An ensemble with bi-level beam search for zero-shot machine translation. arXivpreprint arXiv:2403.00144, 2024.
+[13] Vikas Raunak, Hany Hassan Awadalla, and Ar ul Menezes.Dissecting in-context learning of translations in gpts.arXiv preprint arXiv:2310.15987, 2023.
+[14] Sebastian Vincent, Robert Flynn, and Carolina Scarton.Mtcue: Learning zero-shot control of extra-textual at-tributes by leveraging unstructured context in neural ma-chine translation. arXiv preprint arXiv:2305.15904,2023.
+[15] Rico Sennrich, Jannis Vamvas, and Alireza Moham-madshahi. Mitigating hallucinations and oﬀ-target ma-chine translation with source-contrastive and language-contrastive decoding. In Proceedings of the 18th Con-ference of the European Chapter of the Associationfor Computational Linguistics (Volume 2: ShortPapers), pp. 21–33, 2024.
+[16] Baijun Ji, Xiangyu Duan, Zhenyu Qiu, Tong Zhang,Junhui Li, Hao Yang, and Min Zhang. Submodular-based in-context example selection for llms-based machinetranslation. In Proceedings of the 2024 Joint In-ternational Conference on Computational Linguis-tics, Language Resources and Evaluation (LREC-COLING 2024), pp. 15398–15409, 2024.
+[17] Maja Popović. chrF++: words helping character n-grams.In Ondřej Bojar, Christian Buck, Rajen Chatterjee, Chris-tian Federmann, Yvette Graham, Barry Haddow, MatthiasHuck, Antonio Jimeno Yepes, Philipp Koehn, and JuliaKreutzer, editors, Proceedings of the Second Confer-ence on Machine Translation, pp. 612–618, Copen-hagen, Denmark, September 2017. Association for Com-putational Linguistics.

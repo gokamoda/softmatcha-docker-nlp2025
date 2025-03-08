@@ -1,0 +1,534 @@
+Towards Equitable Translation:Gender Bias in Large Language Models
+
+Hong Hai Ngo
+
+1
+
+ Yunmeng Li
+
+1
+
+ Keisuke Sakaguchi
+
+1,21
+
+Tohoku University
+
+2
+
+RIKEN
+
+
+
+ngo.hong.hai.s5@dc.tohoku.ac.jp
+
+
+
+Abstract
+
+Machine translation (MT) systems often struggle withhandling gender distinctions in languages with grammati-cal gender.
+In this paper, we evaluate the performance of10 large language models (LLMs) in translating sentencesfrom English, using a dataset of sentences structured as “Iam [demonym].,” into masculine/feminine/neuter forms inGerman, French, Italian, and Spanish.
+Our results indi-cate that while most models demonstrated the ability togenerate gender-speciﬁc translations, they tend to producemasculine forms more frequently than feminine.
+For en-tries with non-existing oﬃcial demonyms models eitherapply linguistic rules to generate non-standard forms orrely on alternative constructions.
+
+
+1 Introduction
+
+Machine translation (MT) bridges language barriers,making communication and understanding easier andfaster.
+Thus, these systems have improved signiﬁcantlyover the last decade.
+However, gender bias remains a sig-niﬁcant challenge for MT tools.
+Gender bias in a text isthe use of words or syntactic constructs that connote orimply an inclination or prejudice against one gender [1].This issue occurs due to contrastive linguistic settings thatnecessitate disambiguation and explicitness in their repre-sentation of gender
+[2].This bias is especially pronounced when translating fromgender-neutral languages (e.g., English) into those withgrammatical gender (e.g., Spanish), where every noun isassigned to a speciﬁc category, such as masculine, fem-inine, or neuter.
+This categorization aﬀects how relatedwords such as adjectives, pronouns, and verbs agree withthe noun in gender and number.
+The number of grammat-ical gender classes ranges from two to several tens [3].
+InFigure 1 Selected examples from a dataset structured as “Iam [demonym].”
+with input in eng (English) and translationsinto target languages: deu (German), fra (French), it (Italian),and spa (Spanish).
+Colored text indicate gender-speciﬁc forms:masculine (m), feminine (f), and unmarked for neuter (n).this study, we focus on the previously mentioned three cat-egories, as they represent the most common grammaticalgender classiﬁcations in Indo-European languages, whichcomprise the majority of languages with grammatical gen-der and beneﬁt from relatively strong digital support.
+In cases where either gender may be a correct transla-tion, MT systems tend to provide only one option, oftendue to stereotypical associations [4].
+Alternatively, thisbehavior can ar ise from grammatical conventions, wheredefaulting to a speciﬁc gender is standard practice whenthe gender is unknown.
+However, this approach is unsuit-able for ﬁrst-person sentences, such as “I am Ukrainian.
+,”where the speaker’s gender is inherently known and shouldbe reﬂected in the translation.
+With this in mind, we create a dataset1）with the sen-tence structure “I am [demonym].”
+(Figure 1) designedto evaluate how decoder-only models handle English-to-X translation, where X is a language with grammaticalgender.
+Despite large language models (LLMs) generallylacking the precision of neural machine translation (NMT)systems in traditional MT tasks [5, 6, 7], we aim to explorewhether these models can generate all possible gendered1）
+https://github.com/cl-tohoku/ngo hh gender biasdataset
+
+Towards Equitable Translation:Gender Bias in Large Language Models
+
+Hong Hai Ngo
+
+1
+
+ Yunmeng Li
+
+1
+
+ Keisuke Sakaguchi
+
+1,21
+
+Tohoku University
+
+2
+
+RIKEN
+
+
+
+ngo.hong.hai.s5@dc.tohoku.ac.jp
+
+
+
+Abstract
+
+Machine translation (MT) systems often struggle withhandling gender distinctions in languages with grammati-cal gender.
+In this paper, we evaluate the performance of10 large language models (LLMs) in translating sentencesfrom English, using a dataset of sentences structured as “Iam [demonym].,” into masculine/feminine/neuter forms inGerman, French, Italian, and Spanish.
+Our results indi-cate that while most models demonstrated the ability togenerate gender-speciﬁc translations, they tend to producemasculine forms more frequently than feminine.
+For en-tries with non-existing oﬃcial demonyms models eitherapply linguistic rules to generate non-standard forms orrely on alternative constructions.
+
+
+1 Introduction
+
+Machine translation (MT) bridges language barriers,making communication and understanding easier andfaster.
+Thus, these systems have improved signiﬁcantlyover the last decade.
+However, gender bias remains a sig-niﬁcant challenge for MT tools.
+Gender bias in a text isthe use of words or syntactic constructs that connote orimply an inclination or prejudice against one gender [1].This issue occurs due to contrastive linguistic settings thatnecessitate disambiguation and explicitness in their repre-sentation of gender
+[2].This bias is especially pronounced when translating fromgender-neutral languages (e.g., English) into those withgrammatical gender (e.g., Spanish), where every noun isassigned to a speciﬁc category, such as masculine, fem-inine, or neuter.
+This categorization aﬀects how relatedwords such as adjectives, pronouns, and verbs agree withthe noun in gender and number.
+The number of grammat-ical gender classes ranges from two to several tens [3].
+InFigure 1 Selected examples from a dataset structured as “Iam [demonym].”
+with input in eng (English) and translationsinto target languages: deu (German), fra (French), it (Italian),and spa (Spanish).
+Colored text indicate gender-speciﬁc forms:masculine (m), feminine (f), and unmarked for neuter (n).this study, we focus on the previously mentioned three cat-egories, as they represent the most common grammaticalgender classiﬁcations in Indo-European languages, whichcomprise the majority of languages with grammatical gen-der and beneﬁt from relatively strong digital support.
+In cases where either gender may be a correct transla-tion, MT systems tend to provide only one option, oftendue to stereotypical associations [4].
+Alternatively, thisbehavior can ar ise from grammatical conventions, wheredefaulting to a speciﬁc gender is standard practice whenthe gender is unknown.
+However, this approach is unsuit-able for ﬁrst-person sentences, such as “I am Ukrainian.
+,”where the speaker’s gender is inherently known and shouldbe reﬂected in the translation.
+With this in mind, we create a dataset1）with the sen-tence structure “I am [demonym].”
+(Figure 1) designedto evaluate how decoder-only models handle English-to-X translation, where X is a language with grammaticalgender.
+Despite large language models (LLMs) generallylacking the precision of neural machine translation (NMT)systems in traditional MT tasks [5, 6, 7], we aim to explorewhether these models can generate all possible gendered1）
+https://github.com/cl-tohoku/ngo hh gender biasdatasetforms in their outputs.
+Additionally, we use the gender ac-curacy metric to measure exact matches and manually an-alyze other possible translations.
+Using a simple prompt,we demonstrate that modern LLMs can provide both gen-dered options even without explicitly specifying them in theprompt.
+Our results show that Claude [8, 9, 10] consistentlyoutperforms GPT
+[11, 12, 13, 14] models, while Gem-ini [15] models exhibit competitive performance acrossmost languages.
+We also show how models behave incases of ambiguous sentences where the exact translationis undetermined due to the absence of an oﬃcial demonym.
+In such instances, models either rely on linguistic inferenceto construct plausible gendered forms or opt for alternativephrasings, such as “I am from [country/region].,” to main-tain grammatical correctness and ﬂuency.
+
+
+2 Related Work
+
+Gender bias in MT has been extensively studied, mostlyfocusing on English as a source language and high-resourcetarget languages (e.g., Spanish, Arabic).
+Bias often arisesfrom stereotypical associations or grammatical conven-tions, leading models to favor one gender over anotherwhen ambiguity exists.
+For example, WinoMT bench-mark [16], MuST-SHE
+[17] and MMHB
+[18] were intro-duced to evaluate gender bias in MT systems, revealingthe translation tools not only reﬂect biases present in thetraining data but also tend to default to one gender morefrequently
+[19].To address the task of generating equitable translations,one approach involves the use of a post-editing tech-nique.
+The most popular solution is Google Translate’spost-translation gender rewriter
+[20].
+This method cre-ates an initial translation, checks for gender-speciﬁc terms,rewrites to include alternative genders, and ensures the onlydiﬀerence is gender.
+At the moment, this system covers alimited amount of high-resourced languages.
+With the advent of LLMs, several studies have evaluatedthe performance of diﬀerent models on machine transla-tion tasks and gender bias.
+These include LLaMa
+[21],Flor [21], and some commercial products based on GPTsuch as ChatGPT
+[22], Gemini
+[22], and PALM [23].While base LLMs tend to lag behind NMT models intranslation capabilities, recent research has shifted focustoward leveraging prompts to mitigate gender bias ratherthan solely improving the underlying model.
+This moveis driven by evidence that LLMs allow for more con-trol over output properties, making prompt engineeringan eﬀective tool for reducing bias.
+For instance, promptstructures have been shown to reduce gender bias by upto 12% on the WinoMT evaluation dataset compared tosimpler prompts [21].
+Another paper demonstrates thatLLaMa’s gender-speciﬁc translation accuracy consistentlyoutperforms NLLB’s, with a comparable level of genderbias [ 24].
+
+
+3 Methodology
+
+
+
+3.1 Dataset
+
+For our experiment, we have created a dataset consist-ing of sentences structured as “I am [demonym].”
+in En-glish (eng) along with their translations into German (deu),French (fra), Italian (it), and Spanish (spa) for masculine(m) and feminine (f), or neuter (n) forms (Figure 1).
+Thedataset was compiled using the oﬃcial demonyms of the193 member states of the United Nations [ 25], ensuringcomprehensive global representation.
+Translations weresourced from publicly available resources, such as lan-guage learning websites.
+To maintain alignment with in-ternational standards and avoid potential geopolitical sen-sitivities, unrecognized or partially recognized countriesas well as observer states were excluded.
+While most translations matched the structure “I am [de-monym].,” a small number of entries could not be trans-lated because the target languages do not have an oﬃ-cial demonym.
+For example, in German, for “I am Emi-rati.”
+, there is no oﬃcial masculine, feminine, or neutraldemonym, leaving these ﬁelds blank.
+These N/A entriesare included to analyze how models handle cases of absentTable 1 Counts of masculine, feminine, neuter, and
+N/A entriesfor each language.
+N/A entries denote cases where the translationcannot be precisely matched due to the absence of an oﬃcialdemonym.
+In such instances, alternative expressions structuredas “I am from [country/region]” are commonly used in place of“I am [
+demonym].”Language Masculine Feminine Neuter N/Aeng - - 193 -deu 187 187 2 4fra 170 170 23 -it 125 125 65 3spa 144 144 49 -
+
+Towards Equitable Translation:Gender Bias in Large Language Models
+
+Hong Hai Ngo
+
+1
+
+ Yunmeng Li
+
+1
+
+ Keisuke Sakaguchi
+
+1,21
+
+Tohoku University
+
+2
+
+RIKEN
+
+
+
+ngo.hong.hai.s5@dc.tohoku.ac.jp
+
+
+
+Abstract
+
+Machine translation (MT) systems often struggle withhandling gender distinctions in languages with grammati-cal gender.
+In this paper, we evaluate the performance of10 large language models (LLMs) in translating sentencesfrom English, using a dataset of sentences structured as “Iam [demonym].,” into masculine/feminine/neuter forms inGerman, French, Italian, and Spanish.
+Our results indi-cate that while most models demonstrated the ability togenerate gender-speciﬁc translations, they tend to producemasculine forms more frequently than feminine.
+For en-tries with non-existing oﬃcial demonyms models eitherapply linguistic rules to generate non-standard forms orrely on alternative constructions.
+
+
+1 Introduction
+
+Machine translation (MT) bridges language barriers,making communication and understanding easier andfaster.
+Thus, these systems have improved signiﬁcantlyover the last decade.
+However, gender bias remains a sig-niﬁcant challenge for MT tools.
+Gender bias in a text isthe use of words or syntactic constructs that connote orimply an inclination or prejudice against one gender [1].This issue occurs due to contrastive linguistic settings thatnecessitate disambiguation and explicitness in their repre-sentation of gender
+[2].This bias is especially pronounced when translating fromgender-neutral languages (e.g., English) into those withgrammatical gender (e.g., Spanish), where every noun isassigned to a speciﬁc category, such as masculine, fem-inine, or neuter.
+This categorization aﬀects how relatedwords such as adjectives, pronouns, and verbs agree withthe noun in gender and number.
+The number of grammat-ical gender classes ranges from two to several tens [3].
+InFigure 1 Selected examples from a dataset structured as “Iam [demonym].”
+with input in eng (English) and translationsinto target languages: deu (German), fra (French), it (Italian),and spa (Spanish).
+Colored text indicate gender-speciﬁc forms:masculine (m), feminine (f), and unmarked for neuter (n).this study, we focus on the previously mentioned three cat-egories, as they represent the most common grammaticalgender classiﬁcations in Indo-European languages, whichcomprise the majority of languages with grammatical gen-der and beneﬁt from relatively strong digital support.
+In cases where either gender may be a correct transla-tion, MT systems tend to provide only one option, oftendue to stereotypical associations [4].
+Alternatively, thisbehavior can ar ise from grammatical conventions, wheredefaulting to a speciﬁc gender is standard practice whenthe gender is unknown.
+However, this approach is unsuit-able for ﬁrst-person sentences, such as “I am Ukrainian.
+,”where the speaker’s gender is inherently known and shouldbe reﬂected in the translation.
+With this in mind, we create a dataset1）with the sen-tence structure “I am [demonym].”
+(Figure 1) designedto evaluate how decoder-only models handle English-to-X translation, where X is a language with grammaticalgender.
+Despite large language models (LLMs) generallylacking the precision of neural machine translation (NMT)systems in traditional MT tasks [5, 6, 7], we aim to explorewhether these models can generate all possible gendered1）
+https://github.com/cl-tohoku/ngo hh gender biasdatasetforms in their outputs.
+Additionally, we use the gender ac-curacy metric to measure exact matches and manually an-alyze other possible translations.
+Using a simple prompt,we demonstrate that modern LLMs can provide both gen-dered options even without explicitly specifying them in theprompt.
+Our results show that Claude [8, 9, 10] consistentlyoutperforms GPT
+[11, 12, 13, 14] models, while Gem-ini [15] models exhibit competitive performance acrossmost languages.
+We also show how models behave incases of ambiguous sentences where the exact translationis undetermined due to the absence of an oﬃcial demonym.
+In such instances, models either rely on linguistic inferenceto construct plausible gendered forms or opt for alternativephrasings, such as “I am from [country/region].,” to main-tain grammatical correctness and ﬂuency.
+
+
+2 Related Work
+
+Gender bias in MT has been extensively studied, mostlyfocusing on English as a source language and high-resourcetarget languages (e.g., Spanish, Arabic).
+Bias often arisesfrom stereotypical associations or grammatical conven-tions, leading models to favor one gender over anotherwhen ambiguity exists.
+For example, WinoMT bench-mark [16], MuST-SHE
+[17] and MMHB
+[18] were intro-duced to evaluate gender bias in MT systems, revealingthe translation tools not only reﬂect biases present in thetraining data but also tend to default to one gender morefrequently
+[19].To address the task of generating equitable translations,one approach involves the use of a post-editing tech-nique.
+The most popular solution is Google Translate’spost-translation gender rewriter
+[20].
+This method cre-ates an initial translation, checks for gender-speciﬁc terms,rewrites to include alternative genders, and ensures the onlydiﬀerence is gender.
+At the moment, this system covers alimited amount of high-resourced languages.
+With the advent of LLMs, several studies have evaluatedthe performance of diﬀerent models on machine transla-tion tasks and gender bias.
+These include LLaMa
+[21],Flor [21], and some commercial products based on GPTsuch as ChatGPT
+[22], Gemini
+[22], and PALM [23].While base LLMs tend to lag behind NMT models intranslation capabilities, recent research has shifted focustoward leveraging prompts to mitigate gender bias ratherthan solely improving the underlying model.
+This moveis driven by evidence that LLMs allow for more con-trol over output properties, making prompt engineeringan eﬀective tool for reducing bias.
+For instance, promptstructures have been shown to reduce gender bias by upto 12% on the WinoMT evaluation dataset compared tosimpler prompts [21].
+Another paper demonstrates thatLLaMa’s gender-speciﬁc translation accuracy consistentlyoutperforms NLLB’s, with a comparable level of genderbias [ 24].
+
+
+3 Methodology
+
+
+
+3.1 Dataset
+
+For our experiment, we have created a dataset consist-ing of sentences structured as “I am [demonym].”
+in En-glish (eng) along with their translations into German (deu),French (fra), Italian (it), and Spanish (spa) for masculine(m) and feminine (f), or neuter (n) forms (Figure 1).
+Thedataset was compiled using the oﬃcial demonyms of the193 member states of the United Nations [ 25], ensuringcomprehensive global representation.
+Translations weresourced from publicly available resources, such as lan-guage learning websites.
+To maintain alignment with in-ternational standards and avoid potential geopolitical sen-sitivities, unrecognized or partially recognized countriesas well as observer states were excluded.
+While most translations matched the structure “I am [de-monym].,” a small number of entries could not be trans-lated because the target languages do not have an oﬃ-cial demonym.
+For example, in German, for “I am Emi-rati.”
+, there is no oﬃcial masculine, feminine, or neutraldemonym, leaving these ﬁelds blank.
+These N/A entriesare included to analyze how models handle cases of absentTable 1 Counts of masculine, feminine, neuter, and
+N/A entriesfor each language.
+N/A entries denote cases where the translationcannot be precisely matched due to the absence of an oﬃcialdemonym.
+In such instances, alternative expressions structuredas “I am from [country/region]” are commonly used in place of“I am [
+demonym].”Language Masculine Feminine Neuter N/Aeng - - 193 -deu 187 187 2 4fra 170 170 23 -it 125 125 65 3spa 144 144 49 -Table 2 Gender accuracy of GPT, Gemini, and Claude models for each language and their average (avg.)
+performance across alllanguages.
+Results are reported as percentages in the format “masculine / feminine / neuter.”
+Highest value per language foreach gender is in bold, while underlined indicates the lowest score.
+Model deu fra it spa avg.gpt-3.
+5-turbo 75.9 / 7.0 / 50.0 82.4 / 18.8 / 82.6 61.6 / 45.6 / 53.8 88.2 / 57.6 / 67.3 77.6 / 29.6 / 63.3gpt-4 73.3 / 1.6 / 0.0 85.9 / 0.6 / 82.6 83.2 / 0.0 / 73.8 84.7 / 0.0 / 59.2 81.3 / 0.6 / 69.1gpt-4-turbo 79.7 / 26.2 / 100.0 88.8 / 25.9 / 87.0 86.4 / 65.6 / 78.5 85.4 / 34.7 / 57.1 84.8 / 35.9 / 72.7gpt-4o 84.0 / 71.1 / 100.0 86.5 / 81.2 / 82.6 88.0 / 83.2 / 81.5 91.0 / 61.8 / 73.5 87.1 / 74.1 / 79.1gpt-4o-mini 70.1 / 62.6 / 50.0 85.3 / 72.9 / 87.0 84.8 / 75.2 / 81.5 88.9 / 59.7 / 65.3 81.5 / 67.3 / 76.3gemini-1.5-ﬂash 72.2 / 55.6 / 0.0 80.6 / 78.8 / 82.6 82.4 / 73.6 / 81.5 86.8 / 71.5 / 67.3 79.9 / 69.2 / 75.5gemini-1.5-pro 80.7 / 74.9 / 100.0 88.8 / 86.5 / 91.3 89.6 / 80.0 / 84.6 91.7 / 61.1 / 73.5 87.2 / 75.9 / 82.0claude-3-opus 82.9 / 76.5 / 50.0 88.8 / 86.5 / 91.3 88.0 / 83.2 / 75.4 93.1 / 68.8 / 79.6 87.9 / 78.8 / 79.1claude-3.
+5-haiku 78.1 / 65.8 / 50.0 86.5 / 84.7 / 73.9 85.6 / 78.4 / 75.4 88.2 / 63.9 / 61.2 84.2 / 73.0 / 69.8claude-3.
+5-sonnet 88.2 / 86.6 / 100.0 87.6 / 87.1 / 100.0 89.6 / 85.6 / 78.5 91.7 / 66.7 / 77.6 89.1 / 81.9 / 82.0translations (Table 1).This dataset was speciﬁcally designed rather than usingexisting ones to address the following considerations.
+First,since the gender ratio in the human population is generallyclose to 50/50, using demonyms oﬀers a more balancedand neutral representation compared to datasets focusedon stereotypical and non-stereotypical gender associationsfor diﬀerent occupations
+[26](e.g., “doctor” “nurse,” or“engineer”).
+Such datasets often reﬂect societal biasesand skewed gender associations toward traditional roles.
+Additionally, they cover a limited number of languagesand are primarily focused on high-resource language pairs.
+On the other hand, our dataset is simpler, which makesscaling to other languages in future work time-eﬃcientand cost-eﬀective.
+
+
+3.2 Models
+
+
+In this paper, we use API-based access to three popularfamilies of state-of-the-art LLMs to evaluate the gender-speciﬁc translation task.
+Speciﬁcally, we experiment withOpenAI’s2）GPT-3.5-turbo, GPT-4, GPT-4-turbo, GPT-4o, and GPT-4o-mini.
+From Google DeepMind,3）weuse Gemini-1 .
+5-Flash and Gemini-1.5-Pro. From An-thropic4）we include Claude-3-Opus, Claude-3.
+5-Haiku,and Claude-3.5-Sonnet.
+To ensure a fair comparison, we employ the same promptacross all models:2） https://openai.com/about/3）
+https://deepmind.google/4）
+https://www.anthropic.com/Can you translate the following sentence into<target language>:
+<sentence in English>
+We use this scenario because it is probably closer to howan MT-user would prompt since they are not necessarilyaware of the fact that the target language might diﬀer fromthe source in terms of gender marking [2].
+
+3.3 Evaluation
+
+For performance evaluation, we use gender accuracy –the percentage of instances the translation had the correctgender [16].
+However, since the input sentence is neuter,there is a lack of information about gender.
+Therefore, wecompute the metric per gender to identify the bias.
+For sentences with absent reference translations (4 en-tries in German and 3 - in Italian), we focus on analyzingthe outputs provided by the models rather than evaluatingthe translations.
+
+
+4 Results and Analysis
+
+As shown in Table 2, Claude-3.5-sonnet outperformedother models, achieving the highest accuracy for all genderforms in multiple languages.
+Other Claude models alsoshow high results with a diﬀerence between 5% − 10%.
+Incontrast, GPT-3.
+5-turbo achieved the lowest average scoreof 77.6/29.6/63.3.
+Notably, GPT-4 strongly defaulted to-wards masculine output, leading to signiﬁcantly lower fem-inine accuracy.
+Newer models, GPT-4o and GPT-4o-mini,
+
+Towards Equitable Translation:Gender Bias in Large Language Models
+
+Hong Hai Ngo
+
+1
+
+ Yunmeng Li
+
+1
+
+ Keisuke Sakaguchi
+
+1,21
+
+Tohoku University
+
+2
+
+RIKEN
+
+
+
+ngo.hong.hai.s5@dc.tohoku.ac.jp
+
+
+
+Abstract
+
+Machine translation (MT) systems often struggle withhandling gender distinctions in languages with grammati-cal gender.
+In this paper, we evaluate the performance of10 large language models (LLMs) in translating sentencesfrom English, using a dataset of sentences structured as “Iam [demonym].,” into masculine/feminine/neuter forms inGerman, French, Italian, and Spanish.
+Our results indi-cate that while most models demonstrated the ability togenerate gender-speciﬁc translations, they tend to producemasculine forms more frequently than feminine.
+For en-tries with non-existing oﬃcial demonyms models eitherapply linguistic rules to generate non-standard forms orrely on alternative constructions.
+
+
+1 Introduction
+
+Machine translation (MT) bridges language barriers,making communication and understanding easier andfaster.
+Thus, these systems have improved signiﬁcantlyover the last decade.
+However, gender bias remains a sig-niﬁcant challenge for MT tools.
+Gender bias in a text isthe use of words or syntactic constructs that connote orimply an inclination or prejudice against one gender [1].This issue occurs due to contrastive linguistic settings thatnecessitate disambiguation and explicitness in their repre-sentation of gender
+[2].This bias is especially pronounced when translating fromgender-neutral languages (e.g., English) into those withgrammatical gender (e.g., Spanish), where every noun isassigned to a speciﬁc category, such as masculine, fem-inine, or neuter.
+This categorization aﬀects how relatedwords such as adjectives, pronouns, and verbs agree withthe noun in gender and number.
+The number of grammat-ical gender classes ranges from two to several tens [3].
+InFigure 1 Selected examples from a dataset structured as “Iam [demonym].”
+with input in eng (English) and translationsinto target languages: deu (German), fra (French), it (Italian),and spa (Spanish).
+Colored text indicate gender-speciﬁc forms:masculine (m), feminine (f), and unmarked for neuter (n).this study, we focus on the previously mentioned three cat-egories, as they represent the most common grammaticalgender classiﬁcations in Indo-European languages, whichcomprise the majority of languages with grammatical gen-der and beneﬁt from relatively strong digital support.
+In cases where either gender may be a correct transla-tion, MT systems tend to provide only one option, oftendue to stereotypical associations [4].
+Alternatively, thisbehavior can ar ise from grammatical conventions, wheredefaulting to a speciﬁc gender is standard practice whenthe gender is unknown.
+However, this approach is unsuit-able for ﬁrst-person sentences, such as “I am Ukrainian.
+,”where the speaker’s gender is inherently known and shouldbe reﬂected in the translation.
+With this in mind, we create a dataset1）with the sen-tence structure “I am [demonym].”
+(Figure 1) designedto evaluate how decoder-only models handle English-to-X translation, where X is a language with grammaticalgender.
+Despite large language models (LLMs) generallylacking the precision of neural machine translation (NMT)systems in traditional MT tasks [5, 6, 7], we aim to explorewhether these models can generate all possible gendered1）
+https://github.com/cl-tohoku/ngo hh gender biasdatasetforms in their outputs.
+Additionally, we use the gender ac-curacy metric to measure exact matches and manually an-alyze other possible translations.
+Using a simple prompt,we demonstrate that modern LLMs can provide both gen-dered options even without explicitly specifying them in theprompt.
+Our results show that Claude [8, 9, 10] consistentlyoutperforms GPT
+[11, 12, 13, 14] models, while Gem-ini [15] models exhibit competitive performance acrossmost languages.
+We also show how models behave incases of ambiguous sentences where the exact translationis undetermined due to the absence of an oﬃcial demonym.
+In such instances, models either rely on linguistic inferenceto construct plausible gendered forms or opt for alternativephrasings, such as “I am from [country/region].,” to main-tain grammatical correctness and ﬂuency.
+
+
+2 Related Work
+
+Gender bias in MT has been extensively studied, mostlyfocusing on English as a source language and high-resourcetarget languages (e.g., Spanish, Arabic).
+Bias often arisesfrom stereotypical associations or grammatical conven-tions, leading models to favor one gender over anotherwhen ambiguity exists.
+For example, WinoMT bench-mark [16], MuST-SHE
+[17] and MMHB
+[18] were intro-duced to evaluate gender bias in MT systems, revealingthe translation tools not only reﬂect biases present in thetraining data but also tend to default to one gender morefrequently
+[19].To address the task of generating equitable translations,one approach involves the use of a post-editing tech-nique.
+The most popular solution is Google Translate’spost-translation gender rewriter
+[20].
+This method cre-ates an initial translation, checks for gender-speciﬁc terms,rewrites to include alternative genders, and ensures the onlydiﬀerence is gender.
+At the moment, this system covers alimited amount of high-resourced languages.
+With the advent of LLMs, several studies have evaluatedthe performance of diﬀerent models on machine transla-tion tasks and gender bias.
+These include LLaMa
+[21],Flor [21], and some commercial products based on GPTsuch as ChatGPT
+[22], Gemini
+[22], and PALM [23].While base LLMs tend to lag behind NMT models intranslation capabilities, recent research has shifted focustoward leveraging prompts to mitigate gender bias ratherthan solely improving the underlying model.
+This moveis driven by evidence that LLMs allow for more con-trol over output properties, making prompt engineeringan eﬀective tool for reducing bias.
+For instance, promptstructures have been shown to reduce gender bias by upto 12% on the WinoMT evaluation dataset compared tosimpler prompts [21].
+Another paper demonstrates thatLLaMa’s gender-speciﬁc translation accuracy consistentlyoutperforms NLLB’s, with a comparable level of genderbias [ 24].
+
+
+3 Methodology
+
+
+
+3.1 Dataset
+
+For our experiment, we have created a dataset consist-ing of sentences structured as “I am [demonym].”
+in En-glish (eng) along with their translations into German (deu),French (fra), Italian (it), and Spanish (spa) for masculine(m) and feminine (f), or neuter (n) forms (Figure 1).
+Thedataset was compiled using the oﬃcial demonyms of the193 member states of the United Nations [ 25], ensuringcomprehensive global representation.
+Translations weresourced from publicly available resources, such as lan-guage learning websites.
+To maintain alignment with in-ternational standards and avoid potential geopolitical sen-sitivities, unrecognized or partially recognized countriesas well as observer states were excluded.
+While most translations matched the structure “I am [de-monym].,” a small number of entries could not be trans-lated because the target languages do not have an oﬃ-cial demonym.
+For example, in German, for “I am Emi-rati.”
+, there is no oﬃcial masculine, feminine, or neutraldemonym, leaving these ﬁelds blank.
+These N/A entriesare included to analyze how models handle cases of absentTable 1 Counts of masculine, feminine, neuter, and
+N/A entriesfor each language.
+N/A entries denote cases where the translationcannot be precisely matched due to the absence of an oﬃcialdemonym.
+In such instances, alternative expressions structuredas “I am from [country/region]” are commonly used in place of“I am [
+demonym].”Language Masculine Feminine Neuter N/Aeng - - 193 -deu 187 187 2 4fra 170 170 23 -it 125 125 65 3spa 144 144 49 -Table 2 Gender accuracy of GPT, Gemini, and Claude models for each language and their average (avg.)
+performance across alllanguages.
+Results are reported as percentages in the format “masculine / feminine / neuter.”
+Highest value per language foreach gender is in bold, while underlined indicates the lowest score.
+Model deu fra it spa avg.gpt-3.
+5-turbo 75.9 / 7.0 / 50.0 82.4 / 18.8 / 82.6 61.6 / 45.6 / 53.8 88.2 / 57.6 / 67.3 77.6 / 29.6 / 63.3gpt-4 73.3 / 1.6 / 0.0 85.9 / 0.6 / 82.6 83.2 / 0.0 / 73.8 84.7 / 0.0 / 59.2 81.3 / 0.6 / 69.1gpt-4-turbo 79.7 / 26.2 / 100.0 88.8 / 25.9 / 87.0 86.4 / 65.6 / 78.5 85.4 / 34.7 / 57.1 84.8 / 35.9 / 72.7gpt-4o 84.0 / 71.1 / 100.0 86.5 / 81.2 / 82.6 88.0 / 83.2 / 81.5 91.0 / 61.8 / 73.5 87.1 / 74.1 / 79.1gpt-4o-mini 70.1 / 62.6 / 50.0 85.3 / 72.9 / 87.0 84.8 / 75.2 / 81.5 88.9 / 59.7 / 65.3 81.5 / 67.3 / 76.3gemini-1.5-ﬂash 72.2 / 55.6 / 0.0 80.6 / 78.8 / 82.6 82.4 / 73.6 / 81.5 86.8 / 71.5 / 67.3 79.9 / 69.2 / 75.5gemini-1.5-pro 80.7 / 74.9 / 100.0 88.8 / 86.5 / 91.3 89.6 / 80.0 / 84.6 91.7 / 61.1 / 73.5 87.2 / 75.9 / 82.0claude-3-opus 82.9 / 76.5 / 50.0 88.8 / 86.5 / 91.3 88.0 / 83.2 / 75.4 93.1 / 68.8 / 79.6 87.9 / 78.8 / 79.1claude-3.
+5-haiku 78.1 / 65.8 / 50.0 86.5 / 84.7 / 73.9 85.6 / 78.4 / 75.4 88.2 / 63.9 / 61.2 84.2 / 73.0 / 69.8claude-3.
+5-sonnet 88.2 / 86.6 / 100.0 87.6 / 87.1 / 100.0 89.6 / 85.6 / 78.5 91.7 / 66.7 / 77.6 89.1 / 81.9 / 82.0translations (Table 1).This dataset was speciﬁcally designed rather than usingexisting ones to address the following considerations.
+First,since the gender ratio in the human population is generallyclose to 50/50, using demonyms oﬀers a more balancedand neutral representation compared to datasets focusedon stereotypical and non-stereotypical gender associationsfor diﬀerent occupations
+[26](e.g., “doctor” “nurse,” or“engineer”).
+Such datasets often reﬂect societal biasesand skewed gender associations toward traditional roles.
+Additionally, they cover a limited number of languagesand are primarily focused on high-resource language pairs.
+On the other hand, our dataset is simpler, which makesscaling to other languages in future work time-eﬃcientand cost-eﬀective.
+
+
+3.2 Models
+
+
+In this paper, we use API-based access to three popularfamilies of state-of-the-art LLMs to evaluate the gender-speciﬁc translation task.
+Speciﬁcally, we experiment withOpenAI’s2）GPT-3.5-turbo, GPT-4, GPT-4-turbo, GPT-4o, and GPT-4o-mini.
+From Google DeepMind,3）weuse Gemini-1 .
+5-Flash and Gemini-1.5-Pro. From An-thropic4）we include Claude-3-Opus, Claude-3.
+5-Haiku,and Claude-3.5-Sonnet.
+To ensure a fair comparison, we employ the same promptacross all models:2） https://openai.com/about/3）
+https://deepmind.google/4）
+https://www.anthropic.com/Can you translate the following sentence into<target language>:
+<sentence in English>
+We use this scenario because it is probably closer to howan MT-user would prompt since they are not necessarilyaware of the fact that the target language might diﬀer fromthe source in terms of gender marking [2].
+
+3.3 Evaluation
+
+For performance evaluation, we use gender accuracy –the percentage of instances the translation had the correctgender [16].
+However, since the input sentence is neuter,there is a lack of information about gender.
+Therefore, wecompute the metric per gender to identify the bias.
+For sentences with absent reference translations (4 en-tries in German and 3 - in Italian), we focus on analyzingthe outputs provided by the models rather than evaluatingthe translations.
+
+
+4 Results and Analysis
+
+As shown in Table 2, Claude-3.5-sonnet outperformedother models, achieving the highest accuracy for all genderforms in multiple languages.
+Other Claude models alsoshow high results with a diﬀerence between 5% − 10%.
+Incontrast, GPT-3.
+5-turbo achieved the lowest average scoreof 77.6/29.6/63.3.
+Notably, GPT-4 strongly defaulted to-wards masculine output, leading to signiﬁcantly lower fem-inine accuracy.
+Newer models, GPT-4o and GPT-4o-mini,Table 3 Example of LLMs handling N/A entries (when anoﬃcial demonym is unavailable, making an exact translation un-feasible) in the English-to-German direction.
+Colored text in-dicates gender-speciﬁc forms: masculine (m), feminine (f), andunmarked for neuter or only one output option (m/n).
+The (m/n)notation indicates cases where only one translation was provided,making it unclear whether the model intended the output as mas-culine or neuter based on the ending.
+Highlighted text represents alternative translations where “aus”means “from” and “Trinidad” refers to the region name.
+Source I am Trinidadian.
+Expected output -gpt-3.
+5-turbo Ich bin aus Trinidad.gpt-4 Ich bin Tr inidader.
+(m/n)gpt-4-turbo Ich bin Trinidadier.
+(m/n)Gpt-4o Ich bin Tr inidadier.
+(m/n)Gpt-4o-mini Ich bin Tr inidadier.
+(m/n)gemini-1.5-ﬂashIch bin Trinidadier.
+(m)Ich bin Tr inidadie rin.
+(f)gemini-1.5-proIch bin Tr i nidader.
+(m)Ich bin Tr inidade rin.
+(f)claude-3-opus Ich bin Trinidader.
+(m/n)claude-3.
+5-haikuIch bin Trinidadier.
+(m)Ich bin Tr inidadie rin.
+(f)claude-3. 5-sonnetIch bin Tr i nidader.
+(m)Ich bin Tr inidade rin.
+(f)showed substantial improvements in providing both gen-der forms.
+Their performance is comparable to that ofGemini models.
+On average, masculine forms still appearin a greater frequency than feminine forms, yet the dif-ference is approximately 12.5%.
+Despite this, the resultsdemonstrate signiﬁcant progress in gender-speciﬁc tasks.
+Analyzing N/A entries, where oﬃcial gender-speciﬁcforms are not approved yet, reveals interesting patterns inmodel behavior.
+In these cases, models often rely on gram-matical inference to construct outputs, applying linguisticrules to generate non-standard forms (Table 3).
+Whilethese forms demonstrate the model’s ability to generalizeand adapt linguistic rules, they also highlight a tendency toprioritize grammatical plausibility over cultural or contex-tual accuracy.
+In other cases, models generate alternative translationsthat are similar in meaning (Table 3), eﬀectively avoidingthe need for a gender-speciﬁc term.
+This approach is oftenthe best strategy when no oﬃcial demonym exists, ensuringgrammatical correctness and ﬂuency.
+However, this behavior was also observed in cases whereoﬃcial demonyms exist.
+For example, for “Djibouti”claude-3.
+5-sonnet avoided using the oﬃcially recognizedforms (“Yibutiano” or “Yibutiana” in Spanish) and insteadgenerated output “Soy de Yibuti.”
+(“I from Djibouti.”).
+
+
+5 Conclusion and Future Work
+
+In this paper, we explored the capabilities of LLMs toproduce gender-speciﬁc translations using a purpose-builtdataset.
+Our results demonstrate that Claude-3.
+5-sonnetconsistently achieves the highest accuracy across genderforms and multiple languages, with other Claude and Gem-ini models also performing strongly.
+We also recognizethat GPT-4 struggled to provide balanced translations, fre-quently relying only on masculine outputs and neglectingfeminine forms, an issue that appears to have been ad-dressed in the later GPT-4o and GPT-4o-mini models.
+We observed that the models applied diﬀerent strategiesfor handling N/A entries, such as grammatical inferenceor generating alternative constructions.
+While these ap-proaches were eﬀective in maintaining grammatical cor-rectness, they sometimes deviated from expected outputs,even when oﬃcial demonyms were available.
+In future work, we aim to expand the dataset by includingmore languages with grammatical gender, particularly low-resourced ones, to enable broader evaluation and analysis.
+Furthermore, conducting experiments with other gender-neutral source languages, such as Japanese, would providevaluable insights into how models handle diﬀerent direc-tions.
+
+
+
+Acknowledgements
+
+This work was supported by JSPS KAKENHI GrantNumbers JP22H00524 and JP24K03236, and JST SPRINGGrant Number JPMJSP2114.
+
+References
+
+
+[1] Yasmeen Hitti, Eunbee Jang, Ines Moreno, and Carolyne Pelletier.Proposed taxonomy for gender bias in text; a ﬁltering methodol-ogy for the gender generalization subtype. In Marta R. Costa-juss`a, Chr istian Hardmeier, Will Radford, and Kellie Webster, ed-itors, Proceedings of the First Workshop on Gender Biasin Natural Language Processing, pp. 8–17, Florence, Italy,August 2019. Association for Computational Linguistics.
+[2] Eva Vanmassenhove. Gender bias in machine translation and theera of large language models. Gendered Technology in Trans-lation and Interpreting: Centering Rights in the Develop-ment of Language Technology, p. 225, 2024.
+[3] Greville G. Corbett. Gender. Cambridge Textbooks in Linguistics.Cambridge University Press, 1991.
+[4] Joel Escud´e Font and Marta R. Costa-juss`a. Equalizing gender biasin neural machine translation with word embeddings techniques.In Marta R. Costa-juss`a, Christian Hardmeier, Will Radford, andKellie Webster, editors, Proceedings of the First Workshopon Gender Bias in Natural Language Processing, pp. 147–154, Florence, Italy, August 2019. Association for ComputationalLinguistics.
+[5] Wenxiang Jiao, Wenxuan Wang, Jen-tse Huang, Xing Wang,Shuming Shi, and Zhaopeng Tu. Is chatgpt a good translator?yes with gpt-4 as the engine. arXiv preprint arXiv:2301.08745,2023.
+[6] Wenhao Zhu, Hongyi Liu, Qingxiu Dong, Jingjing Xu, ShujianHuang, Lingpeng Kong, Jiajun Chen, and Lei Li. Multilingualmachine translation with large language models: Empirical resultsand analysis. In Kevin Duh, Helena Gomez, and Steven Bethard,editors, Findings of the Asso ciation for Computational Lin-guistics: NAACL 2024, pp. 2765–2781, Mexico City, Mexico,June 2024. Association for Computational Linguistics.
+[7] Rachel Bawden and Franc¸ois Yvon. Investigating the translationperformance of a large multilingual language model: the case ofBLOOM. In Mary Nurminen, Judith Brenner, Maarit Koponen,Sirkku Latomaa, Mikhail Mikhailov, Frederike Schierl, TharinduRanasinghe, Eva Vanmassenhove, Sergi Alvarez Vidal, Nora Aran-berri, Mara Nunziatini, Carla Parra Escart´ın, Mikel Forcada, MajaPopovic, Carolina Scarton, and Helena Moniz, editors, Proceed-ings of the 24th Annual Conference of the European Asso-ciation for Machine Translation, pp. 157–170, Tampere, Fin-land, June 2023. European Association for Machine Translation.
+[8] Anthropic. Introducing the next generation of claude, 2024.https://www.anthropic.com/news/claude-3-family.
+[9] Anthropic. Claude 3.5 sonnet, 2024. https://www.anthropic.com/news/claude-3-5-sonnet.
+[10] Anthropic. Claude 3.5 haiku, 2024. https://www.anthropic.com/claude/haiku.
+[11] OpenAI. Gpt-3.5 turbo, 2024. https://platform.openai.com/docs/models/gpt-3-5-turbo#gpt-3-5-turbo.
+[12] OpenAI. Gpt-4 turbo and gpt-4, 2024. https://platform.openai.com/docs/models/#gpt-4-turbo-and-gpt-4.
+[13] OpenAI. Gpt-4o, 2024. https://platform.openai.com/docs/models/#gpt-4o.
+[14] OpenAI. Gpt-4o mini, 2024. https://platform.openai.com/docs/models/#gpt-4o-mini.
+[15] Gemini Team, Petko Georgiev, Ving Ian Lei, Ryan Burnell, Li-bin Bai, Anmol Gulati, Garrett Tanzer, Damien Vincent, ZhufengPan, Shibo Wang, et al. Gemini 1.5: Unlocking multimodal un-derstanding across millions of tokens of context. arXiv preprintarXiv:2403.05530, 2024.
+[16] Gabriel Stanovsky, Noah A. Smith, and Luke Zettlemoyer. Evaluat-ing gender bias in machine translation. In Anna Korhonen, DavidTraum, and Llu´ıs M`arquez, editors, Proceedings of the 57thAnnual Meeting of the Association for Computational Lin-guistics, pp. 1679–1684, Florence, Italy, July 2019. Associationfor Computational Linguistics.
+[17] Luisa Bentivogli, Beatrice Savoldi, Matteo Negr i, Mattia A.Di Gangi, Roldano Cattoni, and Marco Turchi. Gender in dan-ger? evaluating speech translation technology on the MuST-SHEcorpus. In Dan Jurafsky, Joyce Chai, Natalie Schluter, and JoelTetreault, editors, Proceedings of the 58th Annual Meetingof the Association for Computational Linguistics, pp. 6923–6933, Online, July 2020. Association for Computational Linguis-tics.
+[18] Xiaoqing Ellen Tan, Prangthip Hansanti, Carleigh Wood, BokaiYu, Christophe Ropers, and Marta R Costa-juss`a. Towards massivemultilingual holistic bias. arXiv preprint arXiv:2407.00486,2024.
+[19] Marcelo OR Prates, Pedro H Avelar, and Lu´ıs C Lamb. Assess-ing gender bias in machine translation: a case study with googletranslate. Neural Computing and Applications, Vol. 32, pp.6363–6381, 2020.
+[20] Melvin Johnson. A scalable approach to reducing gender bias ingoogle translate. In Proceedings of the 2020 Conferenceon Empirical Methods in Natural Language Processing(EMNLP), Online, 2020. Association for Computational Linguis-tics.
+[21] Aleix Sant, Carlos Escolano, Audrey Mash, Francesca De LucaFornaciari, and Maite Melero. The power of prompts: Evaluat-ing and mitigating gender bias in mt with llms. arXiv preprintarXiv:2407.18786, 2024.
+[22] Faiz Algobaei, Elham Alzain, Ebrahim Naji, and Khalil A Nagi.Gender issues between gemini and chatgpt: The case of english-arabic translation. World Journal of English Language, Vol. 15,No. 1, p. 9, 2024.
+[23] Mara Nunziatini and Sara Diego. Implementing gender-inclusivityin MT output using automatic post-editing with LLMs. In Car-olina Scarton, Charlotte Prescott, Chris Bayliss, Chris Oakley,Joanna Wright, Stuart Wrigley, Xingyi Song, Edward Gow-Smith,Rachel Bawden, V´ıctor M S´anchez-Cartagena, Patrick Cadwell,Ekaterina Lapshinova-Koltunski, Vera Cabarr˜ao, KonstantinosChatzitheodorou, Mary Nurminen, Diptesh Kanojia, and HelenaMoniz, editors, Proceedings of the 25th Annual Conferenceof the European Association for Machine Translation (Vol-ume 1), pp. 580–589, Sheﬃeld, UK, June 2024. European Asso-ciation for Machine Translation (EAMT).
+[24] Eduardo S´anchez, Pierre Andrews, Pontus Stenetorp, MikelArtetxe, and Marta R. Costa-juss`a. Gender-speciﬁc machine trans-lation with large language models. In Jonne S¨alev¨a and AbrahamOwodunni, editors, Proceedings of the Fourth Workshop onMultilingual Representation Learning (MRL 2024), pp. 148–158, Miami, Florida, USA, November 2024. Association for Com-putational Linguistics.
+[25] United Nations. Member states, 2024. https://www.un.org/en/about-us/member-states#gotoA.
+[26] Karolina Stanczak and Isabelle Augenstein. A survey ongender bias in natural language processing. arXiv preprintarXiv:2112.14168, 2021.

@@ -1,0 +1,267 @@
+JHARS: RAG 設定における日本語 Hallucination 評価ベンチマークの構築と分析
+
+亀井遼平
+
+1∗
+
+ 坂田将樹
+
+1∗
+
+ 
+
+
+
+邊土名朝飛
+
+3,2
+
+ 栗原健太郎
+
+2,3
+
+ 乾健太郎
+
+5,1,41
+
+東北大学 
+
+2
+
+株式会社 AI Shift 
+
+3
+
+サイバーエージェント 
+
+4
+
+理化学研究所 
+
+5
+
+MBZUAI
+
+
+
+{ryohei.kamei.s4,sakata.masaki.s5}@dc.tohoku.ac.jp
+
+
+
+{hentona asahi,kurihara kentaro}@cyberagent.co.jp  kentaro.inui@mbzuai.ac.ae
+
+
+
+概要
+
+大規模言語モデルの hallucination（与えられた情報源に存在しない内容を生成する現象）は、実応用上での重要な課題となっている。
+本研究では、日本語における hallucination 評価のための包括的なベンチマーク JHARS （Japanese Hallucination Assessmentin RAG Settings）を構築し、最新の GPT-4o を含む3 つのモデルを対象に分析を行った。
+その結果、hallucination 発生率は低い一方、事実確認が必要な重大な hallucination が検出された。
+また、自動検出における高い適合率と再現率の両立は困難であるものの、重大な hallucination に関しては高い再現率で検出可能であることが示された。
+これは、LLM 自身による出力の検証が、ユーザへの事実確認支援として機能する可能性を示唆している。
+
+§ github.com/cl-tohoku/JHARS
+
+
+
+1 はじめに
+
+大規模言語モデル（LLM）は幅広い分野での活用が期待され、様々な業務プロセスの自動化や効率化に向けた検討が進められている。
+しかし、実用環境での LLM の適用における重要な課題として，hallucination の問題が指摘されている。
+一般にhallucination とは、与えられた情報源に存在しない内容を LLM が生成する現象を指す[1, 2]。
+特に、検索拡張生成（Retrieval-Augmented Generation: RAG）の設定において、この問題は実用上の重要な課題となっている。
+図 1 に示すように、LLM の生成する応答は一見適切に見えるが、参考文献に記載のない情報が含まれることがある。
+それらの情報に対する事* Equal contributionHallucination 種別Intrinsic HallucinationExtrinsic Hallucination⽉の裏側がいつも⾒えないのはなぜ？質問⽉は⾃転と公転が同期し、常に同じ側を向けているため、(…)参考⽂献 🔍⽉の裏側が地球から常に⾒えない理由は、⽉の⾃転と公転が同期しているためです。
+これにより、(…)この状態を「同期回転」と呼びます。
+⾔語モデルの応答参考⽂献に記述されていない内容。
+事実確認が必要な⽂。
+図 1 収集された hallucination の例。
+実確認や修正作業は、実務者のコスト増大を招く。
+この問題に対処するための第一歩として、hallucination を定量的に評価するための包括的なベンチマークの整備が求められている。
+これまでにも，hallucination 評価のためのベンチマーク作成は行われてきた[3, 4, 5, 6, 7]。
+しかし、既存のベンチマークの多くは英語や中国語を対象としており、日本語における hallucination の評価データセットは十分に整備されていない。
+そのため、日本語に対応した LLM における hallucination の発生頻度や、その検出の困難さについては十分な知見が得られていない。
+この状況は、説明責任が求められる実務タスクへの LLM の導入を妨げる要因となっている。
+そこで本研究では、RAG 設定における日本語LLM の応答 450 件にアノテーションを行い、日本語 hallucination 評価ベンチマーク JHARS (JapaneseHallucination Assessment in RAG Settings)を構築した。
+このベンチマークを用いた分析の結果、LLM の応答文に対する hallucination 発生率は比較的低いものの、質問の回答になっていますか？Q1与えられた参考⽂献と⽭盾する内容ですか？Q3NOYESType 0: Inappropriate Response YES YESNO= hallucina*onなしType 1: Intrinsic HallucinationQ2NOType 2: Extrinsic Hallucination与えられた参考⽂献から検証可能ですか？✅図 2 データセット構築時に使用したフローチャート。
+事実確認が必要な重大な hallucination が検出された。
+また、LLM の応答文に含まれる hallucination の自動検出において、高い適合率と再現率の両立は困難であることが明らかになった。
+一方で、事実確認が必要な重大な hallucination については高い再現率で検出可能であることが示された。
+この結果は、LLM 自身による生成結果の検証が、事実確認を要する箇所の特定と警告に有効である可能性を示唆している。
+
+
+
+2 JHARS データセット
+
+本研究の目的は、RAG 設定において日本語 LLMが生成する hallucination の種類と程度を調査することである。
+そのため、先行研究[5, 6]に倣ってRAG 設定での日本語 hallucination 評価ベンチマークJHARS を作成した。
+hallucination の定義一般に、自然言語生成タスクにおける hallucination とは、生成された内容が、入力として与えられたテキストや参考文献に対して意味をなさない、または忠実でないことを指す[2]。
+この hallucination は Intrinsic Hallucination と ExtrinsicHallucination の 2 つの主要なタイプに分類することができる[1, 2, 8, 9]。
+Intrinsic Hallucination とは、LLM の出力が入力されたテキストや参考文献と矛盾していることを指す。
+Extrinsic Hallucination とは、入力されたテキストや参考文献から事実正誤性を検証できない LLM の出力を指す1。
+本研究でもこちらの定義を採用してアノテーションを実施した2．
+
+2.1 データセットの構築
+
+応答生成のベースデータセット我 々 はWikipedia の記事検索を含む日本語の質問応答データセットである wikipedia-human-retrieval-ja[10]1 Intrinsic Hallucination と Extrinsic Hallucination の具体例については表 4 を参照されたい。
+2 なお本研究では常識的に正しい箇所は hallucination に含まないとした。
+（例：「岸田総理」＝「岸田文雄総理」であることは常識的に正しい。
+）表 1 アノテーション時のアノテータのラベル一致率文数割合3 人一致 2130 90. 37%2 人一致 218 9. 25%一致なし 9 0. 38%を用いて応答の生成を行った。
+これは応答に必要な参考文献が与えられており、長文形式での応答が必要な点で本研究に適している。
+LLM を用いた応答生成 hallucination 評価のためのデータセットの開発が活発になりつつある一方、それらの多くの場合で、特定の種類の hallucinationを人為的に生成し、収集するためのテクニックが採用されている[3, 11, 12]。
+具体的には、hallucinationが起こるようなプロンプトで指示したり、単に出力に矛盾を挿入したりするといったテクニックである。
+これは hallucination が発生する数を増やすのに有効であるものの、自然に発生した hallucination の分布と大きく異なることがある点が指摘されている[5]。
+我々は自然に発生する hallucination を評価するため、hallucination を人為的に発生させるテクニックは使用せず、むしろ参考文献以外の情報は使用しないように指示を与えた。
+また、LLM の応答に hallucination が含まれる要因として、参考文献の品質と LLM の性能という 2 つの可能性が考えられる。
+本研究では、LLM の性能に起因する hallucination を評価するため、以下の 2 点を実施した。
+(i)質問応答に必要な参考文献のみを使用した。
+(ii)応答を生成する前に、GPT-4o[13]を用いて参考文献が十分な情報を含んでいるかのチェックを行った。
+以上の 2 点により、RAG の設定において応答生成のための参考文献が正しく検索され、無関係なテキストは入っていないという前提で、LLMの応答に hallucination のラベルを付与する。
+表 2 文単位の hallucination の統計情報。
+None は hallucination 無しを示す。
+括弧内は割合を表す。
+モデル名 None Intrinsic Extrinsic null (3 人のラベルが全て違う)合計GPT-4o-mini 959 (97.0%) 1 (0. 1%) 24 (2.4%) 5 (0.5%) 989GPT-4o 866 (97.9%) 0 (0.0%) 17 (1. 9%) 2 (0. 2%) 885Llama-3.1-Swallow-8B-Instruct-v0.1 474 (98. 3%) 0 (0. 0%) 6 (1.2%) 2 (0.4%) 482応答生成モデルは、GPT-4o，GPT-4o-mini3[14]に加え、Llama 3.1 の日本語機能を強化したものである Llama-3.1-Swallow-8B-Instruct-v0.1[15, 16]を使用した。
+GPT-4o，GPT-4o-mini は比較的最近にリリースされ広く社会で用いられているモデルである。
+Llama-3.1-Swallow-8B-Instruct-v0.1 はパラメータ数が小さい日本語 LLM がどの程度 hallucination を含む応答を生成するかを調査するために採用した。
+これらの 3 つのモデルを用いて、各モデル 150 件の質問文に対して応答（計 450 応答）を生成させた。
+アノテーション本研究のアノテーションのフローチャートを図 2 に示した。
+本研究では 1 文単位でアノテーションを付与した。
+hallucination に関するアノテーションを付与している先行研究[6, 17]に倣い、“はい/いいえ” で答えられる質問に複数回答えることで自動的にラベルが決まるようにした。
+我々は、アノテータ間の合意を取ることを目的として、各文に 3 人のアノテータを割り当てた。
+なお、全体のアノテーションを実行する前に、アノテータに対し、ガイドラインを読んだ上での 10 件のテストアノテーションを実施した。
+その後、不明点や質問等に回答するための説明会を実施した。
+本研究におけるアノテータ間のラベルの一致率を表 1 に示した。
+表 1 より、全員不一致の割合は 0. 38% と低く、妥当性の高いデータセットであると考えられる。
+
+
+2.2 データセットの分析
+
+定量的な分析として、本データセットのラベルの統計情報を表 2 に示した。
+Intrinsic Hallucination とExtrinsic Hallucination の発生件数は英語 hallucination評価ベンチマークを構築している先行研究[5, 6]と比較して少なかった。
+Intrinsic Hallucination の割合は特に少なく、GPT-4o-mini における 1 件のみであった。
+これらの要因として、RAG による応答生成のための参考文献が正しく検索された前提であるということと、LLM の性能が以前より向上していることが考えられる。
+また、応答単位の hallucination の発生件数を表 3 に示した。
+表 2，3 より、応答単位、文単位3 GPT モデルは 2024 年 10 月時点でのモデルを使用。
+表 3 応答単位の hallucination の発生件数（割合）モデル名件数(割合)gpt-4o-mini 16 (10.7%)gpt-4o 11 (7.3%)Llama-3.1-Swallow-8B-Instruct-v0.1 5 (3.3%)のいずれにおいても GPT-4o-mini の hallucination の割合が 3 つのモデルで最も高く、Llama-3.1-Swallow-8B-Instruct-v0.1 の割合が最も低かった。
+この原因として、Llama-3.1-Swallow-8B-Instruct-v0.1 の出力の文長が他のモデルに比べて短いことが考えられる。
+定性的な分析として、hallucination の発生事例を表 4 に示した。
+Intrinsic Hallucination の事例では、“14,534 人” の箇所は誤りであり、正しくは “約 1.6万人” である。
+Extrinsic Hallucination の事例では、“この状態を「同期回転」と呼びます。
+”
+という
+箇所は参考文献には書いておらず、事実確認が必要である。
+Mishra ら[6]によると、Extrinsic Hallucinationは、事実確認が必要となるものと、主観的な感想（例：“おもしろい”） に大別できる。
+本データセットにおいて、上記の違いについて著者らの目視で確認したところ、全応答中、平均約 1.6%が事実確認が必要となる事例となっていた。
+RAG 設定において参考文献が正しく検索されている前提を踏まえると、上記の hallucination 事例は文書検索処理の問題ではなく、LLM の生成特性に起因すると考えられる。
+このような応答はユーザに誤った知識を与える可能性があり、今後無くしていくべきである。
+
+
+
+3 実験：hallucination の自動検出
+
+§2.2 の分析により、最近の日本語 LLM であってもhallucination が一定数発生することが明らかになった。
+この結果は、LLM の実用において hallucinationの検出が重要な課題となることを意味している。
+そこで本節では、「現状の日本語 LLM が起こすhallucination は自動検出可能か」という問いを検証する。
+実験の結果、日本語 LLM の生成結果に含まれる hallucination の自動検出において、高い適合率と再現率の両立は困難であることが明らかになった。
+一方、事実確認が必要な重大な hallucination に表 4 Intrinsic Hallucination（赤色塗りつぶし）と Extrinsic Hallucination（青色塗りつぶし）の事例。
+(...)は省略を表す。
+応答モデル名：GPT-4o-mini質問文：四万十町は何県ですか参考文献：高知県西南部に位置し、高岡郡に属する約人口 1.6 万人（2021 年 8 月 31 日現在[1]）の町。
+四万十川の中流に位置し、東は太平洋（土佐湾）に面し、（...）応答文：四万十町は高知県に位置する町です。
+（...） 町の面積は 642.30 平方キロメートルで、2021 年 8 月 31 日現在の総人口は14,534 人です。
+また、（...）応答モデル名：GPT-4o質問文：月の裏側がいつも見えないのはなぜ？参考文献：月は自転と公転が同期し、常に同じ側を向けているため、（...）応答文：月の裏側が地球から常に見えない理由は、月の自転と公転が同期しているためです。
+これにより、月は常に同じ側を地球に向けています。
+この状態を「同期回転」と呼びます。
+しかし（...）表 5 hallucination 検出の F1 スコア（%)。
+Intrinsic Hallucination の事例は 1 件のみであることに注意。
+Generator: GPT-4o Generator: GPT-4o-miniGenerator:Llama-3.1-Swallow-8B-Instruct-v0.1Detector Intrinsic Extrinsic Intrinsic Extrinsic Intrinsic ExtrinsicGPT-4o (zero shot) - 14.46 0 15.75 - 10.81GPT-4o w/ 5-shot - 14.43 0 17.07 - 14.63GPT-4o w/ 10-shot - 10.08 0 16 - 10.53GPT-4o w/ 30-shot - 9.76 0 13.33 - 8.51ついては高い再現率での検出が可能であった。
+これは、LLM の生成結果を LLM 自身でチェックし、hallucination 発生の可能性がある箇所を警告するアプローチが実用的である可能性を示唆している。
+
+
+3.1 実験設定
+
+検出モデルとして、HELM [18]及び Nejumi LLMリーダーボード[19]で高い性能を示している GPT-4o を採用した。
+検出モデルは、入力された質問と参考文献に基づき、各応答文に対して “hallucination なし”，“Intrinsic Hallucination”，“Extrinsic Hallucination”，の 3 ラベルのいずれかを付与する。
+JHARS の応答数は 450 件と限られているため追加学習は適切でないと判断し、文脈内学習を採用した。
+プロンプトには，Ji ら[7]の英語プロンプトを日本語に翻訳したものを使用した。
+評価には、JHARS を 8:2 の比率で分割し、8 割を評価データ、残り 2 割を少数事例学習用の例示データとして使用した。
+評価指標には、各クラスの適合率と再現率から算出した F1 スコアを採用し、hallucination の検出性能を測定した。
+
+
+3.2 実験結果
+
+GPT-4o を用いた hallucination 検出の F1 スコアを表 5 に示した4．hallucination 検出において、再現率は高い値を示したものの適合率が低く、結果として4 適合率と再現率の結果は Appendix 表 7 に記載。
+F1 スコアは 15%程度に留まった。
+これは、偽陽性が多く発生する傾向にあることを意味しており、高い適合率と再現率を両立した hallucination 検出は困難であることを示している。
+また、少数事例学習における事例数の増加が必ずしも F1 スコアの向上につながらないことも判明した。
+特に 30 事例を使用した場合において、最も低い F1 スコアを記録した。
+これについては、入力長の増加が LLM の性能低下を招くことが指摘されており[20]、本実験においても同様の現象が発生したと考えられる。
+一方、§2.2 で言及した事実確認が必要な ExtrinsicHallucination についての検出性能を分析したところ、7 件の事例全てを正しく検出できていることを確認した。
+この結果は、LLM 自身による生成結果のチェックが、hallucination 発生の可能性がある箇所をユーザに警告し、事実確認を促す有効な手段となり得ることを示唆している。
+
+
+4 おわりに
+
+本研究では、日本語における hallucination 評価のための包括的なベンチマーク JHARS を構築し、3 つの LLM の応答を分析した。
+今後、本研究で用いたフローを活用してデータの拡充を目指す。
+加えて、本研究では文単位でアノテーションを付与したが、スパン単位でアノテーションを付与し、よりきめ細かい hallucination 評価データセットの構築を目指す。
+
+
+
+謝辞
+
+本研究は株式会社 AI Shift と東北大学の共同研究により実施した。
+
+参考文献
+
+
+[1] Ziwei Ji, Nayeon Lee, Rita Frieske, Tiezheng Yu, Dan Su, YanXu, Etsuko Ishii, Ye Jin Bang, Andrea Madotto, and Pascale Fung.Survey of hallucination in natural language generation.ACMComput. Surv., Vol. 55, No. 12, March 2023.
+[2] Lei Huang, Weijiang Yu, Weitao Ma, Weihong Zhong, ZhangyinFeng, Haotian Wang, Qianglong Chen, Weihua Peng, XiaochengFeng, Bing Qin, and Ting Liu. A survey on hallucination inlarge language models: Principles, taxonomy, challenges, andopen questions. ACM Transactions on Information Systems,November 2024.
+[3] Junyi Li, Xiaoxue Cheng, Xin Zhao, Jian-Yun Nie, and Ji-RongWen. HaluEval: A large-scale hallucination evaluation benchmarkfor large language models. In Houda Bouamor, Juan Pino, andKalika Bali, editors, Proceedings of the 2023 Conference onEmpirical Methods in Natural Language Processing, pp.6449–6464. Association for Computational Linguistics, December2023.
+[4] Xun Liang, Shichao Song, Simin Niu, Zhiyu Li, Feiyu Xiong,Bo Tang, Yezhaohui Wang, Dawei He, Cheng Peng, ZhonghaoWang, and Haiying Deng. UHGEval: Benchmarking the hal-lucination of Chinese large language models via unconstrainedgeneration. In Lun-Wei Ku, Andre Martins, and Vivek Sriku-mar, editors, Proceedings of the 62nd Annual Meeting ofthe Association for Computational Linguistics (Volume 1:Long Papers), pp. 5266–5293. Association for ComputationalLinguistics, August 2024.
+[5] Cheng Niu, Yuanhao Wu, Juno Zhu, Siliang Xu, KaShun Shum,Randy Zhong, Juntong Song, and Tong Zhang. RAGTruth: A hal-lucination corpus for developing trustworthy retrieval-augmentedlanguage models. In Lun-Wei Ku, Andre Martins, and Vivek Sriku-mar, editors, Proceedings of the 62nd Annual Meeting ofthe Association for Computational Linguistics (Volume 1:Long Papers), pp. 10862–10878. Association for ComputationalLinguistics, August 2024.
+[6] Abhika Mishra, Akari Asai, Vidhisha Balachandran, YizhongWang, Graham Neubig, Yulia Tsvetkov, and Hannaneh Hajishirzi.Fine-grained hallucination detection and editing for language mod-els. In First Conference on Language Modeling, 2024.
+[7] Ziwei Ji, Yuzhe Gu, Wenwei Zhang, Chengqi Lyu, Dahua Lin,and Kai Chen. ANAH: Analytical annotation of hallucinations inlarge language models. In Lun-Wei Ku, Andre Martins, and VivekSrikumar, editors, Proceedings of the 62nd Annual Meetingof the Association for Computational Linguistics (Volume1: Long Papers). Association for Computational Linguistics,August 2024.
+[8] Yichong Huang, Xiachong Feng, Xiaocheng Feng, and Bing Qin.The factual inconsistency problem in abstractive text summariza-tion: A survey, 2023.
+[9] Wei Li, Wenhao Wu, Moye Chen, Jiachen Liu, Xinyan Xiao, andHua Wu. Faithfulness in natural language generation: A systematicsurvey of analysis, evaluation and optimization methods, 2022.
+[10] Inc. Baobab. wikipedia-human-retrieval-ja, 2024.https://huggingface.co/datasets/baobab-trees/wikipedia-human-retrieval-ja [Accessed：10/2024].
+[11] Tianyu Liu, Yizhe Zhang, Chris Brockett, Yi Mao, Zhifang Sui,Weizhu Chen, and Bill Dolan. A token-level reference-free hal-lucination detection benchmark for free-form text generation. InSmaranda Muresan, Preslav Nakov, and Aline Villavicencio, edi-tors, Proceedings of the 60th Annual Meeting of the As-sociation for Computational Linguistics (Volume 1: LongPapers), pp. 6723–6737. Association for Computational Linguis-tics, May 2022.
+[12] Shayne Longpre, Kartik Perisetla, Anthony Chen, Nikhil Ramesh,Chris DuBois, and Sameer Singh. Entity-based knowledge con-ﬂicts in question answering. In Marie-Francine Moens, Xuan-jing Huang, Lucia Specia, and Scott Wen-tau Yih, editors, Pro-ceedings of the 2021 Conference on Empirical Methods inNatural Language Processing, pp. 7052–7063. Association forComputational Linguistics, November 2021.
+[13] OpenAI. GPT-4o, 2024. https://platform.openai.com/docs/models#gpt-4o [Accessed：10/2024].
+[14] OpenAI. GPT-4o mini, 2024. https://platform.openai.com/docs/models#gpt-4o-mini [Accessed：10/2024].
+[15] Kazuki Fujii, Taishi Nakamura, Mengsay Loem, Hiroki Iida, Masa-nari Ohi, Kakeru Hattori, Hirai Shota, Sakae Mizuki, Rio Yokota,and Naoaki Okazaki. Continual pre-training for cross-lingual llmadaptation: Enhancing japanese language capabilities. In Pro-ceedings of the First Conference on Language Modeling,COLM, p. (to appear), October 2024.
+[16] Naoaki Okazaki, Kakeru Hattori, Hirai Shota, Hiroki Iida, Masa-nari Ohi, Kazuki Fujii, Taishi Nakamura, Mengsay Loem, RioYokota, and Sakae Mizuki. Building a large japanese web corpusfor large language models. In Pro ceedings of the First Confer-ence on Language Modeling, COLM, p. (to appear), October2024.
+[17] Nouha Dzir i, Ehsan Kamalloo, Sivan Milton, Osmar Zaiane,Mo Yu, Edoardo M. Ponti, and Siva Reddy. FaithDial: A faithfulbenchmark for information-seeking dialogue. Transactions ofthe Association for Computational Linguistics, Vol. 10, pp.1473–1490, 2022.
+[18] Percy Liang, Rishi Bommasani, Tony Lee, Dimitris Tsipras, Di-lara Soylu, Michihiro Yasunaga, Yian Zhang, Deepak Narayanan,Yuhuai Wu, Ananya Kumar, Benjamin Newman, Binhang Yuan,Bobby Yan, Ce Zhang, Christian Alexander Cosgrove, Christo-pher D Manning, Christopher Re, Diana Acosta-Navas, Drew AradHudson, Eric Zelikman, Esin Durmus, Faisal Ladhak, Frieda Rong,Hongyu Ren, Huaxiu Yao, Jue WANG, Keshav Santhanam, Lau-rel Orr, Lucia Zheng, Mert Yuksekgonul, Mirac Suzgun, NathanKim, Neel Guha, Niladri S. Chatterji, Omar Khattab, Peter Hender-son, Qian Huang, Ryan Andrew Chi, Sang Michael Xie, ShibaniSanturkar, Surya Ganguli, Tatsunori Hashimoto, Thomas Icard,Tianyi Zhang, Vishrav Chaudhary, William Wang, Xuechen Li,Yifan Mai, Yuhui Zhang, and Yuta Koreeda. Holistic evaluationof language models. Transactions on Machine Learning Re-search, 2023. Featured Certiﬁcation, Expert Certiﬁcation.
+[19] Kei Kamata, Taichi Ibi, Yuya Yamamoto, Kazuki Kurosawa, RyoKanazawa, and Akira Shibata. Nejumi LLM リーダーボード 3,2024.
+[20] Mosh Levy, Alon Jacoby, and Yoav Goldberg. Same task, moretokens: the impact of input length on the reasoning performance oflarge language models. In Lun-Wei Ku, Andre Martins, and VivekSrikumar, editors, Proceedings of the 62nd Annual Meetingof the Association for Computational Linguistics (Volume1: Long Papers), pp. 15339–15353. Association for Computa-tional Linguistics, August 2024.
+
+
+
+
+A データセット作成の参考情報
+
+アノテーション時のインターフェースを図 3 に示した。
+なお、アノテーションで使用したガイドラインは以下のリンクから確認できる。
+https://docs.google.com/document/d/1T1iRGCdm384DTh7Hs11T4YRCpFaTDdK3-e gLSiiV c/edit?
+usp=sharing図 3 アノテーション時のインターフェース。
+
+B Extrinsic Hallucination の事例
+
+本文に記載しなかった Extrinsic Hallucination の事例をいくつか表 6 に示した。
+表 6 Extrinsic Hallucination（青色塗りつぶし）の事例。
+(...)は省略を表す。
+応答モデル名：GPT-4o質問文：ハイダイナミックレンジとはどのような機能ですか？
+参考文献：ハイダイナミックレンジ(英語: High dynamic range, HDR)は、通常よりも高いダイナミックレンジのことである。
+ハイダイナミックレンジは様々な信号、例えば、ビデオ、もしくは画像、（...）応答文：ハイダイナミックレンジ（HDR）は、通常よりも高いダイナミックレンジを持つ技術や手法を指します。
+これは主に（...）このように、HDR は信号の特性を向上させ、より広範な明暗の情報を捉えることができる機能です。
+応答モデル名：Llama-3.1-Swallow-8B-Instruct-v0.1質問文：タヌキとアライグマを見分ける方法はありますか?
+参考文献：灰褐色の体毛をもち、眼のまわりから頬にかけて黒い斑紋が（...）応答文：タヌキとアライグマを見分ける方法はいくつかあります。
+（...）一方で、ニホンアナグマはタヌキよりも小さく、体の毛並みが粗く、尾の毛が短いという特徴があります。
+
+
+C 実験結果の詳細
+
+GPT-4o を用いた Extrinsic hallucination 検出の適合率と再現率を表 7 に示した。
+Intrinsic hallucination は生成モデルがGPT-4o-mini の場合に 1 件のみ、かつ検出できていなかったため省略している。
+表 7 Extrinsic hallucination の検出の適合率と再現率（%)。
+Generator:GPT-4oGenerator:GPT-4o-miniGenerator:Llama-3.1-Swallow-8B-Instruct-v0.1Detector 適合率再現率適合率再現率適合率再現率GPT-4o (zero shot) 5.26 57.14 11.01 75.00 6.25 100GPT-4o w/ 5-shot 9.33 100 9.70 81.25 5.41 100GPT-4o w/ 10-shot 7.00 100 9.40 87.50 5.88 100GPT-4o w/ 30-shot 5.83 100 8.86 87.50 6.25 100

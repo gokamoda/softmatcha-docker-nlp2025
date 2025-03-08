@@ -1,0 +1,240 @@
+Towards Modular Fine-tuning of LLM-based MultilingualNeural Machine Translation
+
+Zhe Cao
+
+†,‡
+
+, Yusuke Oda
+
+†,‡
+
+, Akiko Aizawa
+
+‡
+
+, Taro Watanabe
+
+††
+
+Nara Institute of Science and Technology,
+
+‡
+
+NII LLMC
+
+
+
+{cao.zhe.bw4,taro}@is.naist.jp, {odashi,aizawa}@nii.ac.jp
+
+
+
+Abstract
+
+As Large Language Models support more and more lan-guages, they face increasing challenges in alleviating lan-guage inference and adapting to unseen languages.
+In thiswork, we propose a modular ﬁne-tuning pipeline for mul-tilingual neural machine translation, where adapters aretrained separately for input and output languages.
+Dur-ing translation,
+the parameters of the corresponding inputand output language adapters are combined using weightedsummation.
+Experiments on 5 languages show that ourmethods can reach 50% of full-parameter ﬁne-tuning per-formance with only 0.5% to 1% trainable parameters.
+Moreover, under certain weight conﬁgurations, merginginput and output language adapters outperforms using themindividually in some language directions, highlighting thepotential of our merging strategy.
+
+
+1 Introduction
+
+Multilingual Neural Machine Translation (MNMT) fo-cuses on developing a uniﬁed model to translate among dif-ferent languages.
+Although recent Large Language Models(LLMs) can handle dozens or even hundreds of languages,they also bring challenges related to training eﬃciency, lan-guage interference, and adaptation to unseen languages.
+To address these issues, recent research has graduallyfocused on investigating the modular nature
+[1] of LLMs.
+One line of research leverages the sparsity of model pa-rameters by projecting the parameter space into a low-rank, task-speciﬁc intrinsic subspace
+[2, 3, 4] such as Low-rank Adaptation (LoRA)[5].
+[6] builds language-speciﬁcLoRAs to alleviate language interference in a parameter-eﬃcient way.
+Another line of research [7] attempts to ex-tract language-speciﬁc sub-networks within models and ac-tivate diﬀerent sub-networks during training through mask-Input Language: enOutput Language: jaen ja zh deAdapter
+PoolEnglish-to-Japanese transla4onen ja zh deMerged Adapter<latexit sha1_base64="tNXg+gA8x1fi2M/w2VlVTrCzTiA=">AAAB+HicbVC7SgNBFL3rM8ZH1ljaDEkEq7ArEi0DWlhGMA9IlmV2MpsMmX0wM6vEJV9iY+EDW3v/wMrOv3E2SaGJBwYO59zLnHu8mDOpLOvbWFldW9/YzG3lt3d29wrmfrElo0QQ2iQRj0THw5JyFtKmYorTTiwoDjxO297oIvPbt1RIFoU3ahxTJ8CDkPmMYKUl1yxU7txegNWQqZSFk4prlq2qNQVaJvaclOu5z4/i5Uup4ZpfvX5EkoCGinAsZde2YuWkWChGOJ3ke4mkMSYjPKBdTUMcUOmk0+ATdKSVPvIjoV+o0FT9vZHiQMpx4OnJLKNc9DLxP6+bKP/c0QfFiaIhmX3kJxypCGUtoD4TlCg+1gQTwXRWRIZYYKJ0V3ldgr148jJpnVTtWrV2bZfrpzBDDg6hBMdgwxnU4Qoa0AQCCTzAEzwb98aj8Wq8zUZXjPnOAfyB8f4DljCV+g==</latexit>win<latexit
+sha1_base64="tNXg+gA8x1fi2M/w2VlVTrCzTiA=">AAAB+HicbVC7SgNBFL3rM8ZH1ljaDEkEq7ArEi0DWlhGMA9IlmV2MpsMmX0wM6vEJV9iY+EDW3v/wMrOv3E2SaGJBwYO59zLnHu8mDOpLOvbWFldW9/YzG3lt3d29wrmfrElo0QQ2iQRj0THw5JyFtKmYorTTiwoDjxO297oIvPbt1RIFoU3ahxTJ8CDkPmMYKUl1yxU7txegNWQqZSFk4prlq2qNQVaJvaclOu5z4/i5Uup4ZpfvX5EkoCGinAsZde2YuWkWChGOJ3ke4mkMSYjPKBdTUMcUOmk0+ATdKSVPvIjoV+o0FT9vZHiQMpx4OnJLKNc9DLxP6+bKP/c0QfFiaIhmX3kJxypCGUtoD4TlCg+1gQTwXRWRIZYYKJ0V3ldgr148jJpnVTtWrV2bZfrpzBDDg6hBMdgwxnU4Qoa0AQCCTzAEzwb98aj8Wq8zUZXjPnOAfyB8f4DljCV+g==</latexit>win<latexit
+sha1_base64="BDVtqIVw2KxvlwP2VTAstWbxEVw=">AAAB+XicbVC7SgNBFJ2NrxhfayxthiSCVdgViZYBLSwjmAckyzI7mU2GzD6YuRsJS/7ExsIgttb+gZWdf+NskkITDwwczrmXe+Z4seAKLOvbyG1sbm3v5HcLe/sHh0fmcbGlokRS1qSRiGTHI4oJHrImcBCsE0tGAk+wtje6yfz2mEnFo/ABJjFzAjIIuc8pAS25pll5dHsBgSGHNEpgWnHNslW15sDrxF6Scj3/+VG8nZUarvnV60c0CVgIVBClurYVg5MSCZwKNi30EsViQkdkwLqahiRgyknnyaf4TCt97EdSvxDwXP29kZJAqUng6ckspFr1MvE/r5uAf+2kPIwTYCFdHPITgSHCWQ24zyWjICaaECq5zorpkEhCQZdV0CXYq19eJ62Lql2r1u7tcv0SLZBHp6iEzpGNrlAd3aEGaiKKxugJvaCZkRrPxqvxthjNGcudE/QHxvsPhSaWhQ==</latexit>wout<latexit
+sha1_base64="BDVtqIVw2KxvlwP2VTAstWbxEVw=">AAAB+XicbVC7SgNBFJ2NrxhfayxthiSCVdgViZYBLSwjmAckyzI7mU2GzD6YuRsJS/7ExsIgttb+gZWdf+NskkITDwwczrmXe+Z4seAKLOvbyG1sbm3v5HcLe/sHh0fmcbGlokRS1qSRiGTHI4oJHrImcBCsE0tGAk+wtje6yfz2mEnFo/ABJjFzAjIIuc8pAS25pll5dHsBgSGHNEpgWnHNslW15sDrxF6Scj3/+VG8nZUarvnV60c0CVgIVBClurYVg5MSCZwKNi30EsViQkdkwLqahiRgyknnyaf4TCt97EdSvxDwXP29kZJAqUng6ckspFr1MvE/r5uAf+2kPIwTYCFdHPITgSHCWQ24zyWjICaaECq5zorpkEhCQZdV0CXYq19eJ62Lql2r1u7tcv0SLZBHp6iEzpGNrlAd3aEGaiKKxugJvaCZkRrPxqvxthjNGcudE/QHxvsPhSaWhQ==</latexit>wout+Figure
+1: Example of our
+proposed modular ﬁne-tuningpipeline on four languages: English (en), Japanese (ja),Chinese (zh), and German (de).
+We divided all adaptersinto two categories: adapters of input language andadapters of output language.
+During generation, we di-rectly merge the corresponding two adapters (the coloredones) from the adapter pool.ing.
+Despite eﬀectiveness, these methods require train-ing on all language pairs simultaneously, which limits themodel’s ability to extend to unseen languages.
+Therefore, we propose modular ﬁne-tuning of MNMT,a two-step pipeline which ﬁrst trains adapters for diﬀerentlanguages separately and then combines selected adaptersdirectly without any further training.
+As shown in Fig-ure 1, we categorize adapters into two types: adaptersfor input language 𝑙inand adapters for output language𝑙out.
+Using these two items, we can describe a transla-tion asT(𝑙in, 𝑙out).
+For each translation, we only choosetwo adapters from each category separately and then di-rectly merge the parameters of these two adapters throughweighting during generation.
+Given 𝑛 languages, we canreduce the total number of required adapters from 𝑛 × 𝑛 to𝑛+𝑛 compared with ﬁne-tuning for each language directionseparately.
+Additionally, since no additional retraining orretrieval is required, our proposed method can be naturallyextended to unseen languages without compromising the― 222 ―performance of existing languages.
+We conduct our experiments on a 5-language subset ofFLORES-101
+[8].
+The results show that we can reach 50%of full-parameter ﬁne-tuning performance with only 0.5%to 0.1% trainable parameters.
+We also ﬁnd that under spe-ciﬁc weight settings, introducing input language adapterscan improve the per formance of certain directions, demon-strating the potential of our merging strategy.
+We furtherintroduce weight learning to analyze the impact of weightson per formance, indicating that the output language oftenplays a more important role in translation tasks.
+
+
+2 Related Work
+
+Intrinsic Subspace Intrinsic Subspace is the minimalparameter subspace required for models to learn new tasks.[2, 9] showed that the ﬁne-tuning of pre-trained models ac-tually happened in a tiny subspace.
+Following their work,there is an increasing tendency to explore the modular-ity within pre-trained models [1] to improve translationperformance.
+[6] built diﬀerent sized language-speciﬁcadapters based on resource-level of languages to alleviatethe interference among languages.
+Another line of work[7] try to locate language-speciﬁc neurons inside modelsand extract sub-network for diﬀerent languages.
+Despiteeﬀectiveness, these methods require uniﬁed training of alllangauge-speciﬁc modules, which hinders their ﬂexibilityin adapting to new languages.
+Low-rank Adaptation (LoRA)
+LoRA
+[5] employsthe product of two low-rank matrices to replace the or ig-inal parameter matrix for ﬁne-tuning.
+This method isparameter-eﬃcient and widely used in Large LanguageModels.
+Recent works [10, 11] have focused on how to fur-ther enhance the eﬃciency of LoRA.
+[10] modeled LoRAin the form of singular value decomposition and improvedeﬃciency by pruning less important singular values.
+[11]reduced trainable parameters of LoRA by only leaningscaling vectors during training, ﬁxed low-rank matrices arerandomly initialized and shared for each layer.
+We chooseLoRA as our adapter structure thanks to its eﬃciency andﬂexibility.
+
+
+3 Methods
+
+
+
+3.1 Multilingual Neural Machine Transla-
+
+
+
+tion from a Modular Perspective
+
+Given a set of 𝑛 languages 𝕃 = {𝑙1, 𝑙2, ··· , 𝑙𝑛}, multilin-gual machine translation aims to translate an input sentencex in the source language src ∈ 𝕃 into an output sentencey in the target language tgt ∈ 𝕃. With an MNMT datasetincluding 𝑁 sentence pairs 𝔻 = {(x𝑖, y𝑖), 𝑖
+∈ 1 ··· 𝑁 }, thetraining loss is deﬁned as:LMNMT= −∑𝒙,𝒚 ∈𝔻𝐽∑𝑗=1log 𝑝𝜃(𝑦𝑗|𝒚< 𝑗, 𝒙)(1)where 𝒙 = 𝑥1, 𝑥2, ··· , 𝑥𝐼is a source sentence with length 𝐼and 𝒚 = 𝑦1, 𝑦2, ··· , 𝑦𝐽is the corresponding target sentencewith length 𝐽.To enable modular ﬁne-tuning, considering the MNMTtask between input and output languages, we follow a two-step pipeline, which ﬁrst train adapters for input languages𝔸𝑖𝑛= {Ain𝑙1, Ain𝑙2, ··· , Ain𝑙𝑛} and output languages 𝔸𝑜𝑢 𝑡={Aout𝑙1, Aout𝑙2, ··· , Aout𝑙𝑛} separately, and then when translatefrom a soure language to a target langauge src → tgt, wedirectly merge Ain𝑙𝑠𝑟 𝑐and Aout𝑙𝑡𝑔𝑡during generation.
+
+
+3.2 Training Modular LoRAs
+
+LoRA
+[5] is widely used in Parameter-eﬃcient Fine-tuning (PEFT) for Large Language Models where ﬁne-tuning is re-parameterized in a low-rank intrinsic subspace.
+For a weight matrix in a pre-trained model W ∈ ℝ𝑑×𝑘,LoRA forward pass can be calculated as:𝒉 = W𝒙 + BA𝒙 (2)where B ∈ ℝ𝑑×𝑘and
+A ∈ ℝ𝑟 ×𝑑. During training, 𝑊 willbe frozen and the trainable parameters, i.e., 𝐴 and 𝐵, willbe reduced from 𝑑 ×𝑘 to 𝑑 ×𝑟 +𝑟 ×𝑘, where 𝑟 ≪ min(𝑑, 𝑘).We divided LoRA into two categories: LoRAs for in-put language (LoRA𝑖𝑛), and LoRAs for output language(LoRA𝑜𝑢 𝑡), and then we train LoRA𝑖𝑛s and LoRA𝑜𝑢 𝑡s foreach language separately in a English-centric way, e.g.,when translating from Japanese to Chinese, the LoRA𝑖𝑛of Japanese will be trained by the data of Japanese →English, and the LoRA𝑜𝑢 𝑡of Chinese will be trained bythe data of English → Chinese.
+Since LLMs are trainedon unbalanced, English-dominated corpora, English oftenserves as an internal pivot language.
+Therefore, we selectEnglish as the bridge language in our setting to maximize― 223 ―cross-lingual transfer learning.
+This setting also makes ourpipeline easier to extend to new languages, as introducinga new language requires only preparing data between thenew language and English.
+For convenience, the LoRA𝑖𝑛and LoRA𝑜𝑢 𝑡of English will be trained by the data ofEnglish → English.
+
+
+3.3 Merging LoRAs
+
+We compare two diﬀerent strategies [12] when mergingLoRA𝑖𝑛and LoRA𝑜𝑢𝑡.Merge the outputs of LoRAs
+In this setting, wemerge the outputs of LoRA𝑖𝑛and LoRA𝑜𝑢𝑡as:𝒉 = 𝑤inLoRAin(𝒙) + 𝑤outLoRAout(𝒙)=
+(𝑤inBinAin+ 𝑤outBoutAout)𝒙= LoRAmerged(𝒙)(3)Merge B and A separately
+In this setting, we mergeLoRAinand
+LoRAoutwith the following equation:𝒉 = (√𝑤inBin+√𝑤outBout)(√𝑤inAin+√𝑤outAout)𝒙(4)The two settings have similar training and inference ef-ﬁciency.
+The second setting, which separately merges theA and B matrices, oﬀers ﬁner granularity but requires allLoRAs to share the same rank.
+In contrast, the ﬁrst settingdirectly merges the product of A and B matrices, potentiallylosing some information but oﬀering greater ﬂexibility inrank conﬁguration.
+
+
+3.4 Weight Learning
+
+To further analyze the weight dynamics of LoRA𝑖𝑛andLoRA𝑜𝑢 𝑡, we introducee a weight learning method inspiredby neural architecture search
+[13, 6].
+Given a pre-trainedweight matrix W with LoRAinand LoRAout, we calculatea weighted sum during forward pass as follows:𝒉 = W𝒙 + 𝑤in· LoRAin(𝒙)
++ 𝑤out· LoRAout(𝒙)(5)where 𝑤in, 𝑤outare scalars shared among all LoRA mod-ules in the same layer.
+We use softmax to make sure theweights are non-negative and sum up to 1. Speciﬁcally,𝑤in, 𝑤out= softmax(𝑤0, 𝑤1), where 𝑤0and 𝑤1are initial-ized to 1.0.
+
+4 Experimental Setup
+
+Dataset FLORES-101
+[8] is a high-quality paralleldataset, including 3,001 sentences from English Wikipediawhich are translated into 101 languages by human trans-lators.
+Sentences are divided into three splits: dev (997sentences), devtest (1,012 sentences), and test (992 sen-tences).
+Since the test set is not publicly available, weuse the dev set for training and devtest set for evaluation.
+We choose ﬁve languages： English (en), French (fr), Ger-man (de), Japanese (ja) and Chinese (zh) in our followingexperiments.
+Training We chose Qwen2.5-Instr uct-0.5B
+[14] as ourbase model.
+We modiﬁed the Transformers1）and PEFT2）libraries to implement our LoRA settings in the exper-iments.
+We ﬁne-tuned the model via Supervised Fine-tuning (SFT)3）.
+For all experiments, we trained the modelfor 2 Epochs with a learning rate of 0.00002.
+All modelswere trained with a single NVIDIA A100-40GB on themdx [15] cluster.
+Evaluation
+We choose full-parameter ﬁne-tuning asour baseline and set the beam size to 5 during generation.
+We repor t the chrF++ score
+[16].
+
+5 Results
+
+Table 1 shows the chrF++ scores on selected 5 lan-guages.
+We calculate the averaged score when translatingto, e.g., →en, and translating from a speciﬁc langauge,e.g., en→. First, we compared the performance of usingonly LoRAinor LoRAoutseparately.
+We found that usingLoRAoutachieved better results, indicating the target lan-guage plays a more important role in multilingual machinetranslation.
+As mentioned in Section 3.3, we compared two mergingstrategies with diﬀerent weight conﬁgurations: mergingthe outputs of LoRAs (Setting 1), and merging A andB separately (Setting 2).
+As shown in the Talbe 1, weachieved 50% performance of full parameter ﬁne-tuningwhile using only 0.5% ∼ 1% trainable parameters.
+Al-though using more information from LoRAout(1:9) gen-erally yields better results for most language directions(except for →en), we found that under certain weight set-tings, introducing LoRAincan achieve better performance(underlined scores).As mentioned in Section 3.4, we showed the results ofweight learning in Figure 2 of Appendix A to better un-derstand the weight dynamics of LoRAinand LoRAout.1）
+https://github.com/huggingface/transformers2） https://github.com/huggingface/peft3）
+https://huggingface.co/docs/trl/sft trainer― 224 ―Table 1: The chrF++ scores on 5 languages: English (en), French (fr), German (de), Japanese (ja), Chinese (zh).
+Wecalculate the average scores for a given language 𝑙𝑖as the input language and output language separately, denoted as 𝑙𝑖→and → 𝑙𝑖%.
+Params means the ratio of trainable parameters compared with full-parameter ﬁne-tuning.
+For LoRAinandLoRAout, we only use the single LoRA module without merging.
+Setting 1 refers to merging the outputs of LoRAinandLoRAoutand Setting 2 refers to merging A and B separately.
+The ratio behind shows the weights 𝑤inand 𝑤outwe use foreach setting.
+We underline the scores in Setting 1 and Setting 2 that outperform those achieved by using only LoRAinorLoRAoutindependently.
+Language DirectionMethods %Params en→ fr→ de→ ja→ zh→
+→en →fr
+→de →ja →zhPre-train - 30.75 28.85 29.25 27.05 31.6 48.78 38.8 32.55 10.86 16.5Full-parameter ﬁne-tuning 100% 34.25 33.23 33.38 30.9 33.5 51.08 42.13 34.78 16.1 21.1LoRAin0.5% 30.0 30.53 30.85 27.85 32.0 50.125 39.45 31.95 13.48 16.23LoRAout0.5% 32.48 31.6 31.45 28.4 30.88 47.25 40.65 34.15 14.475
+18.275Setting 1 (1:9) 1% 32.25 31.7 31.65 28.53 31.5 48.58 40.48 34.075 14.4 18.1Setting 1 (3:7) 1% 32.05 31.63 31.825 28.6 32.25 49.98 40.5 33.83 14.38 17.68Setting 1 (7:3) 1% 31.2 31.08 31.45 28.3 32.23 50.4 39.95 32.95 13.9 17.05Setting 1 (9:1) 1% 30.43 30.65 31.2 28.05 32.1 50.2 39.8 32.28 13.58 16.58Setting 2 (1:9) 1% 32.78 31.48 31.38 28.03 30.33 45.98 40.6 34.23 14.6 18.58Setting 2 (3:7) 1% 32.63 31.03 31.08 28.4 30.1 47.45 40.48 34.03 14.45
+17.68Setting 2 (7:3)1%30.6 29.93 30.5 28.1 32.28 49.9 39.85 33.05 14.05 14.55Setting 2 (9:1) 1% 29.85 29.85 30.43 27.75 32.25 50.0 39.55 32.33 13.78 14.48We observed that for language pairs involving English, themodel focuses mainly on the target language informationwhen translating from English to other languages (Fig-ure 2a,2b, 2c, 2d), whereas it emphasizes the source lan-guage information when translating from other languagesto English (Figure 2e,2i,2m,2q).
+We attribute this to theEnglish-centric training process, where, for consistency,we included English-to-English data to train the Englishadapter.
+However, the results suggest that such data isunnecessary, leading the model to always prioritize direc-tions involving other languages.
+Besides that, excludinglanguage directions involving English, target informationplays a dominant role in 8 out of the remaining 12 direc-tions (Figure 2g,2h,2j,2k,2l,2r,2s,2t).
+For the remainingfour directions (Figure 2f, 2n,2o,2p), we observed that themodel’s focus shifts from the source language to the targetlanguage in the intermediate layers.
+From the results ofweight learning, we infer that the target language generallyplays a more important role in machine translation.
+Thisobservation also explains why assigning greater weight toLoRAoutyields better performance.
+
+
+6 Conclusion
+
+In this work, we propose a modular ﬁne-tuning pipelinefor LLM-based Multilingual Neural Machine Translation,which ﬁrst divide LoRAs into two groups: LoRAs forinput languages (LoRAin) and LoRAs for output lan-guages (LoRAout) and then train these LoRA adapters in anEnglish-centric way.
+During translation, the correspond-ing LoRAinand LoRAoutare directly merged without anyadditional training.
+These enables our pipeline to be easilyextended to new languages by training only the LoRAinand LoRAoutfor the new language, without impacting theperformance of existing languages.
+Our experiments onthe FLORES dataset with ﬁve languages demonstrate thatusing only 0.5% to 1% of the trainable parameters achieves50% performance of full-parameter ﬁne-tuning.
+Addi-tionally, under speciﬁc weight conﬁgurations, combiningLoRAinand LoRAoutyields better results than using themindividually, highlighting the potential of this approach.― 225 ―
+
+
+
+References
+
+
+[1] Chaojun Xiao, Zhengyan Zhang, Chenyang Song, DazhiJiang, Feng Yao, Xu Han, Xiaozhi Wang, Shuo Wang,Yufei Huang, Guanyu Lin, Yingfa Chen, Weilin Zhao,Yuge Tu, Zexuan Zhong, Ao Zhang, Chenglei Si, Khai HaoMoo, Chenyang Zhao, Huimin Chen, Yankai Lin, ZhiyuanLiu, Jingbo Shang, and Maosong Sun. Conﬁgurable foun-dation models: Building llms from a modular perspective,2024.
+[2] Chunyuan Li, Heerad Farkhoor, Rosanne Liu, and JasonYosinski. Measuring the intrinsic dimension of objectivelandscapes. In International Conference on LearningRepresentations, 2018.
+[3] Yujia Qin, Xiaozhi Wang, Yusheng Su, Yankai Lin, NingDing, Jing Yi, Weize Chen, Zhiyuan Liu, Juanzi Li, LeiHou, Peng Li, Maosong Sun, and Jie Zhou. Exploringuniversal intrinsic task subspace via prompt tuning, 2022.
+[4] Zhong Zhang, Bang Liu, and Junming Shao. Fine-tuning happens in tiny subspaces: Exploring intrinsic task-speciﬁc subspaces of pre-trained language models. In AnnaRogers, Jordan Boyd-Graber, and Naoaki Okazaki, editors,Proceedings of the 61st Annual Meeting of the As-sociation for Computational Linguistics (Volume 1:Long Papers), pp. 1701–1713, Toronto, Canada, July2023. Association for Computational Linguistics.
+[5] Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and WeizhuChen. Lora: Low-rank adaptation of large language mod-els, 2021.
+[6] Zhe Cao, Zhi Qu, Hidetaka Kamigaito, and Taro Watan-abe. Exploring intrinsic language-speciﬁc subspaces inﬁne-tuning multilingual neural machine translation. InYaser Al-Onaizan, Mohit Bansal, and Yun-Nung Chen,editors, Proceedings of the 2024 Conference on Em-pirical Methods in Natural Language Processing,pp. 21142–21157, Miami, Florida, USA, November 2024.Association for Computational Linguistics.
+[7] Shaomu Tan, Di Wu, and Christof Monz. Neuron special-ization: Leveraging intrinsic task modularity for multilin-gual machine translation, 2024.
+[8] Naman Goyal, Cynthia Gao, Vishrav Chaudhary, Peng-Jen Chen, Guillaume Wenzek, Da Ju, Sanjana Krishnan,Marc’Aurelio Ranzato, Francisco Guzman, and AngelaFan. The ﬂores-101 evaluation benchmark for low-resourceand multilingual machine translation, 2021.
+[9] Armen Aghajanyan, Sonal Gupta, and Luke Zettlemoyer.Intrinsic dimensionality explains the eﬀectiveness of lan-guage model ﬁne-tuning. In Chengqing Zong, Fei Xia,Wenjie Li, and Roberto Navigli, editors, Proceedings ofthe 59th Annual Meeting of the Association forComputational Linguistics and the 11th Interna-tional Joint Conference on Natural Language Pro-cessing (Volume 1: Long Papers), pp. 7319–7328,Online, August 2021. Association for Computational Lin-guistics.
+[10] Qingru Zhang, Minshuo Chen, Alexander Bukharin, NikosKarampatziakis, Pengcheng He, Yu Cheng, Weizhu Chen,and Tuo Zhao. Adalora: Adaptive budget allocation forparameter-eﬃcient ﬁne-tuning, 2023.
+[11] Dawid Jan Kopiczko, Tijmen Blankevoort, and Yuki MAsano. VeRA: Vector-based random matrix adaptation. InThe Twelfth International Conference on LearningRepresentations, 2024.
+[12] Ziyu Zhao, Leilei Gan, Guoyin Wang, Wangchunshu Zhou,Hongxia Yang, Kun Kuang, and Fei Wu. LoraRetriever:Input-aware LoRA retrieval and composition for mixedtasks in the wild. In Lun-Wei Ku, Andre Martins, andVivek Srikumar, editors, Findings of the Associationfor Computational Linguistics: ACL 2024, pp. 4447–4462, Bangkok, Thailand, August 2024. Association forComputational Linguistics.
+[13] Thomas Elsken, Jan Hendrik Metzen, and Frank Hutter.Neural architecture search: A survey. Journal of Ma-chine Learning Research, Vol. 20, No. 55, pp. 1–21,2019.
+[14] Qwen, :, An Yang, Baosong Yang, Beichen Zhang,Binyuan Hui, Bo Zheng, Bowen Yu, Chengyuan Li, Day-iheng Liu, Fei Huang, Haoran Wei, Huan Lin, Jian Yang,Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang,Jingren Zhou, Junyang Lin, Kai Dang, Keming Lu, Ke-qin Bao, Kexin Yang, Le Yu, Mei Li, Mingfeng Xue, PeiZhang, Qin Zhu, Rui Men, Runji Lin, Tianhao Li, TingyuXia, Xingzhang Ren, Xuancheng Ren, Yang Fan, Yang Su,Yichang Zhang, Yu Wan, Yuqiong Liu, Zeyu Cui, ZhenruZhang, and Zihan Qiu. Qwen2.5 technical report, 2024.
+[15] Toyotaro Suzumura, Akiyoshi Sugiki, Hiroyuki Takizawa,Akira Imakura, Hiroshi Nakamura, Kenjiro Taura, To-mohiro Kudoh, Toshihiro Hanawa, Yuji Sekiya, HirokiKobayashi, Yohei Kuga, Ryo Nakamura, Renhe Jiang,Junya Kawase, Masatoshi Hanai, Hiroshi Miyazaki, Tsu-tomu Ishizaki, Daisuke Shimotoku, Daisuke Miyamoto,Kento Aida, Atsuko Takefusa, Takashi Kurimoto, KojiSasayama, Naoya Kitagawa, Ikki Fujiwara, Yusuke Tan-imura, Takayuki Aoki, Toshio Endo, Satoshi Ohshima,Keiichiro Fukazawa, Susumu Date, and ToshihiroUchibayashi. mdx: A cloud platform for support-ing data science and cross-disciplinary research col-laborations. In 2022 IEEE Intl Conf on Depend-able, Autonomic and Secure Computing, Intl Confon Pervasive Intelligence and Computing, IntlConf on Cloud and Big Data Computing, IntlConf on Cyber Science and Technology Congress(DASC/PiCom/CBDCom/CyberSciTech), pp. 1–7,2022.
+[16] Maja Popovi´c. chrF: character n-gram F-score for auto-matic MT evaluation. In Ondˇrej Bojar, Rajan Chatter-jee, Christian Federmann, Barry Haddow, Chris Hokamp,Matthias Huck, Varvara Logacheva, and Pavel Pecina, edi-tors, Proceedings of the Tenth Workshop on Statis-tical Machine Translation, pp. 392–395, Lisbon, Portu-gal, September 2015. Association for Computational Lin-guistics.― 226 ―
+
+
+
+A Results of Weight Learning
+
+As shown in Figure 2, we illustrate the trend of weight changes in the model for each language direction after weightlearning.0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax) Translating from English to French Across 24 LayersTarget (Softmax)(a) English to French0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax) Translating from English to German Across 24 LayersTarget (Softmax)(b) English to German0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from English to Japanese Across 24 LayersTarget (Softmax)(c) English to Japanese0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from English to Chinese Across 24 LayersTarget (Softmax)(d)
+English to Chinese0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from French to English Across 24 LayersTarget (Softmax)(e)
+French to English0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from French to German Across 24 LayersTarget (Softmax)(f) French to German0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from French to Japanese Across 24 LayersTarget (Softmax)(g)
+French to Japanese0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from French to Chinese Across 24 LayersTarget (Softmax)(h)
+French to Chinese0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax) Translating from German to English Across 24 LayersTarget (Softmax)(i)
+German to English0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from German to French Across 24 LayersTarget (Softmax)(j)
+German to French0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from German to Japanese Across 24 LayersTarget (Softmax)(k) German to Japanese0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from German to Chinese Across 24 LayersTarget (Softmax)(l) German to Chinese0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from Japanese to English Across 24 LayersTarget (Softmax)(m)
+Japanese to English0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from Japanese to French Across 24 LayersTarget (Softmax)(n) Japanese to French0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax) Translating from Japanese to
+German Across 24 LayersTarget (Softmax)(o) Japanese to German0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from Japanese to Chinese Across 24 LayersTarget (Softmax)(p) Japanese to Chinese0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from Chinese to English Across 24 LayersTarget (Softmax)(q) Chinese to English0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from Chinese to French Across 24 LayersTarget (Softmax)(r) Chinese to French0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from Chinese to German Across 24 LayersTarget (Softmax)(s) Chinese to German0 5 10 15 20 25Layer (1-24)0.30.40.50.60.7Normalized Weight (Softmax)
+Translating from Chinese to Japanese Across 24 LayersTarget (Softmax)(t) Chinese to JapaneseFigure 2: Results of Weight Learning― 227 ―

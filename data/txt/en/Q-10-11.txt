@@ -1,0 +1,232 @@
+Cosine Similarity as Logits?: Few-shot Knowledge GraphCompletion with Embedding Vectors of a Generative PLMand its Application in Knowledge Probing
+
+Tomoyuki Jinno
+
+1
+
+ Kazuki Hayashi
+
+1
+
+ Yusuke Sakai
+
+1
+
+ Hidetaka Kamigaito
+
+1
+
+ Taro Watanabe
+
+11
+
+Nara Institute of Science and Technology
+
+
+
+jinno.tomoyuki.jx3@naist.ac.jp
+
+
+
+{hayashi.kazuki.hl4, sakai.yusuke.sr9, kamigaito.h, taro}@is.naist.jp
+
+
+
+Abstract
+
+The Knowledge graph completion (KGC) task aims topredict missing relations in knowledge graphs (KGs).
+Re-cently, text-based KGC approaches have gained attentionbut they present challenges: encoder-based methods re-quire ﬁne-tuning making it non-ideal when an ideal KG fortraining cannot be obtained, such as when KG is sparse orpredicting new relation-types.
+Meanwhile, decoder-basedmethods make prediction by generating tokens, where en-tity disambiguation becomes a challenge.
+KGC is also usedin knowledge proving, which aims to evaluate the knowl-edge retrieval capability of pre-trained language models(PLMs), but existing probes for generative PLM capable ofranking all multi-token and single-token entities are com-putationally ineﬃcient.
+To address these problems, we pro-pose DEER, an encoder-based few-shot KGC, leveraging agenerative PLM that achieves a linear inference time com-plexity.
+Our experiment shows that DEER outperforms aﬁne-tuned KGC model in a relationally inductive settingand aligns with an existing knowledge-probing method,positioning it as a possible alter native.
+
+
+1 Introduction
+
+The knowledge graph completion (KGC) task aimsto precit missing relations in existing knowledge graphs(KGs).
+A relation is represented as a triplet consistingof (head-entity, relation-type, tail-entity), hence the aimof KGC is to predict the tail-entity given a partially-ﬁlledtriplet, (head-entity, relation-type, ?).
+Text-based KGCmethods have recently gained popularity which can be cate-gorized into encoder-based and decoder-based approaches.
+Encoder-based approach, such as SimKGC
+[1], refor-mulates the KGC task as a document ranking task, treatingthe partially-ﬁlled triplet as a quer y and tail-entity as ananswer.
+An encoder model is used to encode the query andtail-entity candidates as a vector which are then re-rankedby their similarity.
+In contrast, decoder-based approachtreats the task as a text-generation task, generating name oftail-entities given a partially ﬁlled triplet using a generativepre-trained language model (PLM)[2, 3].Encoder models often have fewer parameters than de-coder models.
+This limits the parametric knowledge andinference performance of encoder-based approach [4, 5],necessitating ﬁne-tuning on a KG, rather than a zero-shotor few-shot inference.
+This makes the approach non-idealwhen a suitable KG for training is diﬃcult to acquire, suchas when the KG is sparse, evolves over time or when pre-dicting new relation-types
+[6].In contrast, predicting large number of tail-entity can-didates using decoder-based approach is often ineﬃcient.
+Hence, they typically predict only the most likely or top-n tail entities.
+In addition, linking the generated outputto the correct entity, such as disambiguating identicallynamed entities, presents a challenge [7].KGC is also employed for knowledge probing, whichaims to assess the factual knowledge retrieval capabilitiesof PLMs.
+LAMA
+[8] was the ﬁrst of such method, but itfails to probe multi-token entities.
+Rank based knowledgeprobe for generative PLMs compatible with multi-tokenentities remain under explored [9] with BEAR
+[10] beingthe only method to our knowledge.
+However, it infers allcombinations of queries and answers, making it computa-tionally expensive, limiting KG size used for probing.
+In this paper, we propose DEcoder Embedding-basedRelational probe (DEER), a few-shot KGC model de-― 4238 ―Table 1 Comparison of key features with text-based KGC.Encoder-Based Decoder-Based OursFine-Tuned Few-Shot Few-ShotVector-Based Token-Based Vector-BasedFully Ranked Top-n Fully RankedSub-Billion Params Super-Billion Super-Billionsigned to overcome the limitations of both encoder-basedand decoder-based methods, while retaining their advan-tages.
+DEER enables fully ranked, multi-entity-compatibleknowledge probing and KGC under linear time complexity.
+Table 1 compares the key characteristics of diﬀerentKGC methods.
+As illustrated in Figure 1, our model lever-ages a generative language model, but diﬀers from typicaldecoder-based methods by inferring using vector represen-tations of entities, making it an encoder-based approach.
+These vectors are obtained from a generative PLM with thePrompt-Based Method with Explicit One Word Limitation(PromptEOL)[11], which acquires sentence embeddingsfrom a generative PLM without additional training needs.
+This work addresses the following questions:1.
+How does DEER perform in relationally inductivesettings?2.
+Does it correlate with the prediction of LAMA?Through answering these questions, we aim to demonstratethe generalization capability of our method in relationallysparse KGs and validate the use of DEER for knowledgeprobing by showing its agreement with LAMA.
+
+
+2 Background
+
+PromptEOL Embedding PromptEOL uses a gener-ative PLM for sentence embedding.
+Given a sequence ofinput tokens 𝑥1, 𝑥2, . . .
+, 𝑥𝑛, the last hidden state, h𝑛, corre-sponding to the token 𝑥𝑛, is used as the sentence embeddingvector.
+More speciﬁcally, h𝑛is the vector typically usedfor next token prediction by applying a ﬁnal dense layerfollowed by a softmax function.
+This process is expressedas z𝑛= 𝑊h𝑛+ b, where 𝑥𝑛+1= arg max(softmax(z𝑛)).To embed a sentence, it uses the following prompt tem-plate: This sentence: ”S” means in one word ”, where 𝑆is replaced with the target sentence.
+Knowledge Probing LAMA was the ﬁrst knowledgeprobe that evaluated PLMs on the KGC task.
+It ﬁrst re-stricts tail-entity candidates to single-token entities and byprompting the model with cloze-style questions, ranks theOutputs.........BirdFishFishMammleTailEntitiesTail-EntityTail-EntityEncodingTail-Entity EncodingsHead-Entity, Relation EncodingTail-EntitScoresPartially FilledTriplet(Deer, is, ?)
+PrompEOLPrompEOLPrompEOLPrompEOL0.80.30.1OutputInputDEER (KGC)Last Hidden LayerFish means in one word:Prompt TemplateCausal LLMmeans in one word:Next Token LogitsLanguage Model HeadInputsInputPromptEO EncoderFigure 1 An illustration of the DEER architecture.tail-entities by the log likelihood of the token correspond-ing to their name, at the masked position in the prompt.
+The mean precision at rank 𝑘 (P@k), also known as Hit@kwas used to score the models.
+Since only a single maskedtoken is used, it cannot handle multi-token entities.
+KAMEL [12] was introduced to address the problem,which probes multi-token entities by autoregressively gen-erating the tail-entity names.
+It uses exact string match onthe output for evaluation, which limits evaluation metrics tonon-rank based scores (P@1).
+BEAR was later proposedto support P@k scores while also handling multi-tokenentities.
+However, BEAR is computationally expensive,requiring PLMs to process O(𝑞𝑎) inputs, where 𝑞 is thenumber of partially ﬁlled triplets and 𝑎 is the number oftail-entity candidates.
+Since all methods above are tokenbased, they also cannot disambiguate identically named tailentities.
+In contrast, our approach only requires O(𝑞
++ 𝑎),whilst also supporting tail-entity disambiguation.
+Knowledge Graph Completion A KG is deﬁned asa set of triplets T ∋ (ℎ, 𝑟, 𝑡), where ℎ represents the headentity, 𝑟 the relation type and 𝑡 the tail entity, with ℎ, 𝑡 ∈ Eand 𝑟 ∈ R, where E is the set of entities and R the setof relation types.
+Therefore, KGC aims to learn a correctmap, 𝑓 : (ℎ, 𝑟, ?)
+→ 𝑡. KGC models are trained on Ttrainand tested against Ttest, ensuring Ttrain∩ Ttest= ∅. We―
+4239 ―Template 1 Tail Entity Encoding Template where 𝑒nameand 𝑒descriptionare replaced by their textual representations.1: 𝑒name-
+𝑒description2: This sentence: ”{word}” means in one word: ”{oneword}”3: This sentence: ”𝑒name” means in one word: ”further deﬁne subsets of KGC as follows.
+Inductive KGC Setting In this setting, all entitiesfound in the test set are never found in the training set,thereby Etest∩ Etrain= ∅ and Rtest⊆ Rtrain.
+Relationally Inductive KGC Setting In this setting,all the relation types found in the test set are never found inthe training set, thereby Rtrain∩ Rtest= ∅ and Etest⊆ Etrain.
+Encoder-Based KGC Model These models gener-ate embedding vectors for both the partial triplet and the tailentities.
+They deﬁne a similarity measure 𝜙 and learns twofunctions: 𝑓hr: (ℎ, 𝑟, ?)
+→ ehrand 𝑓t: 𝑡 → et, such thattail entities, when sorted by 𝜙(ehr, et) preserve the rankingof 𝑡 as induced by 𝑝(𝑡|(ℎ, 𝑟, ?)), allowing for equivalentsorting of 𝑡 by 𝜙(ehr, e𝑡) or 𝑝 (𝑡 |(ℎ, 𝑟, ?)).
+
+
+3 Model Architecture
+
+DEER is an encoder-based KGC model capable of pre-dicting missing relations in a transductive, inductive, orrelationally inductive setting.
+It creates both eℎ𝑟and e𝑡from a generative PLM using the PromptEOL method andemploys cosine similarity as 𝜙.
+The method requires twofunctions mapping entities to their textual name and textualdescription 𝑓name: 𝑒 → 𝑒name, 𝑓description: 𝑒 → 𝑒descriptionand another, mapping relations to their names, 𝑓relation:𝑟 → 𝑟name.
+Following paragraphs describe the prompttemplates used to acquire the embeddings, eℎ𝑟and e𝑡.Tail Entities Encoding Template Template 1 isused to encode the tail entities.
+This template is similarto the original PromptEOL template [11], but line 2 re-places the few-shot examples to prevent introducing bias,and adds line 1 to disambiguate identically named entities.
+Head-Entity, Relation Encoding Template Herewe propose two separate templates for generating ehr: ﬁrst,a probing template designed to examine the knowledge re-call ability of PLMs and second, a KGC template designedto maximize the KGC performance.
+Both templates arepreﬁxed by an 8 shot example, 𝑆 , generated from randomlysampled triplets from the training set.
+Template 2 Probing Template used to generate 𝑒hr.1: ℎname- ℎdescription2: ( ℎname, 𝑟name,Probing Template For knowledge probing, the fol-lowing template is used―( ℎname, 𝑟name―where ℎnameis re-placed by the head entity’s name and 𝑟nameby the relation’sname.
+Note that no head-entity descriptions are providedto prevent the model from inferring relations of unmemo-rized entities.
+The example, 𝑆, is generated by concatenat-ing the sampled triplets, each on a new line.
+Below is anexample of a complete template, when ℎname=”deer” and𝑟name=”hypernym”:(dress up, verb group, trick up)...(disfavour, hypernym, single out)(deer, hypernym,KGC Template When completing a KG, we addi-tionally provide a head-entity description to enhance per-formance.
+This is achieved using Template 2, which ispreﬁxed with an 8-shot example generated by the followingtemplate: ℎ𝑖,name− ℎ𝑖,description\n(ℎ𝑖,name, 𝑟𝑖,name, 𝑡𝑖,name).
+
+
+4 Experiments and Results
+
+In this work, we conduct two experiments.
+First, we per-form a relationally inductive KGC experiment to demon-strate the advantage of our method in making out-of-distribution predictions.
+Second, we conduct the LAMAagreement experiment to investigate the degree of agree-ment with LAMA.
+WN18RR dataset [ 13] was used in bothexperiments and textual descriptions of entities provided byKG-BERT
+[14] were used as 𝑓description.
+As in the originalPromptEOL work, the OPT1）[15] was used as a PLM.
+
+
+4.1 Experimental Setups
+
+Relationally Inductive KGC Experiment A rela-tionally inductive dataset was constructed using a trans-ductive split of WN18RR.
+Triplets containing a speciﬁcrelation type were removed from the training set and sub-sequently combined to form the test set.
+To represent abaseline performance of a ﬁne-tuned encoder-base model,the SimKGC model was trained on the dataset with hy-perparameters identical to the original work.
+The datasetwas then used to evaluate the DEER performance with the1） https://huggingface.co/facebook/opt-6.7b― 4240 ―Table 2 Relational Inductive Setting (Excluding ’Also See’).MR: mean rank, MRR: mean reciprocal rank, Iml: instruction–tuned models.
+# of entities: 40,943, # of test triplets: 1,299.Model Name Hit@1 Hit@3 Hit@10 MR MRRSimKGC 0.27 1.07 3.19 11623 0.0136Ours-125M 0.08 0.31 0.69 12422
+0.0036Ours-350M 0.15 0.23 1.23 12919 0.0052Ours-1.3B 0.54 6.16 17.71 1785 0.0597Ours-iml-1.3B 0.62 7.54 21.32 1438 0.0718Ours-6.7B 1.53 8.31 20.55 1251 0.0787KGC template used for this experiment.
+LAMA Agreement Experiment
+The test split of thetransductive WN18RR dataset was adapted for LAMA byremoving all triplets with multi-token tail entities.
+BothLAMA and DEER scored all single-token entities, withLAMA assigning the same scores to identically named en-tities due to disambiguation issues.
+The probing templatewas used instead of a cloze-style QA to maintain consis-tent bias with our method’s bias.
+As shown inA.1, thepredicted scores were ranked in descending order, and thetail entities’ ranks were recorded.
+Pearson correlation be-tween the rankings was computed across various modelsizes, with a logarithmic scale applied to account for thereduced importance of rank diﬀerences at higher ranks.
+
+
+4.2 Main Results
+
+Relationally Inductive KGC Experiment Table
+2presents the results of the relationally inductive experi-ment, where the relation type “Also See” was removedfrom the train dataset.
+SimKGC, based on the 108M pa-rameter BERT-base model, outperformed our models ofcomparative parameter size, DEER-125M, across all met-rics.
+However, our models with super-billon parametersize outperformed SimKGC, despite not being ﬁne-tuned,achieving +467% relative (𝛿) and +1.26% absolute (Δ) im-provement for Hit@1, 𝛿 = +677%, Δ = +7.27% for Hit@3and 𝛿 = +568% with Δ = +18% for Hit@10.LAMA Agreement Experiment Table 3 presentsthe result of the LAMA agreement experiment.
+Log(rank)demonstrated stronger correlation than linear ranking,likely due to the increased sensitivity of rank diﬀerence athigher scores.
+Sub-billion models showed less correlationthan super-billion models, with 𝑟 = 0.373 for OPT-125Mand 𝑟 = 0.612 for OPT-350M, possibly due to the limi-tations of smaller models in summarizing entities with asingle word as instructed.
+However, as shown in FigureFigure 2 A scatter plot indicating a correlation betweenlog(tail-entity rank) of LAMA and DEER.Table 3 Pearson’s correlation between DEER and LAMA Pre-dictions of target tail-entity ranks and log(target tail-entity rank).
+# of entities: 4,948, # of test triplets: 16,521.Rank Log(Rank)PLM Name 𝑟 p-value 𝑟 p-valueOPT-125M 0.466 1.75 × 10−330.373 3.82 × 10−21OPT-350M 0.387 8.86 ×
+10−230.612 1.30 ×
+10−62OPT-1.3B 0.472 1.87 × 10−340.726 1.25 ×
+10−98OPT-iml-1.3B 0.551 1. 268 × 10−480.767 2.46 × 10−116OPT-6.7B 0.596 1.59×10−580.806 1.6×10−137OPT-30B 0.487 7.56×10−370.763 9.63×10−115OPT-iml-30B 0.462
+6.75×10−330.710 1.61 × 10−922, super-billion models exhibited high Log(rank) correla-tion with 𝑟 =
+[0.710, 0.806], indicating a strong alignmentbetween our method and LAMA.
+
+
+5 Conclusion
+
+We introduced DEER, a novel few-shot encoder-basedKGC model that leverages a generative PLM.
+This ap-proach retains the strengths of generative PLMs, such asfew-shot capability and extensive parametric knowledgewhile addressing their drawbacks, including the need forentity linking, entity disambiguation, and limited rankingability.
+Furthermore, it overcomes BEAR’s limitation byenabling linear inference time complexity.
+Our experiments show that DEER outperforms a ﬁne-tuned SimKGC model in relationally inductive settings andaligns closely with LAMA.
+Its few-shot capabilities makeit eﬀective for completing KGs where obtaining an idealtraining dataset is diﬃcult.
+Moreover, its alignment withLAMA oﬀers a promising avenue for future knowledgeprobing research, potentially oﬀering deeper insights intoknowledge recall abilities of generative PLMs.― 4241 ―
+
+
+
+References
+
+
+[1] Liang Wang, Wei Zhao, Zhuoyu Wei, and Jingming Liu.SimKGC: Simple contrastive knowledge graph completionwith pre-trained language models. In Smaranda Muresan,Preslav Nakov, and Aline Villavicencio, editors, Proceed-ings of the 60th Annual Meeting of the Associationfor Computational Linguistics (Volume 1: Long Pa-pers), pp. 4281–4294, Dublin, Ireland, May 2022. Asso-ciation for Computational Linguistics.
+[2] Xin Xie, Ningyu Zhang, Zhoubo Li, Shumin Deng, HuiChen, Feiyu Xiong, Mosha Chen, and Huajun Chen. Fromdiscrimination to generation: Knowledge graph comple-tion with generative transformer. In Companion Pro-ceedings of the Web Conference 2022, WWW ’22,p. 162–165, New York, NY, USA, 2022. Association forComputing Machinery.
+[3] Xin Xie, Zhoubo Li, Xiaohan Wang, ZeKun Xi, andNingyu Zhang. LambdaKG: A library for pre-trained lan-guage model-based knowledge graph embeddings. In Sri-parna Saha and Herry Sujaini, editors, Proceedings ofthe 13th International Joint Conference on NaturalLanguage Processing and the 3rd Conference of theAsia-Paciﬁc Chapter of the Association for Com-putational Linguistics: System Demonstrations, pp.25–33, Bali, Indonesia, November 2023. Association forComputational Linguistics.
+[4] Adam Roberts, Colin Raﬀel, and Noam Shazeer. Howmuch knowledge can you pack into the parameters of alanguage model? In Bonnie Webber, Trevor Cohn, YulanHe, and Yang Liu, editors, Proceedings of the 2020Conference on Empirical Methods in Natural Lan-guage Processing (EMNLP), pp. 5418–5426, Online,November 2020. Association for Computational Linguis-tics.
+[5] Jared Kaplan, Sam McCandlish, Tom Henighan, Tom B.Brown, Benjamin Chess, Rewon Child, Scott Gray, AlecRadford, Jeﬀrey Wu, and Dar io Amodei. Scaling laws forneural language models, 2020.
+[6] Dora Jambor, Komal Teru, Joelle Pineau, and William L.Hamilton. Exploring the limits of few-shot link predictionin knowledge graphs. In Paola Merlo, Jorg Tiedemann, andReut Tsarfaty, editors, Proceedings of the 16th Con-ference of the European Chapter of the Associa-tion for Computational Linguistics: Main Volume,pp. 2816–2822, Online, April 2021. Association for Com-putational Linguistics.
+[7] Xin Zhao, Naoki Yoshinaga, and Daisuke Oba. Whatmatters in memorizing and recalling facts? multifacetedbenchmarks for knowledge probing in language models.In Yaser Al-Onaizan, Mohit Bansal, and Yun-Nung Chen,editors, Findings of the Association for Computa-tional Linguistics: EMNLP 2024, pp. 13186–13214,Miami, Florida, USA, November 2024. Association forComputational Linguistics.
+[8] Fabio Petroni, Tim Rockt¨aschel, Sebastian Riedel, PatrickLewis, Anton Bakhtin, Yuxiang Wu, and Alexander Miller.Language models as knowledge bases? In KentaroInui, Jing Jiang, Vincent Ng, and Xiaojun Wan, editors,Proceedings of the 2019 Conference on Empiri-cal Methods in Natural Language Processing andthe 9th International Joint Conference on NaturalLanguage Processing (EMNLP-IJCNLP), pp. 2463–2473, Hong Kong, China, November 2019. Association forComputational Linguistics.
+[9] Paul Youssef, Osman Koras¸, Meijie Li, J¨org Schl¨otterer,and Christin Seifert. Give me the facts! a survey on fac-tual knowledge probing in pre-trained language models.In Houda Bouamor, Juan Pino, and Kalika Bali, editors,Findings of the Association for Computational Lin-guistics: EMNLP 2023, pp. 15588–15605, Singapore,December 2023. Association for Computational Linguis-tics.
+[10] Jacek Wiland, Max Ploner, and Alan Akbik. BEAR: Auniﬁed framework for evaluating relational knowledge incausal and masked language models. In Kevin Duh, HelenaGomez, and Steven Bethard, editors, Findings of theAssociation for Computational Linguistics: NAACL2024, pp. 2393–2411, Mexico City, Mexico, June 2024.Association for Computational Linguistics.
+[11] Ting Jiang, Shaohan Huang, Zhongzhi Luan, DeqingWang, and Fuzhen Zhuang. Scaling sentence embeddingswith large language models. In Yaser Al-Onaizan, Mo-hit Bansal, and Yun-Nung Chen, editors, Findings of theAssociation for Computational Linguistics: EMNLP2024, pp. 3182–3196, Miami, Florida, USA, November2024. Association for Computational Linguistics.
+[12] Jan-Christoph Kalo and Leandra Fichtel. Kamel: Knowl-edge analysis with multitoken entities in language models.In AKBC, 2022.
+[13] Tim Dettmers, Pasquale Minervini, Pontus Stenetorp, andSebastian Riedel. Convolutional 2d knowledge graphembeddings. In Proceedings of the Thirty-SecondAAAI Conference on Artiﬁcial Intelligence andThirtieth Innovative Applications of Artiﬁcial Intel-ligence Conference and Eighth AAAI Symposiumon Educational Advances in Artiﬁcial Intelligence,AAAI’18/IAAI’18/EAAI’18. AAAI Press, 2018.
+[14] Liang Yao, Chengsheng Mao, and Yuan Luo. Kg-bert:Bert for knowledge graph completion, 2019.
+[15] Susan Zhang, Stephen Roller, Naman Goyal, MikelArtetxe, Moya Chen, Shuohui Chen, Christopher Dewan,Mona Diab, Xian Li, Xi Victoria Lin, Todor Mihaylov,Myle Ott, Sam Shleifer, Kurt Shuster, Daniel Simig,Punit Singh Koura, Anjali Sridhar, Tianlu Wang, and LukeZettlemoyer. Opt: Open pre-trained transformer languagemodels, 2022.
+[16] Komal Teru, Etienne Denis, and Will Hamilton. Inductiverelation prediction by subgraph reasoning. In Hal Daum´eIII and Aarti Singh, editors, Proceedings of the 37thInternational Conference on Machine Learning, Vol.119 of Proceedings of Machine Learning Research,pp. 9448–9457. PMLR, 13–18 Jul 2020.― 4242 ―
+
+
+
+A Appendix
+
+
+
+A.1 LAMA Agreement Experiment
+
+.....................BirdBirdFishFishMammleMammleTailEntitiesTailEntitiesHead-Entity, Relation EncodingPartially Filled TripletTrue TailTrue TailRanks of True TailDecoder ProjectionProbing Template(Deer, is, ?)
+PrompEOL0.70.80.10.20.30.9Our ScoresResearch QuestionDEERLanguage ModelHeadDo the Ranks Agree?LAMANext TokenLogitsCosineSimilarity2nd1st2ndnth1stnthTail EntitEncodingsLAMA ScoresInputFigure 3
+A diagram illustrating data-ﬂow in the LAMA Agree-ment Experiment.
+Note, an identical vector ehr, is used for thecosine similarity in our method and token prediction in LAMA.Figure 4 A scatter plot showing correlation between tail-entitytank of DEER and LAMA.The logit value of true-tail entity in LAMA and theSoftmaxed Cosine Similarity value of the entity in DEERwas additionally compared.
+Table 5 shows the Pearsoncorrelation between the two values, and Figure 5 shows ascatter plot between the values with OPT-6.7B.Table 4 Correlation of LAMA’s logits and softmaxed cos sim.
+Model Pearson Correlation p-valueOPT-125M 0.405 6.66
+×
+10−25OPT-350M 0.498 1.33 ×
+10−38OPT-1.3B 0.724 5.48 × 10−98OPT-iml-1.3B 0.795 5.00 × 10−131OPT-6.7B 0.816 2.34 × 10−143OPT-30B 0.717 3.31 ×
+10−95OPT-iml-30B 0.672 1.468 × 10−79Figure 5
+A scatter plot comparing softmaxed cosine similarityof ehr, etin DEER and logits of tail-entity token in LAMA,indicating a correlation between the two values.
+Table 5
+A table illustrating the diﬀerence between Hit@K andMRR between LAMA and our method across diﬀerent parameterssize.
+The setup is identical to the LAMA agreement experiment.
+Hit@1 Hit@10 Hit@500 MRRLAMA-125M 0.168 3.86 35.1
+0.0154Ours-125M 0.168 2.68 39.4 0.0124Relative
+Error, % 0.0 31 12 19LAMA-350M 3.02 12.4 38.4 0.0573Ours-350M 0.336 2.85 36.2 0.0157Relative
+Error, % 89 77 5.7 73LAMA-1.3B 4.19 21.8 56.4 0.0997Ours-1.3B 2.52 15.9 52.2 0.0699Relative Error, % 40 27 7.4 30LAMA-iml-1.3B 5.03 24.5 62.9 0.112Ours-iml-1.3B 9.23 33.9 74.7 0.176Relative Error, % 83 38 19 57LAMA-6.8B 7.38 33.2 55.5 0.156Ours-6.8B 8.39 33.9 53.0 0.165Relative
+Error, % 14 2.0 3.6 5.2LAMA-30B 5.87 32.6 77.7 0.143Ours-30B 10.2 39.8 78.4 0.199Relative Error, % 73 22 0.90 39LAMA-iml-30B 8.05 35.4 78.9 0.163Ours-iml-30B 9.40 32.9 73.2 0.175Relative
+Error, % 17 10 7.2 7.4
+
+A.2 Inductive KGC Experiment
+
+Table 6 Performance of DEER on inductive split of WN18RR[16].
+KGC Template was used.
+Hit@1
+Hit@10 Hit@1000 MRROPT-125M 0.6 ± 0.7 6 ± 6 40 ± 10 0.02 ± 0.02OPT-350M 0.6 ± 0.8 5 ± 6 30 ± 10 0.02 ± 0.02OPT-1.3B 2.3 ± 0
+.9 25 ± 7 70 ± 10 0.10 ± 0.03OPT-iml-1.3B 2.3 ± 0.8 27 ± 9 77 ± 9 0.10 ± 0.03OPT-6.7B 1.6 ± 0
+.7 28 ± 3 75 ± 6 0.10 ± 0.01OPT-30B 1.7 ± 0.3 35 ± 3 82 ± 3 0.12 ± 0.
+01OPT-iml-30B 2.9 ± 0.8 26 ± 5 73 ± 3 0.10 ± 0.02― 4243 ―

@@ -1,0 +1,189 @@
+Iterative Graph-to-Text Generation with Contextualization forScientiﬁc Abstracts
+
+Haotong Wang, Liyan Wang, Yves Lepage
+
+
+
+大学院情報生産システム研究科, 早稲田大学
+
+
+
+Graduate School of Information, Production and Systems, Waseda University
+
+
+
+{wanghaotong0925, wangliyan0905}@toki.waseda.jp yves.lepage@waseda.jp
+
+
+
+Abstract
+
+We propose an iterative graph-to-text generation methodto produce coherent scientiﬁc abstracts from paragraph-level knowledge graphs.
+The method segments the graphsinto smaller, context-speciﬁc components using functionallabels, which guide each generation step and inﬂuence sub-sequent outputs.
+Experimental results demonstrate thatﬁne-tuning the proposed method enhances the alignmentof Large Language Models (LLMs) with target seman-tics.
+Moreover, incorporating functional labels and itera-tive generation further improves semantic accuracy, struc-tural clarity, and logical organization, providing a scalablesolution for high-quality abstract generation.
+
+
+1 Introduction
+
+Knowledge graphs facilitate the construction of r ich se-mantic information by systematically organizing and inter-linking multidimensional entities and relationships within anetwork-based structure
+[1].
+Typically composed of triples(head entity, relation, tail entity), they provide a more directrepresentation of the core content in scientiﬁc abstracts,where the generation of abstract texts based on knowledgegraphs has emerged as a prominent research focus, with ap-plications in assisting academic writing [2] and enhancingthe understanding of scientiﬁc research [3].Current research on graph-to-text generation primarilyrevolves around Graph Neural Networks (GNNs) and LargeLanguage Models (LLMs).
+GNN-based approaches [2, 4]focus on the structured representation of content, con-structing more precise relational networks among enti-ties.
+In contrast, LLM-based methods [5, 6] leverage thepowerful generative capabilities of large language modelsto combine and integrate triple-based content, producingFigure 1 Workﬂow of the Iterative Graph-to-Text Generation.𝐿𝑖: Paragraph segmentation function label, 𝐾𝑖: Sentence knowl-edge graph corresponding to the label, 𝑆𝑖: Generated sentence,𝑃: Entire paragraph.more coherent and ﬂuent paragraph-level text.
+In scien-tiﬁc abstracts, semantically complex paragraphs often leadto knowledge graphs with intricate structures.
+Challengessuch as high computational costs and content forgettingmay arise when using traditional GNNs to generate textfrom such graphs [7].
+On the other hand, LLMs, de-spite their strong generative capabilities, lack structuralawareness of the graph, making it crucial to ensure contentconsistency and paragraph coherence during generation.
+Once linearized, this issue stems from triples in a knowl-edge graph, becoming discrete and lacking a strong logicalﬂow.
+While LLMs can eﬀectively organize language at thesentence level, an excessive number of triples can hinderthe overall quality of the generated text.
+To address the above issues, we propose an iterativegraph-to-text generation method with contextualization forscientiﬁc abstracts.
+As shown in Figure 1, ﬁrst, we dividethe abstract into functional segments and apply strict struc-tural control using labels (label hard control)[8].
+Then, wegenerate sentences step by step based on the given labelsand knowledge graphs.
+During this process, the input ateach step combines the previously generated sentence withthe following knowledge graph, following the paragraph’sstructural order.
+This method ensures the coherence andconsistency of the paragraph by integrating labels withknowledge graphs.
+In addition, the generation process usesthe previous sentence as context to guide the expression ofthe knowledge graph content, prevent semantic deviations,and eliminate ambiguities.
+
+
+2 Methodology
+
+
+
+2.1 Iterative Graph-to-Text Generation
+
+The knowledge graph consists of commonly deﬁnedtriples𝑡=(ℎ, 𝑟, 𝑡),whereℎis the head entity,𝑟is therelation, and 𝑡 is the tail entity.
+These tr iples for a scientiﬁcabstract are segmented using 𝐿𝑖(labels), which catego-rize them based on paragraph functions (e.g., background,objective, methods).
+The segmented triples form a setK= (𝐾1, 𝐾2, . . .
+, 𝐾𝑖), where 𝐾𝑖represents the triples un-der a speciﬁc label.
+The objective of this paper is to gener-ate a set of sentencesS= (𝑆1, 𝑆2, . . .
+, 𝑆𝑖) fromK.
+Finally,these generated sentencesSare sequentially combined toconstruct the scientiﬁc abstract paragraph 𝑃.A scientiﬁc abstract distills the essence of the researchpresented in an article, providing a concise summary of thestudy’s objectives, methodology, results, and signiﬁcance.
+We divide the abstract into ﬁve labels: Background, Objec-tive, Methods, Results, and Conclusions [8].
+These labelscan segment long paragraphs into smaller units, whichhelps reduce the complexity of text generation and elimi-nate ambiguities.
+They are also used in the iterative gener-ation method proposed in this paper, serving to expand thedataset dur ing training.
+As described in Algorithm 1, if the starting label is 𝐿𝑖,we ﬁrst generate descriptive text for the label 𝐿𝑖usingits corresponding knowledge graph 𝐾𝑖.
+Generating shorttext for each label proves more reliable than generating theentire paragraph from a single knowledge graph.
+Next, weconcatenate the sentence 𝑆𝑖generated for the label 𝐿𝑖withthe knowledge graph 𝐾𝑖+1of
+the subsequent label.
+Thepreviously generated text serves as contextual guidance,helping to correct the understanding of the content.
+Thisprocess continues iteratively until the text under the currentlabel is generated, repeating the process until the entireparagraph 𝑃 is complete.
+Algorithm 1 Iterative Text Generation from KnowledgeGraphs1: Input: Knowledge Graphs 𝐾1, 𝐾2, . .
+.
+, 𝐾𝑛(ordered,labeled)2: Output: Generated Paragraph 𝑃3: Initialize 𝑃 ← ∅ ⊲ Start with an empty paragraph4: for each label 𝐿𝑖in 𝐾 do5:
+Generate sentence 𝑆𝑖for label 𝐿𝑖using knowledgegraph 𝐾𝑖6:
+Concatenate 𝑃 ← 𝑃∥𝑆𝑖7: if more labels remain then8:
+Update 𝐾𝑖+1← 𝑃 ∪ 𝐾𝑖+19: end if10: end for11: return 𝑃
+
+2.2 Prompt Design
+
+We ﬁne-tune the FLAN-T5 model
+[9] for the speciﬁc taskin this work.
+As a sequence-to-sequence model, FLAN-T5utilizes instruction tuning to enable eﬃcient and accuratetext generation, achieving precise mapping between inputsand outputs.
+As shown in Figure 2, we design prompts based onthe task requirements.
+The input contains three keypieces of information: <PREVIOUSTEXT>,<LABEL>, and<GRAPHS>.
+To better distinguish the content, the labelis marked with special tokens <l> and </l>, while thetriples in the knowledge graph are marked with <h>, <r>,and <t> to represent the head, relation, and tail, respec-tively.
+For iterative generation, the content of these threekey components is continuously updated until the entireparagraph is generated.
+Figure 2 Prompt design for iterative graph-to-text generation.
+
+
+3 Dataset
+
+We utilize the ACL Abstract Graph Dataset (ACL-AGD)in this work1）.
+The ACL-AGD comprises 35,063 abstractscollected from the ACL Anthology’s BibTeX database.
+Itfeatures various research works in computational linguis-tics and natural language processing, ranging from con-ference proceedings and journal publications to selectedpapers from non-ACL events.
+The dataset spans nearlysix decades of scholarly contributions, covering 1965 to2023.
+Based on the functional segmentation of scientiﬁcabstracts [8], each triple is assigned a label, forming aquadruple.
+
+
+4 Experiments
+
+
+
+4.1 Evaluation Metrics
+
+Building on prior work [5, 10], we evaluate our modelsusing four widely adopted metrics: BLEU-4
+[11], ME-TEOR [12], ChrF++
+[13], and ROUGE-L [14].
+These met-rics comprehensively assess the generated text, capturingits linguistic accuracy and semantic relevance compared tothe corresponding target texts.
+
+
+4.2 Generation Evaluation
+
+To evaluate the generation performance on the ACL-AGD dataset, we compared several methods, includingGPT-3 and ChatGPT, as reported in [10].
+As shown inTable 1, These two models operate in a zero-shot learningparadigm, which means they lack the contextual under-standing provided by speciﬁc annotations such as para-graph labels.
+Consequently, they struggle to accuratelymap the knowledge graphs to the target text, leading to de-viations in generation quality.
+This limitation is reﬂectedin their lower evaluation metrics scores compared to othermethods.
+We further analyzed the impact of incorporating para-graph labels in non-iterative and iterative settings.
+Theresults demonstrate a signiﬁcant improvement in genera-tion quality when labels are included, as evident from theincrease in all evaluation metrics.
+For instance, in the non-iterative setting, adding labels improved BLEU from 8.54to 11.75 and METEOR from 29.72 to 34.64.
+This high-lights the eﬀectiveness of labels in providing structural and1）
+http://lepage-lab.ips.waseda.ac.jp/projects/scientiﬁc-writing-aid/Table 1 Comparison of generation performance on ACL-AGD.Methods BLEU METEOR CharF++ ROUGEGPT-3
+[10] 7.52±1.8130.16±1.7338.61±1.8935.45±1.92ChatGPT
+[10] 10.94±2.1132.23±1.8444.89±1.9637.67±2.07Non-iterative-
+w/o label 8.54±1.9329.72±1.7936.66±1.8432.46±2.09- with label 11.75±1.9434.64±1.7242.16±2.0337.31±1.85Iterative- w/o label 9.40±2.0231.97±1.8540.43±1.9136.34±1.96- with label†12.74±1.7835.29±1.8844.25±1.9538.90±1.89†denotes our proposed method.semantic guidance for more accurate text generation.
+Finally, we examined the diﬀerence between iterativeand non-iterative approaches.
+Iterative methods consis-tently outperformed their non-iterative counterparts, show-casing their ability to reﬁne generated text progressively.
+Among all approaches, the combination of the iterativemethod and paragraph labels achieved the best perfor-mance, with a BLEU score of 12.74 and a METEOR scoreof 35.29.
+This demonstrates the superiority of our proposediterative approach with labels in aligning the generated textmore closely with the target abstract.
+Appendix A providesan example of iterative generation.
+
+
+4.3 Impact of Generation Length
+
+The results in Figure 3 highlight a key aspect of gener-ation performance related to output length (the number ofsentences).
+GPT-3 and ChatGPT exhibit longer and morevariable outputs, likely contributing to their suboptimalgeneration quality.
+These models tend to ﬁll the text withadditional content that deviates semantically from the tar-get, indicating a lack of precise alignment with the knowl-edge graph.
+GPT-3ChatGPT Non-interactive Proposed Method0510Output LengthFigure 3 Comparison of Output Length.
+In contrast, our ﬁne-tuning-based approach, both withand without iteration (with label), demonstrates a morestable and concise output length.
+This consistency enablesthe generated text to remain focused on the core contentof the knowledge graph, ensuring better alignment withthe target text.
+The reduced variability in output lengthunderscores the eﬀectiveness of our method in maintainingsemantic relevance and structural precision.1 2 3 458101214Output Length Segmentation Based on LabelsBLEUGPT-3ChatGPT Non-interactive Proposed MethodFigure 4 Variation of BLEU with Increasing Output Length.
+As shown in Figure 4, the BLEU scores of all methodsdecrease as the generated text length increases, reﬂectingthe challenge of maintaining semantic alignment with moreextended outputs.
+GPT-3 and ChatGPT exhibit a particu-larly sharp decline in BLEU scores, suggesting that thesemodels struggle to handle extended sequences without sig-niﬁcant semantic drift.
+This behavior highlights their lim-itations in preserving coherence over more extended textgenerations.
+Interestingly, non-iterative methods show a moderate de-cline but cannot adapt contextually to the increasing com-plexity of longer sequences.
+In comparison, our proposediterative method demonstrates superior stability.
+Whilethere is a gradual decrease in BLEU scores, the declineis signiﬁcantly less steep.
+This indicates that the iterativeapproach eﬀectively integrates contextual information, al-lowing it to generate text that remains closely aligned withthe semantic and structural requirements of the target text.
+
+
+5 Conclusion
+
+In this paper, we proposed an iterative graph-to-textgeneration approach tailored for generating scientiﬁc ab-stracts.
+Our method uses functional labels to leverage con-textual information by segmenting paragraph-level knowl-edge graphs into smaller components.
+These labels guidethe generation process iteratively, where the text generatedfrom one label and its associated knowledge graph informsthe subsequent label and graph, continuing until the entireparagraph is generated.
+This iterative design allows themodel to maintain coherence and align closely with thestructure and semantics of the target abstract.
+Our experiments reveal several key ﬁndings.
+First,LLMs, such as GPT-3 and ChatGPT, str uggle to fullycomprehend and eﬀectively utilize knowledge graphs inzero-shot settings, resulting in signiﬁcant semantic driftand structural inconsistencies.
+This underscores the im-portance of ﬁne-tuning, which enables LLMs to interpretgraph-encoded information better and align generated textwith the target output.
+Second, including paragraph labelsand iterative generation signiﬁcantly improves semantic ac-curacy and structural clarity.
+Labels provide crucial guid-ance for mapping the graph to the text, while the iterativeapproach corrects semantic errors progressively, ensuringa coherent ﬂow and logical organization throughout theparagraph.
+The proposed method oﬀers a scalable framework forgenerating high-quality scientiﬁc abstracts by ensuring se-mantic ﬁdelity and paragraph-level structural clarity, ef-fectively addressing key challenges in graph-to-text gen-eration.
+It paves the way for further advancements incontext-aware generation methods, enhancing the qualityof machine-generated content in knowledge-intensive do-mains.
+
+
+References
+
+[1] Shaoxiong Ji, Shirui Pan, Erik Cambria, Pekka Marttinen,and Philip S. Yu.
+A survey on knowledge graphs: Rep-resentation, acquisition, and applications.
+IEEE Trans-actions on Neural Networks and Learning Systems,Vol. 33, No. 2, pp.
+494–514, 2022.[2]
+Rik Koncel-Kedziorski, Dhanush Bekal, Yi Luan, MirellaLapata, and Hannaneh Hajishirzi.
+Text Generation fromKnowledge Graphs with Graph Transformers.
+In Pro-ceedings of the 2019 Conference of the NorthAmerican Chapter of the Asso ciation for Computa-tional Linguistics: Human Language Technologies,Volume 1 (Long and Short Papers), pp. 2284–2293,Minneapolis, Minnesota, June 2019.
+Association for Com-putational Linguistics.[3] Sonal Gupta and Christopher Manning.
+Analyzing thedynamics of research by extracting key aspects of sci-entiﬁc papers.
+In Haifeng Wang and David Yarowsky,editors, Proceedings of 5th International Joint Con-
+
+ference on Natural Language Processing, pp. 1–9,Chiang Mai, Thailand, November 2011. Asian Federationof Natural Language Processing.[4] Anthony Colas, Mehrdad Alvandipour, and Daisy ZheWang. GAP: A graph-aware language model frameworkfor knowledge graph-to-text generation. In Proceedingsof the 29th International Conference on Computa-tional Linguistics, pp. 5755–5769, Gyeongju, Republicof Korea, October 2022. International Committee on Com-putational Linguistics.[5] Leonardo F. R. Ribeiro, Martin Schmitt, Hinrich Sch¨utze,and Iryna Gurevych. Investigating pretrained languagemodels for graph-to-text generation. In Proceedings ofthe 3rd Workshop on Natural Language Processingfor Conversational AI, pp. 211–227, Online, November2021. Association for Computational Linguistics.[6] Zixiaofan Yang, Arash Einolghozati, Hakan Inan, KeithDiedrick, Angela Fan, Pinar Donmez, and Sonal Gupta.Improving text-to-text pre-trained models for the graph-to-text task. In Proceedings of the 3rd Interna-tional Workshop on Natural Language Generationfrom the Semantic Web (WebNLG+), pp. 107–116,Dublin, Ireland (Virtual), 12 2020. Association for Com-putational Linguistics.[7] Fan Zhou and Chengtai Cao. Overcoming catastrophicforgetting in graph neural networks with experience replay.Proceedings of the AAAI Conference on ArtiﬁcialIntelligence, Vol. 35, No. 5, pp. 4714–4722, May 2021.[8] S´ergio Gonc¸alves, Paulo Cortez, and S´ergio Moro. A deeplearning classiﬁer for sentence classiﬁcation in biomedicaland computer science abstracts. Neural Computing andApplications, Vol. 32, No. 11, pp. 6793–6807, 2020.[9] Hyung Won Chung, Le Hou, Shayne Longpre, BarretZoph, Yi Tay, William Fedus, Yunxuan Li, Xuezhi Wang,Mostafa Dehghani, Siddhartha Brahma, Albert Webson,Shixiang Shane Gu, Zhuyun Dai, Mirac Suzgun, XinyunChen, Aakanksha Chowdhery, Alex Castro-Ros, MariePellat, Kevin Robinson, Dasha Valter, Sharan Narang,Gaurav Mishra, Adams Yu, Vincent Zhao, Yanping Huang,Andrew Dai, Hongkun Yu, Slav Petrov, Ed H. Chi, JeﬀDean, Jacob Devlin, Adam Roberts, Denny Zhou, Quoc V.Le, and Jason Wei. Scaling instruction-ﬁnetuned languagemodels. Journal of Machine Learning Research,Vol. 25, No. 70, pp. 1–53, 2024.[10] Shuzhou Yuan and Michael Faerber. Evaluating genera-tive models for graph-to-text generation. In Ruslan Mitkovand Galia Angelova, editors, Proceedings of the 14thInternational Conference on Recent Advances inNatural Language Processing, pp. 1256–1264, Varna,Bulgaria, September 2023. INCOMA Ltd., Shoumen, Bul-garia.[11] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu. Bleu: a method for automatic evaluation of ma-chine translation. In Pierre Isabelle, Eugene Charniak, andDekang Lin, editors, Proceedings of the 40th AnnualMeeting of the Association for Computational Lin-guistics, pp. 311–318, Philadelphia, Pennsylvania, USA,July 2002. Association for Computational Linguistics.[12] Satanjeev Banerjee and Alon Lavie. METEOR: An auto-matic metric for MT evaluation with improved correlationwith human judgments. In Jade Goldstein, Alon Lavie,Chin-Yew Lin, and Clare Voss, editors, Proceedings ofthe ACL Workshop on Intrinsic and Extrinsic Eval-uation Measures for Machine Translation and/orSummarization, pp. 65–72, Ann Arbor, Michigan, June2005. Association for Computational Linguistics.[13] Maja Popovi´c. chrF: character n-gram F-score for auto-matic MT evaluation. In Ondˇrej Bojar, Rajan Chatter-jee, Christian Federmann, Barry Haddow, Chris Hokamp,Matthias Huck, Varvara Logacheva, and Pavel Pecina, edi-tors, Proceedings of the Tenth Workshop on Statis-tical Machine Translation, pp. 392–395, Lisbon, Portu-gal, September 2015. Association for Computational Lin-guistics.[14] Chin-Yew Lin. ROUGE: A package for automatic evalua-tion of summaries. In Text Summarization BranchesOut, pp. 74–81, Barcelona, Spain, July 2004. Associationfor Computational Linguistics.
+
+
+
+A Iterative Generation Process
+
+Table 2 illustrates the iterative generation process, wheresentences 𝑆𝑖are generated sequentially based on knowl-edge graphs 𝐾𝑖.
+Initially, 𝑆1is generated based on 𝐾1,representing the background information.
+Subsequently,𝑆1is combined with 𝐾2to produce 𝑆2, corresponding tothe objective.
+This process continues by iteratively com-bining the previous sentence 𝑆𝑖−1with a new knowledgegraph 𝐾𝑖, thereby completing the iterative process.
+Table 2 Iterative Generation Process𝐾1: <l>BACKGROUND</l><h>digital languagearchiving services<r>HYPONYM-OF<t>disciplines<h>low-resourced and endangered languages<r>USED-FOR <t>speech and language data𝑆1: Digital language archiving services are essential com-ponents of various linguistic disciplines, particularly formanaging speech and language data of low-resourced andendangered languages.𝑆1+ 𝐾2: <l>OBJECTIVE </l><h>It <r>USED-FOR<t>common digital language archive infrastructures𝑆2: It is aimed at enhancing common digital languagearchive infrastructures to improve data availability andsupport broader research needs.𝑆2+ 𝐾3:
+<l>METHODS</l><h>digital languagearchive services <r>CONJUNCTION <t>languagedata <h>It <r>USED-FOR <t>language models<h>language models <r>USED-FOR <t>speech andnatural language processing <h>GORILLA <r>USED-FOR <t>Transcription Bottleneck <h>GORILLA<r>USED-FOR <t>general Language Resource Bot-tleneck <h>Transcription Bottleneck <r>PART-OF<t>language documentation <h>general Language Re-source Bottleneck <r>PART-OF <t>speech and languagetechnologies𝑆3
+: Digital language archive services are combined withlanguage data and utilized to support language modelsfor speech and natural language processing tasks.
+Thispaper propose GORILLA that eﬀectively mitigates boththe transcription bottleneck in language documentationand the general language resource bottleneck in speechand language technologies.

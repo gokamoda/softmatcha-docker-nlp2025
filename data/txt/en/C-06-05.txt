@@ -1,0 +1,509 @@
+Elaborative Text Simpliﬁcation via Target Estimationusing Large Language Models
+
+Martyna Gruszka
+
+
+
+Institute of Science Tokyo
+
+
+
+gruszka.m.8d39@m.isct.ac.jp
+
+
+
+Yuki Arase
+
+
+
+Institute of Science Tokyo
+
+
+
+arase@c.titech.ac.jp
+
+
+
+Abstract
+
+Text simpliﬁcation is widely believed to enhancecomprehension for non-native readers, and has, there-fore, been the focus of extensive research.
+However,conventional text simpliﬁcation often involves remov-ing a considerable amount of complex content, whichmay reduce valuable information and potentially limitopportunities to engage with challenging concepts.
+Inthis work, we speciﬁcally address the needs of lan-guage learners by focusing on elaborative text simpli-ﬁcation, a process involving content addition, such asproviding speciﬁc explanations and clariﬁcations thatcould make a text comprehensible within its context.
+We introduce a novel data-driven approach for guidedelaboration generation, demonstrating that explicitlyspecifying elaboration targets leads to improved per-formance.
+
+
+1 Introduction
+
+Text simpliﬁcation is a broad ﬁeld that focuses onmaking text content more comprehensible and acces-sible to a wider audience.
+It achieves this throughvarious text modiﬁcations, such as paraphrasing, wordreordering, content deletion, or insertion, while re-taining the original meaning [1].
+It has applicationsin improving readability for diverse groups, includingchildren [3], language learners [ 13][11], and individ-uals with language-related disabilities, such as aphasiaor dyslexia
+[2][14].This paper focuses on elaborative text simpliﬁca-tion [15], which, in contrast to standard simpliﬁcationmethods, focuses exclusively on content addition.
+Itsobjective is to enhance the text comprehension by pro-viding readers with additional contextual information.
+It involves the insertion of various types of clariﬁca-Elaborative SimpliﬁcationAnd his wife, Maria, was inspired to get her GED.The general educational development (GED) isequal to a high school diploma.
+It is for adultswho were unable to ﬁnish high school.
+Benito’spath is more uncertain.
+He has not yet registeredat the adult school.
+Table 1: Example of an elaborative simpliﬁcation,where the highlighted sentence is inserted as elabo-ration to provide additional context and clariﬁcation.tions or explanations, including deﬁnitions, examples,and background knowledge, to clarify unclear or com-plex terms and concepts in the text.
+Table 1 illustratesan example of the elaborative simpliﬁcation.
+Early studies on elaborative simpliﬁcation primarilyfocused on deﬁnition retrieval [10][5][8] and the in-sertion of contextually relevant phrases, often referredto as entity post-modiﬁers
+[9].
+Recently, a data-dr ivenapproach has emerged, treating elaboration generationas a sequence-to-sequence task [15].
+Despite theseadvancements, previous studies have revealed severalchallenges.
+In many cases, the generated elaborationsdiverge from the reference content, either clarifyingconcepts unrelated to the target concept or addressingentirely diﬀerent terms [15].
+We hypothesize that thislimitation arises from the lack of explicit guidance onwhat to elaborate upon.
+To address this issue, we propose a new guided ap-proach for elaboration generation, the Target-speciﬁedGeneration.
+We identify elaboration targets byprompting the GPT-4o model [7] and subsequently in-put them into a language model to generate elaborationsentences.
+Our experimental results demonstrate that incorpo-rating target information alongside context sentences
+
+Elaborative Text Simpliﬁcation via Target Estimationusing Large Language Models
+
+Martyna Gruszka
+
+
+
+Institute of Science Tokyo
+
+
+
+gruszka.m.8d39@m.isct.ac.jp
+
+
+
+Yuki Arase
+
+
+
+Institute of Science Tokyo
+
+
+
+arase@c.titech.ac.jp
+
+
+
+Abstract
+
+Text simpliﬁcation is widely believed to enhancecomprehension for non-native readers, and has, there-fore, been the focus of extensive research.
+However,conventional text simpliﬁcation often involves remov-ing a considerable amount of complex content, whichmay reduce valuable information and potentially limitopportunities to engage with challenging concepts.
+Inthis work, we speciﬁcally address the needs of lan-guage learners by focusing on elaborative text simpli-ﬁcation, a process involving content addition, such asproviding speciﬁc explanations and clariﬁcations thatcould make a text comprehensible within its context.
+We introduce a novel data-driven approach for guidedelaboration generation, demonstrating that explicitlyspecifying elaboration targets leads to improved per-formance.
+
+
+1 Introduction
+
+Text simpliﬁcation is a broad ﬁeld that focuses onmaking text content more comprehensible and acces-sible to a wider audience.
+It achieves this throughvarious text modiﬁcations, such as paraphrasing, wordreordering, content deletion, or insertion, while re-taining the original meaning [1].
+It has applicationsin improving readability for diverse groups, includingchildren [3], language learners [ 13][11], and individ-uals with language-related disabilities, such as aphasiaor dyslexia
+[2][14].This paper focuses on elaborative text simpliﬁca-tion [15], which, in contrast to standard simpliﬁcationmethods, focuses exclusively on content addition.
+Itsobjective is to enhance the text comprehension by pro-viding readers with additional contextual information.
+It involves the insertion of various types of clariﬁca-Elaborative SimpliﬁcationAnd his wife, Maria, was inspired to get her GED.The general educational development (GED) isequal to a high school diploma.
+It is for adultswho were unable to ﬁnish high school.
+Benito’spath is more uncertain.
+He has not yet registeredat the adult school.
+Table 1: Example of an elaborative simpliﬁcation,where the highlighted sentence is inserted as elabo-ration to provide additional context and clariﬁcation.tions or explanations, including deﬁnitions, examples,and background knowledge, to clarify unclear or com-plex terms and concepts in the text.
+Table 1 illustratesan example of the elaborative simpliﬁcation.
+Early studies on elaborative simpliﬁcation primarilyfocused on deﬁnition retrieval [10][5][8] and the in-sertion of contextually relevant phrases, often referredto as entity post-modiﬁers
+[9].
+Recently, a data-dr ivenapproach has emerged, treating elaboration generationas a sequence-to-sequence task [15].
+Despite theseadvancements, previous studies have revealed severalchallenges.
+In many cases, the generated elaborationsdiverge from the reference content, either clarifyingconcepts unrelated to the target concept or addressingentirely diﬀerent terms [15].
+We hypothesize that thislimitation arises from the lack of explicit guidance onwhat to elaborate upon.
+To address this issue, we propose a new guided ap-proach for elaboration generation, the Target-speciﬁedGeneration.
+We identify elaboration targets byprompting the GPT-4o model [7] and subsequently in-put them into a language model to generate elaborationsentences.
+Our experimental results demonstrate that incorpo-rating target information alongside context sentencesenhances model performance.
+In addition to gen-erating simple deﬁnitions, the models are capableof producing elaborations that involve more com-plex reasoning.
+To facilitate reproducibility and fur-ther research, we make our code publicly available athttps://github.com/martgru/ElabSimp
+
+2 Proposed Method
+
+We build our research upon the data-driven exper-iment presented in the previous work [15].
+A modeltakes as input the context sentences surrounding theelaboration sentence in the simpliﬁed document, witha given context window size, while the output consistssolely of the elaboration sentence.
+To generate meaningful and contextually appropriateelaborations, it is essential to accurately determine thetargets of such elaborations.
+We determine elaborationtargets for each instance in our dataset using the GPT-4o model.
+We prompt the GPT-4o model in ChatMLformat, utilizing structured output, to identify two keyelements from the context sentences surrounding theelaboration sentence:• Target sentence: The sentence in the context thatis directly clariﬁed by the elaboration sentence.• Target phrase: The speciﬁc phrase within thecontext sentences that the elaboration sentenceexplains or provides additional information about.
+Table 2 provides an example of an elaboration sentencealong with its corresponding target sentence and targetphrase, as identiﬁed from context by the GPT-4o [7].In our approach, the input to the model includes notonly the context sentences, but also explicitly speci-ﬁed targets extracted by the GPT-4o model: the targetphrase, target sentence, or both.
+
+
+3 Experimental Settings
+
+Dataset
+In our work, we utilize the annotated ver-sion of the Newsela corpus [16] , which contains 1.3Kinstances of elaborative simpliﬁcation [15].
+For themodel inputs, we adopt the original context windowsizes deﬁned in previous work [15]:• 𝐶2𝑠: 2 prior context sentences.• 𝐶4𝑠: 4 prior context sentences.•
+𝐶2𝑠+: 2 prior and posterior context sentences.• 𝐶4𝑠+: 4 prior and posterior context sentences.
+But there’s a problem: What scientists ﬁnd bylooking at big cat DNA doesn’t agree with whatthe fossils tell them.
+Scientists are hoping to ﬁg-ure out where big cats ﬁrst appeared.
+But the twokinds of evidence don’t point to the same place.
+“If you only looked at the fossil, it would suggestAfrica,” Tseng said.
+“If you only looked at DNA,it would suggest Asia.
+”Table
+2: Example of elaborative simpliﬁcation withspeciﬁed elaboration targets: the elaboration is high-lighted in yellow, the target sentence in blue, and thetarget phrase is bolded.
+Baselines As a baseline, we compare our ap-proach to a previous method that directly generateelaborations from the surrounding context [15].
+Inaddition, we also compare our method to the one thatindicates the position within the context text wherethe generated elaboration should be inserted.
+In thissetting the input to the model consists of context sen-tences with the position of the elaboration sentencemarked by a specialized tag token, i.e., <explanatorysentence>.Generation Models For elaboration genera-tion, we employed LLaMA 3.2 3B model
+[4](meta-llama/Llama-3.2-3B) available via the Hug-ging Face library.1）2）The model was ﬁne-tuned for 3epochs with a learning rate of 1𝑒 − 6 and a batch size of32.
+All instructions provided to the LLaMa model wereformatted according to the standard Alpaca format [6].Elaborations were generated using beam search with4 beams, ensuring deterministic outputs by avoidingsampling.
+Evaluation Metrics Elaboration generation is arelatively new task in the ﬁeld of text simpliﬁcation,and as of now, no speciﬁc metric has been developedto assess the quality of such content additions.
+In ourwork, we adopt the BLEU metr ic
+[12], which has beenused in previous studies to evaluate elaborations, for thesake of compar ison.
+We also evaluate the generatedelaborations using BERTScore
+[18] and BARTScore[17], which are more capable of capturing semanticsimilarity and contextual relevance.1） https://huggingface.co/meta-llama/Llama-3.2-3B2）
+We also experimented with the BART-base model; howeverLlama-3.2 demonstrated better performance.
+
+Elaborative Text Simpliﬁcation via Target Estimationusing Large Language Models
+
+Martyna Gruszka
+
+
+
+Institute of Science Tokyo
+
+
+
+gruszka.m.8d39@m.isct.ac.jp
+
+
+
+Yuki Arase
+
+
+
+Institute of Science Tokyo
+
+
+
+arase@c.titech.ac.jp
+
+
+
+Abstract
+
+Text simpliﬁcation is widely believed to enhancecomprehension for non-native readers, and has, there-fore, been the focus of extensive research.
+However,conventional text simpliﬁcation often involves remov-ing a considerable amount of complex content, whichmay reduce valuable information and potentially limitopportunities to engage with challenging concepts.
+Inthis work, we speciﬁcally address the needs of lan-guage learners by focusing on elaborative text simpli-ﬁcation, a process involving content addition, such asproviding speciﬁc explanations and clariﬁcations thatcould make a text comprehensible within its context.
+We introduce a novel data-driven approach for guidedelaboration generation, demonstrating that explicitlyspecifying elaboration targets leads to improved per-formance.
+
+
+1 Introduction
+
+Text simpliﬁcation is a broad ﬁeld that focuses onmaking text content more comprehensible and acces-sible to a wider audience.
+It achieves this throughvarious text modiﬁcations, such as paraphrasing, wordreordering, content deletion, or insertion, while re-taining the original meaning [1].
+It has applicationsin improving readability for diverse groups, includingchildren [3], language learners [ 13][11], and individ-uals with language-related disabilities, such as aphasiaor dyslexia
+[2][14].This paper focuses on elaborative text simpliﬁca-tion [15], which, in contrast to standard simpliﬁcationmethods, focuses exclusively on content addition.
+Itsobjective is to enhance the text comprehension by pro-viding readers with additional contextual information.
+It involves the insertion of various types of clariﬁca-Elaborative SimpliﬁcationAnd his wife, Maria, was inspired to get her GED.The general educational development (GED) isequal to a high school diploma.
+It is for adultswho were unable to ﬁnish high school.
+Benito’spath is more uncertain.
+He has not yet registeredat the adult school.
+Table 1: Example of an elaborative simpliﬁcation,where the highlighted sentence is inserted as elabo-ration to provide additional context and clariﬁcation.tions or explanations, including deﬁnitions, examples,and background knowledge, to clarify unclear or com-plex terms and concepts in the text.
+Table 1 illustratesan example of the elaborative simpliﬁcation.
+Early studies on elaborative simpliﬁcation primarilyfocused on deﬁnition retrieval [10][5][8] and the in-sertion of contextually relevant phrases, often referredto as entity post-modiﬁers
+[9].
+Recently, a data-dr ivenapproach has emerged, treating elaboration generationas a sequence-to-sequence task [15].
+Despite theseadvancements, previous studies have revealed severalchallenges.
+In many cases, the generated elaborationsdiverge from the reference content, either clarifyingconcepts unrelated to the target concept or addressingentirely diﬀerent terms [15].
+We hypothesize that thislimitation arises from the lack of explicit guidance onwhat to elaborate upon.
+To address this issue, we propose a new guided ap-proach for elaboration generation, the Target-speciﬁedGeneration.
+We identify elaboration targets byprompting the GPT-4o model [7] and subsequently in-put them into a language model to generate elaborationsentences.
+Our experimental results demonstrate that incorpo-rating target information alongside context sentencesenhances model performance.
+In addition to gen-erating simple deﬁnitions, the models are capableof producing elaborations that involve more com-plex reasoning.
+To facilitate reproducibility and fur-ther research, we make our code publicly available athttps://github.com/martgru/ElabSimp
+
+2 Proposed Method
+
+We build our research upon the data-driven exper-iment presented in the previous work [15].
+A modeltakes as input the context sentences surrounding theelaboration sentence in the simpliﬁed document, witha given context window size, while the output consistssolely of the elaboration sentence.
+To generate meaningful and contextually appropriateelaborations, it is essential to accurately determine thetargets of such elaborations.
+We determine elaborationtargets for each instance in our dataset using the GPT-4o model.
+We prompt the GPT-4o model in ChatMLformat, utilizing structured output, to identify two keyelements from the context sentences surrounding theelaboration sentence:• Target sentence: The sentence in the context thatis directly clariﬁed by the elaboration sentence.• Target phrase: The speciﬁc phrase within thecontext sentences that the elaboration sentenceexplains or provides additional information about.
+Table 2 provides an example of an elaboration sentencealong with its corresponding target sentence and targetphrase, as identiﬁed from context by the GPT-4o [7].In our approach, the input to the model includes notonly the context sentences, but also explicitly speci-ﬁed targets extracted by the GPT-4o model: the targetphrase, target sentence, or both.
+
+
+3 Experimental Settings
+
+Dataset
+In our work, we utilize the annotated ver-sion of the Newsela corpus [16] , which contains 1.3Kinstances of elaborative simpliﬁcation [15].
+For themodel inputs, we adopt the original context windowsizes deﬁned in previous work [15]:• 𝐶2𝑠: 2 prior context sentences.• 𝐶4𝑠: 4 prior context sentences.•
+𝐶2𝑠+: 2 prior and posterior context sentences.• 𝐶4𝑠+: 4 prior and posterior context sentences.
+But there’s a problem: What scientists ﬁnd bylooking at big cat DNA doesn’t agree with whatthe fossils tell them.
+Scientists are hoping to ﬁg-ure out where big cats ﬁrst appeared.
+But the twokinds of evidence don’t point to the same place.
+“If you only looked at the fossil, it would suggestAfrica,” Tseng said.
+“If you only looked at DNA,it would suggest Asia.
+”Table
+2: Example of elaborative simpliﬁcation withspeciﬁed elaboration targets: the elaboration is high-lighted in yellow, the target sentence in blue, and thetarget phrase is bolded.
+Baselines As a baseline, we compare our ap-proach to a previous method that directly generateelaborations from the surrounding context [15].
+Inaddition, we also compare our method to the one thatindicates the position within the context text wherethe generated elaboration should be inserted.
+In thissetting the input to the model consists of context sen-tences with the position of the elaboration sentencemarked by a specialized tag token, i.e., <explanatorysentence>.Generation Models For elaboration genera-tion, we employed LLaMA 3.2 3B model
+[4](meta-llama/Llama-3.2-3B) available via the Hug-ging Face library.1）2）The model was ﬁne-tuned for 3epochs with a learning rate of 1𝑒 − 6 and a batch size of32.
+All instructions provided to the LLaMa model wereformatted according to the standard Alpaca format [6].Elaborations were generated using beam search with4 beams, ensuring deterministic outputs by avoidingsampling.
+Evaluation Metrics Elaboration generation is arelatively new task in the ﬁeld of text simpliﬁcation,and as of now, no speciﬁc metric has been developedto assess the quality of such content additions.
+In ourwork, we adopt the BLEU metr ic
+[12], which has beenused in previous studies to evaluate elaborations, for thesake of compar ison.
+We also evaluate the generatedelaborations using BERTScore
+[18] and BARTScore[17], which are more capable of capturing semanticsimilarity and contextual relevance.1） https://huggingface.co/meta-llama/Llama-3.2-3B2）
+We also experimented with the BART-base model; howeverLlama-3.2 demonstrated better performance.
+BLEU-2 Score BERT Score BART ScoreContext base pos p s p+s base pos p s p+s base pos p s p+s𝐶2𝑠9.9 9.6 8.8 9.4 9.2 0.50 0.50 0.50 0.50 0.51
+−3.33
+−3.34
+−3.29
+−3.31 −3.25𝐶2𝑠+8.0 9.6 10.8 7.0 10.5 0.48 0.51 0.51 0.48
+0.52
+−3.39 −3.27
+−3.20
+−3.37 −3.21𝐶4𝑠9.5 9.6 9.9 10.1 10.2 0.50 0.50 0.50 0.50 0.51
+−3.34 −3.34 −3.26 −3.31 −3.28𝐶4𝑠+8.3 8.4 9.3 6.4 8.4 0.48 0.50 0.51 0.47 0.50
+−3.36 −3.33 −3.21
+−3.37 −3.24Table 3: Results across all settings: base: baseline setting where the model receives only context sentences asinput, pos: position-speciﬁed, p: target phrase, s: target sentence, and p+s: target sentence with targetphrase.
+For each context setting, the highest scores for BLEU-2, BERTScore, and BARTScore are bolded.
+Method Input OutputposThe search team is in a race against time.
+Theblack box’s battery will last only 30 to 45 days.<explanatory sentence>
+The odds of ﬁnding itin time are low.
+Searchers will need to ﬁnd piecesof the plane.
+Predicted:
+After that, it will stop working.
+Reference:
+After that, the signal will gosilent.pos Munro grew up in Wingham, a traditional Canadiantown west of Toronto.
+She tended to write abouther experience there and her life after the socialrevolution of the 1960s.
+<explanatory sentence>Predicted: The revolution was a time ofchange.
+Reference:
+It was a time when people beganto break free of traditional roles..pIt would be able to download live video.
+Thesewould come from remote-controlled airplanes, ordrones, ﬂying overhead.
+Tiny motors in the ex-oskeleton would give the soldier extra strength.
+He’d be able to easily run and jump while carry-ing 100 or more pounds.
+Predicted:
+The soldier would see what washappening in real time.
+Reference:
+This would allow a soldier toknow what was happening nearby.p+s Then about 6 million years ago another big changeoccurred.
+Big cats split into several differentspecies.
+Predicted: They became diﬀerent kinds ofcats.
+Reference:
+They became lions, tigers, jaguarsand leopards..p
+“This is a big one”, said Les Grober.
+He is with theWater Resources Control Board.
+“We get manyissues before us.
+But this is a very dry year.
+”Predicted: It is a state agency.
+Reference:
+The board decides what to doabout the water..
+Table 4: Examples of target-speciﬁed and position-speciﬁed generation outputs: (1) an accurate explanationdirectly related to the preceding sentence, (2) overly general elaboration, (3) an accurate speculation on theoutcome of cer tain action, (4) an elaboration that fails to provide relevant examples, and (5) an accurate elaborationthat addresses a diﬀerent implicit question.
+The target sentence is highlighted in blue, and the target phrase in bold.
+
+
+4 Experimental Results
+
+Final results are presented in Table 3.The position-speciﬁed generation setting demon-strated slight improvements.
+This approach was espe-cially eﬀective in generating elaborations that involvedsimple explanations directly related to the precedingsentence, as shown in the ﬁrst row of Table 4.
+How-ever, there were also instances where the generatedelaborations either lacked meaningful content, or wereoverly general.
+An example of this issue is illustratedin the second row of Table 4.Target-speciﬁed generation, particularly the set-ting involving target phrase, proved to be beneﬁcial.
+The highest BLEU-2 scores and BARTScores wereachieved in this setting.
+In this conﬁguration, mod-
+
+Elaborative Text Simpliﬁcation via Target Estimationusing Large Language Models
+
+Martyna Gruszka
+
+
+
+Institute of Science Tokyo
+
+
+
+gruszka.m.8d39@m.isct.ac.jp
+
+
+
+Yuki Arase
+
+
+
+Institute of Science Tokyo
+
+
+
+arase@c.titech.ac.jp
+
+
+
+Abstract
+
+Text simpliﬁcation is widely believed to enhancecomprehension for non-native readers, and has, there-fore, been the focus of extensive research.
+However,conventional text simpliﬁcation often involves remov-ing a considerable amount of complex content, whichmay reduce valuable information and potentially limitopportunities to engage with challenging concepts.
+Inthis work, we speciﬁcally address the needs of lan-guage learners by focusing on elaborative text simpli-ﬁcation, a process involving content addition, such asproviding speciﬁc explanations and clariﬁcations thatcould make a text comprehensible within its context.
+We introduce a novel data-driven approach for guidedelaboration generation, demonstrating that explicitlyspecifying elaboration targets leads to improved per-formance.
+
+
+1 Introduction
+
+Text simpliﬁcation is a broad ﬁeld that focuses onmaking text content more comprehensible and acces-sible to a wider audience.
+It achieves this throughvarious text modiﬁcations, such as paraphrasing, wordreordering, content deletion, or insertion, while re-taining the original meaning [1].
+It has applicationsin improving readability for diverse groups, includingchildren [3], language learners [ 13][11], and individ-uals with language-related disabilities, such as aphasiaor dyslexia
+[2][14].This paper focuses on elaborative text simpliﬁca-tion [15], which, in contrast to standard simpliﬁcationmethods, focuses exclusively on content addition.
+Itsobjective is to enhance the text comprehension by pro-viding readers with additional contextual information.
+It involves the insertion of various types of clariﬁca-Elaborative SimpliﬁcationAnd his wife, Maria, was inspired to get her GED.The general educational development (GED) isequal to a high school diploma.
+It is for adultswho were unable to ﬁnish high school.
+Benito’spath is more uncertain.
+He has not yet registeredat the adult school.
+Table 1: Example of an elaborative simpliﬁcation,where the highlighted sentence is inserted as elabo-ration to provide additional context and clariﬁcation.tions or explanations, including deﬁnitions, examples,and background knowledge, to clarify unclear or com-plex terms and concepts in the text.
+Table 1 illustratesan example of the elaborative simpliﬁcation.
+Early studies on elaborative simpliﬁcation primarilyfocused on deﬁnition retrieval [10][5][8] and the in-sertion of contextually relevant phrases, often referredto as entity post-modiﬁers
+[9].
+Recently, a data-dr ivenapproach has emerged, treating elaboration generationas a sequence-to-sequence task [15].
+Despite theseadvancements, previous studies have revealed severalchallenges.
+In many cases, the generated elaborationsdiverge from the reference content, either clarifyingconcepts unrelated to the target concept or addressingentirely diﬀerent terms [15].
+We hypothesize that thislimitation arises from the lack of explicit guidance onwhat to elaborate upon.
+To address this issue, we propose a new guided ap-proach for elaboration generation, the Target-speciﬁedGeneration.
+We identify elaboration targets byprompting the GPT-4o model [7] and subsequently in-put them into a language model to generate elaborationsentences.
+Our experimental results demonstrate that incorpo-rating target information alongside context sentencesenhances model performance.
+In addition to gen-erating simple deﬁnitions, the models are capableof producing elaborations that involve more com-plex reasoning.
+To facilitate reproducibility and fur-ther research, we make our code publicly available athttps://github.com/martgru/ElabSimp
+
+2 Proposed Method
+
+We build our research upon the data-driven exper-iment presented in the previous work [15].
+A modeltakes as input the context sentences surrounding theelaboration sentence in the simpliﬁed document, witha given context window size, while the output consistssolely of the elaboration sentence.
+To generate meaningful and contextually appropriateelaborations, it is essential to accurately determine thetargets of such elaborations.
+We determine elaborationtargets for each instance in our dataset using the GPT-4o model.
+We prompt the GPT-4o model in ChatMLformat, utilizing structured output, to identify two keyelements from the context sentences surrounding theelaboration sentence:• Target sentence: The sentence in the context thatis directly clariﬁed by the elaboration sentence.• Target phrase: The speciﬁc phrase within thecontext sentences that the elaboration sentenceexplains or provides additional information about.
+Table 2 provides an example of an elaboration sentencealong with its corresponding target sentence and targetphrase, as identiﬁed from context by the GPT-4o [7].In our approach, the input to the model includes notonly the context sentences, but also explicitly speci-ﬁed targets extracted by the GPT-4o model: the targetphrase, target sentence, or both.
+
+
+3 Experimental Settings
+
+Dataset
+In our work, we utilize the annotated ver-sion of the Newsela corpus [16] , which contains 1.3Kinstances of elaborative simpliﬁcation [15].
+For themodel inputs, we adopt the original context windowsizes deﬁned in previous work [15]:• 𝐶2𝑠: 2 prior context sentences.• 𝐶4𝑠: 4 prior context sentences.•
+𝐶2𝑠+: 2 prior and posterior context sentences.• 𝐶4𝑠+: 4 prior and posterior context sentences.
+But there’s a problem: What scientists ﬁnd bylooking at big cat DNA doesn’t agree with whatthe fossils tell them.
+Scientists are hoping to ﬁg-ure out where big cats ﬁrst appeared.
+But the twokinds of evidence don’t point to the same place.
+“If you only looked at the fossil, it would suggestAfrica,” Tseng said.
+“If you only looked at DNA,it would suggest Asia.
+”Table
+2: Example of elaborative simpliﬁcation withspeciﬁed elaboration targets: the elaboration is high-lighted in yellow, the target sentence in blue, and thetarget phrase is bolded.
+Baselines As a baseline, we compare our ap-proach to a previous method that directly generateelaborations from the surrounding context [15].
+Inaddition, we also compare our method to the one thatindicates the position within the context text wherethe generated elaboration should be inserted.
+In thissetting the input to the model consists of context sen-tences with the position of the elaboration sentencemarked by a specialized tag token, i.e., <explanatorysentence>.Generation Models For elaboration genera-tion, we employed LLaMA 3.2 3B model
+[4](meta-llama/Llama-3.2-3B) available via the Hug-ging Face library.1）2）The model was ﬁne-tuned for 3epochs with a learning rate of 1𝑒 − 6 and a batch size of32.
+All instructions provided to the LLaMa model wereformatted according to the standard Alpaca format [6].Elaborations were generated using beam search with4 beams, ensuring deterministic outputs by avoidingsampling.
+Evaluation Metrics Elaboration generation is arelatively new task in the ﬁeld of text simpliﬁcation,and as of now, no speciﬁc metric has been developedto assess the quality of such content additions.
+In ourwork, we adopt the BLEU metr ic
+[12], which has beenused in previous studies to evaluate elaborations, for thesake of compar ison.
+We also evaluate the generatedelaborations using BERTScore
+[18] and BARTScore[17], which are more capable of capturing semanticsimilarity and contextual relevance.1） https://huggingface.co/meta-llama/Llama-3.2-3B2）
+We also experimented with the BART-base model; howeverLlama-3.2 demonstrated better performance.
+BLEU-2 Score BERT Score BART ScoreContext base pos p s p+s base pos p s p+s base pos p s p+s𝐶2𝑠9.9 9.6 8.8 9.4 9.2 0.50 0.50 0.50 0.50 0.51
+−3.33
+−3.34
+−3.29
+−3.31 −3.25𝐶2𝑠+8.0 9.6 10.8 7.0 10.5 0.48 0.51 0.51 0.48
+0.52
+−3.39 −3.27
+−3.20
+−3.37 −3.21𝐶4𝑠9.5 9.6 9.9 10.1 10.2 0.50 0.50 0.50 0.50 0.51
+−3.34 −3.34 −3.26 −3.31 −3.28𝐶4𝑠+8.3 8.4 9.3 6.4 8.4 0.48 0.50 0.51 0.47 0.50
+−3.36 −3.33 −3.21
+−3.37 −3.24Table 3: Results across all settings: base: baseline setting where the model receives only context sentences asinput, pos: position-speciﬁed, p: target phrase, s: target sentence, and p+s: target sentence with targetphrase.
+For each context setting, the highest scores for BLEU-2, BERTScore, and BARTScore are bolded.
+Method Input OutputposThe search team is in a race against time.
+Theblack box’s battery will last only 30 to 45 days.<explanatory sentence>
+The odds of ﬁnding itin time are low.
+Searchers will need to ﬁnd piecesof the plane.
+Predicted:
+After that, it will stop working.
+Reference:
+After that, the signal will gosilent.pos Munro grew up in Wingham, a traditional Canadiantown west of Toronto.
+She tended to write abouther experience there and her life after the socialrevolution of the 1960s.
+<explanatory sentence>Predicted: The revolution was a time ofchange.
+Reference:
+It was a time when people beganto break free of traditional roles..pIt would be able to download live video.
+Thesewould come from remote-controlled airplanes, ordrones, ﬂying overhead.
+Tiny motors in the ex-oskeleton would give the soldier extra strength.
+He’d be able to easily run and jump while carry-ing 100 or more pounds.
+Predicted:
+The soldier would see what washappening in real time.
+Reference:
+This would allow a soldier toknow what was happening nearby.p+s Then about 6 million years ago another big changeoccurred.
+Big cats split into several differentspecies.
+Predicted: They became diﬀerent kinds ofcats.
+Reference:
+They became lions, tigers, jaguarsand leopards..p
+“This is a big one”, said Les Grober.
+He is with theWater Resources Control Board.
+“We get manyissues before us.
+But this is a very dry year.
+”Predicted: It is a state agency.
+Reference:
+The board decides what to doabout the water..
+Table 4: Examples of target-speciﬁed and position-speciﬁed generation outputs: (1) an accurate explanationdirectly related to the preceding sentence, (2) overly general elaboration, (3) an accurate speculation on theoutcome of cer tain action, (4) an elaboration that fails to provide relevant examples, and (5) an accurate elaborationthat addresses a diﬀerent implicit question.
+The target sentence is highlighted in blue, and the target phrase in bold.
+
+
+4 Experimental Results
+
+Final results are presented in Table 3.The position-speciﬁed generation setting demon-strated slight improvements.
+This approach was espe-cially eﬀective in generating elaborations that involvedsimple explanations directly related to the precedingsentence, as shown in the ﬁrst row of Table 4.
+How-ever, there were also instances where the generatedelaborations either lacked meaningful content, or wereoverly general.
+An example of this issue is illustratedin the second row of Table 4.Target-speciﬁed generation, particularly the set-ting involving target phrase, proved to be beneﬁcial.
+The highest BLEU-2 scores and BARTScores wereachieved in this setting.
+In this conﬁguration, mod-Method Input Outputpos
+The Internet helped Mark Zuckerberg start Face-book while still a college student.
+<explanatorysentence>Predicted: Facebook is now one of the mostpopular websites in the world.
+Reference:
+He soon became a billionaire.pos New companies have come that need skilled work-ers with more education.
+New Haven youth wantthose jobs, but they do not have the education or theskills.
+<explanatory sentence>
+That is whereNew Haven Promise comes in.
+It will make a dif-ference by paying for college.
+Predicted: They do not know how to get theeducation they need.
+Reference:
+Many do not have the money toget the training they need.p+s There are many reasons for the population shift.
+Many diﬀerent groups of Asian-Americans aremoving to the South.
+The government tracks 23different ethnic groups that it considers Asian-American.
+It’s hard to ﬁnd one explanation for thechanges.
+Predicted: There are many diﬀerent Asian-American groups.
+Reference: Groups of Chinese, Indians, Ko-reans and Vietnamese are just some of them.
+Table 5: Examples of predicted elaborations showcasing diﬀerent challenges in evaluation: (1) an elaborationthat provides meaningful information but diverges from the reference, (2) an elaboration that achieves high BLEUscores due to word overlap but signiﬁcantly diﬀers in meaning, and (3) an elaboration that lacks necessary examplesbut achieves a high BERTScore.
+The target sentence is highlighted in blue, and the target phrase in bold.els accurately generated elaborations that included notonly simple deﬁnitions but also more complex reason-ing, such as explaining cause-eﬀect relationships, orspeculating on the outcomes of certain actions, as il-lustrated by the example in the third row of Table 4.Additionally, the setting combining the targetsentence and target phrase achieved the highestBERTScores.
+The generated elaborations in this set-ting were similar to those obtained with the targetphrase setting, but there were some notable diﬀerences.
+For example, some elaborations, particularly those in-tended to provide examples of a target term or concept,were abstracted, as shown in the forth row of Table 4.Key ﬁndings from our work indicate that target-speciﬁed elaboration generation settings can improvemodel’s performance; however, the improvements werenot as signiﬁcant as we initially hypothesized.
+Whilespecifying the target phrase often proved to be bene-ﬁcial, challenges remained in generating elaborationsthat accurately addressed the speciﬁed target.
+In manyinstances, the generated elaborations diverged in formand content from the references, as they tended to an-swer diﬀerent implicit questions.
+An example of suchelaboration is presented in the ﬁfth row of Table 4.
+
+
+5 Discussion
+
+Currently, the evaluation of elaborative simpliﬁca-tion is constrained by its reliance on reference-basedcomparisons, where predicted elaborations are evalu-ated solely against a predeﬁned reference.
+However, weargue that this approach is not well-suited for a task thatinvolves generating new content.
+Our analysis revealedmany instances where the generated elaborations wererelevant and provided high-quality additional informa-tion but received low scores because they diﬀered fromthe reference elaborations.
+An example of this is shownin the ﬁrst row of Table 5.Conversely, there were cases where the generatedelaborations achieved high scores by simply mirroringthe words in the reference, yet they diﬀered signiﬁ-cantly in meaning or failed to provide suﬃcient infor-mation, such as examples of a given concept.
+Theseissues are illustrated in the second and third rows ofTable 5, respectively.
+These limitations highlight the need for a novel eval-uation metric speciﬁcally designed for content additiontasks, which would account for both the relevance andquality of the added content, eliminating the relianceon reference-based comparisons.
+
+
+
+Acknowledgments
+
+We extend our gratitude to Junyi Jessy Li and YatingWu from The University of Texas at Austin for provid-ing the annotated version of the Newsela corpus. Thiswork was supported by the JSPS KAKENHI GrantNumber JP21H03564.
+
+References
+
+
+[1]Fernando Alva-Manchego, Carolina Scarton, andLucia Specia. Data-driven sentence simpliﬁcation:Survey and benchmark. Computational Linguis-tics, 46(1):135–187, 2020.
+[2]John Carroll, Guido Minnen, Yvonne Canning,Siobhan Devlin, and John Tait. Practical simpliﬁ-cation of english newspaper text to assist aphasicreaders. InProc. of AAAI-98 Workshop on Inte-grating Artiﬁcial Intelligence and Assistive Tech-nology, 1998.
+[3]Jan De Belder and Marie-Francine Moens. Textsimpliﬁcation for children. In In Proceedings of SI-GIR workshop on accessible search systems, 2010.
+[4]Abhimanyu Dubey, Abhinav Jauhri, AbhinavPandey, et al. The llama 3 herd of models. arXivpreprint arXiv:2407.21783, 2024.
+[5]Soojeong Eom, Markus Dickinson, and RebeccaSachs. Sense-speciﬁc lexical information for read-ing assistance. In Proceedings of the Seventh Work-shop on Building Educational Applications UsingNLP, 2012.
+[6]Center for Research on Foundation Mod-els (CRFM). Stanford alpaca: An instruction-following model, 2023. https://crfm.stanford.edu/2023/03/13/alpaca.html.
+[7]Aaron Hurst, Adam Lerer, Adam P. Goucher,et al. Gpt-4o system card. arXiv preprintarXiv:2410.21276, 2024.
+[8]Sasikiran Kandula, Dorothy Curtis, and QingZeng-Treitler. A semantic and syntactic text simpli-ﬁcation tool for health content. AMIA Symposium,2010:366–70, 2010.
+[9]Jun Seok Kang, Robert Logan, Zewei Chu, YangChen, Dheeru Dua, Kevin Gimpel, Sameer Singh,and Niranjan Balasubramanian. PoMo: Generat-ing entity-speciﬁc post-modiﬁers in context. InProceedings of the 2019 Conference of the NorthAmerican Chapter of the Association for Compu-tational Linguistics: Human Language Technolo-gies, Volume 1 (Long and Short Papers), 2019.
+[10]Gustavo Paetzold and Lucia Specia. Anita: Anintelligent text adaptation tool. In Proceedings ofCOLING 2016, the 26th International Conferenceon Computational Linguistics: System Demonstra-tions, 2016.
+[11]Gustavo H. Paetzold. Lexical simpliﬁcation fornon-native English speakers. PhD thesis, Univer-sity of Sheﬃeld, 2016.
+[12]Kishore Papineni, Salim Roukos, Todd Ward, andWei-Jing Zhu. Bleu: a method for automatic eval-uation of machine translation. In Proceedings ofthe 40th Annual Meeting on Association for Com-putational Linguistics, 2002.
+[13]Sarah E. Petersen and Mari Ostendorf. Text sim-pliﬁcation for language learners: a corpus analysis.In Slate, 2007.
+[14]Luz Rello, Ricardo A. Baeza-Yates, LauraDempere-Marco, and Horacio Saggion. Frequentwords improve readability and short words im-prove understandability for people with dyslexia.In IFIP TC13 International Conference on Human-Computer Interaction, 2013.
+[15]Neha Srikanth and Junyi J. Li. Elaborative sim-pliﬁcation: Content addition and explanation gen-eration in text simpliﬁcation. In Findings of theAssociation for Computational Linguistics: ACL-IJCNLP 2021, 2021.
+[16]Wei Xu, Chris Callison-Burch, and CourtneyNapoles. Problems in current text simpliﬁcationresearch: New data can help. Transactions of theAssociation for Computational Linguistics, 3:283–297, 2015.
+[17]Weizhe Yuan, Graham Neubig, and Pengfei Liu.Bartscore: Evaluating generated text as text gener-ation. Advances in Neural Information ProcessingSystems, 34:27263–27277, 2021.
+[18]Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q.Weinberger, and Yoav Artzi. Bertscore: Eval-uating text generation with bert. arXiv preprintarXiv:1904.09675, 2019.

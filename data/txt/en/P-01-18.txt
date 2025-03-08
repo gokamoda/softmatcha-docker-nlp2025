@@ -1,0 +1,508 @@
+mBART for Supervised Gloss-Free Sign Language Translation:Integrating RGB and Facial Keypoint Images
+
+Jiannan Mao
+
+1∗
+
+  Chenchen Ding
+
+2
+
+ Hour Kaing
+
+2
+
+ Hideki Tanaka
+
+2
+
+ Masao Utiyama
+
+2
+
+ Tadahiro Matsumoto
+
+11
+
+Gifu University, Gifu, Japan  
+
+2
+
+ASTREC, UCRI, NICT, Japan
+
+
+
+ {mao, tad}@mat.info.gifu-u.ac.jp
+
+
+
+ {chenchen.ding, hour kaing, hideki.tanaka, mutiyama}@nict.go.jp
+
+
+
+Abstract
+
+Sign language translation (SLT) has traditionally de-pended on gloss annotations, which are costly and time-consuming to produce.
+This work presents a gloss-free SLTframework that integrates raw RGB video input with facialkeypoint features, enabling richer visual representations.
+We leverage a two-stage approach: ﬁrst aligning visualand textual features with a frozen multilingual mBARTencoder, then reﬁning translation through the mBART de-coder.
+Evaluations on the PHOENIX-2014T dataset showperformance gains over baselines, yielding a +0.64 BLEUimprovement.
+These results conﬁrm that incorporating fa-cial keypoints strategy can signiﬁcantly improve gloss-freesign language translation.
+
+
+1 Introduction
+
+Sign languages are visual signals used for communi-cation among the Deaf or Hard of Hearing (DHH).
+Theselanguages are primarily expressed through manual articula-tions, but they are also greatly enr iched by the movement ofthe body, mouth, eyes, and eyebrows.
+This visual complex-ity not only enhances the expressiveness of sign languagesbut also helps convey thoughts more clearly
+[1, 2].For those of us with intact hearing and speaking abili-ties, there is often a misconception that “DHH individualsprefer reading spoken language; therefore, when commu-nicating with DHH, it is suﬃcient to rely solely on spokenlanguage, using written text, either on paper or via smartdevices [3].”
+This perspective fails to account for a criti-cal fact: for many DHH individuals, sign language is not∗This work was done during the ﬁrst author’s internship at NationalInstitute of Information and Communications Technology, Kyoto,Japan.merely a communication tool but their primary and mostnatural language, deeply intertwined with their identity andculture
+[4, 5].
+Unlike written spoken languages, which mayfeel secondary or foreign to many DHH individuals, signlanguage provides a more direct and expressive connectionto their thoughts and emotions [5].In this context, Sign Language Translation (SLT) sys-tems are essential to bridge the communication gap be-tween DHH individuals and the hearing population, en-abling more meaningful interactions and fostering a societythat tr uly values diversity, equity, and
+inclusion
+[6].To address this challenge, researchers have explored var-ious approaches inspired by the Neural Machine Transla-tion (NMT) framework, adapted to handle visual inputs.
+Typically, a sequence of video frames is processed by avisual network to either predict glosses, or extract imagefeatures, which are then mapped to spoken language usingNMT
+[7, 8, 9, 10], as shown in Figure 1.
+While glossesenhance translation accuracy, their production demandscostly, time-intensive manual annotation.
+As a result,gloss-free SLT has emerged as a trend, aiming to directlytranslate raw video into text [9, 11, 12].This work focuses on gloss-free sign language transla-tion, employing the mBART model as a teacher modelto supervise the outputs of a visual network through theencoder outputs of mBART.
+For the visual network, weutilize a combination of RGB images and facial keypoints,enable the model to capture more detailed facial featuresduring the learning process.
+Our experimental results showa signiﬁcant improvement, with an increase of 0.64 BLEUpoints over the baseline.
+This approach not only conﬁrmsthe eﬀectiveness of combining RGB images with facialkeypoints for visual feature extraction but also underscores
+
+mBART for Supervised Gloss-Free Sign Language Translation:Integrating RGB and Facial Keypoint Images
+
+Jiannan Mao
+
+1∗
+
+  Chenchen Ding
+
+2
+
+ Hour Kaing
+
+2
+
+ Hideki Tanaka
+
+2
+
+ Masao Utiyama
+
+2
+
+ Tadahiro Matsumoto
+
+11
+
+Gifu University, Gifu, Japan  
+
+2
+
+ASTREC, UCRI, NICT, Japan
+
+
+
+ {mao, tad}@mat.info.gifu-u.ac.jp
+
+
+
+ {chenchen.ding, hour kaing, hideki.tanaka, mutiyama}@nict.go.jp
+
+
+
+Abstract
+
+Sign language translation (SLT) has traditionally de-pended on gloss annotations, which are costly and time-consuming to produce.
+This work presents a gloss-free SLTframework that integrates raw RGB video input with facialkeypoint features, enabling richer visual representations.
+We leverage a two-stage approach: ﬁrst aligning visualand textual features with a frozen multilingual mBARTencoder, then reﬁning translation through the mBART de-coder.
+Evaluations on the PHOENIX-2014T dataset showperformance gains over baselines, yielding a +0.64 BLEUimprovement.
+These results conﬁrm that incorporating fa-cial keypoints strategy can signiﬁcantly improve gloss-freesign language translation.
+
+
+1 Introduction
+
+Sign languages are visual signals used for communi-cation among the Deaf or Hard of Hearing (DHH).
+Theselanguages are primarily expressed through manual articula-tions, but they are also greatly enr iched by the movement ofthe body, mouth, eyes, and eyebrows.
+This visual complex-ity not only enhances the expressiveness of sign languagesbut also helps convey thoughts more clearly
+[1, 2].For those of us with intact hearing and speaking abili-ties, there is often a misconception that “DHH individualsprefer reading spoken language; therefore, when commu-nicating with DHH, it is suﬃcient to rely solely on spokenlanguage, using written text, either on paper or via smartdevices [3].”
+This perspective fails to account for a criti-cal fact: for many DHH individuals, sign language is not∗This work was done during the ﬁrst author’s internship at NationalInstitute of Information and Communications Technology, Kyoto,Japan.merely a communication tool but their primary and mostnatural language, deeply intertwined with their identity andculture
+[4, 5].
+Unlike written spoken languages, which mayfeel secondary or foreign to many DHH individuals, signlanguage provides a more direct and expressive connectionto their thoughts and emotions [5].In this context, Sign Language Translation (SLT) sys-tems are essential to bridge the communication gap be-tween DHH individuals and the hearing population, en-abling more meaningful interactions and fostering a societythat tr uly values diversity, equity, and
+inclusion
+[6].To address this challenge, researchers have explored var-ious approaches inspired by the Neural Machine Transla-tion (NMT) framework, adapted to handle visual inputs.
+Typically, a sequence of video frames is processed by avisual network to either predict glosses, or extract imagefeatures, which are then mapped to spoken language usingNMT
+[7, 8, 9, 10], as shown in Figure 1.
+While glossesenhance translation accuracy, their production demandscostly, time-intensive manual annotation.
+As a result,gloss-free SLT has emerged as a trend, aiming to directlytranslate raw video into text [9, 11, 12].This work focuses on gloss-free sign language transla-tion, employing the mBART model as a teacher modelto supervise the outputs of a visual network through theencoder outputs of mBART.
+For the visual network, weutilize a combination of RGB images and facial keypoints,enable the model to capture more detailed facial featuresduring the learning process.
+Our experimental results showa signiﬁcant improvement, with an increase of 0.64 BLEUpoints over the baseline.
+This approach not only conﬁrmsthe eﬀectiveness of combining RGB images with facialkeypoints for visual feature extraction but also underscores11August_2010_Wednesday_tagesschau-2Spoken Languages: tiefer luftdruck bestimmt in den nächsten tagen unser wetter（ low air pressure will determine our weather in the next few days ）Gloss Annotations (gloss-based):  DRUCK TIEF KOMMENImage Features (gloss-free):Visual Network......encoderdecoderFigure 1
+The diﬀerence between gloss-free and gloss-based approaches in sign language translation.
+In the example, we demonstratedthe diﬀerence in word order between sign and spoken languages : DRUCK corresponds to luftdruck, and TIEF corresponds to tiefer.the eﬃcacy of employing mBART as a supervisory model.
+
+
+2 Related Works
+
+Gloss-Free Glosses are written labels used to repre-sent gestures in sign language, providing a stable represen-tation units by segmenting continuous gestures into discretelexical elements.
+For instance, the gesture for ‘Put the bookon the table’ might be glossed as ‘PUT BOOK TABLE’.
+While glosses act as a bridge between sign and spokenlanguage, they are not equivalent to spoken words.
+Theyfollow the syntax of sign language, which can diﬀer fromspoken language order, as shown in Figure 1.Currently, the majority of gloss-free sign language trans-lation studies rely on datasets without gloss annotations[13, 14, 15].
+Our work follows this gloss-free researchdirection.
+For comparability with the baseline [9], we usea dataset containing gloss annotations [16] but completelydisregard the gloss information.
+Facial Keypoints Visual feature extraction is cru-cial for sign language translation.
+Combining keypointswith RGB images has been shown to improve recog-nition accuracy by oﬀering richer visual representations[8, 17].
+In particular, incorporating facial keypoints en-hances these representations, as they provide ﬁne-grainedsemantic cues, such as expressions, which help distinguishambiguous gestures.
+In this work, we extract facial keypoints to enhance themodel’s ability to learn detailed facial features, which areoften overlooked in existing studies.mBART in SLT mBART is a pre-trained multilin-gual model that using denoising autoencoding to captureuniversal linguistic features
+[18].
+It has demonstratedstrong performance in low-resource tasks, including signlanguage translation [7, 8, 9, 10].We adopt mBART as a teacher model to supervise thevisual networks, aligning its outputs with the encoder rep-resentations of mBART.
+This strategy bridges the gap be-tween visual features and linguistic understanding, result-ing in improved translation performance.
+
+
+3 Method
+
+Our method employs a two-stage framework for gloss-free sign language translation, as shown in Figure 2.
+For thevisual feature extraction network, we adopt the approachproposed by Zhou et al.
+[9], which combines ResNet [19],temporal blocks
+[20], and parts of the mBART encoder
+[18]to form the visual network.
+Two separate visual networkare utilized: one processes the raw RGB image sequences,while the other processes facial keypoints.
+These visualfeatures are aligned with the frozen mBART encoder inthe ﬁrst stage, and further integrated and trained with themBART decoder in the second stage, enabling the transla-tion from sign language to spoken language.
+Data Preparation
+The original dataset 𝐷 containRGB sequences 𝑑𝑟𝑔𝑏and corresponding text 𝑑𝑡𝑒𝑥𝑡: 𝐷 =(𝑑𝑟𝑔𝑏, 𝑑𝑡𝑒𝑥𝑡).
+We extract the facial keypoints sequence𝑑𝑘𝑒𝑦for each 𝑑𝑟𝑔𝑏using HRNet
+[21], forming 𝐷′=(𝑑𝑟𝑔𝑏, 𝑑𝑘𝑒𝑦, 𝑑𝑡𝑒𝑥𝑡).
+Here, 𝑑𝑟𝑔𝑏, 𝑑𝑘𝑒𝑦are sequences inℝ𝑁 ×𝐿𝑟𝑔𝑏, and 𝑑𝑡𝑒𝑥𝑡∈ ℝ𝑁 ×𝐿𝑡𝑒 𝑥𝑡, where 𝑁 is the datasetsize.
+These augmented data provide richer visual cuesthat support more nuanced interpretation of signs imagesequences.
+
+mBART for Supervised Gloss-Free Sign Language Translation:Integrating RGB and Facial Keypoint Images
+
+Jiannan Mao
+
+1∗
+
+  Chenchen Ding
+
+2
+
+ Hour Kaing
+
+2
+
+ Hideki Tanaka
+
+2
+
+ Masao Utiyama
+
+2
+
+ Tadahiro Matsumoto
+
+11
+
+Gifu University, Gifu, Japan  
+
+2
+
+ASTREC, UCRI, NICT, Japan
+
+
+
+ {mao, tad}@mat.info.gifu-u.ac.jp
+
+
+
+ {chenchen.ding, hour kaing, hideki.tanaka, mutiyama}@nict.go.jp
+
+
+
+Abstract
+
+Sign language translation (SLT) has traditionally de-pended on gloss annotations, which are costly and time-consuming to produce.
+This work presents a gloss-free SLTframework that integrates raw RGB video input with facialkeypoint features, enabling richer visual representations.
+We leverage a two-stage approach: ﬁrst aligning visualand textual features with a frozen multilingual mBARTencoder, then reﬁning translation through the mBART de-coder.
+Evaluations on the PHOENIX-2014T dataset showperformance gains over baselines, yielding a +0.64 BLEUimprovement.
+These results conﬁrm that incorporating fa-cial keypoints strategy can signiﬁcantly improve gloss-freesign language translation.
+
+
+1 Introduction
+
+Sign languages are visual signals used for communi-cation among the Deaf or Hard of Hearing (DHH).
+Theselanguages are primarily expressed through manual articula-tions, but they are also greatly enr iched by the movement ofthe body, mouth, eyes, and eyebrows.
+This visual complex-ity not only enhances the expressiveness of sign languagesbut also helps convey thoughts more clearly
+[1, 2].For those of us with intact hearing and speaking abili-ties, there is often a misconception that “DHH individualsprefer reading spoken language; therefore, when commu-nicating with DHH, it is suﬃcient to rely solely on spokenlanguage, using written text, either on paper or via smartdevices [3].”
+This perspective fails to account for a criti-cal fact: for many DHH individuals, sign language is not∗This work was done during the ﬁrst author’s internship at NationalInstitute of Information and Communications Technology, Kyoto,Japan.merely a communication tool but their primary and mostnatural language, deeply intertwined with their identity andculture
+[4, 5].
+Unlike written spoken languages, which mayfeel secondary or foreign to many DHH individuals, signlanguage provides a more direct and expressive connectionto their thoughts and emotions [5].In this context, Sign Language Translation (SLT) sys-tems are essential to bridge the communication gap be-tween DHH individuals and the hearing population, en-abling more meaningful interactions and fostering a societythat tr uly values diversity, equity, and
+inclusion
+[6].To address this challenge, researchers have explored var-ious approaches inspired by the Neural Machine Transla-tion (NMT) framework, adapted to handle visual inputs.
+Typically, a sequence of video frames is processed by avisual network to either predict glosses, or extract imagefeatures, which are then mapped to spoken language usingNMT
+[7, 8, 9, 10], as shown in Figure 1.
+While glossesenhance translation accuracy, their production demandscostly, time-intensive manual annotation.
+As a result,gloss-free SLT has emerged as a trend, aiming to directlytranslate raw video into text [9, 11, 12].This work focuses on gloss-free sign language transla-tion, employing the mBART model as a teacher modelto supervise the outputs of a visual network through theencoder outputs of mBART.
+For the visual network, weutilize a combination of RGB images and facial keypoints,enable the model to capture more detailed facial featuresduring the learning process.
+Our experimental results showa signiﬁcant improvement, with an increase of 0.64 BLEUpoints over the baseline.
+This approach not only conﬁrmsthe eﬀectiveness of combining RGB images with facialkeypoints for visual feature extraction but also underscores11August_2010_Wednesday_tagesschau-2Spoken Languages: tiefer luftdruck bestimmt in den nächsten tagen unser wetter（ low air pressure will determine our weather in the next few days ）Gloss Annotations (gloss-based):  DRUCK TIEF KOMMENImage Features (gloss-free):Visual Network......encoderdecoderFigure 1
+The diﬀerence between gloss-free and gloss-based approaches in sign language translation.
+In the example, we demonstratedthe diﬀerence in word order between sign and spoken languages : DRUCK corresponds to luftdruck, and TIEF corresponds to tiefer.the eﬃcacy of employing mBART as a supervisory model.
+
+
+2 Related Works
+
+Gloss-Free Glosses are written labels used to repre-sent gestures in sign language, providing a stable represen-tation units by segmenting continuous gestures into discretelexical elements.
+For instance, the gesture for ‘Put the bookon the table’ might be glossed as ‘PUT BOOK TABLE’.
+While glosses act as a bridge between sign and spokenlanguage, they are not equivalent to spoken words.
+Theyfollow the syntax of sign language, which can diﬀer fromspoken language order, as shown in Figure 1.Currently, the majority of gloss-free sign language trans-lation studies rely on datasets without gloss annotations[13, 14, 15].
+Our work follows this gloss-free researchdirection.
+For comparability with the baseline [9], we usea dataset containing gloss annotations [16] but completelydisregard the gloss information.
+Facial Keypoints Visual feature extraction is cru-cial for sign language translation.
+Combining keypointswith RGB images has been shown to improve recog-nition accuracy by oﬀering richer visual representations[8, 17].
+In particular, incorporating facial keypoints en-hances these representations, as they provide ﬁne-grainedsemantic cues, such as expressions, which help distinguishambiguous gestures.
+In this work, we extract facial keypoints to enhance themodel’s ability to learn detailed facial features, which areoften overlooked in existing studies.mBART in SLT mBART is a pre-trained multilin-gual model that using denoising autoencoding to captureuniversal linguistic features
+[18].
+It has demonstratedstrong performance in low-resource tasks, including signlanguage translation [7, 8, 9, 10].We adopt mBART as a teacher model to supervise thevisual networks, aligning its outputs with the encoder rep-resentations of mBART.
+This strategy bridges the gap be-tween visual features and linguistic understanding, result-ing in improved translation performance.
+
+
+3 Method
+
+Our method employs a two-stage framework for gloss-free sign language translation, as shown in Figure 2.
+For thevisual feature extraction network, we adopt the approachproposed by Zhou et al.
+[9], which combines ResNet [19],temporal blocks
+[20], and parts of the mBART encoder
+[18]to form the visual network.
+Two separate visual networkare utilized: one processes the raw RGB image sequences,while the other processes facial keypoints.
+These visualfeatures are aligned with the frozen mBART encoder inthe ﬁrst stage, and further integrated and trained with themBART decoder in the second stage, enabling the transla-tion from sign language to spoken language.
+Data Preparation
+The original dataset 𝐷 containRGB sequences 𝑑𝑟𝑔𝑏and corresponding text 𝑑𝑡𝑒𝑥𝑡: 𝐷 =(𝑑𝑟𝑔𝑏, 𝑑𝑡𝑒𝑥𝑡).
+We extract the facial keypoints sequence𝑑𝑘𝑒𝑦for each 𝑑𝑟𝑔𝑏using HRNet
+[21], forming 𝐷′=(𝑑𝑟𝑔𝑏, 𝑑𝑘𝑒𝑦, 𝑑𝑡𝑒𝑥𝑡).
+Here, 𝑑𝑟𝑔𝑏, 𝑑𝑘𝑒𝑦are sequences inℝ𝑁 ×𝐿𝑟𝑔𝑏, and 𝑑𝑡𝑒𝑥𝑡∈ ℝ𝑁 ×𝐿𝑡𝑒 𝑥𝑡, where 𝑁 is the datasetsize.
+These augmented data provide richer visual cuesthat support more nuanced interpretation of signs imagesequences.tiefer luftdruckbestimmt  in den nächsten tagen unser wetterHRNetVisual NetworkVisual Networktiefer luftdruckbestimmt  in den nächsten tagen unser wetterencoderdecoderencoderdecoder(R,T)(K,T)First Stage TrainingSecond Stage TrainingData Preparation / Second Stage First StageDiscardFigure 2 Overview of our two-stage framework.
+In the ﬁrst stage, we align visual (RGB + facial keypoints) and textual features usinga frozen mBART encoder.
+In the second stage, we fuse the learned visual representations and train the mBART decoder to produce theﬁnal translations.
+Colored elements in background correspond to the main focus at each stage.
+First Stage: Feature Alignment Sign and spokenlanguage sequences diﬀer in length (𝐿𝑟𝑔𝑏≠ 𝐿𝑡𝑒𝑥𝑡), mak-ing direct alignment challenging.
+To address this, we in-troduce special markers⟨𝑟𝑔𝑏⟩,⟨𝑘𝑒𝑦⟩, and⟨𝐸𝑂𝑆⟩at theend of each respective sequence.
+These markers produce aglobal summar y vector for each modality.
+We deﬁne two visual networks: 𝑓𝑟𝑔𝑏for RGB inputsand 𝑓𝑘𝑒𝑦for facial keypoints.
+Both employ ResNet [ 19],temporal blocks
+[20], and parts of the mBART encoderarchitecture [18] as per [9].
+Extracted features are:𝑅 = 𝑓𝑟𝑔𝑏(𝑑𝑟𝑔𝑏,⟨𝑟𝑔𝑏⟩), 𝐾 = 𝑓𝑘𝑒𝑦(𝑑𝑘𝑒𝑦,⟨𝑘𝑒𝑦⟩)Here, 𝑅 and 𝐾 represent the feature vectors extracted fromthe respective positions of the markers⟨𝑟𝑔𝑏⟩and⟨𝑘𝑒𝑦⟩,which aggregate the information from the entire sequence.
+For the text sequence, we employ the mBART encoder,𝑚𝐵𝐴𝑅𝑇𝑒𝑛𝑐𝑜𝑑𝑒𝑟, as a feature extractor.
+During this phase,𝑚𝐵𝐴𝑅𝑇𝑒𝑛𝑐𝑜𝑑𝑒𝑟remains frozen to serve as a teacher model,to ensure robust and stable supervision through text em-beddings.
+The text sequence is processed as follows:𝑇 = 𝑚𝐵𝐴𝑅𝑇𝑒𝑛𝑐𝑜𝑑𝑒𝑟(𝑑𝑡𝑒𝑥𝑡,⟨𝐸𝑂𝑆⟩)Here, 𝑇 is the feature vector extracted at the position of⟨𝐸𝑂𝑆⟩, capturing the overall semantics of the text.
+To ensure eﬀective alignment between visual and textualmodalities, the loss function maximizes their dot-productsimilarity in the shared latent space, as follows:L= −12log sim(𝑅, 𝑇) +log sim(𝐾, 𝑇)Here, 𝑠𝑖𝑚(𝑅, 𝑇) measures the similarity between featurevectors.
+By maximizing these alignments, the model learnsto capture the semantic correspondences between the visualand text modalities in the ﬁrst stage of training.
+Second Stage: Translation At this stage, we utilizethe RGB image visual network 𝑓𝑟𝑔𝑏and the facial key-point visual network 𝑓𝑘𝑒𝑦, obtained from the ﬁrst stage oftraining, to extract features from the input data 𝑑𝑟𝑔𝑏and𝑑𝑘𝑒𝑦. Subsequently, we fuse these two features using theVisual-Language Mapper
+[7], a fully-connected MLP withtwo hidden layers, as follows:𝐹𝑟𝑔𝑏= 𝑓𝑟𝑔𝑏(𝑑𝑟𝑔𝑏), 𝐹𝑘𝑒𝑦= 𝑓𝑘𝑒𝑦(𝑑𝑘𝑒𝑦)𝐹𝑓 𝑢𝑠𝑖𝑜𝑛= 𝑉 𝐿 𝑀 ([𝐹𝑟𝑔𝑏, 𝐹𝑘𝑒𝑦])The fused features 𝐹𝑓 𝑢𝑠𝑖𝑜𝑛are fed into the mBART de-coder for training, and the loss for this process is deﬁnedas follows:
+L= −𝑙𝑜𝑔𝑃(𝑑𝑖𝑡𝑒𝑥𝑡|𝐹𝑓 𝑢𝑠𝑖𝑜𝑛, 𝑑<𝑖𝑡𝑒𝑥𝑡)The second stage bridges visual and textual modalities bydirectly optimizing the translation task.
+Leveraging thefused features 𝐹𝑓 𝑢𝑠𝑖𝑜𝑛as input to the mBART decoder,it ensures ﬂuent, semantically accurate spoken languagetranslations.
+While the ﬁrst stage focuses on feature align-ment through similarity maximization, this stage reﬁnesend-to-end translation quality by ﬁne-tuning the decoderand visual network within a shared representation space.
+Together, these two stages enable progressive learning of
+
+mBART for Supervised Gloss-Free Sign Language Translation:Integrating RGB and Facial Keypoint Images
+
+Jiannan Mao
+
+1∗
+
+  Chenchen Ding
+
+2
+
+ Hour Kaing
+
+2
+
+ Hideki Tanaka
+
+2
+
+ Masao Utiyama
+
+2
+
+ Tadahiro Matsumoto
+
+11
+
+Gifu University, Gifu, Japan  
+
+2
+
+ASTREC, UCRI, NICT, Japan
+
+
+
+ {mao, tad}@mat.info.gifu-u.ac.jp
+
+
+
+ {chenchen.ding, hour kaing, hideki.tanaka, mutiyama}@nict.go.jp
+
+
+
+Abstract
+
+Sign language translation (SLT) has traditionally de-pended on gloss annotations, which are costly and time-consuming to produce.
+This work presents a gloss-free SLTframework that integrates raw RGB video input with facialkeypoint features, enabling richer visual representations.
+We leverage a two-stage approach: ﬁrst aligning visualand textual features with a frozen multilingual mBARTencoder, then reﬁning translation through the mBART de-coder.
+Evaluations on the PHOENIX-2014T dataset showperformance gains over baselines, yielding a +0.64 BLEUimprovement.
+These results conﬁrm that incorporating fa-cial keypoints strategy can signiﬁcantly improve gloss-freesign language translation.
+
+
+1 Introduction
+
+Sign languages are visual signals used for communi-cation among the Deaf or Hard of Hearing (DHH).
+Theselanguages are primarily expressed through manual articula-tions, but they are also greatly enr iched by the movement ofthe body, mouth, eyes, and eyebrows.
+This visual complex-ity not only enhances the expressiveness of sign languagesbut also helps convey thoughts more clearly
+[1, 2].For those of us with intact hearing and speaking abili-ties, there is often a misconception that “DHH individualsprefer reading spoken language; therefore, when commu-nicating with DHH, it is suﬃcient to rely solely on spokenlanguage, using written text, either on paper or via smartdevices [3].”
+This perspective fails to account for a criti-cal fact: for many DHH individuals, sign language is not∗This work was done during the ﬁrst author’s internship at NationalInstitute of Information and Communications Technology, Kyoto,Japan.merely a communication tool but their primary and mostnatural language, deeply intertwined with their identity andculture
+[4, 5].
+Unlike written spoken languages, which mayfeel secondary or foreign to many DHH individuals, signlanguage provides a more direct and expressive connectionto their thoughts and emotions [5].In this context, Sign Language Translation (SLT) sys-tems are essential to bridge the communication gap be-tween DHH individuals and the hearing population, en-abling more meaningful interactions and fostering a societythat tr uly values diversity, equity, and
+inclusion
+[6].To address this challenge, researchers have explored var-ious approaches inspired by the Neural Machine Transla-tion (NMT) framework, adapted to handle visual inputs.
+Typically, a sequence of video frames is processed by avisual network to either predict glosses, or extract imagefeatures, which are then mapped to spoken language usingNMT
+[7, 8, 9, 10], as shown in Figure 1.
+While glossesenhance translation accuracy, their production demandscostly, time-intensive manual annotation.
+As a result,gloss-free SLT has emerged as a trend, aiming to directlytranslate raw video into text [9, 11, 12].This work focuses on gloss-free sign language transla-tion, employing the mBART model as a teacher modelto supervise the outputs of a visual network through theencoder outputs of mBART.
+For the visual network, weutilize a combination of RGB images and facial keypoints,enable the model to capture more detailed facial featuresduring the learning process.
+Our experimental results showa signiﬁcant improvement, with an increase of 0.64 BLEUpoints over the baseline.
+This approach not only conﬁrmsthe eﬀectiveness of combining RGB images with facialkeypoints for visual feature extraction but also underscores11August_2010_Wednesday_tagesschau-2Spoken Languages: tiefer luftdruck bestimmt in den nächsten tagen unser wetter（ low air pressure will determine our weather in the next few days ）Gloss Annotations (gloss-based):  DRUCK TIEF KOMMENImage Features (gloss-free):Visual Network......encoderdecoderFigure 1
+The diﬀerence between gloss-free and gloss-based approaches in sign language translation.
+In the example, we demonstratedthe diﬀerence in word order between sign and spoken languages : DRUCK corresponds to luftdruck, and TIEF corresponds to tiefer.the eﬃcacy of employing mBART as a supervisory model.
+
+
+2 Related Works
+
+Gloss-Free Glosses are written labels used to repre-sent gestures in sign language, providing a stable represen-tation units by segmenting continuous gestures into discretelexical elements.
+For instance, the gesture for ‘Put the bookon the table’ might be glossed as ‘PUT BOOK TABLE’.
+While glosses act as a bridge between sign and spokenlanguage, they are not equivalent to spoken words.
+Theyfollow the syntax of sign language, which can diﬀer fromspoken language order, as shown in Figure 1.Currently, the majority of gloss-free sign language trans-lation studies rely on datasets without gloss annotations[13, 14, 15].
+Our work follows this gloss-free researchdirection.
+For comparability with the baseline [9], we usea dataset containing gloss annotations [16] but completelydisregard the gloss information.
+Facial Keypoints Visual feature extraction is cru-cial for sign language translation.
+Combining keypointswith RGB images has been shown to improve recog-nition accuracy by oﬀering richer visual representations[8, 17].
+In particular, incorporating facial keypoints en-hances these representations, as they provide ﬁne-grainedsemantic cues, such as expressions, which help distinguishambiguous gestures.
+In this work, we extract facial keypoints to enhance themodel’s ability to learn detailed facial features, which areoften overlooked in existing studies.mBART in SLT mBART is a pre-trained multilin-gual model that using denoising autoencoding to captureuniversal linguistic features
+[18].
+It has demonstratedstrong performance in low-resource tasks, including signlanguage translation [7, 8, 9, 10].We adopt mBART as a teacher model to supervise thevisual networks, aligning its outputs with the encoder rep-resentations of mBART.
+This strategy bridges the gap be-tween visual features and linguistic understanding, result-ing in improved translation performance.
+
+
+3 Method
+
+Our method employs a two-stage framework for gloss-free sign language translation, as shown in Figure 2.
+For thevisual feature extraction network, we adopt the approachproposed by Zhou et al.
+[9], which combines ResNet [19],temporal blocks
+[20], and parts of the mBART encoder
+[18]to form the visual network.
+Two separate visual networkare utilized: one processes the raw RGB image sequences,while the other processes facial keypoints.
+These visualfeatures are aligned with the frozen mBART encoder inthe ﬁrst stage, and further integrated and trained with themBART decoder in the second stage, enabling the transla-tion from sign language to spoken language.
+Data Preparation
+The original dataset 𝐷 containRGB sequences 𝑑𝑟𝑔𝑏and corresponding text 𝑑𝑡𝑒𝑥𝑡: 𝐷 =(𝑑𝑟𝑔𝑏, 𝑑𝑡𝑒𝑥𝑡).
+We extract the facial keypoints sequence𝑑𝑘𝑒𝑦for each 𝑑𝑟𝑔𝑏using HRNet
+[21], forming 𝐷′=(𝑑𝑟𝑔𝑏, 𝑑𝑘𝑒𝑦, 𝑑𝑡𝑒𝑥𝑡).
+Here, 𝑑𝑟𝑔𝑏, 𝑑𝑘𝑒𝑦are sequences inℝ𝑁 ×𝐿𝑟𝑔𝑏, and 𝑑𝑡𝑒𝑥𝑡∈ ℝ𝑁 ×𝐿𝑡𝑒 𝑥𝑡, where 𝑁 is the datasetsize.
+These augmented data provide richer visual cuesthat support more nuanced interpretation of signs imagesequences.tiefer luftdruckbestimmt  in den nächsten tagen unser wetterHRNetVisual NetworkVisual Networktiefer luftdruckbestimmt  in den nächsten tagen unser wetterencoderdecoderencoderdecoder(R,T)(K,T)First Stage TrainingSecond Stage TrainingData Preparation / Second Stage First StageDiscardFigure 2 Overview of our two-stage framework.
+In the ﬁrst stage, we align visual (RGB + facial keypoints) and textual features usinga frozen mBART encoder.
+In the second stage, we fuse the learned visual representations and train the mBART decoder to produce theﬁnal translations.
+Colored elements in background correspond to the main focus at each stage.
+First Stage: Feature Alignment Sign and spokenlanguage sequences diﬀer in length (𝐿𝑟𝑔𝑏≠ 𝐿𝑡𝑒𝑥𝑡), mak-ing direct alignment challenging.
+To address this, we in-troduce special markers⟨𝑟𝑔𝑏⟩,⟨𝑘𝑒𝑦⟩, and⟨𝐸𝑂𝑆⟩at theend of each respective sequence.
+These markers produce aglobal summar y vector for each modality.
+We deﬁne two visual networks: 𝑓𝑟𝑔𝑏for RGB inputsand 𝑓𝑘𝑒𝑦for facial keypoints.
+Both employ ResNet [ 19],temporal blocks
+[20], and parts of the mBART encoderarchitecture [18] as per [9].
+Extracted features are:𝑅 = 𝑓𝑟𝑔𝑏(𝑑𝑟𝑔𝑏,⟨𝑟𝑔𝑏⟩), 𝐾 = 𝑓𝑘𝑒𝑦(𝑑𝑘𝑒𝑦,⟨𝑘𝑒𝑦⟩)Here, 𝑅 and 𝐾 represent the feature vectors extracted fromthe respective positions of the markers⟨𝑟𝑔𝑏⟩and⟨𝑘𝑒𝑦⟩,which aggregate the information from the entire sequence.
+For the text sequence, we employ the mBART encoder,𝑚𝐵𝐴𝑅𝑇𝑒𝑛𝑐𝑜𝑑𝑒𝑟, as a feature extractor.
+During this phase,𝑚𝐵𝐴𝑅𝑇𝑒𝑛𝑐𝑜𝑑𝑒𝑟remains frozen to serve as a teacher model,to ensure robust and stable supervision through text em-beddings.
+The text sequence is processed as follows:𝑇 = 𝑚𝐵𝐴𝑅𝑇𝑒𝑛𝑐𝑜𝑑𝑒𝑟(𝑑𝑡𝑒𝑥𝑡,⟨𝐸𝑂𝑆⟩)Here, 𝑇 is the feature vector extracted at the position of⟨𝐸𝑂𝑆⟩, capturing the overall semantics of the text.
+To ensure eﬀective alignment between visual and textualmodalities, the loss function maximizes their dot-productsimilarity in the shared latent space, as follows:L= −12log sim(𝑅, 𝑇) +log sim(𝐾, 𝑇)Here, 𝑠𝑖𝑚(𝑅, 𝑇) measures the similarity between featurevectors.
+By maximizing these alignments, the model learnsto capture the semantic correspondences between the visualand text modalities in the ﬁrst stage of training.
+Second Stage: Translation At this stage, we utilizethe RGB image visual network 𝑓𝑟𝑔𝑏and the facial key-point visual network 𝑓𝑘𝑒𝑦, obtained from the ﬁrst stage oftraining, to extract features from the input data 𝑑𝑟𝑔𝑏and𝑑𝑘𝑒𝑦. Subsequently, we fuse these two features using theVisual-Language Mapper
+[7], a fully-connected MLP withtwo hidden layers, as follows:𝐹𝑟𝑔𝑏= 𝑓𝑟𝑔𝑏(𝑑𝑟𝑔𝑏), 𝐹𝑘𝑒𝑦= 𝑓𝑘𝑒𝑦(𝑑𝑘𝑒𝑦)𝐹𝑓 𝑢𝑠𝑖𝑜𝑛= 𝑉 𝐿 𝑀 ([𝐹𝑟𝑔𝑏, 𝐹𝑘𝑒𝑦])The fused features 𝐹𝑓 𝑢𝑠𝑖𝑜𝑛are fed into the mBART de-coder for training, and the loss for this process is deﬁnedas follows:
+L= −𝑙𝑜𝑔𝑃(𝑑𝑖𝑡𝑒𝑥𝑡|𝐹𝑓 𝑢𝑠𝑖𝑜𝑛, 𝑑<𝑖𝑡𝑒𝑥𝑡)The second stage bridges visual and textual modalities bydirectly optimizing the translation task.
+Leveraging thefused features 𝐹𝑓 𝑢𝑠𝑖𝑜𝑛as input to the mBART decoder,it ensures ﬂuent, semantically accurate spoken languagetranslations.
+While the ﬁrst stage focuses on feature align-ment through similarity maximization, this stage reﬁnesend-to-end translation quality by ﬁne-tuning the decoderand visual network within a shared representation space.
+Together, these two stages enable progressive learning ofsemantic alignment, resulting in robust, accurate gloss-freesign language translation.
+
+
+4 Experiments
+
+
+
+4.1 Settings
+
+The experiments were conducted on the PHOENIX-2014T dataset [16], which contains 8,257 German SignLanguage (DGS) videos paired with corresponding Ger-man translations drawn from weather forecast broadcasts.
+The dataset is split into training (7,096), development(519), and test (642) sets.
+We strictly follow a gloss-freescenario by not using any provided gloss annotations.
+In the ﬁrst training stage, we utilize only the mBART-cc25 [18] encoder (frozen as a teacher model) to providetextual supervision.1）In the second stage, we employ theﬁrst three layers of the mBART-cc25 decoder to gener-ate ﬁnal translations.
+All other training hyperparametersclosely follow Zhou et al.
+[9] to ensure consistency.
+We evaluate our model using standard automatic met-rics: BLEU-4
+[22] and ROUGE
+[23], allowing direct com-parison to previous work.
+
+4.2 Results and Discussions
+
+Table 1 presents a comparison of our gloss-free signlanguage translation method against both gloss-based andgloss-free baselines on the PHOENIX-2014T dataset.
+Forgloss-based approaches, methods such as MMTLB
+[7],TS-SLT [8], and CV-SLT [10] achieve relatively high per-formance, with CV-SLT scoring the highest BLEU-4 andROUGE values (29.27 and 54.33, respectively).
+Thesemethods beneﬁt from annotated gloss intermediates, whichprovide an explicit linguistic bridge between sign and spo-ken language, thus improving translation quality.
+In contrast, our work, along with GFSLT
+[9], focuses ona gloss-free scenario, which is more challenging due to theabsence of explicitly annotated sign glosses.
+Within thissetting, GFSLT-rgb relies solely on raw RGB video frames,while GFSLT-key substitutes RGB input with whole hu-man body keypoints extracted via HRNet.
+Interestingly,the GFSLT-key variant, which encodes the entire bodyskeletal motion, achieves lower scores (16.08 BLEU-4,35.21 ROUGE) than GFSLT-rgb (21.44 BLEU-4, 42.49ROUGE).
+This suggests that while body keypoints provide1） huggingface.co/facebook/mbart-large-cc25Table 1 Results on the PHOENIX-2014T dataset.
+Improverepresents the gains of our method compared to GFSLT-rgb[9].Gloss Method BLEU-4 ROUGEbasedMMTLB
+[7] 28.39 52.65TS-SLT [8] 28.95 53.48CV-SLT [10] 29.27 54.33freeGFSLT-rgb
+[9] 21.44 42.49GFSLT-key 16.08 35.21rgb+key facial(our) 22.08 44.12Improve - +0.64 +1.63skeletal motion cues, they may lose important visual de-tails (e.g., subtle body movements, hand shape nuances)that contr ibute to accurate sign interpretation.
+Our proposed method, denoted as rgb+key facial(our),combines the strengths of raw RGB input with facial key-points.
+This fusion outper forms both GFSLT-rgb andGFSLT-key, improving BLEU-4 by +0.64 and ROUGE by+1.63 over the RGB-only baseline.
+The improvement in-dicates that integrating detailed facial cues with the globalscene information from RGB frames leads to more se-mantically aligned and contextually richer representations,ultimately enhancing translation performance.
+Despite these gains, gloss-free methods, including ours,still exhibit a performance gap compared to gloss-based ap-proaches.
+Nevertheless, our results demonstrate that care-fully selecting and fusing multiple visual cues can mitigatethe challenges posed by the lack of gloss annotations.
+
+
+5 Conclusion and Future Work
+
+This study extends existing eﬀorts in gloss-free signlanguage translation, an area in sign language processingwhere no intermediate gloss annotations are used.
+We pro-pose an approach that integ rates RGB frames with facialkeypoint data.
+By exploiting complementary informationfrom these modalities, our method better captures complexspatial and temporal patterns of sign language.
+This mul-timodal strategy improves translation accuracy comparedto relying solely on RGB inputs and may facilitate moreaccurate, context-aware translations.
+In future work, we plan to explore additional visual cues,reﬁne fusion strategies, and incorporate more powerful lan-guage models to further enhance gloss-free sign languagetranslation.
+
+
+
+Acknowledgement
+
+This work was ﬁnancially supported by JST SPRING,Grant Number JPMJSP2125. The author (Initial) wouldlike to take this opportunity to thank the THERS MakeNew Standards Prog ram for the Next Generation Re-searchers.
+
+References
+
+
+[1] Annika Herrmann and Markus Steinbach. Nonmanualsin sign language, Vol. 53. John Benjamins Publishing,2013.
+[2] Kathleen, Paul, and Dot Sign Language. Britishsign language. https://bsl.surrey.ac.uk/principles/f-non-manual-features.
+[3] Razieh Rastgoo, Kourosh Kiani, Sergio Escalera, VassilisAthitsos, and Mohammad Sabokrou. A survey on recentadvances in sign language production. Expert Systemswith Applications, Vol. 243, p. 122846, 2024.
+[4] H.D.L. Bauman. Open Your Eyes: Deaf Studies Talk-ing. University of Minnesota Press, 2008.
+[5] A. Mindess. Reading Between the Signs: Inter-cultural Communication for Sign Language Inter-preters. Intercultural Press, 2011.
+[6] United Nations. Convention on the Rights of Persons withDisabilities (CRPD). https://www.ohchr.org/en/instruments-mechanisms/instruments/convention-rights-persons-disabilities.
+[7] Yutong Chen, Fangyun Wei, Xiao Sun, Zhirong Wu, andStephen Lin. A simple multi-modality transfer learningbaseline for sign language translation. In Proceedings ofthe IEEE/CVF conference on computer vision andpattern recognition, pp. 5120–5130, 2022.
+[8] Yutong Chen, Ronglai Zuo, Fangyun Wei, Yu Wu, ShujieLiu, and Brian Mak. Two-stream network for sign languagerecognition and translation. NeurIPS, 2022.
+[9] Benjia Zhou, Zhigang Chen, Albert Clap´es, Jun Wan,Yanyan Liang, Sergio Escalera, Zhen Lei, and Du Zhang.Gloss-free sign language translation: Improving fromvisual-language pretraining. In Proceedings of theIEEE/CVF International Conference on ComputerVision (ICCV), pp. 20871–20881, October 2023.
+[10] Biao Fu Cong Hu Jinsong Su Yidong Chen Rui Zhao,Liang Zhang. Conditional variational autoencoder for signlanguage translation with cross-modal alignment. In Pro-ceedings of the AAAI Conference on Artiﬁcial In-telligence, 2024.
+[11] Jinhui Ye, Xing Wang, Wenxiang Jiao, Junwei Liang, andHui Xiong. Improving gloss-free sign language translationby reducing representation density. 2024.
+[12] Zhigang Chen, Benjia Zhou, Yiqing Huang, Jun Wan, YiboHu, Hailin Shi, Yanyan Liang, Zhen Lei, and Du Zhang.C2rl: Content and context representation learning forgloss-free sign language translation and retrieval, 2024.
+[13] Samuel Albanie, G¨ul Varol, Liliane Momeni, Hannah Bull,Triantafyllos Afouras, Himel Chowdhury, Neil Fox, Ben-cie Woll, Rob Cooper, Andrew McParland, et al. Bbc-oxford british sign language dataset. arXiv preprintarXiv:2111.03635, 2021.
+[14] Amanda Duarte, Shruti Palaskar, Lucas Ventura, DeeptiGhadiyaram, Kenneth DeHaan, Florian Metze, Jordi Tor-res, and Xavier Giro-i Nieto. How2Sign: A Large-scaleMultimodal Dataset for Continuous American Sign Lan-guage. In Conference on Computer Vision and Pat-tern Recognition (CVPR), 2021.
+[15] Bowen Shi, Diane Brentari, Greg Shakhnarovich, andKaren Livescu. Open-domain sign language translationlearned from online video. In EMNLP, 2022.
+[16] Necati Cihan Camgoz, Simon Hadﬁeld, Oscar Koller, Her-mann Ney, and Richard Bowden. Neural sign languagetranslation. In Proceedings of the IEEE conference oncomputer vision and pattern recognition, pp. 7784–7793, 2018.
+[17] Hao Zhou, Wengang Zhou, Yun Zhou, and Houqiang Li.Spatial-temporal multi-cue network for continuous signlanguage recognition. In Proceedings of the AAAI con-ference on artiﬁcial intelligence, Vol. 34, pp. 13009–13016, 2020.
+[18] Yinhan Liu, Jiatao Gu, Naman Goyal, Xian Li, SergeyEdunov, Marjan Ghazvininejad, Mike Lewis, and LukeZettlemoyer. Multilingual denoising pre-training for neuralmachine translation. Transactions of the Associationfor Computational Linguistics, Vol. 8, pp. 726–742,2020.
+[19] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and JianSun. Deep residual learning for image recognition. InProceedings of the IEEE conference on computervision and pattern recognition, pp. 770–778, 2016.
+[20] Shaojie Bai, J Zico Kolter, and Vladlen Koltun. An em-pirical evaluation of generic convolutional and recurrentnetworks for sequence modeling. arxiv. arXiv preprintarXiv:1803.01271, Vol. 10, , 2018.
+[21] Jingdong Wang, Ke Sun, Tianheng Cheng, Borui Jiang,Chaorui Deng, Yang Zhao, Dong Liu, Yadong Mu,Mingkui Tan, Xinggang Wang, Wenyu Liu, and Bin Xiao.Deep high-resolution representation learning for visualrecognition. IEEE Transactions on Pattern Analysisand Machine Intelligence, Vol. 43, No. 10, pp. 3349–3364, 2021.
+[22] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu. Bleu: a method for automatic evaluation ofmachine translation. In Proceedings of the 40th an-nual meeting of the Association for ComputationalLinguistics, pp. 311–318, 2002.
+[23] Chin-Yew Lin. Rouge: A package for automatic evaluationof summaries. In Text summarization branches out,pp. 74–81, 2004.

@@ -1,0 +1,213 @@
+訓練・推論時の不一致を解消する離散拡散テキスト生成モデル
+
+浅田 真生
+
+1
+
+ 三輪 誠
+
+2,11
+
+産業技術総合研究所 
+
+2
+
+豊田工業大学
+
+
+
+ masaki.asada@aist.go.jp
+
+
+
+ makoto-miwa@toyota-ti.ac.jp
+
+
+
+概要
+
+本研究では、離散拡散モデルを用いたテキスト生成において生じる訓練時と推論時の不一致に注目し、この問題を解消するため、訓練時の損失計算においてモデルが予測した系列を次ステップの入力として使用する 2 ステップ損失計算アプローチと、その確率的スケジューリングを提案する。
+提案手法を広く使用されている 4 つのテキスト生成ベンチマークデータセットにおいて学習・評価した結果、2 ステップ損失計算による離散拡散モデルの性能向上を確認した。
+
+
+1 はじめに
+
+近年、拡散モデルはテキスト生成モデルの分野において大きな注目を集めている[1, 2]。
+拡散モデルは拡散ステップ数を調整することで、テキスト生成の品質と速度のバランスを実現できることが知られており、系列全体を一度に生成する非自己回帰モデルよりも高い生成品質を示し、トークンごとに逐次生成を行う自己回帰モデルよりも高速な生成を可能にする[3]。
+テキスト生成における拡散モデルは大きく分けて連続拡散モデル[1, 2]と離散拡散モデル[4, 3]に分類される。
+特に離散拡散モデルは、ノイズ付与プロセスを、対象トークンをマスクトークンに置換するものとして解釈する。
+離散拡散モデルは、マスク補完を事前学習タスクとして行う事前学習言語モデルの性能を活用できる利点があり、いくつかのデータセットで既存の連続拡散モデルを上回る性能を示している[3]。
+しかし、既存の離散拡散テキスト生成モデルには、訓練と推論の間に生じる不一致という問題が存在する。
+拡散モデルの訓練時には、ランダムに選ばれた特定の拡散ステップまで正解系列にノイズを加え、ノイズが付与された系列から正解系列を予測できるように損失を最小化する。
+一方で推論時には、024681012140 1000 2000 3000 4000 5000 6000(evaluation loss) / (training loss)#. Training stepsBARTDiscrete DiffusionOurs図 1 訓練ステップごとの（推論時の損失）/（訓練時の損失）の値。
+既存の離散拡散モデルでは自己回帰モデル(BART)と比較して推論時と訓練時の損失のギャップが大きいが、提案手法では軽減している。
+前のステップで予測された系列にノイズを加える。
+訓練時は常にモデルの入力が正解系列にノイズ付与したものであるのに対し、推論時は常にモデルの入力は予測系列にノイズ付与したものであるという不一致があり、図 1 に示すように、既存の離散拡散モデルは訓練時に対する推論時の損失比が大きい。
+自己回帰型テキスト生成においては訓練時と推論時の不一致に対処する研究[5]が行われてきたが、拡散テキスト生成においてこの問題に取り組むアプローチは未だ検討されていない。
+本研究では、訓練と推論における不一致を解消するため、予測された系列を次のステップの入力として利用する 2 ステップの拡散学習手法を提案し、それに伴って、予測系列の利用による訓練初期段階の学習難度の過度な上昇を防ぐための確率的スケジューリング手法を導入する。
+本研究の貢献は以下の通りである。
+1）• 学習と推論の不一致に対処する新しい離散型拡散テキスト生成手法を提案• 4 つのテキスト生成ベンチマークデータセット1） 本論文は、COLING2025 にて発表する研究成果[6]に基づくものである。
+― 2059 ―での実験結果を通じて、提案手法が離散拡散テキスト生成の性能向上に寄与することを確認
+
+2 関連研究
+
+拡散モデルによるテキスト生成は、大きく連続拡散モデルと離散拡散モデルの二つに分類される。
+連続拡散モデルはトークン埋め込みの潜在空間を利用し、ランダムなガウスノイズを徐々にターゲットトークンの埋め込み表現へと近づけ、その後埋め込み表現をトークン列に変換することでテキスト生成を行う[7]。
+一方で離散拡散モデルは、マスクトークンをノイズと解釈し、マスク穴埋めを複数ステップにわたって徐々に進めることでテキスト生成を実施する[8]。
+離散拡散モデルは、BART [9]といった事前学習済みテキスト生成モデルを活用できる利点を持つにもかかわらず研究が十分に進んでおらず、この分野はさらなる研究が必要である。
+そのため、本研究では離散拡散モデルによるテキスト生成の品質向上を目指す。
+本節では以降、Diﬀusion-NAT [3]で採用されているベースライン離散拡散テキスト生成モデルについて述べる。
+離散拡散モデルによるテキスト生成は、条件付き確率 𝑃(𝑌 |𝑋)のモデル化として定式化される。
+ここで、𝑋 = {𝑥1, 𝑥2, · · · , 𝑥𝑚} および 𝑌 = {𝑦1, 𝑦2, · · · , 𝑦𝑛}は、それぞれ入力系列および出力系列を示し、トークン 𝑥 および 𝑦 は、語彙Vに属する。
+離散拡散モデルは、𝐾 = |V| 個のカテゴリを持つ離散確率変数を用いて、ノイズ付与プロセスを以下のように実行する：𝑞(𝑌𝑡|𝑌𝑡 −1) = 𝑣⊤(𝑌𝑡)Q𝑡𝑣(𝑌𝑡 −1). (1)ここで、𝑣(𝑌)は各トークンを 𝐾 次元の one-hot ベクトルに変換する写像ベクトル、Q𝑡は遷移確率行列を表し、[Q𝑡]
+𝑖, 𝑗はトークン 𝑖 がトークン 𝑗 に置き換えられる確率を示す。
+具体的には、ステップ 𝑡 にてトークン 𝑖 が[MASK]トークンでない場合、𝛼𝑡の確率で変更されず、𝛾𝑡の確率で[MASK]トークンに置き換えられ、残りの確率 𝛽𝑡= 1 − 𝛼𝑡− 𝛾𝑡で語彙V中の他のトークンに遷移する：[Q𝑡]𝑖, 𝑗=𝛼𝑡if 𝑗 = 𝑖,𝛾𝑡if 𝑗 = [MASK],𝛽𝑡otherwise,(2)ここで、𝛼𝑡および 𝛾𝑡は事前に定義されたノイズスケジューラによって決定される。
+離散拡散モデルでは、事前学習言語モデルを用いAmerican Football ConferenceSuper Bowl 50 was an American football game to determine the champion of the National Football League (NFL) for the 2015 season. …ソース⽂𝑋PLM EncoderPLM Decoderターゲット⽂𝑌!
+What is the AFC short for?
+𝑌!
+𝑌"𝑌#𝑌##!
+𝑌#!
+𝑌#"$%正解系列からのノイズ付与cross-attentionPLM EncoderPLM Decoder𝑋予測系列からのノイズ付与CE loss既存離散拡散モデル[MASK][MASK][MASK][MASK][MASK][MASK][MASK]What[MASK]the[MASK]short[MASK]?
+WhatistheAFCshortfor?
+WhatdoestheAFCfor?
+WhatdoestheAFCstandfor?
+What[MASK]the[MASK]short[MASK]?
+提案モデルcross-attention𝑋タイムステップ𝑡をランダムに選択CEorCTC図 2 Training workﬂow of the discrete diﬀusion model withstep-aware loss compared to the existing modelて、各拡散ステップでノイズが加えられたトークンを復元する。
+この際、事前学習モデルを非自己回帰的にテキスト生成を行うよう修正し、すべてのマスクされたトークンを同時に復元できるようにする。
+具体的には、𝑡 ステップにおいて、ソース系列 𝑋 と[MASK]トークンを含むノイズ付加済みターゲット系列 𝑌𝑡をそれぞれ事前学習モデルのエンコーダとデコーダに入力し、全ての[MASK]トークンをノイズ除去する。
+訓練中、モデルは各拡散ステップで事前学習モデルの非自己回帰型生成により元の全トークン𝑌0= {𝑦(0)1, · · · , 𝑦(0)𝑛} を予測する：PLM({𝑦(𝑡 )1, · · · , [MASK]}, 𝑋) = { ˆ𝑦(0)1, · · · , ˆ𝑦(0)𝑛}, (3)拡散ステップ 𝑡 は各サンプルに対してランダムに一度だけ選ばれ、𝑋 と 𝑌𝑡= {𝑦(𝑡 )1, · · · , [MASK]} が、それぞれ事前学習モデルのエンコーダとデコーダに入力される。
+入力 𝑋 の表現埋め込みはクロスアテンションを通じてデコーダに渡される。
+損失関数として交差エントロピー損失が用いられ、以下のように表される：𝐿𝑌= −𝑛∑𝑖=1log 𝑝𝜃(𝑦(0)𝑖|𝑌𝑡, 𝑋). (4)推論時には、与えられた 𝑌𝑡に基づきˆ𝑌0を推定し、その後 𝑡 − 1 ステップのノイズを追加して 𝑌𝑡 −1を生成する。
+このプロセスを最終的に 𝑌0が得られるまで繰り返す。
+
+
+3 提案手法
+
+本研究では、離散拡散モデルの訓練と推論における不一致を解消するため、モデルの予測系列を次の― 2060 ―ステップの入力として利用する 2 ステップの損失計算手法とその確率的スケジューリング手法を提案する。
+提案モデルの概要を図 2 に示す。
+2 ステップ損失節 2 で述べたように、訓練中にタイムステップ 𝑡 がランダムに選択され、𝑌0から 𝑡ステップまでノイズを付与した 𝑌𝑡が準備され、そこからˆ𝑌0が予測される。
+つまり、訓練中は、モデルは常に正解系列にノイズ付与された系列を受け取る。
+一方、推論中は、モデルは 𝑌𝑇（𝑇 は総拡散ステップ数）から始め、ˆ𝑌0を予測し、次に Q𝑡を予測系列に適用して 𝑇 − 1 ステップ目の入力を準備し、この処理を拡散ステップが 0 になるまで繰り返す。
+つまり、モデルは常に予測系列からノイズ付与した系列を入力として受け取る。
+この学習と推論の不一致に対処するために、2 ステップの拡散プロセスを損失計算に利用する手法を提案する。
+訓練時にランダムに拡散ステップ 𝑡 が選ばれ、デコーダへの入力 𝑌𝑡がQ𝑡を 𝑌0に適用して準備され、その後モデルは以下のようにˆ𝑌0を予測する:ˆ𝑌0= PLM(𝑌𝑡, 𝑋). (5)提案モデルでは、ˆ𝑌0を損失計算に用いるのではなく，ˆ𝑌0にノイズを付与し、次の拡散ステップの入力として利用する。
+これにより、訓練時においてもモデルが自己予測した系列からノイズ付与した系列を入力として受け取れるようになる。
+具体的には、ˆ𝑌𝑡 −1は Q𝑡を用いて準備され、その結果得られた系列ˆ𝑌0を使って、モデルは以下のようにターゲット系列を予測する:ˆˆ𝑌0= PLM(ˆ𝑌𝑡 −1, 𝑋), (6)ここでˆˆ𝑌0= {ˆˆ𝑦(0)1, · · · ,ˆˆ𝑦(0)𝑛} となる。
+交差エントロピー損失関数は次のように表される:𝐿CE= −𝑛∑𝑖𝑦(0)𝑖logˆˆ𝑦(0)𝑖. (7)また、本研究では非自己回帰型テキスト生成で成功を収めている CTC 損失[10]の離散テキスト生成への適用可能性も調査する。
+CTC を用いた変種の損失関数は次のように表される:𝐿CTC= − log 𝑃CTC(𝑌0|ˆˆ𝑌0). (8)予測系列利用の確率的スケジューリング式 6 による訓練時の自己予測系列の利用は、学習の初期段階ではモデルは誤りの多い予測系列を次ステップの入力とするため、過度に難しいタスクとなる。
+そのXSum MSNewsR-1 R-2 R-L R-1 R-2 R-L自己回帰型LSTM - - - 30.0 14.6 27.7Transformer 30.6 10.8 24.4 33.0 15.4 30.0MASS 39.7 17.2 31.9 - - -ProphetNet 39.8 17.1 32.0 - - -BART 38.7 16.1 30.6 41.8 23.1 38.3非自己回帰型NAT 24.0 3.88 20.3 - - -iNAT 24.0 3.99 20.3 - - -CMLM 23.8 3.60 20.1 - - -LevT 24.7 4.18 20.8 - - -BANG 32.5 8.98 27.4 32.7 16.1 30.3ELMER 38.3 14.1 29.9 35.6 16.1 32.5BnB 36.1 13.4 30.0 - - -拡散モデルGENIE 29.3 8.3 21.9 - - -AR-Diﬀ 32.2 10.6 25.2 - - -Diﬀ-NAT 38.8 15.3 30.8 46.8 31.6 44.2提案手法 38.5 14.8 30.9 50.5 35.1 48.0表 1 要約タスクにおける性能比較。
+R-L, B-4, MT はそれぞれ ROUGE-L, BLEU-4, METOR を示す。
+太字は非自己回帰モデルおよび拡散モデルの中で最も高いスコアを示す。
+ため、次の拡散ステップにおけるモデルの入力は、正解系列または自己予測系列のどちらかを確率的に選択する手法を提案する。
+ここで自己予測系列が選択される確率 𝑝𝑘は学習が進むにつれて大きくなるように設定する。
+ˆˆ𝑌0={PLM(ˆ𝑌𝑡 −1, 𝑋) with 𝑝𝑘PLM(𝑌𝑡, 𝑋) with 1 − 𝑝𝑘,(9)ここで、ˆ𝑌𝑡 −1は予測系列からのノイズ付き系列であり、𝑌𝑡は正解系列からのノイズ付き系列である。
+選択確率 𝑝𝑘は、現在の学習ステップ 𝑘 と総学習ステップ数 𝐾 に基づいて線形に決定される：𝑝𝑘=𝑘𝐾.
+
+4 実験
+
+
+
+4.1
+
+
+
+実験設定
+
+2 つのテキスト要約タスクデータセット：XSum,MSNews および 2 つの質問生成タスクデータセット：SQuAD v1.1, MSQG を用いて提案した離散拡散モデルのファインチューニングおよび評価を行なった。
+データセットおよびモデル設定の詳細情報を、付録 A および B に、比較する既存モデルの詳細を付録 C に示す。
+― 2061 ―SQuAD v1.1 MSQGR-L B-4 MT R-L B-4 MT自己回帰型LSTM - - - 25.3 3.5 14.1Transformer 29.4 4.61 9.86 29.3 5.1 16.6MASS 49.4 20.1 24.4 - - -ProphetNet 48.0 19.5 23.9 - - -BART 42.5 17.0 23.1 38.1 10.2 22.1非自己回帰型NAT 31.5 2.46 8.86 - - -iNAT 32.4 2.33 8.84 - - -CMLM 31.5 2.51 8.85 - - -LevT 31.3 2.27 9.14 - - -BANG 44.0 12.7 18.9 33.1 11.0 18.4ELMER 40.2 13.4 20.0 26.6 5.00 15.7BnB 41.7 13.8 - - - -拡散モデルDiﬀ-NAT 46.6 16.1 21.9 33.3 6.6 19.3提案手法 43.5 15.4 23.0 39.0 8.0 20.5表 2 質問生成タスクにおける性能比較。
+R-L, B-4, MT はそれぞれ ROUGE-L, BLEU-4, METOR を示す。
+太字は非自己回帰モデルおよび拡散モデルの中で最も高いスコアを示す。
+Models MSNews MSQGR-1 R-2 R-L R-L B-4 MTCTC 50.55 35.15 48.04 39.00 8.09 20.56-w/o 2-step 48.69 33.71 45.98 36.82 6.62 19.86-w/o 𝑝𝑘40.17 28.14 39.34 26.26 1.58 10.02CE 50.14 34.70 47.58 38.96 8.49 20.30-w/o 2-step 50.12 34.69 47.55 38.82 8.31 20.29-w/o 𝑝𝑘49.35 34.06 47.04 30.16 3.14 13.61表 3 提案モデルの要素検証。
+2-step, 𝑝𝑘は 2 ステップ損失，𝑝𝑘スケジューリングをそれぞれ意味する。
+
+4.2 結果
+
+表 1 は、テキスト要約タスクデータセット XSumおよび MSNews における提案手法と既存モデルの性能を比較している。
+XSum データセットでは、提案手法は Diﬀusion-NAT に比肩する性能を示している。
+MSNews データセットでは、提案手法が最も高い性能を示しており、自己回帰型生成モデルよりも高い性能を示している。
+表 2 は、質問生成タスクデータセット SQuAD および MSQG における提案手法と既存モデルの性能を比較している。
+SQuAD データセットでは、提案手法は Diﬀusion-NAT と比較して ROUGE-L およびBLEU-4で低い値を示したが、METEORでは高い値を示した。
+MSQG データセットでは、提案手法がすべての評価指標において Diﬀusion-NAT を上回っており、また ROUGE-L スコアにおいては、提案手法が自己回帰モデルを含むすべてのモデルの中で最も050010001500200025000 100 200 300 400 500 600Latency (ms)Sequence lengthBART (AR)Our diffusion (T=200)Our diffusion (T=100)図 3 生成系列長に対する生成時間高い性能を示した。
+表 3 は、2 ステップ損失とその確率的スケジューリングについて、CTC 損失および交差エントロピー損失の両方に対するアブレーション研究を示している。
+2 ステップ損失の導入がどちらの損失関数においても性能向上に貢献しており、また 2 ステップ損失利用における 𝑝𝑘スケジューリングの重要性を示している。
+特に CTC 損失を採用した場合は提案アプローチが大きく性能向上に寄与しており、結果として、CTC 損失と 2 ステップ損失計算および𝑝𝑘スケジューリングを取り入れた手法が MSQG のBLEU-4 を除いて最も高い性能を示した。
+
+
+4.3 系列長に対する生成速度
+
+図 3 は、ターゲット系列長に対する自己回帰型モデル BART と提案モデルの推論速度を示している。
+この図より、BART は長い文を生成するにつれて劇的に速度が遅くなるのに対し、離散拡散モデルはより一貫した速度を維持することが分かる。
+これは、最大系列長が増加しても、各拡散ステップで行われるデコードが非自己回帰的に行われるためである。
+
+
+5 おわりに
+
+本研究では、離散拡散モデルにおける訓練と推論の間の不一致に対処することを目的として、2 ステップ損失と、その確率的スケジューリングを提案した。
+実験結果より、提案したアプローチがいずれも離散拡散モデルの性能向上に寄与することが示された。
+他の離散拡散モデルと比較した場合は提案手法が上回るまたは比肩する性能を示しており、いくつかの設定では自己回帰型生成モデルよりも高い性能を示した。
+今後の予定として、離散拡散モデルの大規模事前学習を実施したい。
+― 2062 ―
+
+
+
+謝辞
+
+この成果は、国立研究開発法人新エネルギー・産業技術総合開発機構（NEDO）の委託業務（JPNP20006）の結果得られたものです。
+
+参考文献
+
+
+[1] Zhenghao Lin, Yeyun Gong, Yelong Shen, Tong Wu, Zhi-hao Fan, Chen Lin, Nan Duan, and Weizhu Chen. Textgeneration with diﬀusion language models: A pre-trainingapproach with continuous paragraph denoise. In ICML2023, pp. 21051–21064. PMLR, 2023.
+[2] Tong Wu, Zhihao Fan, Xiao Liu, Hai-Tao Zheng, YeyunGong, Jian Jiao, Juntao Li, Jian Guo, Nan Duan, WeizhuChen, et al. Ar-diﬀusion: Auto-regressive diﬀusion modelfor text generation. NeurIPS 2023, Vol. 36, pp. 39957–39974, 2023.
+[3] Kun Zhou, Yifan Li, Xin Zhao, and Ji-Rong Wen.Diﬀusion-NAT: Self-prompting discrete diﬀusion for non-autoregressive text generation. In Yvette Graham andMatthew Purver, editors, EACL 2024, pp. 1438–1451,St. Julian’s, Malta, March 2024. ACL.
+[4] Zhengfu He, Tianxiang Sun, Qiong Tang, Kuanning Wang,Xuanjing Huang, and Xipeng Qiu. DiﬀusionBERT: Im-proving generative masked language models with diﬀusionmodels. In Anna Rogers, Jordan Boyd-Graber, and NaoakiOkazaki, editors, ACL 2023, pp. 4521–4534, Toronto,Canada, July 2023. ACL.
+[5] Wen Zhang, Yang Feng, Fandong Meng, Di You, and QunLiu. Bridging the gap between training and inference forneural machine translation. In Anna Korhonen, DavidTraum, and Lluís Màrquez, editors, ACL 2019, pp. 4334–4343, Florence, Italy, July 2019. ACL.
+[6] Masaki Asada and Makoto Miwa. Addressing the training-inference discrepancy in discrete diﬀusion for text genera-tion. In COLING 2025, Abu Dhabi, UAE, January 2025.ICCL.
+[7] Jonathan Ho, Ajay Jain, and Pieter Abbeel. Denoisingdiﬀusion probabilistic models. NeurIPS 2020, Vol. 33,pp. 6840–6851, 2020.
+[8] Jacob Austin, Daniel D. Johnson, Jonathan Ho, DanielTarlow, and Rianne van den Berg. Structured denoisingdiﬀusion models in discrete state-spaces. In M. Ranzato,A. Beygelzimer, Y. Dauphin, P.S. Liang, and J. WortmanVaughan, editors, NeurIPS 2021, Vol. 34, pp. 17981–17993. Curran Associates, Inc., 2021.
+[9] Mike Lewis, Yinhan Liu, Naman Goyal, MarjanGhazvininejad, Abdelrahman Mohamed, Omer Levy,Veselin Stoyanov, and Luke Zettlemoyer. BART: Denois-ing sequence-to-sequence pre-training for natural languagegeneration, translation, and comprehension. In Dan Ju-rafsky, Joyce Chai, Natalie Schluter, and Joel Tetreault,editors, ACL 2020, pp. 7871–7880, Online, July 2020.ACL.
+[10] Alex Graves, Santiago Fernández, Faustino Gomez, andJürgen Schmidhuber. Connectionist temporal classiﬁca-tion: labelling unsegmented sequence data with recurrentneural networks. In ICML 2006, pp. 369–376, 2006.
+[11] Junyi Li, Tianyi Tang, Wayne Xin Zhao, Jian-Yun Nie, andJi-Rong Wen. ELMER: A non-autoregressive pre-trainedlanguage model for eﬃcient and eﬀective text generation.In Yoav Goldberg, Zornitsa Kozareva, and Yue Zhang, ed-itors, EMNLP 2022, pp. 1044–1058, Abu Dhabi, UnitedArab Emirates, December 2022. ACL.
+[12] Jiaming Song, Chenlin Meng, and Stefano Ermon. De-noising diﬀusion implicit models. In ICLR 2021, 2021.
+[13] Ashish Vaswani, Noam Shazeer, Niki Parmar, JakobUszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser,and Illia Polosukhin. Attention is all you need. In NeurIPS2017, p. 6000–6010, Red Hook, NY, USA, 2017. CurranAssociates Inc.
+[14] Kaitao Song, Xu Tan, Tao Qin, Jianfeng Lu, and Tie-YanLiu. MASS: Masked sequence to sequence pre-training forlanguage generation. In Kamalika Chaudhuri and RuslanSalakhutdinov, editors, ICML 2019, Vol. 97, pp. 5926–5936. PMLR, 09–15 Jun 2019.
+[15] Weizhen Qi, Yu Yan, Yeyun Gong, Dayiheng Liu, NanDuan, Jiusheng Chen, Ruofei Zhang, and Ming Zhou.ProphetNet: Predicting future n-gram for sequence-to-Sequence Pre-training. In Trevor Cohn, Yulan He, andYang Liu, editors, Findings of EMNLP 2020, pp. 2401–2410, Online, November 2020. ACL.
+[16] Jiatao Gu, James Bradbury, Caiming Xiong, Victor OK Li,and Richard Socher. Non-autoregressive neural machinetranslation. In ICLR 2018, 2018.
+[17] Jason Lee, Elman Mansimov, and Kyunghyun Cho. Deter-ministic non-autoregressive neural sequence modeling byiterative reﬁnement. In Ellen Riloﬀ, David Chiang, JuliaHockenmaier, and Jun’ichi Tsujii, editors, EMNLP 2018,pp. 1173–1182, Brussels, Belgium, October-November2018. ACL.
+[18] Marjan Ghazvininejad, Omer Levy, Yinhan Liu, and LukeZettlemoyer. Mask-predict: Parallel decoding of condi-tional masked language models. In Kentaro Inui, JingJiang, Vincent Ng, and Xiaojun Wan, editors, EMNLP-IJCNLP 2019, pp. 6112–6121, Hong Kong, China,November 2019. ACL.
+[19] Jiatao Gu, Changhan Wang, and Junbo Zhao. Levenshteintransformer. In H. Wallach, H. Larochelle, A. Beygelzimer,F. d'Alché-Buc, E. Fox, and R. Garnett, editors, NeurIPS2019, Vol. 32. Curran Associates, Inc., 2019.
+[20] Weizhen Qi, Yeyun Gong, Jian Jiao, Yu Yan, Weizhu Chen,Dayiheng Liu, Kewen Tang, Houqiang Li, Jiusheng Chen,Ruofei Zhang, Ming Zhou, and Nan Duan. Bang: Bridg-ing autoregressive and non-autoregressive generation withlarge scale pretraining. In Marina Meila and Tong Zhang,editors, ICML 2021, Vol. 139, pp. 8630–8639. PMLR,18–24 Jul 2021.
+[21] Mohammad Golam Sohrab, Masaki Asada, Mat¯ıss Rikters,and Makoto Miwa. Bert-nar-bert: A non-autoregressivepre-trained sequence-to-sequence model leveraging bertcheckpoints. IEEE Access, Vol. 12, pp. 23–33, 2024.― 2063 ―
+
+
+
+
+A データセット
+
+本節では、テキスト要約および質問生成タスクのタスク設定およびベンチマークデータセットについて説明する。
+• テキスト要約タスクのベンチマークセットとして XSum データセットと MSNews データセットを使用した。
+評価指標として、ROUGE-1/2/L を用いた• 質問生成は与えられたパラグラフと回答に基づいて質問文を生成するタスクである。
+ベンチマークセットとして SQUAD v1.1 と MSQG データセットを使用した。
+評価指標は、BLEU-4 ，ROUGE-L，METEOR であるこれらのデータセットの統計を、表 4 に示す。
+データ分割設定およびこれらの評価指標の実装は、既存研究[11, 3]に準拠しており、公平な比較のために、すべてのベースラインについて[3]で報告されたスコアを示している。
+
+
+
+B モデル設定
+
+ノイズ付与を制御する Q𝑡の確率は線形スケジューラ[7]によって決定した。
+提案モデルは、Diﬀusion-NAT [3]に従い、BART-base のチェックポイントで初期化されており、139M のパラメータを持ち、追加のパラメータは含まれない。
+訓練中は、拡散ステップを 1,000 に設定した。
+推論時には、DDIM [12]を使用して推論拡散ステップを 200 にサンプリングした。
+最適化には AdamW を使用し、学習率は 5e-5 とした．SQuAD v1.1 および MSQG データセットに対しては学習ステップ数を 10,000 に設定し、XSum および MSNews データセットに対してはそれぞれ 80,000および 20,000 ステップを使用した。
+すべてのデータセットにおいて、グローバルバッチサイズを 512に設定した。
+学習は NVIDIA V100 GPU 16 基を用いて実施した。
+生成速度の比較において、ソース系列は長さ 512にパディングし、BART の生成トークン数と提案拡散モデルのターゲット系列のパディング長を変化させることで速度比較を実施した。
+すべてのモデルでバッチサイズを 16 に設定し、実験は NVIDIA V100GPU 1 基上で行った。
+Task Dataset #.Train #.Valid #.Test要約XSUM 204,045 11,332 11,334MSNews 136,082 7,496 7,562質問生成SQUAD v1.1 75,722 10,570 11,877MSQG 198,058 11,008 11,022表 4 要約データセットと質問生成データセットの統計
+
+C ベースラインの詳細
+
+自己回帰型モデル• Transformer [13]: 事前学習なしで自己回帰生成を行うモデル• MASS [ 14]: エンコーダ・デコーダ構造からマスク系列復元事前学習を行うモデル• BART [9]: 様々な系列変換タスクによって事前学習を行うモデル• ProphetNet [15]: n-gram 予測を事前学習タスクとして実施するモデル非自己回帰型モデル• NAT [16]: 最初に提案された非自己回帰型テキスト生成モデル• iNAT [17]: Iterative reﬁnement を採用した非自己回帰モデル• CMLM [18]: マスク穴埋めを繰り返す非自己回帰モデル• Levenshtein Transformer (LevT)[19]: 編集に基づく非自己回帰モデル• BANG [20]: 自己回帰型、非自己回帰型および半非自己回帰型生成をすべてサポートするモデル• ELMER [11]: Transformer を用いた事前学習モデルパラメータにより非自己回帰型生成の性能を向上させたモデル• BERT-nar-BERT (BnB)[21]: 既存のエンコーダのみモデルのチェックポイントを組み合わせて非自己回帰型生成を行うモデル拡散モデル• GENIE [1]: 事前学習した連続離散モデル• AR-Diﬀusion (AR-Diﬀ)[2]: 自己回帰デコードにより生成性能を向上した連続離散モデル• Diﬀusion-NAT (Diﬀ-NAT)[3]: 事前学習モデルのパラメータを活用した離散型拡散モデル。
+訓練と推論を複数イテレーション実施する自己プロンプティング手法を採用して生成テキストの品質は向上したが、生成速度は低下した― 2064 ―

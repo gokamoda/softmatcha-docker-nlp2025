@@ -1,0 +1,205 @@
+Open Weight LLMs in Out-of-Distribution Setting:Search Ad Title Generation
+
+Arseny Tolmachev Joseph Foran Tomoki Hoshino Yusuke Morikawa
+
+
+
+Hakuhodo Technologies
+
+
+
+{arseny.teramachi,joseph.foran,tomoki.hoshino,yusuke.morikawa}@
+
+
+
+hakuhodo-technologies.co.jp
+
+
+
+Abstract
+
+Large Language Models (LLMs) have revolutionized theNLP landscape overnight.
+However, they still struggle inout-of-distribution (OOD) scenarios.
+We present a casestudy on the performance of LLMs in the ad title gen-eration task, which represents an OOD scenario.
+LLMsperform better than we expected.
+Instruction-tuned mod-els are signiﬁcantly more stable than non-tuned ones.
+Adistilled Llama 3.2 performs signiﬁcantly worse than thebase Llama 3.1.
+General chat instruction-tuned modelsyield mixed results compared to non-tuned models.
+
+
+1 Introduction
+
+The advent of LLMs has revolutionized the ﬁeld of nat-ural language processing.
+LLMs can enable humans toachieve unprecedented levels of productivity across a di-verse range of tasks.
+These models, trained on an enormousamount of text data, are capable of performing a wide rangeof tasks with remarkable ﬂuency and coherence.
+However,despite their impressive capabilities, LLMs often exhibitperformance degradation in out-of-distribution scenarios.
+OOD scenarios refer to situations where inputs diﬀer sig-niﬁcantly from the data encountered during training.
+In this study, we focus on evaluating the performanceof several LLMs in the context of ad title generation.
+Adtitles, as deﬁned in the framework of Google ResponsiveAds, are short, engaging text snippets designed to cap-ture user attention and succinctly convey the essence of anadvertisement.
+Generating ad titles is an example of an extreme OODscenario.
+An example of an ad is shown in Figure 1.Generally, titles should be shorter than 30 characters, wherefull-width ones (e.g. kanji, hiragana or katakana) count asFigure 1 Google Ad Example.
+Two titles are in a larger bluefont, separated by "-" symbol.2.
+They also often use symbols such as brackets that are notcommon in general domain texts.
+Furthermore, both pre-training and ﬁne-tuning data do not contain a lot of searchads because they are mostly shown on result pages of searchengines, and result pages of search engines are usually notpresent in both pre-training and instruction tuning data.
+We perform several generation experiments to explorethe performance of the diﬀerent models in this task andpoint out any anomalies or directions for the further anal-ysis, if such exist.
+
+
+2 Experiment Setting
+
+We utilize several models that are publicly available onHuggingFace, with commercially viable licenses.
+Thegeneration process is conducted in a few-shot learningparadigm.
+For each experimental instance, the input con-tains an extract from a landing page, a collection of triggerkeywords, information about length limitation, and a setof existing titles.
+For simplicity we formulate the lengthrestriction as 15 symbols.
+Models are asked to produceseveral new title candidates without specifying an exactnumber.
+The prompt template is shown in Figure 2.
+Forthe landing page data and existing ad titles we utilize ourinternal dataset.
+The tested models are shown in Table 1 with the Hug-gingFace organizations.
+The following mentions do notuse organization names.
+We use both instruction-tunedand non-tuned models for our experiments.
+The table 1HuggingFace
+Model # Params Context # Vocab C/TInstruction-tuned modelscyberagent/calm3-22b-chat
+[1] 22B 16384 65024 1.86elyza/Llama-3-ELYZA-JP-8B
+[2] 8B 8192 128256 1.47Qwen/Qwen2.5-14B-Instruct [3, 4] 14B 32768 152064 1.38llm-jp/llm-jp-3-13b-instruct
+[5] 13B 4096 99584 2.00stockmark/stockmark-13b-instruct [6] 13B 2048 50000 1.88meta-llama/Llama-3.1-8B-Instruct [7] 8B 131072 128256 1.59meta-llama/Llama-3.2-3B-Instruct [8] 3B 131072 128256 1.59Non-instruction-tuned modelsllm-jp/llm-jp-3-13b 13B 4096 99584 2.00sbintuitions/sarashina2-13b [9] 13B 4096 102400 2.01Qwen/Qwen2.5-14B 14B 32768 152064 1.38meta-llama/Llama-3.1-8B 8B 131072 128256 1.59Table 1 Models used in experiments.
+Context is the model context window, usually the number of positional embeddings.
+C/T isthe char-token ratio, or how many characters on average the tokenizer can represent by a single token.
+Parameter ValueMode SamplingTemperature 0.7Top 𝑝 0.95Repetition penalty
+1.05Table 2 Generation Parametersalso shows the information like vocabulary size and to-kenizer char-to-token ratio (C/T).
+We compute char-to-token ratio using all the prompts in the evaluation.
+Fourmodels: llm-jp-3-13b(-instruct), stockmark-13b-instruct,calm3-22b-chat, and sarashina2-13b are Japanese-focusedand trained from scratch using diﬀerent corpora.
+Llama-3-ELYZA-JP-8B is an adaptation of the Llama3 modelfor Japanese with additional pretraining and ﬁne-tuning.
+Qwen2.5-14B(-Instruct), and Llama-3.1-8B(-Instruct) arenon-Japanese focused models but their description showJapanese as a supported language.
+Llama-3.2-3B-Instructis described as a distilled model that rivals in performanceLlama-3.1-8B-Instruct.
+We use HuggingFace Transformers library [10] for thegeneration.
+The generation settings are shown in Table 2.Generation uses four diﬀerent formats of the LP data.
+Foreach format we use 3 diﬀerent random seeds, giving us 12generation results for each model.
+You are an experienced copywriter creatingads for Google Search.
+Suggest several newad titles for the following landing page.
+Eachtitle must be shorter than 15 Japanese characters.
+Do not output anything except new ad candidates.
+# URL: <landing page URL># Ad Trigger Keywords* <list of keywords which are used to trigger the ad># Landing Page Content<extract from the landing page html text>
+# Ad examples* <list of ad examples>Figure 2 Prompt template for generation
+
+3 Experiment Results
+
+We conduct automated basic analysis focusing on themechanical generation properties and human evaluation.
+
+3.1 Basic Analysis
+
+Table 3 presents the average length of each title, theaverage number of generated titles, the average ratio ofunique character n-grams, and the average length of thelongest common n-gram in the generated attempts.
+Eachaverage is shown together with its standard deviation.
+Each generation attempt produced multiple title candi-dates.
+Since the LLMs did not produce cleanly formattedoutputs, we split the generated text into individual titles us-ing a best-eﬀort approach.
+The reported lengths are basedon these split titles.
+Qwen2.5-14B-Instruct consistentlyModel Name Length # Titles Unique LongestInstruction-tuned modelscalm3-22b-chat 19.2±5.3
+13.4±6.4 78.1±11.2 5.6±3.3Llama-3-ELYZA-JP-8B 18.7±7.1 7.9±2.8 89.1±5.9 4.4±3.0Qwen2.5-14B-Instr uct 10.5±3.1 8.6±3.4 82.4±9.8 3.3±2.4llm-jp-3-13b-instruct 22.3±24.6 5.2±9.9 93.0±13.7 15.1±29.7stockmark-13b-instruct 22.7±24.5 7.8±10.2
+86.6±18.5 19.5±47.5Llama-3.1-8B-Instruct 15.0±6.7 11.7±6.0 69.1±14.6 5.8±11.3Llama-3.2-3B-Instruct 16.3±11.6 9.5±7.0
+68.2±19.5 8.0±13.6Non-instruction-tuned modelsllm-jp-3-13b 18.4±26.1 29.8±23.0
+41.0±29.8 20.2±76.8sarashina2-13b 23.2±23.8 30.5±16.2
+34.7±28.7 21.0±42.7Qwen2.5-14B 21.6±12.4 14.2±7.0 61.3±26.3 10.8±11.5Llama-3.1-8B
+24.4±40.4
+13.9±11.4 53.4±34.5 18.9±38.8Table 3 Averages and standard deviations of the automatically evaluated metrics.
+Unique is number of unique character n-gramsdivided by total number of n-grams.
+Longest is the length of the longest character n-gram common to at least half of the generatedcandidates.produced short titles, adhering to the prompt precisely.
+Wespeculate this is due to its instruction training containinglength-related data.
+The other models often failed to followthe prompt exactly and occasionally produced outputs inincorrect formats.
+Instructed models generally showed lower variance thannon-instructed ones.
+However, llm-jp-3-13b-instruct andstockmark-13b-instruct frequently failed to follow instruc-tions, generating summarizations instead of ad titles.
+Otherinstructed models were relatively consistent in length butslightly exceeded the requested 15-symbol limit.
+We evaluate the diversity of generations using two met-rics.
+The ﬁrst measures the ratio of unique charactern-grams to total character n-grams.
+N-grams are com-puted from split ad title candidates, ensuring they do notspan multiple candidates.
+The high score of llm-jp-3-13b-instruct on this metric arises because it often generatesonly one or two candidates, leading to high variance intitle counts.
+We hypothesize that distillation signiﬁcantlyworsens the model’s performance in OOD settings.
+The second metric identiﬁes the longest n-gram that iscommon to at least half of the generated candidates.
+Thecases where the model produced only a single candidateare ignored.
+Often, many generated candidates contain thesame substring, essentially being slight variations of thesame text snippet.
+This metric is designed to capture suchpatterns.
+Based on both these metrics, the generation results ofcalm3-22b-chat and Llama-3.1-8B-Instruct show lower di-versity compared to other successful models.
+In contrast,the outputs of llm-jp-3-13b-instruct and stockmark-13b-instruct are highly inconsistent and include numerous re-peated substrings.
+Models without instruction tuning show much less con-sistent behavior, still Qwen2.5-14B is the most consistentone.
+We speculate that its pretraining data contain someinstruction-like data.
+
+
+3.2 Human Evaluation
+
+The quality of ad titles is diﬃcult to judge automati-cally.
+Thus, in addition to automated evaluation, we alsoperform a small-scale human evaluation.
+We evaluate howwell candidates follow the style of ad titles, how ad-likethe examples are, and cast a vote between the models todetermine which generations were preferred.
+First, we measure how models followed instr uctions.
+Exact following gave a generation 1 point, outputting non-titles in addition to titles gave 0.5 point, if there were notitles in generation — 0 points.
+Percentage from a per-fect score is reported asIFcolumn.
+Llama-3-ELYZA-JP-8B tend to repeat instructions in addition to the re-quested output, so it got 0.5 points in most of generations.
+Llm-jp-3-13b-instruct, stockmark-13b-instruct and Llama-3.2-3B-Instruct had problems with following instructions,Model Name IF Style Ad RankInstruction-tuned modelscalm3-22b-chat 100.0 n 65.6 2Llama-3-ELYZA-JP-8B 59.1 " 93.8 1Qwen2.5-14B-Instruct 100.0 n
+71.9 3llm-jp-3-13b-instruct 38.3 % 32.8 3stockmark-13b-instruct 21.1 % 15.1 3Llama-3.1-8B-Instruct 96.6 n 85.4 3Llama-3.2-3B-Instruct 71.6 % 45.8
+3Non-instruction-tuned modelsllm-jp-3-13b - n 39.6 4sarashina2-13b - n 22.3 3Qwen2.5-14B - " 62.5 1Llama-3.1-8B - % 13.5 2Table 4 Human evaluation of the generated output.
+IF is thepercentage how well the model followed instructions or initialprompt.
+Style is whether the model outputs Japanese speciﬁc toad titles or the output is mostly common Japanese.
+"– most(> 70%) of the output uses ad-speciﬁc language,n– there aresome (30 − 70%) instances of ad-speciﬁc language,%– outputcontain mostly none (< 30%) ad-speciﬁc language.
+Avg Lengthis average length (and the standard distribution) of each producedtitle.
+Ad is the percentage of the output which can be classiﬁedas an ad title by a human.
+Rank was computed in the voting forthe best model by several humans.producing unrelated output.
+Second, we judge whether the outputs of the model con-tain the language style frequently used in ad titles.
+Weselect ﬁve landing pages from diﬀerent industries and havea human judge whether a title uses the ad title style ornot.
+This metric is very subjective, so we report resultsusing broad categories.
+Llama-3-ELYZA-JP-8B followedthe title style well, albeit it did not use brackets at all.calm3-22b-chat, Qwen2.5-14B-Instruct, and Llama-3.1-8B-Instruct followed the ad title style relatively well; how-ever, multiple generations did not follow the style.
+Addi-tionally, none of the models used brackets.
+The rest of theinstruction-tuned models did not follow the style well, butit is notable that llm-jp-3-13b-instruct was the only modelthat used brackets in the output.
+Non-instruction-tuned models generally followed thestyle better than the worst-performing instruction-tunedmodels.
+We hypothesize that the pretraining data containedmore ad-like sentences than the ﬁne-tuning data.
+How-ever, Llama-3.1-8B performed signiﬁcantly worse than itsinstruction-tuned version.
+Next, we evaluate whether the generated candidates areeven minimally suitable as ad titles.
+Similar to the styleevaluation, we assess each generated candidate to deter-mine its potential as an ad title.
+The overall performanceon this metric closely aligns with the results of the styleevaluation.
+A notable ﬁnding is that Llama-3.2-3B-Instructproduces signiﬁcantly poorer ad titles compared to Llama-3.1-8B-Instruct.
+This discrepancy is not attributable tomodel size; for example, Qwen2.5-0.5B-Instruct (not de-tailed here) does not exhibit a comparable decline relativeto Qwen2.5-14B-Instruct.
+We hypothesize that the ob-served degradation in per formance under OOD settings iscaused by distillation.
+Finally, we organize the voting between the models.
+Weshow the human evaluator generation attempts: two permodel and ask the evaluator to choose a model which gen-erated the best titles.
+The Rank column shows the rank inthe election.
+For the instruction-tuned models, Llama-3-ELYZA-JP-8B and calm3-22b-chat have got all the votes,with former having a very slight lead.
+Rest of the modelshad 0 votes.
+Between the non-ﬁnetuned models, Qwen2.5-14B got the overwhelming majority of the votes.
+To conclude, the results of best-performing models ex-ceeded our expectations.
+In general, ﬁne-tuned modelsexhibit more consistent behavior, stills ome non-ﬁnetunedmodels sometimes can produce better output.
+
+
+4 Conclusion and Future Work
+
+We conducted ad title candidate generation experiments,representing an out-of-distribution (OOD) setting for gen-eral LLMs.
+The results of best-performing models haveexceeded our expectations.
+However, we suspect that dis-tillation signiﬁcantly worsens model performance in OODsettings, as shown by the substantial performance degrada-tion of Llama-3.2-3B-Instruct compared to Llama-3.1-8B-Instruct in human evaluations.
+This highlights an interest-ing direction for future research.
+It remains unclear whether instruction tuning improvesor worsens performance in OOD settings.
+Non-tuned mod-els generally show better than expected per formance onthis task.
+Namely, non-tuned llm-jp-3-13b outperformsits instruction-tuned model.
+Still, Llama-3-ELYZA-JP-8B signiﬁcantly outperforms all other models.
+A detailedinvestigation of this eﬀect is challenging in the currentexperimental setup and is left for future work.
+
+
+
+References
+
+
+[1] Ryosuke Ishigami. cyberagent/calm3-22b-chat, 2024.
+[2] Masato Hirakawa, Shintaro Horie, Tomoaki Naka-mura, Daisuke Oba, Sam Passaglia, and Akira Sasaki.elyza/llama-3-elyza-jp-8b, 2024.
+[3] An Yang, Baosong Yang, Binyuan Hui, Bo Zheng, BowenYu, Chang Zhou, Chengpeng Li, Chengyuan Li, DayihengLiu, Fei Huang, Guanting Dong, Haoran Wei, Huan Lin,Jialong Tang, Jialin Wang, Jian Yang, Jianhong Tu, Jian-wei Zhang, Jianxin Ma, Jin Xu, Jingren Zhou, Jinze Bai,Jinzheng He, Junyang Lin, Kai Dang, Keming Lu, KeqinChen, Kexin Yang, Mei Li, Mingfeng Xue, Na Ni, PeiZhang, Peng Wang, Ru Peng, Rui Men, Ruize Gao, RunjiLin, Shijie Wang, Shuai Bai, Sinan Tan, Tianhang Zhu,Tianhao Li, Tianyu Liu, Wenbin Ge, Xiaodong Deng, Xi-aohuan Zhou, Xingzhang Ren, Xinyu Zhang, Xipin Wei,Xuancheng Ren, Yang Fan, Yang Yao, Yichang Zhang,Yu Wan, Yunfei Chu, Yuqiong Liu, Zeyu Cui, ZhenruZhang, and Zhihao Fan. Qwen2 technical report. arXivpreprint arXiv:2407.10671, 2024.
+[4] Qwen Team. Qwen2.5: A party of foundation models,September 2024.
+[5] LLM-JP Project Contributors. llm-jp/llm-jp-3-13b-instruct, 2024.
+[6] Takahito Omi. stockmark/stockmark-13b-instruct, 2024.
+[7] Meta. meta-llama/llama-3.1-8b-instruct, 2024.
+[8] Meta. meta-llama/llama-3.2-3b-instruct, 2024.
+[9] SB Intuitions. sbintuitions/sarashina2-13b, 2024.
+[10] Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chau-mond, Clement Delangue, Anthony Moi, Pierric Cistac,Tim Rault, Rémi Louf, Morgan Funtowicz, and JamieBrew. HuggingFace’s Transformers: State-of-the-art nat-ural language processing, 2019.
+
+
+
+A Generation Examples for https://commerce-flow.com/
+
+calm3-22b-chat (good)Amazon 広告運用が AI で簡単Commerce Flow でコスト削減広告運用が 24/7 で効率的成果を出す AI 広告運用ツール自動広告運用で ROAS 向上calm3-22b-chat (similar)運用代行手数料が低設定！ Commerce Flow広告改善サポート付き！ Commerce FlowROAS 改善の実績アリ！
+Commerce Flow広告運用を AI で効率化！ Commerce Flow広告費用対効果を最大化！
+Commerce FlowLlama-3-ELYZA-JP-8B (good)Commerce Flow で自動運用最新
+AI で広告運用広告運用を人から AI へ高品質な自動運用AI で Amazon 広告を最適化Llama-3-ELYZA-JP-8B (bad)安い理由AI で運用他社と比較無料トライアル料金プランQwen2.5-14B-Instruct (good)1 ヶ月無料トライアルAI 導入で広告費削減広告運用の最適解商材に合った戦略立案無料トライアル実施中Qwen2.5-14B-Instruct (bad Japanese)24/7AI 運用サービス開始初月無料！
+Commerce Flow 試すAmazon
+広告を AI が最適化Commerce Flow で広告費削減多国展開、Commerce Flowllm-jp-3-13b-instruct (good, but only one)【Amazon 認定】AI が広告効果を改善llm-jp-3-13b-instruct (bad style, only one)AI による広告運用で広告運用工数を大幅削減、↓Amazon 広告運用なら CommerceFlowstockmark-13b-instruct (bad)広告文の見出しをいくつか提案してください。それぞれの見出しは 15 全角文字以内広告文の見出し以外何も出力しないLlama-3.1-8B-Instruct (median worst)Amazon 広告運用が簡単AI で広告を自動運用Amazon 広告の強化無料トライアルで始めようAI が広告を管理Llama-3.2-3B-Instruct (median worst)コマースフロー - 自動運用コマースフロー - ROASコマースフロー - 24/365コマースフロー - ライトコマースフロー - プロllm-jp-3-13b日本語でのサポートも提供しています初月無料トライアルが利用できます契約期間の縛りはありません結果の判断には 3 ヶ月以上を推奨しています日本製のツールが強みとなっていますsarashina2-13bセルフ・ライト・プロの 3 種類の料金プラン10 カ国の Amazon マーケットプレイスに対応日本語でのサポートも提供初月無料トライアルが利用可能契約期間の縛りは特になしQwen2.5-14B本物の AI 広告運用ツールを体験！24/7 の AI 運用で広告最適化！低コストで高効率な広告運用を実現！Amazon 広告の未来を切り開くツール！ROAS 向上に導く AI 広告運用ツール！Llama-3.1-8B低コストで広告運用の効率化コマースフローは Amazon 広告運用に最適なツールAmazon 広告運用に最適なツール低コストで広告運用の効率化Amazon 広告運用に最適なツールReferenceAmazon Ads 認定パートナー今だけ 1 ヶ月無料・契約期間なし【EC 事業者向け】CommerceFlow【公式】CommerceFlowスポンサー広告ならgpt-4o低コストで広告運用の効率化コマースフローは
+Amazon 広告運用に最適なツールAmazon 広告運用に最適なツール低コストで広告運用の効率化Amazon 広告運用に最適なツール

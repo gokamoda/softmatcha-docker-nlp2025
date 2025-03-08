@@ -1,0 +1,281 @@
+近世・近代・現代日本語テキストに対する場所参照表現抽出
+
+片山歩希
+
+1
+
+ 東山翔平
+
+2,1,3
+
+ 大内啓樹
+
+1,6,3
+
+ 坂井優介
+
+1
+
+ 竹内綾乃
+
+4
+
+ 坂東諒
+
+3
+
+ 橋本雄太
+
+5
+
+ 小木曽智信
+
+3
+
+ 渡辺太郎
+
+11
+
+奈良先端科学技術大学院大学 
+
+2
+
+情報通信研究機構 
+
+3
+
+国立国語研究所
+
+4
+
+国文学研究資料館 
+
+5
+
+国立歴史民俗博物館 
+
+6
+
+理化学研究所
+
+
+
+{katayama.ayuki.kc1,hiroki.ouchi,sakai.yusuke.sr9,taro}@is.naist.jp,
+
+
+
+shohei.higashiyama@nict.go.jp, takeuchi.ayano@nijl.ac.jp,
+
+
+
+yhashimoto@rekihaku.ac.jp
+
+
+
+,
+
+
+
+{
+
+
+
+r-bando,togiso
+
+
+
+}
+
+
+
+@ninjal.ac.jp
+
+
+
+概要
+
+歴史的テキストからの場所参照表現の抽出は、大規模な史料に対する人文学的分析を支援するための基礎技術として重要である。
+本研究では、近代・近世の日本語テキストを用いたデータセットを構築し、これら歴史的テキストに対する Transformer 言語モデルの抽出精度を調査した。
+実験から、現代語ラベル付きデータの活用の有効性を確認した一方で、歴史的テキストへの適応には、さらなるモデルの改善が必要であることも示された。
+
+
+1 はじめに
+
+各時代の出来事や人間の活動が記録された歴史的テキストは、人類史や自然史をより深く理解するための史料として重要である。
+地理的な観点から見ると、歴史的テキストには、歴史的地名・施設名などの場所参照表現（Location Referring Expressions;LRE）が含まれ、その場所に関連する人、物、出来事などとともに記述されていることが多い。
+たとえば、紀行文では筆者が訪れた場所での体験が記述され、災害記録では被災地域、被害の規模、被災者の状況などが記述される。
+計算機によって、こうした地理的情報の高精度な自動抽出・構造化が実現されると、「遠読」とも呼ばれる大規模な歴史的テキストの横断的分析など、人文学研究における分析作業を支援することが可能になる。
+本研究では、計算機による地理的テキスト解析の基本的なステップとして、歴史的日本語テキストからの LRE 抽出に取り組む。
+例として、“名取川渡りて仙台に入る” という入力文に対しては、“名取川”および “仙台” を抽出することが目標となる。
+評価対象のモデルとして、本タスクにおいて高い性能が期待できる Transformer [1]言語モデルを用いた。
+具体的には、Masked Language Model（MLM）である日本語 BERT [2]モデルと、Causal LanguageModel（CLM）である Llama-3-ELYZA-JP-8B（ELYZA）[3]について、ﬁne-tuning を実施し、評価を行った。
+モデルの性能評価実験には、次の 4 つのデータセットを使用した。
+我々が LRE アノテーションを施した近世紀行文「おくのほそ道」および近代紀行文「突貫紀行」1）、近世の災害記録からなる「みんなで翻刻データ」 [4]、現代紀行文（旅行記）の「地球の歩き方旅行記」 [5, 6, 7]である。
+近世・近代に加え、現代のテキストを使用する理由は 2 つある。
+(i)異なる時代のテキストに対する抽出精度の違いと、(ii)歴史的テキストに対する抽出精度向上に現代語テキストを活用することの有効性を調査するためである。
+日本語 LRE 抽出において、近世・近代・現代の 3 時代を横断した評価・分析を行った研究は、我々が知る限り本研究が初である。
+実験結果から、以下の知見が得られた。
+• BERT，ELYZA 両モデルは、現代のテキストでは高い精度を達成したものの（最大 F1 値0.886）、歴史的テキストでは低〜中程度の精度にとどまった（最大 F1 値 0.434–0.682)。
+• 現代および近代テキストでは ELYZA がより高い精度を示し、近世テキストでは BERT，ELYZA で概ね同等の精度となった。
+• 近世のみでなく現代のラベル付きデータもﬁne-tuning に用いることで、BERT，ELYZA とも各歴史的テキストでの精度が向上した。
+1） アノテーションデータセットは次の URL で公開する：https://github.com/naist-nlp/historical-travelogues．
+
+2 関連研究
+
+場所参照表現（LRE）抽出は、固有表現抽出（Named Entity Recognition; NER） [8]の特殊なケースに相当する。
+LRE が指す場所に対応する地理座標を特定するタスクはジオコーディングと呼ばれ、LRE抽出は、ジオコーディングと合わせてジオパージング[9]として取り組まれることも多い。
+言語資源歴史的テキストを用いた LRE アノテーションデータとして、英語ニュース記事[10]，英語旅行記[11, 12]、フランス語文学テキスト[13]，中国語歴史書[14]などのデータセットが構築され、機械学習システムの性能が評価されてきた。
+日本語については、地震史料集テキストデータベース[15]や、みんなで翻刻[4]など、歴史的な災害記録テキストに対して、LRE とその地理座標を人手アノテーションする取り組みが行われている。
+システム性能評価 LRE を含む固有表現の認識のための様々な手法について、歴史的テキストに対する性能が調査されてきた[16]。
+最近の研究では、事前学習 Transformer 言語モデルを用いたものがある．Labsch ら[17]は、ドイツ語歴史的新聞記事に対する NER において、BERT のための学習戦略を調査した。
+同研究では、古典語ラベル付きデータでのﬁne-tuning の前に、大規模な古典語ラベルなしデータと、現代語ラベル付きデータの両方で事前学習したモデルが最も高精度であったことが示されている．Tang ら[14]は、古代中国の歴史的文書に対する NER において、歴史的テキストで事前学習したMLM と、オープンおよびクローズドな現代語事前学習 CLM を評価し、MLM がより高精度であることを示した。
+
+
+3 実験設定とデータセット
+
+LRE 抽出タスクにおいて、大規模な現代語テキストで事前学習された言語モデルを、歴史的テキスト（古典語テキスト）に適応させるための実験を行う。
+そこで、後述する 4 データセットを用いた学習・評価シナリオを設定した。
+学習シナリオとして、1. 現代語のラベル付きデータでの ﬁne-tuning2. 古典語のラベル付きデータでの ﬁne-tuning3. 現代語・古典語両方のラベル付きデータでのﬁne-tuningの 3 種類を設定し、各学習済みモデルについて、現表 1 各データセットの記述統計（文数、LRE 数）DataTrain Dev TestSent. LRE Sent. LRE Sent. LREArukikata 6,516 3,102 601 260 5,156 2,166Minna 1,800 9,585 101 178 476 2,408Hosomichi – – – – 523 242Tokkan – – – – 180 117代語・古典語の各評価データで評価する。
+これらの評価を通じて、MLM と CLM の精度を比較する。
+
+3.1 データセット
+
+既存の現代語データセット 1 件（Arukikata）と古典語データセット 1 件（Minna）に加え、新たに古典語データセット 2 件（Hosomichi，Tokkan）を作成した。
+各データセットの記述統計を表1 に示す。
+3.1.1 地球の歩き方旅行記（Arukikata）現代語テキストとして、現代語の日本国内旅行記に人手で LRE がアノテーションされたデータセットである ATD-MCL [7]を使用した。
+LOC-NAME（地名）または FAC-NAME（施設名）のラベルが付与された固有名の LRE を対象とし、ラベルを LOCATION に統一した上で、実験に用いた。
+訓練・開発・テストセットの分割は、文献[7]に従った。
+3.1.2 みんなで翻刻（Minna）1 つ目の歴史的テキストとして、みんなで翻刻[4]プロジェクト2）で構築されたアノテーションデータを使用した。
+同データは、1800 年代前後の近世日本の災害記録のテキストからなり、「日時」，「場所」，「現象・被害」，「人物」を表す表現が人手アノテーションされている3）。
+データの前処理は次のように行った。
+まず、原文テキスト4）に，「場所」のアノテーション情報5）を LOCATION ラベルの LRE として統合した後、LRE が 1 件以上出現する txt ファイル（原書の見開き 1 ページに相当）全体を選択した。
+次に、それらの各 txt ファイルを 50 文字ごとにセグメントに分割し、各セグメントを文とみなして学習・評価の入力単位とした6）。
+次に、文集合全体からランダムに 80%の文を抽出し、そのうち約 95%，2） https://honkoku.org/index.html3） https://wiki.honkoku.org/doku.php?
+id=annotation-top4） https://github.com/yuta1984/honkoku-data/tree/master/v15） https://ansei2.vercel.app/api/annotations?
+type=location6） セグメントを跨ぐ LRE は、LRE でないものと扱った。
+5%をそれぞれ訓練、開発セットとし、残りの 20%をテストセットとした（つまり、3 セットの文数の比率は概ね 76:4:20 となる)。
+本データのテキストの特徴として、地震の場所や被害の描写を列挙するスタイルで書かれたものが多い点が挙げられる。
+例：“小石川御門内よりするが臺小川丁筋違御門迄少〻破損” （下線部はLRE を示す)。
+3.1.3 おくのほそ道（Hosomichi）2 つ目の歴史的テキストとして、Wikisource で公開されている「おくのほそ道」のテキスト7）を使用し，LRE アノテーションデータセットを作成・使用した。
+「おくのほそ道」は，1690 年代頃に松尾芭蕉によって書かれたもので、同時代を代表する歴史的紀行文の一つである。
+「おくのほそ道」は人間の地理的移動に焦点を当てた文学テキストであり、実用上の目的から地理的自然現象が記録された文書である「みんなで翻刻」のテキストと比較すると、ともに近い時代に書かれたテキストでありながら、異なる特徴を持つと考えられる。
+アノテーション作業は、日本古典文学作品のコーパス構築経験のある著者 2 名により、文境界付与、LRE 付与という手順で行った8）。
+なお、本データセットはサイズが小さいため、未知の近世テキストデータとして評価にのみ使用した9）．3.1.4 突貫紀行（Tokkan）3 つ目の歴史的テキストとして、青空文庫で公開されている「突貫紀行」のテキスト10）を使用し、LRE アノテーションデータセットを作成・使用した．「突貫紀行」は、明治時代に幸田露伴によって書かれ、1893 年に発表されたもので、同時代を代表する歴史的紀行文の一つである。
+「突貫紀行」は，「おくのほそ道」と同様に文学的な紀行文であるが、より現代に近い歴史的テキストである。
+「おくのほそ道」と同様に、著者 2 名により文境界・LRE のアノテーションを行った。
+また、本データも、未知の近代テキストとして評価にのみ使用した。
+7） https://ja.wikisource.org/wiki/%E3%81%8A%E3%81%8F%E3%81%AE%E3%81%BB%E3%81%9D%E9%81%938） 基準の概要について付録 A に簡潔に記す。
+9） 事前学習モデルの学習に生テキストが使用された可能性はあるが、ラベルについては未知である。
+10） https://www.aozora.gr.jp/cards/000051/files/830 14079.html指示:\n 次の紀行文の文章を読んで、地名・施設名についての質問に回答してください。
+\n文章:\n{TEXT}\n質問:\n 旅行記から地名・施設名を抽出してください。
+\n出力形式:\n 地名・施設名をひとつも抽出しなかった場合は「なし」と出力してください。
+複数の地名・施設名を抽出した場合は「@@」で区切って出力してください。
+\n回答:\n図 1 CLM 用プロンプト。
+“{TEXT}” には実際のテキストが挿入される。
+一部の改行文字は “\n” で示している。
+
+
+3.2 言語モデル
+
+大規模な現代語日本語テキストで事前学習された，MLM および CLM を評価に用いた。
+各モデルのﬁne-tuning におけるハイパーパラメタの設定は付録B に示す。
+BERT MLM として、日本語文字単位の BERT [2]事前学習モデル11）（Large、パラメタ数 340M）を用いた。
+各文字トークンにラベル（B-LOCATION，I-LOCATION，O）を割り当てる系列ラベリングとして LRE 抽出を行うため、ラベル分類用の全結合層を追加し、Softmax 交差エントロピー損失を用いてﬁne-tuning を行った。
+ELYZA CLM として、Llama-3 [18]に日本語データでの継続的事前学習を施した Llama-3-ELYZA-JP-8B [3]12）（ELYZA モデルと呼ぶ）を使用した。
+図 1の形式のプロンプトを使用し、「回答:\n」に続くテキストを生成するよう、QLoRA [19]を用いてﬁne-tuning を行った。
+
+
+
+4 実験結果
+
+各学習シナリオ（§3 冒頭で述べた 1.〜3. の学習データ）において、BERT，ELYZA モデルの異なる乱数シードでの学習をそれぞれ 3 回実行し、各学習において開発セットでの F1 値が最良であったモデルチェックポイントを保存し、評価した。
+各テストセットでの抽出精度（F1 値）を表 2 に示す。
+以降、§4.1–4.3 でデータ別での各モデル・学習シナリオについての結果を議論した後、§4.4 でデータ横断での結果を議論する。
+
+4.1 現代旅行記での評価結果
+
+Arukikata テストセットでは、BERT，ELYZA とも Arukikata 学習セットを含むデータで学習した場合に、高い精度（F1 値 0.852–0.886）を達成した。
+11） https://huggingface.co/tohoku-nlp/bert-large-japanese-char-v212） https://huggingface.co/elyza/Llama-3-ELYZA-JP-8B表 2 各モデルの LRE 抽出精度。
+学習データの “A” はArukikata データ、“M” は Minna データを指す。
+下線は同一モデル内、太字はモデル横断での最高精度を示す。
+Model TrainTestAruki Minna Hoso TokkanBERTA 0.843 0.232 0.350 0.494M 0.223 0.657 0.329 0.496A+M 0.830 0.682 0.417 0.524ELYZAA 0.886 0.253 0.375 0.649M 0.509 0.664 0.352 0.497A+M 0.880 0.674 0.434 0.670Arukikata 学習セットに加えて Minna 学習セットを用いたケースでは、多少の変化は見られたものの小さい影響であった。
+主な理由として、Arukikataデータに対する Minna データのスタイル（内容および時代）の違いが大きい点が挙げられる。
+また、モデル間の比較では、いずれの学習シナリオにおいても ELYZA が BERT を上回り、特にMinna 学習セットのみで学習したケースでの差が顕著である。
+これは、ELYZA が、高性能なベースモデルLlama-3の能力を引き継ぎつつ、継続事前学習によって日本や現代日本語に関する高度な知識・読解能力を有したことを示唆している13）．
+
+4.2 近世地震記録での評価結果
+
+Minna テストセットでは、両モデルとも、Minna学習セットのみの場合に比べ、Arukikata 学習セットを追加で用いた場合に、やや精度が向上した。
+Arukikata データには日本全国の様々な地名が含まれており、それが Minna データ（江戸周辺の地名に偏っている）での抽出に対して有効であった可能性がある。
+ただし、前述したような両データのスタイルの違いからか、Arukikata 学習セットのみでの学習では非常に低い精度にとどまっている。
+モデル間の比較としては、どの学習シナリオでも両モデルはほぼ同等の精度を示した。
+
+
+4.3 近世・近代紀行文での評価結果
+
+Hosomichi テストセット、Tokkan テストセットでは、両モデルとも、Minna，Arukikata の一方よりも両方の学習セットを用いた場合に顕著に精度が向上し、最高精度を示した。
+この結果は、近世・近代紀行文からの抽出において、現代の旅行者の記録である Arukikata データと、近世の地震の記録である13） 文献[20]では、Llama-2 からの継続事前学習モデルである Swallow-7b-hf は BERT に劣る結果を示している。
+Minna データは、異なる特徴を有しつつも共に有用であり、相補的な効果があったことを示している。
+モデル間の比較では、Hosomichi テストセットでは両モデルで同水準の精度であったが、Tokkan テストセットでは ELYZA の方が概ね高精度であった。
+Tokkan データの方が現代語に近いテキストであることから、この結果も、ELYZA の高い日本語知識・能力を示唆している。
+
+4.4 総括
+
+データ横断での全体的な傾向を述べる。
+最も高精度となる傾向が見られた 2 つの学習セットを用いた場合に注目すると、両モデルとも、Arukikata テストセットにおいて高い精度（F1 値 0.8 以上）を示し、続いて Minna および Tokkan において中程度の精度（F1 値 0.5–0.7）を示し、Hosomichi では最も低い精度（F1 値 0.5 未満）を示した。
+この点は、各言語モデルが現代日本語テキストで事前学習されており，Minna ではドメイン内データでの学習を行っている点、Tokkan では比較的現代に近いテキストである点を踏まえると、直感的な結果である。
+各歴史的テキストでの抽出精度を高めるためには、個別にドメイン内ラベル付きデータを作成（増量）して学習に用いる他、Labusch [17]らと同様の戦略として、大規模な古典語のラベルなしデータや、指示学習データなどを事前学習に使用し、古典語の知識・処理能力を高めることが必要と考えられる。
+なお、現代、近代のテキストでは、BERT よりも ELYZA が高い精度を達成したものの、現代から離れた時代のテキストにおいてどのようなモデルが高精度となるかは探求の余地がある。
+
+
+
+5 おわりに
+
+本研究では、我々が構築した近代・近世紀行文の場所参照表現（LRE）アノテーションデータセットとともに、既存の現代および近世テキストデータセットを使用し、各時代のテキストに対する日本語言語モデルの LRE 抽出精度を調査した。
+実験から、現代語・古典語両方のラベル付きデータでﬁne-tuning することの有効性を確認した。
+今後の展望として、(1)古典語ラベルなしデータの活用も含め、歴史的テキストを高精度に解析可能とするモデル学習方法の探求、(2)歴史的テキストに対するジオコーディングのためのデータおよび手法の構築・評価などに取り組む予定である。
+
+
+
+謝辞
+
+本研究は JSPS 科研費 JP23K24904 と国立国語研究所共同利用型共同研究(B)「歴史的日本語資料のためのジオパージング」および基幹研究プロジェクト「開かれた共同構築環境による通時コーパスの拡張」の助成を受けたものです。
+
+参考文献
+
+
+[1] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit,Llion Jones, Aidan N Gomez, L ukasz Kaiser, and Illia Polosukhin.Attention is all you need. In Advances in Neural InformationProcessing Systems, Vol. 30. Curran Associates, Inc., 2017.
+[2] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and KristinaToutanova. BERT: Pre-training of deep bidirectional Transform-ers for language understanding. In Proceedings of the 2019Conference of the North American Chapter of the Asso-ciation for Computational Linguistics: Human LanguageTechnologies, Volume 1 (Long and Short Papers), pp. 4171–4186. Association for Computational Linguistics, June 2019.
+[3] Masato Hirakawa, Shintaro Horie, Tomoaki Nakamura, DaisukeOba, Sam Passaglia, and Akira Sasaki. elyza/Llama-3-ELYZA-JP-8B. https://huggingface.co/elyza/Llama-3-ELYZA-JP-8B,2024.
+[4] 橋本雄太. 歴史災害資料のマークアップシステムの試作. 研究報告人文科学とコンピュータ, Vol. 2023-CH-131, No. 2, pp.1–6, 2023.
+[5] 株式会社地球の歩き方. 地球の歩き方旅行記データセット. 国 立 情 報 学 研 究 所 情 報 学 研 究 デ ー タリ ポ ジ ト リ.https://doi.org/10.32130/idr.18.1, 2022.
+[6] Hiroki Ouchi, Hiroyuki Shindo, Shoko Wakamiya, Yuki Matsuda,Naoya Inoue, Shohei Higashiyama, Satoshi Nakamura, and TaroWatanabe. Arukikata travelogue dataset. arXiv:2305.11444, 2023.
+[7] Shohei Higashiyama, Hiroki Ouchi, Hiroki Teranishi, HiroyukiOtomo, Yusuke Ide, Aitaro Yamamoto, Hiroyuki Shindo, YukiMatsuda, Shoko Wakamiya, Naoya Inoue, Ikuya Yamada, and TaroWatanabe. Arukikata travelogue dataset with geographic entitymention, coreference, and link annotation. In Findings of theACL: EACL 2024, pp. 513–532, March 2024.
+[8] David Nadeau and Satoshi Sekine. A survey of named entity recog-nition and classiﬁcation. Lingvisticae Investigationes, Vol. 30,No. 1, pp. 3–26, 2007.
+[9] Milan Gritta, Mohammad Taher Pilehvar, and Nigel Collier. Apragmatic guide to geoparsing evaluation: Toponyms, named en-tity recognition and pragmatics. Language Resources and Eval-uation, Vol. 54, pp. 683–712, 2020.
+[10] Mariona Coll Ardanuy, David Beavan, Kaspar Beelen, KasraHosseini, Jon Lawrence, Katherine McDonough, Federico Nanni,Daniel van Strien, and Daniel C. S. Wilson. A dataset for toponymresolution in nineteenth-century English newspapers. Journal ofOpen Humanities Data, Jan 2022.
+[11] Paul Rayson, Alex Reinhold, James Butler, Chris Donaldson, IanGregory, and Joanna Taylor. A deeply annotated testbed for ge-ographical text analysis: The corpus of lake district writing. InProceedings of the 1st ACM SIGSPATIAL Workshop onGeospatial Humanities, p. 9–15. Association for ComputingMachinery, 2017.
+[12] Rachele Sprugnoli, et al. Arretium or arezzo? A neural approachto the identiﬁcation of place names in historical texts. In Pro-ceedings of the Fifth Italian Conference on ComputationalLinguistics. CEUR-WS, 2018.
+[13] Eleni Kogkitsidou and Philippe Gambette. Normalisation of 16thand 17th century texts in French and geographical named entityrecognition. In Proceedings of the 4th ACM SIGSPATIALWorkshop on Geospatial Humanities, p. 28–34. Associationfor Computing Machinery, 2020.
+[14] Xuemei Tang, Qi Su, Jun Wang, and Zekun Deng. CHisIEC:An information extraction corpus for Ancient Chinese history. InProceedings of the 2024 Joint International Conferenceon Computational Linguistics, Language Resources andEvaluation (LREC-COLING 2024), pp. 3192–3202. ELRA andICCL, May 2024.
+[15] Yasuyuki Kano and Junzo Ohmua. Integration of geographical in-formation into the data of materials for the history of Japaneseearthquakes. IPSJ SIG Computers and the HumanitiesTechnical Report, Vol. 2023-CH-131, No. 3, pp. 1–3, 2023.
+[16] Maud Ehrmann, Ahmed Hamdi, Elvys Linhares Pontes, MatteoRomanello, and Antoine Doucet. Named entity recognition andclassiﬁcation in historical documents: A survey. ACM Comput.Surv., Vol. 56, No. 2, sep 2023.
+[17] Kai Labusch, Preußischer Kulturbesitz, Clemens Neudecker, andDavid Zellh¨ofer. BERT for named entity recognition in contem-porary and historical German. In Proceedings of the 15thConference on Natural Language Processing (KONVENS2019), pp. 9–11, 2019.
+[18] Aaron Grattaﬁori et al. The Llama 3 herd of models.arXiv:2407.21783, 2024.
+[19] Tim Dettmers, Artidoro Pagnoni, Ari Holtzman, and Luke Zettle-moyer. QLoRA: Eﬃcient ﬁnetuning of quantized LLMs. InThirty-seventh Conference on Neural Information Process-ing Systems, 2023.
+[20] Ayuki Katayama, Yusuke Sakai, Shohei Higashiyama, HirokiOuchi, Ayano Takeuchi, Ryo Bando, Yuta Hashimoto, ToshinobuOgiso, and Taro Watanabe. Evaluating language models in locationreferring expression extraction from early modern and contempo-rary Japanese texts. In Proceedings of the 4th InternationalConference on Natural Language Processing for DigitalHumanities, pp. 331–338. Association for Computational Lin-guistics, November 2024.
+
+
+
+
+A アノテーション基準
+
+「おくのほそ道」および「突貫紀行」への LRE アノテーション作業では、表 3 に示すラベルを定義し、該当する表現にアノテーションを行った。
+個々の表現を LRE とみなすかどうかの基準については、文献[7]のアノテーション基準を参考にしつつ、各歴史的テキストに適した基準に更新した。
+なお、実験では、LOC-NAME および FAC-NAME ラベルを LOCATIONラベルに統一し、同ラベルの事例のみ対象とした。
+表 3 LRE アノテーションにおけるラベルセットLabel DescriptionLOC-{NAME,GENERAL} 地名の固有名、一般名詞句FAC-{NAME,GENERAL} 施設名の固有名、一般名詞句VEHICLE 乗り物名（固有名か否か区別なし）DEICTIC 上記いずれかを指す指示表現等
+
+B モデルのハイパーパラメタ
+
+表 4 および表 5 に、BERT-Large および Llama-3-ELYZA-JP-8B モデルの ﬁne-tuning において使用したハイパーパラメタの設定をそれぞれ示す。
+表 4 BERT-Large に関するハイパーパラメタHyper-parameter Valuetraining epochs 20batch size 32learning rate 1e-5lr scheduler type linearwarmup ratio 0.1gradient norm clipping threshold 1.0optimizer AdamW表 5 Llama-3-ELYZA-JP-8B に関するハイパーパラメタHyper-parameter Valuetraining epochs 10batch size 8learning rate 5e-5lr scheduler type linearoptimizer paged adamw 8bitquant method BITS AND BYTESload in 4bit Truebnb 4bit use double quant Truebnb 4bit quant type nf4bnb 4bit compute dtype ﬂoat16lora alpha 16lora dropout 0.1bottleneck r 64torch dtype ﬂoat16

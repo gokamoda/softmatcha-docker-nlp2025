@@ -1,0 +1,176 @@
+インストラクションと複数タスクを利用した日本語向け分散表現モデルの構築
+
+勝又 智 木村 大翼 西鳥羽 二郎
+
+
+
+株式会社レトリバ
+
+
+
+{satoru.katsumata,daisuke.kimura,jiro.nishitoba}@retrieva.jp
+
+
+
+概要
+
+Information Retr ieval を始め、様々な用途で分散表現を用いた研究や製品が開発されており、高性能な分散表現モデルへの需要は日々高まっている。
+本研究では、日本語の多様なタスクに対して効果的な分散表現作成モデルを構築した。
+作成したモデルの検証結果から、学習データとして様々なタスクのデータが分散表現モデルの学習に効果的なこと、英語に関するデータが日本語向け分散表現に効果があることが確認できた。
+1 はじめに文書を対象とした分散表現モデルは研究用途や実応用などの目的で盛んに使用され、高性能な分散表現モデルの需要は日々高まっている。
+分散表現を利用した Information Retrieval（IR） [1]を始めとして，Summarization [2]や Classiﬁcation への活用[3]などが報告されている。
+このように、文書の分散表現は自然言語処理において重要な要素の一つである。
+分散表現モデル構築の研究は、主に英語を焦点に当てて様々な議論がされている。
+その中でも特に(1)どのデータを使い、(2)どのようなモデルに、(3)どのような学習を施すのか、が日進月歩で報告されている。
+学習データに関する研究として、Wang ら[4]は Web 上の半構造データから作成した学習データ 270M 件を利用することで、高精度な分散表現モデルを構築できることを報告している。
+一方で、Su ら[5]や Asai ら[6]は既存の英語タスクのデータを複数利用することで、様々なタスクについて既存研究と比較して高い性能が得られることを報告している。
+日本語の分散表現モデルにおいては、Tsukagoshi and Sasano [7]がWangら[4]と同様の取り組みを行い、88M 件のデータを利用することで高い性能が達成できることを報告している。
+本研究では、日本語分散表現モデル構築に向けて、どのデータを使うのかという問いについて、Su ら[5]や Asaiら[6]と同様の方向性での検証を実施する。
+本研究では、日本語に関する様々なデータを収集し、それらを用いることで分散表現モデルの学習が可能か検証した。
+また、多言語データでの学習により、言語横断による性能向上が報告されている[8]ことを受け、本研究でも英語に関するデータを利用することにより、より高精度な分散表現モデルが構築できるか検証した。
+検証の結果、日本語データで学習したモデルがいくつかのタスクで精度が向上することを確認し、英語データを含めて学習することでさらに性能が向上することを確認した。
+分析から、学習に使用したタスクデータの種類に応じて、改善する評価指標と改悪する評価指標が異なることを確認した。
+2 分散表現構築に向けたデータ作成本研究では、日本語向け分散表現モデル構築に向けて、日本語と英語の既存タスクに関するデータセットから学習データを構築した。
+§2.1 では既存研究がどのように学習データを構築しているか論じ、§2.2 にて本研究がどのように作成したかを述べる。
+2.1 既存研究のデータ作成手法分散表現モデルの学習に向けて、クエリ 𝑞 と関連、非関連文書集合 𝑑+∈ 𝐷+，𝑑−∈ 𝐷−、クエリ、文書のインストラクション 𝐼𝑞, 𝐼𝐷を組み合わせたデータ(𝑞, 𝐷+, 𝐷−, 𝐼𝑞, 𝐼𝐷)を用意する。
+Su ら[5]や Asai ら[6]は既存のタスクから(𝑞, 𝐷+, 𝐷−)を作成し、別途対象となるタスクごとに(𝐼𝑞, 𝐼𝐷)を作成した。
+クエリと対応する文書集合。
+学習データ構築に向けて、既存のタスクからクエリとそれに関連した文書、関連しない文書を取得する。
+既存のタスクとして、IR や Question Answering (QA)であれば、明示図 1 学習データ作成に使用した日本語データセットの概要。
+表 1 本研究と先行研究との概要。
+データセット数対応言語Su ら[5] 330 En EnAsai ら[6] 37 En En本研究 19 Ja + 26 En + 4 JaEn Ja，En的にこれらの組み合わせが与えられている場合が多いため、その場合は既知の組み合わせを使用した。
+一方で、それ以外のタスクではあるクエリに対し、関連文書として何が適切であるかは自明ではない。
+Su らや Asai らは分類タスクであれば入力テキストをクエリとし、対応するクラスラベルを利用して関連文書を構築する処理を実施した。
+また、Summarization などの入出力が文または文書の場合には、そのまま入力をクエリとし、出力を関連文書としている。
+非関連文書については、既存の検索システムを用いて作成している。
+例として、Asai らは既存のデータセットから作成した文書集合に対して，Contriever [9]を用いて検索を行い、検索結果に対して cross-encoder での類似度フィルタリングを実施して非関連文書を作成している。
+本研究でもこれらの研究を参考に様々なタスクからクエリと関連、非関連文書の組み合わせ(𝑞, 𝐷+, 𝐷−)を構築した。
+インストラクションの作成。
+Su らや Asai らはクエリや文書の前に自然言語で記述されたインストラクションを付与することで、クエリや文書がどのようなものなのかを明示的に表現している。
+Su らはインストラクションの内容として、(1)入力がクエリか文書かの記述、(2)タスクの記述、(3)扱う分野の記述を挙げている。
+これらを自然文として表現したものをクエリまたは文書の前に付与している。
+ただし、タスクの記述と扱う分野の記述はデータに応じて付与するかどうかを決めている。
+本研究でも同様の手順でインストラクションを作成する。
+2.2 本研究での学習データ作成手法本研究では、先行研究と同様の手法を用いて日本語に関するタスクデータから分散表現を作成した。
+本節では先行研究と異なる点について説明を行う。
+なお、表 1 に本研究と先行研究の概要を示した。
+日本語タスクデータ。
+本研究では、日本語タスクデータとして llm-jp-eval [10]や llm-japanese-dataset[11]で利用可能な学習データを選択し、さらに既存の日本語分散表現構築で使用されているデータセット1）を利用した。
+なお、日本語タスクだけでなく、英語タスクも使用することにより、さらに高精度な分散表現モデルが構築可能であるか検証するため、本研究では Asai らが使用した英語データセットの一部を使用している。
+これらの日英データの言語横断性を向上させるため、本研究では日英 MachineTranslation（MT）に関するデータセットも使用している。
+本タスクで利用した日本語データセットの概要は図 1 に記載し、詳細は §A.1 に記載する。
+合成データ。
+前述のデータソースでは IR とClassiﬁcation について不足していたため、本研究では Large Language Model（LLM）を用いて合成データを作成した。
+IR については、Dai ら[12]の手法を参考に、LLM-jp Corpus v22）の一部の Common Crawl文書に対して、関連する疑似クエリを生成した。
+Classiﬁcation については、2 値の極性レビュー分類データを作成した。
+具体的には、拡張固有表現分類3）を元に、架空の固有表現を作成し、{positive,negative} のどちらかを反映したレビュー文書を作成している。
+固有表現分類を元にすることで、多様なレビュー文書を生成するようにしている。
+非関連文書。
+既存のタスクからクエリ 𝑞 と関連、非関連文書 𝐷+, 𝐷−の構築は Asai らとおおよそ同じ手法を使用している。
+違いとして、非関連文書の作成方法が挙げられる。
+本研究では日本語タスク、英語タスクについて、非関連文書作成の時間効率を考え、Contriver ではなく、bm25 [13]を利用した。
+その検索結果に対して cross-encoder でのフィル1） https://huggingface.co/datasets/hpprc/emb2） https://gitlab.llm-jp.nii.ac.jp/datasets/llm-jp-corpus-v23） http://ene-project.info/ene9/表 2 JMTEB での評価結果。
+Classiﬁcation Reranking Retrieval STS Clustering PairClassiﬁcation AverageRetrievaBert w/o training 73.64 89.88 24.66 67.07 48.27 62.35 60.98RetrievaBert w/ 日本語データ 71.99 91.91 59.75 78.32 46.52 62.20 68.62RetrievaBert w/ 日英混合 71.87 92.94 62.92 78.95 45.85 62.20 69.12cl-nagoya/ruri-base 75.49 92.91 69.53 82.87 52.40 62.38 72.60intfloat/multilingual-e5-base 69.86 92.90 69.45 80.45 51.62 62.35 71.11タリングを実施している。
+なお、日英 MT データについては、言語横断性のため、bm25 スコアではなく、既存の多言語ニューラル分散表現モデルを利用して候補文書集合を構築している。
+インストラクションの作成。
+インストラクションについては Su らの手法を参考に、各タスクごとに人手で日本語、英語インストラクションを作成した。
+ただし、Su らと違い、総データセット数が少なくインストラクションの種類に限りがあるため、本研究では 1 つのインストラクションに対して最大 3つの言い換えたものを LLM を用いて作成した。
+学習の際には、最大 4 つのインストラクションからサンプリングされたものが各事例に付与される。
+3 分散表現モデルの性能調査本研究では作成したデータを用いて分散表現モデルが学習可能か、またどの程度の性能なのかを検証した。
+さらに、日本語タスクデータのみで学習した場合と、日本語英語タスクデータを混合して学習した場合について比較を行い、英語のタスクデータが日本語向け分散表現構築に効果的か検証した。
+3.1 実験設定本研究では単一の Encoder を学習し、そのモデルを用いてクエリと文書のベクトル化を行う．Encoder の学習には in-batch negative を考慮したinfoNCE loss [14]を用いた。
+この学習の詳細については §A.2 に記載する。
+学習データ作成の際、特定のデータセットが過剰に偏ることを防ぐため、クエリ数が 1M を超えるデータセットについては 100K まで down-samplingを実施している。
+作成したデータでの分散表現モデル学習の際に使用したハイパーパラメータや、学習データ作成時に使用した各種学習済みモデルについては §A.3，A.4 に記載する。
+本研究では分散表現構築の際のベースモデルとして、独自に構築した RetrievaBert4）の base サイズを使用した。
+こ4） https://huggingface.co/retrieva-jp/bert-1.3bのベースモデルは LLM-jp Corpus v2 と ReﬁnedWeb[15]，The Stack [16]、中国語、韓国語 Wikipedia を利用して学習したものである。
+検証タスクとして、本研究では JMTEB5）を使用した。
+この JMTEB は Classiﬁcation，Clustering，IR など合計 6 種類 16 タスクから構築された日本語分散表現ベンチマークである。
+比較として、今回の検証モデルと同等のパラメータサイズでの既存モデルも評価を行った。
+具体的には、Tsukagoshi and Sasano [7]による日本語大規模データを利用した base サイズモデル cl-nagoya/ruri-base と、Wang ら[4]の手法を多言語データで実施した base サイズモデルintfloat/multilingual-e5-base [17]を検証した。
+3.2 JMTEB 実験結果検証結果を表 2 に示す。
+本検証の結果から、複数タスクを利用した学習を行うことで、特に Retrievalタスクと STS で性能が向上していることがわかる。
+一方でいくつかのタスクでは学習することにより性能が減少した。
+原因調査のため、§4 にて学習データのタスクと JMTEB の評価タスクの関係を調査する。
+他の学習データ作成手法で訓練されたモデルと比較すると、STS，Clustering について差があることがわかる。
+この 2 種のタスクについては、細かい粒度での類似度が要求されるタスクと考えられる。
+提案手法を用いることで Retrieval と STS に対して向上するが、大規模データを利用した場合と比較すると細かい粒度の分散表現構築については未だ改善の余地が存在していると考えられる。
+また、学習データとして日本語のみと日英混合を比較した場合、日英混合データを用いることで多くのタスクで性能が向上することがわかる。
+この結果から、本手法は日本語データだけでなく、英語データを用いることでより高精度な分散表現モデルを構築することができると考えられる。
+5） https://github.com/sbintuitions/JMTEB/tree/v1.3.1JMTEB の概要は §B に記載。
+図 2 特定のタスクデータを取り除いた影響。
+4 議論本研究では学習データとして様々なタスクを利用し、それぞれのデータに対してインストラクションを付与した。
+本節ではこれらの工夫の効果について分析を行う。
+Task Ablation Study．本研究では様々なタスクデータを学習データとして用いた。
+どのようなタスクが JMTEB に対して効果的か調査を行うため、学習データとして特定のタスクを取り除いた際の影響を調査した。
+本節では、特定のタスクデータを取り除いたことで性能が減少する事例を正の影響と呼称し、その逆を負の影響と呼称する。
+主要な調査結果を図 2 に記載する。
+この結果から，QA データは JMTEB の各タスクに対して平均的に正の影響が大きいことがわかる。
+特に Retrievalタスクと Clustering タスクに対して強い正の影響が確認できる。
+一方で、Retrieval データは JMTEB のRetrieval タスクに対して正の影響が確認できるが、Clustering タスクについては負の影響となった。
+また，NLIデータはSTSタスクに対して強い正の影響が確認できるが、Clustering タスクに対しては負の影響が存在している。
+これらの結果から、各タスクデータは様々な JMTEB タスクに対して正負の影響を与えていることがわかる。
+汎用的で高精度な分散表現モデル構築に向けて、これらの影響を適切に考慮したデータ選択の重要性が示唆される。
+また、興味深い事柄として、Classiﬁcation データがJMTEB に対して平均的に正の影響を与えているこ表 3 インストラクションの検証結果。
+学習時推論時 JMTEB AVG. FollowIR Benchmark68.64 -3 68.18 -3 66.92 -4.423 3 68.62 -1.75とがわかる。
+本研究では Classiﬁcation データは合成データのみであることを勘案すると、Classiﬁcationデータの重要性が示唆される結果となった。
+Instruction Ablation Study。
+本研究では学習データにインストラクションを付与した。
+このインストラクションの有無が性能に対してどのような影響を与えるか調査を行う。
+評価として、§3.2で使用した JMTEB と、Weller ら[18]による評価データ（FollowIR Benchmark）を用いた6）．FollowIRBenchmark はインストラクションが有効か調査するために設計された評価ベンチマークであり、評価尺度として 𝑝−MRR と呼ばれる、インストラクションを考慮した検索が行われているか評価を行う尺度を用いる。
+調査結果を表 3 に記載する。
+この結果から、JMTEB については学習時と推論時にインストラクションの有無が一貫していることが重要であることがわかる。
+一方で、FollowIR Benchmark を確認すると、インストラクションを含めて学習したモデルは推論時もインストラクションを考慮した検索を行っていると考えられる。
+以上の結果から、インストラクションを考慮する必要があるような柔軟な検索に向けて、学習データに様々なインストラクションを含めることは重要であると考えられる。
+5 おわりに本研究では高精度な分散表現モデルの構築に向け、どのデータを使うのかという問いについて検証を実施した。
+検証の結果、(1)日本語だけでなく、英語を含めた様々なデータが有効であること、(2)学習に使用したタスクデータがある評価タスクには有効だが、別の評価タスクでは負の影響を与えること、(3)インストラクションを利用することで、より柔軟な検索が行えることを確認した。
+課題としていくつかの評価タスクで既存のモデルと差異があることを確認できた。
+この対策として、学習に使用するタスクをより適切に選択することが考えられる。
+6） 本データは英語で公開されているため、§A.4 に記載したLLM を用いて日本語に翻訳して使用した。
+
+
+
+謝辞
+
+本研究は九州大学情報基盤研究開発センター研究用計算機システムの民間利用を利用したものです。
+
+参考文献
+
+
+[1] Vladimir Karpukhin, Barlas Oguz, Sewon Min, PatrickLewis, Ledell Wu, Sergey Edunov, Danqi Chen, and Wen-tau Yih. Dense passage retrieval for open-domain questionanswering. In Bonnie Webber, Trevor Cohn, Yulan He, andYang Liu, editors, Proceedings of the 2020 Conferenceon Empirical Methods in Natural Language Processing(EMNLP), pp. 6769–6781, Online, November 2020. Asso-ciation for Computational Linguistics.
+[2] Ming Zhong, Pengfei Liu, Yiran Chen, Danqing Wang,Xipeng Qiu, and Xuanjing Huang. Extractive summar iza-tion as text matching. In Dan Jurafsky, Joyce Chai, Na-talie Schluter, and Joel Tetreault, editors, Proceedings ofthe 58th Annual Meeting of the Association for Compu-tational Linguistics, pp. 6197–6208, Online, July 2020.Association for Computational Linguistics.
+[3] Tim Schopf, Daniel Braun, and Florian Matthes. Eval-uating unsupervised text classiﬁcation: Zero-shot andsimilarity-based approaches. Proceedings of the 20226th International Conference on Natural Language Pro-cessing and Information Retrieval, 2022.
+[4] Liang Wang, Nan Yang, Xiaolong Huang, Binxing Jiao,Linjun Yang, Daxin Jiang, Rangan Majumder, and FuruWei. Text embeddings by weakly-supervised contrastivepre-training, 2024.
+[5] Hongjin Su, Weĳia Shi, Jungo Kasai, Yizhong Wang,Yushi Hu, Mari Ostendorf, Wen-tau Yih, Noah A. Smith,Luke Zettlemoyer, and Tao Yu. One embedder, any task:Instruction-ﬁnetuned text embeddings. In Anna Rogers,Jordan Boyd-Graber, and Naoaki Okazaki, editors, Find-ings of the Association for Computational Linguistics:ACL 2023, pp. 1102–1121, Toronto, Canada, July 2023.Association for Computational Linguistics.
+[6] Akari Asai, Timo Schick, Patrick Lewis, Xilun Chen, Gau-tier Izacard, Sebastian Riedel, Hannaneh Hajishirzi, andWen-tau Yih. Task-aware retrieval with instructions. InAnna Rogers, Jordan Boyd-Graber, and Naoaki Okazaki,editors, Findings of the Association for ComputationalLinguistics: ACL 2023, pp. 3650–3675, Toronto, Canada,July 2023. Association for Computational Linguistics.
+[7] Hayato Tsukagoshi and Ryohei Sasano. Ruri: Japanesegeneral text embeddings, 2024.
+[8] Alexis Conneau, Kartikay Khandelwal, Naman Goyal,Vishrav Chaudhary, Guillaume Wenzek, FranciscoGuzmán, Edouard Grave, Myle Ott, Luke Zettlemoyer, andVeselin Stoyanov. Unsupervised cross-lingual representa-tion learning at scale. In Dan Jurafsky, Joyce Chai, Na-talie Schluter, and Joel Tetreault, editors, Proceedings ofthe 58th Annual Meeting of the Association for Compu-tational Linguistics, pp. 8440–8451, Online, July 2020.Association for Computational Linguistics.
+[9] Gautier Izacard, Mathilde Caron, Lucas Hosseini, Se-bastian Riedel, Piotr Bojanowski, Armand Joulin, andEdouard Grave. Unsupervised dense information retrievalwith contrastive learning, 2022.
+[10] Namgi Han, 植田暢大, 大嶽匡俊, 勝又智, 鎌田啓輔, 清丸寛一, 児玉貴志, 菅原朔, Bowen Chen, 松田寛, 宮尾祐介, 村脇有吾, 劉弘毅. llm-jp-eval: 日本語大規模言語モデルの自動評価ツール. 言語処理学会第 30 回年次大会, pp. 2085–2089, 2024.
+[11] Masanori HIRANO, Masahiro SUZUKI, and HirokiSAKAJI. llm-japanese-dataset v0: Construction ofJapanese Chat Dataset for Large Language Models andits Methodology, 2023.
+[12] Zhuyun Dai, Vincent Y Zhao, Ji Ma, Yi Luan, JianmoNi, Jing Lu, Anton Bakalov, Kelvin Guu, Keith Hall, andMing-Wei Chang. Promptagator: Few-shot dense retrievalfrom 8 examples. In The Eleventh International Confer-ence on Learning Representations, 2023.
+[13] S. E. Robertson and S. Walker. Some simple eﬀectiveapproximations to the 2-poisson model for probabilisticweighted retrieval. In Proceedings of the 17th AnnualInternational ACM SIGIR Conference on Research andDevelopment in Information Retrieval, SIGIR ’94, p.232–241, Berlin, Heidelberg, 1994. Springer-Verlag.
+[14] Ting Chen, Simon Kornblith, Mohammad Norouzi, andGeoﬀrey Hinton. A simple framework for contrastivelearning of visual representations. In Proceedings ofthe 37th International Conference on Machine Learn-ing, ICML’20. JMLR.org, 2020.
+[15] Guilherme Penedo, Quentin Malartic, Daniel Hesslow,Ruxandra Cojocaru, Hamza Alobeidli, Alessandro Cap-pelli, Baptiste Pannier, Ebtesam Almazrouei, and JulienLaunay. The reﬁnedweb dataset for falcon LLM: Outper-forming curated corpora with web data only. In Thirty-seventh Conference on Neural Information ProcessingSystems Dat asets and Benchmarks Track, 2023.
+[16] Denis Kocetkov, Raymond Li, Loubna Ben allal, JiaLI, Chenghao Mou, Yacine Jernite, Margaret Mitchell,Carlos Muñoz Ferrandis, Sean Hughes, Thomas Wolf,Dzmitry Bahdanau, Leandro Von Werra, and Harmde Vries. The stack: 3 TB of permissively licensed sourcecode. Transactions on Machine Learning Research,2023.
+[17] Liang Wang, Nan Yang, Xiaolong Huang, Linjun Yang,Rangan Majumder, and Furu Wei. Multilingual e5 textembeddings: A technical report, 2024.
+[18] Orion Weller, Benjamin Chang, Sean MacAvaney, KyleLo, Arman Cohan, Benjamin Van Durme, Dawn Lawrie,and Luca Soldaini. FollowIR: Evaluating and teachinginformation retrieval models to follow instructions, 2024.
+
+表 4 使用したデータ一覧。
+日本語データQA AutoWikiQA，JEMHopQA，JSQuAD，MQA-jaNLI AutoWikiNLI，JaNLI，JNLI，JSICK，JSNLI，Multilingual NLI，NU-MNLIParaphrase PAWS-X，SNOWRetrieval MIRACL，JapaneseWikipediaHumanRetrieval、合成データSummarization ParaNatCom，WikinewsMT ALT Translation，NLLB，ParaNatCom，Wikipedia’s Kyoto ArticleClassiﬁcation 合成データ英語データQA GooAQ，HotpotQA，Natural Question，PAQ，PubMedQA，SQuADv2，TriviaQANLI QuoraQuestionPair，SNLI，SPECTERParaphrase Altlex，Medical Text Simpliﬁcation，MedMCQA，Simple wiki，WikiAnswersSummarization CNN/DM，Gigaword，MultiLexSum，scitldrOthers Qrecc，Wizard of Wiki，fever，Coco captions，Flicker，SentenceCompression，AIDA CoNLL-YAGOA 詳細な実験設定本節では使用したデータ、事前学習モデル一覧を示す。
+A.1 使用したデータ一覧本研究では表 4 のデータを用いて分散表現モデルの学習を実施した。
+A.2 分散表現の学習本研究では in-batch negative を考慮した infoNCEloss [14]を最小化するように分散表現を学習した。
+𝐿 = −1𝑁𝑁𝑖=1log𝑒sim(q𝑖,d+𝑖)/𝜏𝑦 ∈𝐵 (𝑖)𝑒sim(q𝑖,𝑦)/𝜏(1)ただし、𝑁 はバッチサイズを表しており、𝐵(𝑖)は以下のように定義される：𝐵(𝑖) = {d+𝑖} ∪ {d−} (2)ここで、𝜏 は温度パラメータである。
+A.3 分散表現モデル学習時のハイパーパ
+
+ラメータ
+
+本研究では表 5 記載のハイパーパラメータを用いて学習を実施した。
+表 5 ハイパーパラメータ。
+GPU NVIDIA H100 1 枚バッチサイズ 1024温度パラメータ 0.05A.4 使用した事前学習モデル一覧本研究では表 6 の事前学習モデルを用いた。
+表 6 使用した事前学習モデル一覧。
+合成データ作成 google/gemma-2-9b-it非関連文書作成候補作成 bm25cross-encoder BAAI/bge-reranker-v2-m3候補作成（MT） intﬂoat/multilingual-e5-largeインストラクション作成 google/gemma-2-9b-itFollowIR 日本語翻訳 cyberagent/calm3-22b-chatB JMTEB の概要JMTEB は日本語向けの分散表現モデル評価ベンチマークである。
+Classiﬁcation，Reranking，Retrieval，STS，Clustering ，PairClassiﬁcation の 6 種類から構成されていて、これらは表 7 に記載の 16 タスクから構成されている。
+評価尺度は各タスクごとに定義されており、すべて大きい方が良いことを示すものとなっている。
+表 7 JMTEB 評価タスク一覧。
+ClassiﬁcationAmazonReviewClassiﬁcationAmazonCounterFactualClassiﬁcationMassiveIntentClassiﬁcationMassiveScenar ioClassiﬁcationReranking esciRetrievalJAQKETMR.TyDi-jaJaGovFaqs-22kNLP JournalSTSJSTSJSICKClusteringLivedoor-NewsMewsC-16-jaPairClassiﬁcation PAWS-X-ja

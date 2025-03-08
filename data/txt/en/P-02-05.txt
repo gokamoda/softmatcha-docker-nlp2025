@@ -1,0 +1,440 @@
+Beyond the Induction Circuit:
+A Mechanistic Prototype forOut-of-domain In-context Learning
+
+趙羽風
+
+1
+
+井之上直也
+
+1,21
+
+北陸先端科学技術大学院大学
+
+2
+
+理化学研究所 yfzhao@jaist.ac.jp
+
+
+
+Abstract
+
+In-context Learning (ICL) is a promising few-shot learn-ing paradigm with unclear mechanisms.
+Existing explana-tions heavily rely on Induction Heads, which fail to accountfor out-of-domain ICL, where query labels are absent indemonstrations.
+To address this, we model ICL as attributeresolution, where queries are mixtures of some attributes,and ICL identiﬁes and resolves relevant attributes for pre-dictions.
+In this paper, we propose a mechanistic prototypeusing toy models trained on synthetic data, and observe:(1) even 1-layer Transformers achieve non-trivial accuracy,with limited beneﬁt from additional demonstrations, (2)scaling models eﬀectively improve accuracy, and (3) in-ference operations can be decomposed into label spaceidentiﬁcation and generalized induction, warranting fur-ther exploration.
+
+
+1 Introduction
+
+In-Context Learning (ICL)[1, 2] is an emerging few-shot learning paradigm: given an input sequence formedlike [ 𝑥1, 𝑦1, . . .
+, 𝑥𝑘, 𝑦𝑘, 𝑥𝑞], where 𝑥𝑖s are demonstrations,𝑦𝑖s are label token corresponding to its preceding 𝑥𝑖, and𝑥𝑞is a query, Language Models (LMs) predict a label forthe 𝑥𝑞by causal language modeling operation, with onlyparameters pre-trained on wild language dataset.
+ICL hasaroused widespread interest with an unclear mechanism.
+Current works on the mechanisms of ICL are largelyrelated to circuit studies based on Induction Heads [3, 4, 5,6, 7].
+As shown in Fig. 1 (left, A), these studies proposethat Transformers explicitly retrieve demonstration featuressimilar to the query from the context through specializedattention behaviors, subsequently copying these featuresinto the output of the attention layer.
+While such studieshave advanced signiﬁcantly, they face a critical limitation:when features that can be explicitly retrieved are absentfrom the context, speciﬁcally when the ground-truth labelfor the query does not appear in the context, this induc-tion head-based methodology loses its explanatory power:in such a scenario (named Out-Of-Domain, OOD), induc-tion head-based explanation predicts an ICL accuracy of 0,which is obviously not the case.
+To address the aforementioned OOD issue, we considerthe following: in scenarios where similarity-based retr ievalfails, it becomes essential for LMs to resolve the query intoits required attributes speciﬁed by the contextual demon-strations, rather than merely retrieving a similar demon-stration and copying its label to produce a correct answer.
+As shown in Fig. 1 (left, B) for an example, the LM catchesthe speciﬁed attribute “Occupation” and resolves the queryon such an attribute.
+A good beginning in such a directionis task vectors
+[8] in ICL scenario, but more discussion isstill beneﬁcial to reveal the detailed operating dynamics.
+Therefore, in this paper, we investigate the capacity andoperational dynamics of Transformers on the “query res-olution” operations.
+Speciﬁcally, we simulate a scenariowhere multiple attributes of input texts are encoded intofeature vectors (as shown in [3, 9]) and resolved into pre-diction using contextual information.
+To achieve this, wetrain toy Transformers on synthetic data as a mechanisticprototype, where: the input feature 𝑥𝑖is represented as amixture of Attribute vectors, with each attribute vectorsampled from a Gaussian mixture comprising several clus-ters, and each cluster corresponds to an Attribute Value.
+A Task is then deﬁned as querying the attribute value ofa speciﬁc attribute.
+Using this setup, we train toy Trans-formers to derive preliminary prototypical observations.
+Our experiments and subsequent analysis ﬁnd that: (1)Even a 1-layer Transformer produces a non-trivial result,(2) scaling models eﬀectively improves accuracy, (3) in-ference operations can be decomposed into label spaceidentiﬁcation and generalized induction.
+
+Beyond the Induction Circuit:
+A Mechanistic Prototype forOut-of-domain In-context Learning
+
+趙羽風
+
+1
+
+井之上直也
+
+1,21
+
+北陸先端科学技術大学院大学
+
+2
+
+理化学研究所 yfzhao@jaist.ac.jp
+
+
+
+Abstract
+
+In-context Learning (ICL) is a promising few-shot learn-ing paradigm with unclear mechanisms.
+Existing explana-tions heavily rely on Induction Heads, which fail to accountfor out-of-domain ICL, where query labels are absent indemonstrations.
+To address this, we model ICL as attributeresolution, where queries are mixtures of some attributes,and ICL identiﬁes and resolves relevant attributes for pre-dictions.
+In this paper, we propose a mechanistic prototypeusing toy models trained on synthetic data, and observe:(1) even 1-layer Transformers achieve non-trivial accuracy,with limited beneﬁt from additional demonstrations, (2)scaling models eﬀectively improve accuracy, and (3) in-ference operations can be decomposed into label spaceidentiﬁcation and generalized induction, warranting fur-ther exploration.
+
+
+1 Introduction
+
+In-Context Learning (ICL)[1, 2] is an emerging few-shot learning paradigm: given an input sequence formedlike [ 𝑥1, 𝑦1, . . .
+, 𝑥𝑘, 𝑦𝑘, 𝑥𝑞], where 𝑥𝑖s are demonstrations,𝑦𝑖s are label token corresponding to its preceding 𝑥𝑖, and𝑥𝑞is a query, Language Models (LMs) predict a label forthe 𝑥𝑞by causal language modeling operation, with onlyparameters pre-trained on wild language dataset.
+ICL hasaroused widespread interest with an unclear mechanism.
+Current works on the mechanisms of ICL are largelyrelated to circuit studies based on Induction Heads [3, 4, 5,6, 7].
+As shown in Fig. 1 (left, A), these studies proposethat Transformers explicitly retrieve demonstration featuressimilar to the query from the context through specializedattention behaviors, subsequently copying these featuresinto the output of the attention layer.
+While such studieshave advanced signiﬁcantly, they face a critical limitation:when features that can be explicitly retrieved are absentfrom the context, speciﬁcally when the ground-truth labelfor the query does not appear in the context, this induc-tion head-based methodology loses its explanatory power:in such a scenario (named Out-Of-Domain, OOD), induc-tion head-based explanation predicts an ICL accuracy of 0,which is obviously not the case.
+To address the aforementioned OOD issue, we considerthe following: in scenarios where similarity-based retr ievalfails, it becomes essential for LMs to resolve the query intoits required attributes speciﬁed by the contextual demon-strations, rather than merely retrieving a similar demon-stration and copying its label to produce a correct answer.
+As shown in Fig. 1 (left, B) for an example, the LM catchesthe speciﬁed attribute “Occupation” and resolves the queryon such an attribute.
+A good beginning in such a directionis task vectors
+[8] in ICL scenario, but more discussion isstill beneﬁcial to reveal the detailed operating dynamics.
+Therefore, in this paper, we investigate the capacity andoperational dynamics of Transformers on the “query res-olution” operations.
+Speciﬁcally, we simulate a scenariowhere multiple attributes of input texts are encoded intofeature vectors (as shown in [3, 9]) and resolved into pre-diction using contextual information.
+To achieve this, wetrain toy Transformers on synthetic data as a mechanisticprototype, where: the input feature 𝑥𝑖is represented as amixture of Attribute vectors, with each attribute vectorsampled from a Gaussian mixture comprising several clus-ters, and each cluster corresponds to an Attribute Value.
+A Task is then deﬁned as querying the attribute value ofa speciﬁc attribute.
+Using this setup, we train toy Trans-formers to derive preliminary prototypical observations.
+Our experiments and subsequent analysis ﬁnd that: (1)Even a 1-layer Transformer produces a non-trivial result,(2) scaling models eﬀectively improves accuracy, (3) in-ference operations can be decomposed into label spaceidentiﬁcation and generalized induction.
+Figure 1 Left: (A) An induction-style explanation of ICL processing.
+LMs ﬁrst search the same demonstration as the query “GeoﬀreyHinton” and copy the subsequent label to the output of the query.
+When the label “Researcher” is not presented in the context, ICLcan not work in this style.
+(B) A resolve-style explanation of ICL processing investigated in this paper.
+LMs ﬁrst identify the attribute(“Occupation”) speciﬁed by the demonstrations, and resolve the query into this attribute.
+Middle:
+A diagrammatic sketch of the datasynthesis.
+Each train/test data is an ICL-formed sequence with input feature 𝑥𝑖s and labels 𝑦𝑖s.
+Each 𝑥𝑖is a mixture of several attributes,and 𝑦𝑖speciﬁes the attribute to be resolved.
+Right: Model structure used in this paper.
+
+
+2 Experiment Settings
+
+As mentioned before, we train toy Transformers on syn-thetic data.
+Now, we introduce the experiment details.
+
+
+2.1 Data Synthesis
+
+Our experiments are conducted on synthetic sequencedata formed like [𝑥1, 𝑦1, 𝑥2, 𝑦2, . .
+. , 𝑥𝑘, 𝑦𝑘, 𝑥𝑞],
+with singletime-step vectors synthesized following these rules:Input feature and query 𝑥𝑖.
+Each 𝑥𝑖is a 𝑑-dimentionalmixture of 𝐴 attribute vectors, and each attribute vector𝑎𝑗is sampled from a Gaussian mixture with 𝐶 clustersin a 𝑑𝑎dimensional space deﬁned by an orthonormal up-projection metrix 𝑈𝑗∈ ℝ𝑑×𝑑𝑎:𝑥𝑖=𝐴𝑖=0𝑈𝑗𝑎𝑗, 𝑎𝑗∼1𝐶𝐶𝑘=0N𝝁𝑘, 𝚺𝑘, (1)where: any two 𝑈𝑗s are orthogonal (which requires𝐴𝑑𝑎⩽ 𝑑), each centroid 𝝁𝑘is sampled in a 𝑑𝑎-dimensionalGaussian distribution with mean of 0 and covarience of 3I,and the sampling covarience 𝚺𝑘is ﬁxed to 0.1I.Task 𝑇𝑗. Intuitively, given a sampled vector 𝑥𝑖from theafore-deﬁned process, for each attribute 𝑎𝑗that constitutesit, we can determine the maximum likelihood Gaussiancluster index 𝑚𝑗(called Attribute Value of attribute 𝑎𝑗).Repeat this process for every 𝑎𝑗, we can sequentially pro-ducing a vector
+[𝑚1, 𝑚2, . . .
+, 𝑚𝐴] composed of 𝐴 indices.
+A task 𝑇𝑗is deﬁned as an inquiry on the 𝑥𝑖to output the𝑗-th attribute’s attribute value 𝑚𝑗, that is, 𝑇𝑗(𝑥𝑖)= 𝑚𝑗.For a vector composed of 𝐴 attributes, we can deﬁne 𝐴tasks, each corresponding to a speciﬁc attribute, collec-tively forming a task familyT𝐴.Label vector 𝑦𝑖.
+We deﬁne the label verbalization asa discrete representation of 𝑇𝑗(𝑥𝑖)as follows: (1) Foreach of the 𝐶 possible attribute value (denoted as 𝑚𝑗∈{1, 2, . .
+. , 𝐶}) of a task 𝑇𝑗
+, we generate an index as thelabel verbalization 𝑉𝑇𝑗𝑚𝑗to represent it, which span a 𝐶-dimensional label space.
+(2) To prevent shortcut learning(discussed further below), we divide the task family into⌈𝐴/𝐵⌉ groups, each consisting of up to 𝐵 tasks.
+Withineach group, all tasks share the same label space.
+Forexample, if 𝐴 = 4 and 𝐵 = 2, the tasks can be dividedinto 2 groups:{𝑇1, 𝑇2}, and{𝑇3, 𝑇4}, then, if given the𝑇1(𝑥) = 𝑇2(𝑥), we have 𝑉𝑇1(𝑇1(𝑥))=𝑉𝑇2(𝑇2(𝑥)).
+So, fora task family of 𝐴 tasks, we can have a total label space 𝕐of size ⌈𝐴/𝐵⌉𝐶. Then, for each label 𝑙 in 𝕐 , we sample avector from 𝑑-dimensional normal distribution as the LabelVector 𝑦𝑖= 𝑌 (𝑙) as the dense representation of the label.
+Input sequence.
+To build one input sequence,we randomly1）sample (𝑘 + 1) input features as{𝑥1, 𝑥2, . . .
+, 𝑥𝑘, 𝑥𝑞}, and a task 𝑇𝑗.
+As shown in Fig. 1(Middle) for a 𝐵 = 2 scenario, for each input feature, webuild label vectors 𝑦𝑖= 𝑌𝑉𝑇𝑗(𝑥𝑖), and combine themwith formation [𝑥1, 𝑦1, 𝑥2, 𝑦2, . . .
+, 𝑥𝑘, 𝑦𝑘, 𝑥𝑞] as an inputsequence (where 𝑥1:𝑘s are the demonstrations, and 𝑥𝑞isthe query), and 𝑉𝑇𝑗𝑥𝑞as the expected label.
+We trainTransformer models (§2.2) on such input-label pairs.
+Default parameters.
+Unless speciﬁed, we use 𝑘 = 4,𝐴 = 16, 𝐵 = 4, 𝐶 = 16, so that a label space of size|𝕐 | = 64; and 𝑑 = 256, 𝑑𝑎= 16.
+We use standard unitvectors to span the up-projection 𝑈𝑗s.1）
+Notice we do not force an OOD condition since it can lead modelsto learn to only output labels absent from the context.
+
+Beyond the Induction Circuit:
+A Mechanistic Prototype forOut-of-domain In-context Learning
+
+趙羽風
+
+1
+
+井之上直也
+
+1,21
+
+北陸先端科学技術大学院大学
+
+2
+
+理化学研究所 yfzhao@jaist.ac.jp
+
+
+
+Abstract
+
+In-context Learning (ICL) is a promising few-shot learn-ing paradigm with unclear mechanisms.
+Existing explana-tions heavily rely on Induction Heads, which fail to accountfor out-of-domain ICL, where query labels are absent indemonstrations.
+To address this, we model ICL as attributeresolution, where queries are mixtures of some attributes,and ICL identiﬁes and resolves relevant attributes for pre-dictions.
+In this paper, we propose a mechanistic prototypeusing toy models trained on synthetic data, and observe:(1) even 1-layer Transformers achieve non-trivial accuracy,with limited beneﬁt from additional demonstrations, (2)scaling models eﬀectively improve accuracy, and (3) in-ference operations can be decomposed into label spaceidentiﬁcation and generalized induction, warranting fur-ther exploration.
+
+
+1 Introduction
+
+In-Context Learning (ICL)[1, 2] is an emerging few-shot learning paradigm: given an input sequence formedlike [ 𝑥1, 𝑦1, . . .
+, 𝑥𝑘, 𝑦𝑘, 𝑥𝑞], where 𝑥𝑖s are demonstrations,𝑦𝑖s are label token corresponding to its preceding 𝑥𝑖, and𝑥𝑞is a query, Language Models (LMs) predict a label forthe 𝑥𝑞by causal language modeling operation, with onlyparameters pre-trained on wild language dataset.
+ICL hasaroused widespread interest with an unclear mechanism.
+Current works on the mechanisms of ICL are largelyrelated to circuit studies based on Induction Heads [3, 4, 5,6, 7].
+As shown in Fig. 1 (left, A), these studies proposethat Transformers explicitly retrieve demonstration featuressimilar to the query from the context through specializedattention behaviors, subsequently copying these featuresinto the output of the attention layer.
+While such studieshave advanced signiﬁcantly, they face a critical limitation:when features that can be explicitly retrieved are absentfrom the context, speciﬁcally when the ground-truth labelfor the query does not appear in the context, this induc-tion head-based methodology loses its explanatory power:in such a scenario (named Out-Of-Domain, OOD), induc-tion head-based explanation predicts an ICL accuracy of 0,which is obviously not the case.
+To address the aforementioned OOD issue, we considerthe following: in scenarios where similarity-based retr ievalfails, it becomes essential for LMs to resolve the query intoits required attributes speciﬁed by the contextual demon-strations, rather than merely retrieving a similar demon-stration and copying its label to produce a correct answer.
+As shown in Fig. 1 (left, B) for an example, the LM catchesthe speciﬁed attribute “Occupation” and resolves the queryon such an attribute.
+A good beginning in such a directionis task vectors
+[8] in ICL scenario, but more discussion isstill beneﬁcial to reveal the detailed operating dynamics.
+Therefore, in this paper, we investigate the capacity andoperational dynamics of Transformers on the “query res-olution” operations.
+Speciﬁcally, we simulate a scenariowhere multiple attributes of input texts are encoded intofeature vectors (as shown in [3, 9]) and resolved into pre-diction using contextual information.
+To achieve this, wetrain toy Transformers on synthetic data as a mechanisticprototype, where: the input feature 𝑥𝑖is represented as amixture of Attribute vectors, with each attribute vectorsampled from a Gaussian mixture comprising several clus-ters, and each cluster corresponds to an Attribute Value.
+A Task is then deﬁned as querying the attribute value ofa speciﬁc attribute.
+Using this setup, we train toy Trans-formers to derive preliminary prototypical observations.
+Our experiments and subsequent analysis ﬁnd that: (1)Even a 1-layer Transformer produces a non-trivial result,(2) scaling models eﬀectively improves accuracy, (3) in-ference operations can be decomposed into label spaceidentiﬁcation and generalized induction.
+Figure 1 Left: (A) An induction-style explanation of ICL processing.
+LMs ﬁrst search the same demonstration as the query “GeoﬀreyHinton” and copy the subsequent label to the output of the query.
+When the label “Researcher” is not presented in the context, ICLcan not work in this style.
+(B) A resolve-style explanation of ICL processing investigated in this paper.
+LMs ﬁrst identify the attribute(“Occupation”) speciﬁed by the demonstrations, and resolve the query into this attribute.
+Middle:
+A diagrammatic sketch of the datasynthesis.
+Each train/test data is an ICL-formed sequence with input feature 𝑥𝑖s and labels 𝑦𝑖s.
+Each 𝑥𝑖is a mixture of several attributes,and 𝑦𝑖speciﬁes the attribute to be resolved.
+Right: Model structure used in this paper.
+
+
+2 Experiment Settings
+
+As mentioned before, we train toy Transformers on syn-thetic data.
+Now, we introduce the experiment details.
+
+
+2.1 Data Synthesis
+
+Our experiments are conducted on synthetic sequencedata formed like [𝑥1, 𝑦1, 𝑥2, 𝑦2, . .
+. , 𝑥𝑘, 𝑦𝑘, 𝑥𝑞],
+with singletime-step vectors synthesized following these rules:Input feature and query 𝑥𝑖.
+Each 𝑥𝑖is a 𝑑-dimentionalmixture of 𝐴 attribute vectors, and each attribute vector𝑎𝑗is sampled from a Gaussian mixture with 𝐶 clustersin a 𝑑𝑎dimensional space deﬁned by an orthonormal up-projection metrix 𝑈𝑗∈ ℝ𝑑×𝑑𝑎:𝑥𝑖=𝐴𝑖=0𝑈𝑗𝑎𝑗, 𝑎𝑗∼1𝐶𝐶𝑘=0N𝝁𝑘, 𝚺𝑘, (1)where: any two 𝑈𝑗s are orthogonal (which requires𝐴𝑑𝑎⩽ 𝑑), each centroid 𝝁𝑘is sampled in a 𝑑𝑎-dimensionalGaussian distribution with mean of 0 and covarience of 3I,and the sampling covarience 𝚺𝑘is ﬁxed to 0.1I.Task 𝑇𝑗. Intuitively, given a sampled vector 𝑥𝑖from theafore-deﬁned process, for each attribute 𝑎𝑗that constitutesit, we can determine the maximum likelihood Gaussiancluster index 𝑚𝑗(called Attribute Value of attribute 𝑎𝑗).Repeat this process for every 𝑎𝑗, we can sequentially pro-ducing a vector
+[𝑚1, 𝑚2, . . .
+, 𝑚𝐴] composed of 𝐴 indices.
+A task 𝑇𝑗is deﬁned as an inquiry on the 𝑥𝑖to output the𝑗-th attribute’s attribute value 𝑚𝑗, that is, 𝑇𝑗(𝑥𝑖)= 𝑚𝑗.For a vector composed of 𝐴 attributes, we can deﬁne 𝐴tasks, each corresponding to a speciﬁc attribute, collec-tively forming a task familyT𝐴.Label vector 𝑦𝑖.
+We deﬁne the label verbalization asa discrete representation of 𝑇𝑗(𝑥𝑖)as follows: (1) Foreach of the 𝐶 possible attribute value (denoted as 𝑚𝑗∈{1, 2, . .
+. , 𝐶}) of a task 𝑇𝑗
+, we generate an index as thelabel verbalization 𝑉𝑇𝑗𝑚𝑗to represent it, which span a 𝐶-dimensional label space.
+(2) To prevent shortcut learning(discussed further below), we divide the task family into⌈𝐴/𝐵⌉ groups, each consisting of up to 𝐵 tasks.
+Withineach group, all tasks share the same label space.
+Forexample, if 𝐴 = 4 and 𝐵 = 2, the tasks can be dividedinto 2 groups:{𝑇1, 𝑇2}, and{𝑇3, 𝑇4}, then, if given the𝑇1(𝑥) = 𝑇2(𝑥), we have 𝑉𝑇1(𝑇1(𝑥))=𝑉𝑇2(𝑇2(𝑥)).
+So, fora task family of 𝐴 tasks, we can have a total label space 𝕐of size ⌈𝐴/𝐵⌉𝐶. Then, for each label 𝑙 in 𝕐 , we sample avector from 𝑑-dimensional normal distribution as the LabelVector 𝑦𝑖= 𝑌 (𝑙) as the dense representation of the label.
+Input sequence.
+To build one input sequence,we randomly1）sample (𝑘 + 1) input features as{𝑥1, 𝑥2, . . .
+, 𝑥𝑘, 𝑥𝑞}, and a task 𝑇𝑗.
+As shown in Fig. 1(Middle) for a 𝐵 = 2 scenario, for each input feature, webuild label vectors 𝑦𝑖= 𝑌𝑉𝑇𝑗(𝑥𝑖), and combine themwith formation [𝑥1, 𝑦1, 𝑥2, 𝑦2, . . .
+, 𝑥𝑘, 𝑦𝑘, 𝑥𝑞] as an inputsequence (where 𝑥1:𝑘s are the demonstrations, and 𝑥𝑞isthe query), and 𝑉𝑇𝑗𝑥𝑞as the expected label.
+We trainTransformer models (§2.2) on such input-label pairs.
+Default parameters.
+Unless speciﬁed, we use 𝑘 = 4,𝐴 = 16, 𝐵 = 4, 𝐶 = 16, so that a label space of size|𝕐 | = 64; and 𝑑 = 256, 𝑑𝑎= 16.
+We use standard unitvectors to span the up-projection 𝑈𝑗s.1）
+Notice we do not force an OOD condition since it can lead modelsto learn to only output labels absent from the context.
+
+
+2.2 Model and Training
+
+Model.
+Unless speciﬁed, we use 1-layer Transformer-formed attention with 1 head (Fig. 1 (Right)).
+A 32-dimensional one-hot position embedding is concatenatedto the input, so the ﬁnal dimensionality 𝑑𝑚is 288.
+In someexperiments, we increase the number of attention heads,but they always divide the 288 dimensions equally withoutadditional parameters.
+Training.
+We generate a total of 𝑛 = 819200 inputdata instances by the aforementioned pipeline.
+We use astandard SGD optimizer, with a learning rate 0.01 and batchsize 128 to conduct full-precision training.
+No learning ratedecay, regularization, or momentum are used.
+Validationdata is sampled under the same distribution as training data.
+
+
+3 Results
+
+One layer Transformer resolves query to the spec-iﬁed attribute.
+We plot the validation accuracy alongthe training processing as shown in Fig. 2, where non-trivial accuracy can be observed in 1-layer Transformers.
+In detail, compared to the random baselines and ablationexperiments, where (1) demonstrations are ablated (𝑘 = 0)to block the model from identifying the task infor mation;(2) input features and queries are ablated (𝑥 = 0) to blockthe model from resolving the inputs: when the demonstra-tions specify the 𝑥 ↦→ 𝑦 correlation (Standard 𝑘 = 4), themodel predicts the label relatively accurate.
+Moreover, asshown in Fig. 3, increasing the number of demonstrationsdoes not signiﬁcantly improve accuracy.
+Such a sign givesa conclusion, as even one demonstration nearly speciﬁesthe attribute to be resolved, with additional demonstrationsonly marginally reducing minor ambiguities.
+Capacities of various model scales.
+In Fig. 2, we ob-served a non-trivial accuracy while not ideal, therefore, weare curious about whether a larger or more complex modelcan act better, so we repeat the experiments on 2-layer and8-head settings with more training epochs.
+The orthogonalexperiment results are shown in Fig. 4, where the 2-layer 8-head result signiﬁcantly outperforms with an obvious phasetransition (discussed later), and the remaining results arealmost equal, which suggests that: (1) 2-layer Transformermay conduct diﬀerent inference operations, (2) multi-headattention is an essential component for ICL.Operations of attribute resolution.
+Then, we attempt0 50 100 150 200 250 300 350Train Steps (×500)0.000.050.100.150.200.250.300.35Validation AccuracyStandard k= 4Standard k= 0x fixed to 0-vectorsRandom w/ label spaceRandom w/o label spaceFigure 2
+The training dynamics of the standard experi-ments and some reference experiments: (1) Standard 𝑘 = 0:trained/tested on sequence without demonstrations.
+(2) 𝑥 ﬁxedto 0 vectors: trained/tested on sequence where 𝑥𝑖s are ﬁxed to0.
+(3) Random w/ label space: Random prediction inside thelabel space, i.e., 1/16.
+(4) Random w/o label space:
+Randomprediction inside the label space, i.e., 1/64.0 50 100 150 200 250 300 350Train Steps (×500)0.00.10.20.3Validation Acc.
+Demo #0124812Figure 3
+The training dynamics with various 𝑘.0 200 400 600 800 1000 1200 1400Train Steps (×500)0.00.20.40.6Validation Acc.1 layer, 1 head1 layer, 8 heads2 layers, 1 head2 layers, 8 headsFigure 4 The training dynamics on 4 model speciﬁcations.to investigate the mechanism for the attribute resolution,and preliminarily observe 2 key operations.
+(1) Labelspace indentiﬁcation.
+As a necessary condition for an ac-curate inference, the model should identify the candidatelabels w.r.t.
+the given context.
+Shown in Fig. 5 for somecases, when the labels are given in context, even if theinformation of 𝑥 is absent, the model can correctly iden-tify the label space to be outputted.
+Moreover, as a closerobservation, we conduct principal component analysis online vectors of the output dense layer (see Fig. 1, each linevector corresponds to an output un-embedding) as shownin Fig. 6, clear clusters are observed within the same labelgroup (notice that we have 4 16-label groups), suggest-ing that the model learns the label space information inthe training processing, which is aligned with previous
+
+Beyond the Induction Circuit:
+A Mechanistic Prototype forOut-of-domain In-context Learning
+
+趙羽風
+
+1
+
+井之上直也
+
+1,21
+
+北陸先端科学技術大学院大学
+
+2
+
+理化学研究所 yfzhao@jaist.ac.jp
+
+
+
+Abstract
+
+In-context Learning (ICL) is a promising few-shot learn-ing paradigm with unclear mechanisms.
+Existing explana-tions heavily rely on Induction Heads, which fail to accountfor out-of-domain ICL, where query labels are absent indemonstrations.
+To address this, we model ICL as attributeresolution, where queries are mixtures of some attributes,and ICL identiﬁes and resolves relevant attributes for pre-dictions.
+In this paper, we propose a mechanistic prototypeusing toy models trained on synthetic data, and observe:(1) even 1-layer Transformers achieve non-trivial accuracy,with limited beneﬁt from additional demonstrations, (2)scaling models eﬀectively improve accuracy, and (3) in-ference operations can be decomposed into label spaceidentiﬁcation and generalized induction, warranting fur-ther exploration.
+
+
+1 Introduction
+
+In-Context Learning (ICL)[1, 2] is an emerging few-shot learning paradigm: given an input sequence formedlike [ 𝑥1, 𝑦1, . . .
+, 𝑥𝑘, 𝑦𝑘, 𝑥𝑞], where 𝑥𝑖s are demonstrations,𝑦𝑖s are label token corresponding to its preceding 𝑥𝑖, and𝑥𝑞is a query, Language Models (LMs) predict a label forthe 𝑥𝑞by causal language modeling operation, with onlyparameters pre-trained on wild language dataset.
+ICL hasaroused widespread interest with an unclear mechanism.
+Current works on the mechanisms of ICL are largelyrelated to circuit studies based on Induction Heads [3, 4, 5,6, 7].
+As shown in Fig. 1 (left, A), these studies proposethat Transformers explicitly retrieve demonstration featuressimilar to the query from the context through specializedattention behaviors, subsequently copying these featuresinto the output of the attention layer.
+While such studieshave advanced signiﬁcantly, they face a critical limitation:when features that can be explicitly retrieved are absentfrom the context, speciﬁcally when the ground-truth labelfor the query does not appear in the context, this induc-tion head-based methodology loses its explanatory power:in such a scenario (named Out-Of-Domain, OOD), induc-tion head-based explanation predicts an ICL accuracy of 0,which is obviously not the case.
+To address the aforementioned OOD issue, we considerthe following: in scenarios where similarity-based retr ievalfails, it becomes essential for LMs to resolve the query intoits required attributes speciﬁed by the contextual demon-strations, rather than merely retrieving a similar demon-stration and copying its label to produce a correct answer.
+As shown in Fig. 1 (left, B) for an example, the LM catchesthe speciﬁed attribute “Occupation” and resolves the queryon such an attribute.
+A good beginning in such a directionis task vectors
+[8] in ICL scenario, but more discussion isstill beneﬁcial to reveal the detailed operating dynamics.
+Therefore, in this paper, we investigate the capacity andoperational dynamics of Transformers on the “query res-olution” operations.
+Speciﬁcally, we simulate a scenariowhere multiple attributes of input texts are encoded intofeature vectors (as shown in [3, 9]) and resolved into pre-diction using contextual information.
+To achieve this, wetrain toy Transformers on synthetic data as a mechanisticprototype, where: the input feature 𝑥𝑖is represented as amixture of Attribute vectors, with each attribute vectorsampled from a Gaussian mixture comprising several clus-ters, and each cluster corresponds to an Attribute Value.
+A Task is then deﬁned as querying the attribute value ofa speciﬁc attribute.
+Using this setup, we train toy Trans-formers to derive preliminary prototypical observations.
+Our experiments and subsequent analysis ﬁnd that: (1)Even a 1-layer Transformer produces a non-trivial result,(2) scaling models eﬀectively improves accuracy, (3) in-ference operations can be decomposed into label spaceidentiﬁcation and generalized induction.
+Figure 1 Left: (A) An induction-style explanation of ICL processing.
+LMs ﬁrst search the same demonstration as the query “GeoﬀreyHinton” and copy the subsequent label to the output of the query.
+When the label “Researcher” is not presented in the context, ICLcan not work in this style.
+(B) A resolve-style explanation of ICL processing investigated in this paper.
+LMs ﬁrst identify the attribute(“Occupation”) speciﬁed by the demonstrations, and resolve the query into this attribute.
+Middle:
+A diagrammatic sketch of the datasynthesis.
+Each train/test data is an ICL-formed sequence with input feature 𝑥𝑖s and labels 𝑦𝑖s.
+Each 𝑥𝑖is a mixture of several attributes,and 𝑦𝑖speciﬁes the attribute to be resolved.
+Right: Model structure used in this paper.
+
+
+2 Experiment Settings
+
+As mentioned before, we train toy Transformers on syn-thetic data.
+Now, we introduce the experiment details.
+
+
+2.1 Data Synthesis
+
+Our experiments are conducted on synthetic sequencedata formed like [𝑥1, 𝑦1, 𝑥2, 𝑦2, . .
+. , 𝑥𝑘, 𝑦𝑘, 𝑥𝑞],
+with singletime-step vectors synthesized following these rules:Input feature and query 𝑥𝑖.
+Each 𝑥𝑖is a 𝑑-dimentionalmixture of 𝐴 attribute vectors, and each attribute vector𝑎𝑗is sampled from a Gaussian mixture with 𝐶 clustersin a 𝑑𝑎dimensional space deﬁned by an orthonormal up-projection metrix 𝑈𝑗∈ ℝ𝑑×𝑑𝑎:𝑥𝑖=𝐴𝑖=0𝑈𝑗𝑎𝑗, 𝑎𝑗∼1𝐶𝐶𝑘=0N𝝁𝑘, 𝚺𝑘, (1)where: any two 𝑈𝑗s are orthogonal (which requires𝐴𝑑𝑎⩽ 𝑑), each centroid 𝝁𝑘is sampled in a 𝑑𝑎-dimensionalGaussian distribution with mean of 0 and covarience of 3I,and the sampling covarience 𝚺𝑘is ﬁxed to 0.1I.Task 𝑇𝑗. Intuitively, given a sampled vector 𝑥𝑖from theafore-deﬁned process, for each attribute 𝑎𝑗that constitutesit, we can determine the maximum likelihood Gaussiancluster index 𝑚𝑗(called Attribute Value of attribute 𝑎𝑗).Repeat this process for every 𝑎𝑗, we can sequentially pro-ducing a vector
+[𝑚1, 𝑚2, . . .
+, 𝑚𝐴] composed of 𝐴 indices.
+A task 𝑇𝑗is deﬁned as an inquiry on the 𝑥𝑖to output the𝑗-th attribute’s attribute value 𝑚𝑗, that is, 𝑇𝑗(𝑥𝑖)= 𝑚𝑗.For a vector composed of 𝐴 attributes, we can deﬁne 𝐴tasks, each corresponding to a speciﬁc attribute, collec-tively forming a task familyT𝐴.Label vector 𝑦𝑖.
+We deﬁne the label verbalization asa discrete representation of 𝑇𝑗(𝑥𝑖)as follows: (1) Foreach of the 𝐶 possible attribute value (denoted as 𝑚𝑗∈{1, 2, . .
+. , 𝐶}) of a task 𝑇𝑗
+, we generate an index as thelabel verbalization 𝑉𝑇𝑗𝑚𝑗to represent it, which span a 𝐶-dimensional label space.
+(2) To prevent shortcut learning(discussed further below), we divide the task family into⌈𝐴/𝐵⌉ groups, each consisting of up to 𝐵 tasks.
+Withineach group, all tasks share the same label space.
+Forexample, if 𝐴 = 4 and 𝐵 = 2, the tasks can be dividedinto 2 groups:{𝑇1, 𝑇2}, and{𝑇3, 𝑇4}, then, if given the𝑇1(𝑥) = 𝑇2(𝑥), we have 𝑉𝑇1(𝑇1(𝑥))=𝑉𝑇2(𝑇2(𝑥)).
+So, fora task family of 𝐴 tasks, we can have a total label space 𝕐of size ⌈𝐴/𝐵⌉𝐶. Then, for each label 𝑙 in 𝕐 , we sample avector from 𝑑-dimensional normal distribution as the LabelVector 𝑦𝑖= 𝑌 (𝑙) as the dense representation of the label.
+Input sequence.
+To build one input sequence,we randomly1）sample (𝑘 + 1) input features as{𝑥1, 𝑥2, . . .
+, 𝑥𝑘, 𝑥𝑞}, and a task 𝑇𝑗.
+As shown in Fig. 1(Middle) for a 𝐵 = 2 scenario, for each input feature, webuild label vectors 𝑦𝑖= 𝑌𝑉𝑇𝑗(𝑥𝑖), and combine themwith formation [𝑥1, 𝑦1, 𝑥2, 𝑦2, . . .
+, 𝑥𝑘, 𝑦𝑘, 𝑥𝑞] as an inputsequence (where 𝑥1:𝑘s are the demonstrations, and 𝑥𝑞isthe query), and 𝑉𝑇𝑗𝑥𝑞as the expected label.
+We trainTransformer models (§2.2) on such input-label pairs.
+Default parameters.
+Unless speciﬁed, we use 𝑘 = 4,𝐴 = 16, 𝐵 = 4, 𝐶 = 16, so that a label space of size|𝕐 | = 64; and 𝑑 = 256, 𝑑𝑎= 16.
+We use standard unitvectors to span the up-projection 𝑈𝑗s.1）
+Notice we do not force an OOD condition since it can lead modelsto learn to only output labels absent from the context.
+
+
+2.2 Model and Training
+
+Model.
+Unless speciﬁed, we use 1-layer Transformer-formed attention with 1 head (Fig. 1 (Right)).
+A 32-dimensional one-hot position embedding is concatenatedto the input, so the ﬁnal dimensionality 𝑑𝑚is 288.
+In someexperiments, we increase the number of attention heads,but they always divide the 288 dimensions equally withoutadditional parameters.
+Training.
+We generate a total of 𝑛 = 819200 inputdata instances by the aforementioned pipeline.
+We use astandard SGD optimizer, with a learning rate 0.01 and batchsize 128 to conduct full-precision training.
+No learning ratedecay, regularization, or momentum are used.
+Validationdata is sampled under the same distribution as training data.
+
+
+3 Results
+
+One layer Transformer resolves query to the spec-iﬁed attribute.
+We plot the validation accuracy alongthe training processing as shown in Fig. 2, where non-trivial accuracy can be observed in 1-layer Transformers.
+In detail, compared to the random baselines and ablationexperiments, where (1) demonstrations are ablated (𝑘 = 0)to block the model from identifying the task infor mation;(2) input features and queries are ablated (𝑥 = 0) to blockthe model from resolving the inputs: when the demonstra-tions specify the 𝑥 ↦→ 𝑦 correlation (Standard 𝑘 = 4), themodel predicts the label relatively accurate.
+Moreover, asshown in Fig. 3, increasing the number of demonstrationsdoes not signiﬁcantly improve accuracy.
+Such a sign givesa conclusion, as even one demonstration nearly speciﬁesthe attribute to be resolved, with additional demonstrationsonly marginally reducing minor ambiguities.
+Capacities of various model scales.
+In Fig. 2, we ob-served a non-trivial accuracy while not ideal, therefore, weare curious about whether a larger or more complex modelcan act better, so we repeat the experiments on 2-layer and8-head settings with more training epochs.
+The orthogonalexperiment results are shown in Fig. 4, where the 2-layer 8-head result signiﬁcantly outperforms with an obvious phasetransition (discussed later), and the remaining results arealmost equal, which suggests that: (1) 2-layer Transformermay conduct diﬀerent inference operations, (2) multi-headattention is an essential component for ICL.Operations of attribute resolution.
+Then, we attempt0 50 100 150 200 250 300 350Train Steps (×500)0.000.050.100.150.200.250.300.35Validation AccuracyStandard k= 4Standard k= 0x fixed to 0-vectorsRandom w/ label spaceRandom w/o label spaceFigure 2
+The training dynamics of the standard experi-ments and some reference experiments: (1) Standard 𝑘 = 0:trained/tested on sequence without demonstrations.
+(2) 𝑥 ﬁxedto 0 vectors: trained/tested on sequence where 𝑥𝑖s are ﬁxed to0.
+(3) Random w/ label space: Random prediction inside thelabel space, i.e., 1/16.
+(4) Random w/o label space:
+Randomprediction inside the label space, i.e., 1/64.0 50 100 150 200 250 300 350Train Steps (×500)0.00.10.20.3Validation Acc.
+Demo #0124812Figure 3
+The training dynamics with various 𝑘.0 200 400 600 800 1000 1200 1400Train Steps (×500)0.00.20.40.6Validation Acc.1 layer, 1 head1 layer, 8 heads2 layers, 1 head2 layers, 8 headsFigure 4 The training dynamics on 4 model speciﬁcations.to investigate the mechanism for the attribute resolution,and preliminarily observe 2 key operations.
+(1) Labelspace indentiﬁcation.
+As a necessary condition for an ac-curate inference, the model should identify the candidatelabels w.r.t.
+the given context.
+Shown in Fig. 5 for somecases, when the labels are given in context, even if theinformation of 𝑥 is absent, the model can correctly iden-tify the label space to be outputted.
+Moreover, as a closerobservation, we conduct principal component analysis online vectors of the output dense layer (see Fig. 1, each linevector corresponds to an output un-embedding) as shownin Fig. 6, clear clusters are observed within the same labelgroup (notice that we have 4 16-label groups), suggest-ing that the model learns the label space information inthe training processing, which is aligned with previous(1)
+Standard 𝑘 = 40 10 20 30 40 50 60Label Index i20100logpiGround-truth labelLabel group memberOthers(2)
+Standard 𝑘 = 00 10 20 30 40 50 60Label Index i50logpi(3) 𝑥 ﬁxed to 0, 𝑘 = 40 10 20 30 40 50 60Label Index i1050logpiFigure 5 Output logits visualized on 3 settings aligned withFig. 2, each for a input case.
+The model can utilize the contextuallabel information to identify the correct output label space (1,3), and while no label information is given, the model can notsigniﬁcantly identify the label space (2).work [10].
+(2) Generalized induction.
+We visualize theattention behavior of (A) the end checkpoint of the defaultmodel and (B) two checkpoints before and after the phasetransition of the 2-layer and 8-head model, as shown inFig. 7, where: in the 1-layer model and the 2-layer modelbefore the phase transition, the information ﬂow from the𝑥𝑖s to the query dominates, and after the phase transitionof the 2-layer model, the information ﬂow from a 𝑦𝑖tothe query dominates.
+This clearly indicates two diﬀer-ent mechanisms, and the one that focuses on label 𝑦 canachieve better accuracy.
+Since no ground-truth labels arepresented in the context in this case, we believe that suchan induction-like operation is an essentially novel, or gen-eralized induction, which is worthy of further exploration.
+Novel attributes cannot be resolved.
+To simulate sce-narios where the tasks speciﬁed by the demonstrations areunseen during training, we resample 𝝁𝑘to generate novelvalidation samples.
+As shown in Fig. 8, the model achievesnear-random accuracy on these novel samples, which isexpected given the diﬃculty of responding to unknown at-tributes.
+This highlights the In-weight Learning
+[5, 6, 11]characteristic of OOD ICL.
+
+
+4 Discussion
+
+Summary.
+This paper introduces the attribute-resolvingexplanation of ICL with prototypical observations.0.8 0.6 0.4 0.2 0.0 0.2 0.4 0.6 0.8Principal Component I0.60.40.20.00.20.40.60.8Principal Component IILabel 0 ~ 15Label 16 ~ 31Label 32 ~ 47Label 48 ~
+63Figure 6 Output embeddings visualized.
+Figure 7 Attention scores from the last token (as the attentionquery) on an OOD input case, label tokens are in blue.0 50 100 150 200 250 300 350Train Steps (×500)0.0250.0500.075Acc.1 layer, 1 head Random w/ label spaceFigure 8
+The training dynamics evaluated on distribu-tion-shifted data.
+Clues for future works.
+Future research should lookcloser at the proposed mechanism in real-world lan-guage models and explore connections with other theo-retical prototypes for OOD ICL, such as in-context regres-sion
+[12, 13].
+Additionally, it would be valuable to investi-gate how more complex structures in actual language mod-els, such as FFN blocks within standard Transformer layers,contribute to or interfere with the proposed operations.
+Bylaying a foundation, this paper opens up possibilities forsuch exciting and impactful research.
+
+
+
+謝辞
+
+本研究は、JST 創発的研究支援事業 JPMJFR232K，および JSPS 科研費 19K20332 の助成を受けたものです。
+
+References
+
+
+[1] Alec Radford, Jeﬀrey Wu, Rewon Child, DavidLuan, Dario Amodei, Ilya Sutskever, et al. Lan-guage models are unsupervised multitask learners.OpenAI blog, Vol. 1, No. 8, p. 9, 2019.
+[2] Qingxiu Dong, Lei Li, Damai Dai, Ce Zheng, Zhiy-ong Wu, Baobao Chang, Xu Sun, Jingjing Xu, andZhifang Sui. A survey on in-context learning. arXivpreprint arXiv:2301.00234, 2022.
+[3] Hakaze Cho, Mariko Kato, Yoshihiro Sakai, andNaoya Inoue. Revisiting in-context learning in-ference circuit in large language models. arXivpreprint arXiv:2410.04468, 2024.
+[4] Nelson Elhage, Neel Nanda, Catherine Olsson, TomHenighan, Nicholas Joseph, Ben Mann, AmandaAskell, Yuntao Bai, Anna Chen, Tom Conerly, et al.A mathematical framework for transformer circuits.Transformer Circuits Thread, Vol. 1, No. 1,p. 12, 2021.
+[5] Aaditya K Singh, Ted Moskovitz, Felix Hill,Stephanie CY Chan, and Andrew M Saxe. Whatneeds to go right for an induction head? a mechanis-tic study of in-context learning circuits and their for-mation. arXiv preprint arXiv:2404.07129, 2024.
+[6] Gautam Reddy. The mechanistic basis of data de-pendence and abrupt learning in an in-context classi-ﬁcation task. In The Twelfth International Con-ference on Learning Representations, 2024.
+[7] Lean Wang, Lei Li, Damai Dai, Deli Chen, HaoZhou, Fandong Meng, Jie Zhou, and Xu Sun. Labelwords are anchors: An information ﬂow perspec-tive for understanding in-context learning. In Pro-ceedings of the 2023 Conference on EmpiricalMethods in Natural Language Processing, pp.9840–9855, 2023.
+[8] Roee Hendel, Mor Geva, and Amir Globerson. In-context learning creates task vectors. In Findingsof the Association for Computational Linguis-tics: EMNLP 2023, pp. 9318–9333, 2023.
+[9] Hakaze Cho, Yoshihiro Sakai, Mariko Kato, Ken-shiro Tanaka, Akira Ishii, and Naoya Inoue. Token-based decision criteria are suboptimal in in-contextlearning. arXiv preprint arXiv:2406.16535,2024.
+[10] Yingcong Li, Yixiao Huang, Muhammed E Ildiz,Ankit Singh Rawat, and Samet Oymak. Mechan-ics of next token prediction with self-attention. InInternational Conference on Artiﬁcial Intelli-gence and Statistics, pp. 685–693. PMLR, 2024.
+[11] Stephanie Chan, Adam Santoro, Andrew Lampinen,Jane Wang, Aaditya Singh, Pierre Richemond,James McClelland, and Felix Hill. Data distribu-tional properties drive emergent in-context learningin transformers. Advances in Neural Informa-tion Processing Systems, Vol. 35, pp. 18878–18891, 2022.
+[12] Shivam Garg, Dimitr is Tsipras, Percy S Liang, andGregory Valiant. What can transformers learn in-context? a case study of simple function classes.Advances in Neural Information ProcessingSystems, Vol. 35, pp. 30583–30598, 2022.
+[13] Chi Han, Ziqi Wang, Han Zhao, and Heng Ji.Explaining emergent in-context learning as kernelregression. arXiv preprint arXiv:2305.12766,2023.

@@ -1,0 +1,196 @@
+Data Augmentation for Open-Domain Live CommentaryGeneration
+
+Erica K. Shimomoto
+
+1
+
+, Edison Marrese-Taylor
+
+1,3
+
+, Ichiro Kobayashi
+
+1,2
+
+,
+
+
+
+Hiroya Takamura
+
+1
+
+, Yusuke Miyao
+
+1,3
+
+National Institute of Advanced Industrial Science and Technology
+
+1
+
+Ochanomizu University
+
+2
+
+, The University of Tokyo
+
+3
+
+kidoshimomoto.e@aist.go.jp, edison.marrese@aist.go.jp, koba@is.ocha.ac.jp
+
+
+
+takamura.hiroya@aist.go.jp, yusuke@is.s.u-tokyo.ac.jp
+
+
+
+Abstract
+
+This paper proposes automatic data augmentationfor Live Commentar y Generation using Large Vision-Language Models (LVLMs).
+This task aims to generatea set of timed subtitles commenting on the contents ofa given video, describing the actions and objects in thevideo, and including additional information.
+Collectingdata for live commentary generation can be an expensiveand time-consuming task.
+Therefore, we propose a lesslabor-intensive alternative by utilizing LVLMs to generateartiﬁcial live commentary data based on frames extractedfrom videos.
+Our results using a simple live commentarygeneration model reveal that training on a combination oforiginal and augmented data has the potential for perfor-mance improvement in this task in terms of BLEU score.
+
+
+1 Introduction
+
+Video Commentary Generation aims to generate a setof timed subtitles commenting on the contents of a givenvideo, mimicking the live commentaries we often see insports matches and gaming live streamings.
+Such com-mentaries can describe the actions and objects in the video,as well as include additional information regarding the con-tents, making spectators more excited, more immersed, andbetter informed about what they are viewing [1].
+This taskis similar to video captioning, as comments may includedescriptions of what is happening in videos.
+However,it diﬀers signiﬁcantly because the timing and contents ofutterances may vary signiﬁcantly, as a commentator canchoose what to say, when to say, and how to say things.
+We ﬁnd previous works generating commentary on spe-ciﬁc domains, such as sports [2, 3] or video games [4, 5],with models often relying on ﬁeld-speciﬁc infor mation toaid the generation.
+Furthermore, we also ﬁnd works tack-ling the open-domain setting of this task, where the goalis to enable models to generate commentaries for videoscontaining actions in a variety of situations [6, 7].
+Thelatter poses a more challenging setting, as it cannot usedomain-speciﬁc features, which have proven essential forattaining good performance.
+Collecting data for live commentary generation can beexpensive and time-consuming, as shown by [6].
+More-over, their work suggests annotators have a lower degreeof agreement than other video-to-text tasks, such as densevideo captioning.
+Therefore, we propose to utilize vision-and-language models, speciﬁcally those from the LLaVAfamily, to generate artiﬁcial commentary data based onframes extracted from videos.
+We further assess the eﬃcacy of this augmentation bytraining a simple model for the open-domain version of thetask.
+Our results show that while augmented commentariesdiﬀer from human-annotated ones, training on a combina-tion of original and augmented data has the potential toimprove performance in this task in terms of BLEU score.
+
+
+2 Related Work
+
+Live Commentary Generation
+To the best of ourknowledge, the task of automatically generating live com-mentaries was ﬁrst proposed in the context of racing carvideogame streams [4], releasing the ﬁrst dataset annotatedfor this task, which consisted of gameplay videos alignedwith transcribed spoken commentaries.
+Other works, in-cluding [8] and [3], have also worked on automaticallygenerating commentary for sports matches.
+Soon after, [6]tackled a similar task in an open-domain setting, detailingthe construction of a dataset of transcribed commentar yaligned with videos containing human actions in a varietyof domains constructed using videos from ActivityNet [9].As no domain-speciﬁc information was used, they achievedconsiderably poorer performance.
+Aiming to compensatefor the lack of domain-speciﬁc information, [7] proposedto incorporate spatial features obtained by object detectors,bringing the open-domain performance comparable to thein-domain works.
+Data augmentation via LLMs Data augmentationusing LLMs is a less labor-intensive strategy to overcomeissues related to data collection, such as the high costs andinaccuracies in human annotation.
+LLMs have been usedto augment data by automatically annotating existing data[10] with performance on pair to human-annotated labels.
+On the other hand, they can also increase data variety bymodifying data of a speciﬁc label [11].
+Such capabilitiescan be helpful in tasks such as question answering [12] andcounterfactual generation
+[13].LLMs can also be useful to generate new syntheticdatasets, especially in settings where it is diﬃcult to collectdata, such as in dialogue tasks [14].
+Further more, LLM-based augmentation can also be combined with humansupervision [15].Large Vision and Language Models (LVLMs) can alsobe used for augmentation in multimodal settings.
+For ex-ample, [16] uses LVLMs to automatically generate naturallanguage descriptions of a dataset’s domains and augmentthe training data via language-guided image editing.
+
+
+3 Proposed approach
+
+Figure 1 illustrates our proposed augmentation ap-proach.
+It generates artiﬁcial live commentaries utiliz-ing Large Vision-Language Models (LVLM).
+Concretely,we propose to rely solely on the visual input.
+Given theaforementioned annotator disagreement issue, the intuitionbehind our proposal is that while the nature of the live com-mentary task means each annotator independently decideswhen and what to speak, leading to each commentator pro-ducing signiﬁcantly diﬀerent output utterances, it is rea-sonable to assume there will be a set of common-groundfacts shared across annotators, which depend only on thevideo’s visual contents.
+To provide LVLMs with relevant visual information froma video, in this paper, we follow [7] and construct “visualsummaries”, which consist of frames sampled from thevideo, sorted temporally and arranged in a grid-like fash-ion.
+Each frame is labeled with an index from 1 to 𝑛, where𝑛 is the total number of frames sampled, which is added inthe top left corner of each frame, as shown in Figure 2.Although LVLMs have proven eﬀective in a wide varietyof downstream tasks, including image captioning and vi-sual question answering [17], early experiments where wedirectly prompted these models to generate live commen-tary from visual summaries suggested that this cannot yetbe achieved directly.
+Therefore, we propose to decomposethe generation of live commentary into a set of simplersteps so that each task more closely resembles the train-ing scheme of the LVLM.
+Concretely, we propose the threesteps below.
+Actual prompts given to the models are shownin the Appendix.
+Fetching Global Context We obtain a draft of thelive commentary by prompting an LVLM with a visualsummary of the entire video and requesting it to generatea description of the video contents in the style of live com-mentary.
+To obtain this global visual summary, we proposea sparse frame sampling approach, where we only use oneframe from each one of the video segments deﬁned by thetimestamps of the annotations in the data.
+Fetching Local Contexts We prompt an LVLM toobtain a detailed description of what happens on a shortsegment of a given video, constructing a visual summarywith a set of densely-sampled frames from this segment.
+We deﬁne segments by following the timestamps of theannotations in the data, but we stress that alternative ap-proaches are also possible.
+In contrast to the previous step,here we request the model to focus only on the main actionthat can be identiﬁed and to be succinct in the reply.
+Composing live commentary We prompt an LLMto compose live commentaries based on the global and localcontexts obtained during the previous steps.
+We requestthe model to generate one utterance for each one of theprovided video segments, feeding the local/global contestin JSON format.
+
+
+4 Experiments
+
+Original Data We work with the dataset created by[6].
+This dataset was built on top of the videos in theActivityNet Dataset
+[18], where human annotators wereasked to record commentary narrations of the videos inLVLMDense Frame Sampling(segment)LVLMLVLM[User] Describethe video in thestyle of livecommentary[User]
+What is themain action depicted?Global Context Local ContextSparse Frame Sampling(video)LVLM< segment 1 >< segment  >FrameGridLLMGlobal Description Local Descriptions[User]
+Compose the final commentary withthe provided information< segment  >FrameGridFrameGridFrameGrid[User]
+What is themain action depicted?[User]
+What is themain action depicted?Final CommentaryFigure 1 Summary of our approach for artiﬁcial live commentary data generation.
+It consists of three main steps: (1) Generating aglobal commentary via an LVLM based on a visual summary of the entire video; (2) Generation of short, precise descriptions of keyscenes via an LVLM by dense sampling frames, and (3) Composition the ﬁnal commentary via an LLM, which refactors the outputs of(2) based on the global perspective oﬀered by the (1).English under two settings: (1) without prior knowledgeand (2) after watching them once.
+These audios were thentranscribed into text.
+It consists of 25k commentaries,covering a total of 6,771 videos.
+In our experiments, weconsidered only the annotations in setting (1), resulting in6,854 commentaries for training and 6142 commentariesfor validation.
+Data Augmentation We use LLaVA v1.6 (34 B)[17] as our LVLM to generate the commentary blueprintand to obtain ﬁne-grained scene descriptions.
+This choiceis based on [7], who empirically found that this model canhandle context from up to 8 frames.
+We thus use this num-ber of frames to construct our visual summaries.
+We alsouse their technique to identify sharp frames, selecting thesharpest frame closest to the middle of a given segment.
+As a commentary composer LLM, we used Llama3 (8 B)[19](Meta-Llama-3-8B-Instruct).
+Furthermore, we quan-tize the above models to 4 bits via QLoRA [20] in order toﬁt our GPU memory.
+Finally, given our available computational resources, weaugmented commentar ies for only 2205 training videosand 1785 from validation videos.
+Video Commentary Generation with AugmentedData To understand how the augmented data aﬀects per-formance, we trained the model proposed by [6].
+Wefollowed the authors and used an oﬄine video encodingfunction, using the features released by [21].
+The modelwas trained with a maximum learning rate of 10−4withAdam and a linear annealing for 5% of the epochs, with abatch size of 8 using 4 NVIDIA V100 GPUs.
+During in-ference, we utilize beam search with a beam size of 5.
+Forevaluation, we resort to BLEU-4 separately for segmentsfor diﬀerent annotators.
+In this experiment, we used three variations of the data:• Original: Original dataset proposed by [6].• Augmented:
+Data augmented using our proposedmethod.• Original + Augmented: The combination of the orig-inal data and augmented data.
+Figure 2 Example of a “visual summary” fed to the LVLM forvideo v_r3dM-5cZ7e8‘ from the dataset released by [6].Table 1 Performance on Commentary generation in terms ofBLEU score when training and testing with data augmented fol-lowing our proposed methodTrain
+DataTest DataOriginal AugmentedOriginal +AugmentedOriginal 2.28 0.23 1.55Augmented 0.52
+6.57 3.58Original
++
+Augmented 2.36 6.75 4.78Table 1 shows the results.
+When training only withthe original or augmented data, the model achieves thebest performance when evaluating the corresponding testdata.
+A possible explanation might be that despite usingthe same videos and timestamps, human-annotated data(original) and LLMs’ augmented data are quite diﬀerent.
+Furthermore, we can see that results when evaluatingonly on the original or only on the augmented data im-prove when training on the combined data.
+This resultindicates that there may be some synergy between origi-nal and augmented data.
+However, additional research isneeded to understand better how they complement eachother.
+
+
+5 Conclusions
+
+This paper proposes an automatic data augmentationmethod for Live Commentary Generation using LargeVision-Language Models (LVLM).
+Our augmentationstrategy consists of three steps: (1) it generates a globalcommentary via an LVLM based on a visual summary ofthe entire video; (2) it generates short, precise descriptionsof key scenes via an LVLM by dense sampling frames; (3)it composes the ﬁnal commentary via an LLM, based onthe global and local perspectives.
+Our results from training a simple model on both originaland augmented data showed that while our strategy gener-ated commentary-like samples, they diﬀered from human-annotated commentaries.
+Still, by training the model witha combination of original and augmented data, results im-prove when evaluating only the original data or only theaugmented data.
+This result suggests that augmented com-mentaries may complement information provided by theoriginal commentaries.
+It is important to note that our study only augmentedcommentary for a third of the original dataset.
+There is noguarantee that training on augmentation on all videos willlead to performance improvements.
+Furthermore, whileBLEU is a standard metric used in this task, it may notbe able to account for commentaries focusing on diﬀerentparts of the video, e.g., the description of action vs. thedescription of the background/environment depicted in thevideo, as pointed out by [6]A natural progression of this work is to utilize othermetrics to evaluate live commentary generation, e.g., asproposed by [7], to better understand the impact of theaugmented data.
+
+
+Acknowledgements
+
+This paper is based on results obtained from the projectJPNP20006, commissioned by the New Energy and Indus-trial Technology Development Organization (NEDO).
+Thecomputational resource of AI Bridging Cloud Infrastruc-ture (ABCI) provided by the National Institute of AdvancedIndustrial Science and Technology (AIST) was used forexperiments.
+Finally, we are also grateful to the NVIDIACorporation, which donated one of the GPUs used in thisresearch.
+
+
+References
+
+[1] Michael Schaﬀrath.
+Mehr als 1:0!
+Bedeutung des Live-Kommentars bei Fußballübertragungen– eine explorativeFallstudie
+[more than 1:0!
+the importance of live com-mentary on football matches – an exploratory case study].Medien und Kommunikationswissenschaft, Vol. 51,
+
+No. 1, pp. 82–104, 2003.[2] Yasufumi Taniguchi, Yukun Feng, Hiroya Takamura, andManabu Okumura. Generating Live Soccer-Match Com-mentary from Play Data. Proceedings of the AAAIConference on Artiﬁcial Intelligence, Vol. 33, No. 01,pp. 7096–7103, July 2019.[3] Byeong Jo Kim and Yong Suk Choi. Automatic baseballcommentary generation using deep learning. In Proceed-ings of the 35th Annual ACM Symposium on Ap-plied Computing, pp. 1056–1065. Association for Com-puting Machinery, New York, NY, USA, March 2020.[4] Tatsuya Ishigaki, Goran Topic, Yumi Hamazono, HiroshiNoji, Ichiro Kobayashi, Yusuke Miyao, and Hiroya Taka-mura. Generating Racing Game Commentary from Vi-sion, Language, and Structured Data. In Proceedingsof the 14th International Conference on NaturalLanguage Generation, pp. 103–113, Aberdeen, Scot-land, UK, August 2021. Association for ComputationalLinguistics.[5] Tatsuya Ishigaki, Goran Topić, Yumi Hamazono, IchiroKobayashi, Yusuke Miyao, and Hiroya Takamura. Audiocommentary system for real-time racing game play. InProceedings of the 16th International Natural Lan-guage Generation Conference: System Demonstra-tions, pp. 9–10, Prague, Czechia, September 2023. Asso-ciation for Computational Linguistics.[6] Edison Marrese-Taylor, Yumi Hamazono, Tatsuya Ishi-gaki, Goran Topić, Yusuke Miyao, Ichiro Kobayashi, andHiroya Takamura. Open-domain Video Commentary Gen-eration. In Proceedings of the 2022 Conference onEmpirical Methods in Natural Language Process-ing, pp. 7326–7339, Abu Dhabi, United Arab Emirates,December 2022. Association for Computational Linguis-tics.[7] Erica Kido Shimomoto, Edison Marrese-Taylor, IchiroKobayashi, Hiroya Takamura, and Yusuke Miyao. Intro-ducing spatial information and a novel evaluation schemefor open-domain live commentary generation. In Findingsof the Association for Computational Linguistics:EMNLP 2024, pp. 10352–10370, Miami, Florida, USA,November 2024. Association for Computational Linguis-tics.[8] Ji Qi, Jifan Yu, Teng Tu, Kunyu Gao, Yifan Xu, XinyuGuan, Xiaozhi Wang, Bin Xu, Lei Hou, Juanzi Li, et al.Goal: A challenging knowledge-grounded video caption-ing benchmark for real-time soccer commentary genera-tion. In Proceedings of the 32nd ACM InternationalConference on Information and Knowledge Man-agement, pp. 5391–5395, 2023.[9] Bernard Ghanem Fabian Caba Heilbron, Victor Escorciaand Juan Carlos Niebles. Activitynet: A large-scale videobenchmark for human activity understanding. In Proceed-ings of the IEEE Conference on Computer Visionand Pattern Recognition, pp. 961–970, 2015.[10] Tiziano Labruna, Soﬁa Brenna, Andrea Zaninello, andBernardo Magnini. Unraveling chatgpt: A critical analysisof ai-generated goal-oriented dialogues and annotations. InInternational Conference of the Italian Associationfor Artiﬁcial Intelligence, pp. 151–171. Springer, 2023.[11] Damir Korenčić, Ivan Grubišić, Gretel Liz De La Peña Sar-racén, Alejandro Hector Toselli, Berta Chulvi, and PaoloRosso. Tackling covid-19 conspiracies on twitter using bertensembles, gpt-3 augmentation, and graph nns. In Medi-aEval 2022: Multimedia Evaluation Workshop, pp.243–247, 2023.[12] Arijit Chowdhury and Aman Chadha. Generative dataaugmentation using LLMs improves distr ibutional robust-ness in question answering. In Neele Falk, Sara Papi, andMike Zhang, editors, Proceedings of the 18th Confer-ence of the European Chapter of the Associationfor Computational Linguistics: Student ResearchWorkshop, pp. 258–265, St. Julian’s, Malta, March 2024.Association for Computational Linguistics.[13] Zeming Chen, Qiyue Gao, Antoine Bosselut, Ashish Sab-harwal, and Kyle Richardson. DISCO: Distilling coun-terfactuals with large language models. In Proceedingsof the 61st Annual Meeting of the Association forComputational Linguistics (Volume 1: Long Pa-pers), pp. 5514–5528, Toronto, Canada, July 2023. As-sociation for Computational Linguistics.[14] Dazhen Wan, Zheng Zhang, Qi Zhu, Lizi Liao, and MinlieHuang. A uniﬁed dialogue user simulator for few-shotdata augmentation. In Findings of the Association forComputational Linguistics: EMNLP 2022, pp. 3788–3799, Abu Dhabi, United Arab Emirates, December 2022.Association for Computational Linguistics.[15] Alisa Liu, Swabha Swayamdipta, Noah A. Smith, andYejin Choi. WANLI: Worker and AI collaboration fornatural language inference dataset creation. In Findingsof the Association for Computational Linguistics:EMNLP 2022, pp. 6826–6847, Abu Dhabi, United ArabEmirates, December 2022. Association for ComputationalLinguistics.[16] Lisa Dunlap, Alyssa Umino, Han Zhang, Jiezhi Yang,Joseph E Gonzalez, and Trevor Darrell. Diversify yourvision datasets with automatic diﬀusion-based augmenta-tion. In Advances in Neural Information ProcessingSystems, Vol. 36, pp. 79024–79034. Curran Associates,Inc., 2023.[17] Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong JaeLee. Visual Instruction Tuning, April 2023.[18] Fabian Caba Heilbron, Victor Escorcia, Bernard Ghanem,and Juan Carlos Niebles. ActivityNet: A Large-ScaleVideo Benchmark for Human Activity Understanding. InProceedings of the IEEE Conference on ComputerVision and Pattern Recognition, pp. 961–970, 2015.[19] AI@Meta. Llama 3 model card. 2024.[20] Tim Dettmers, Artidoro Pagnoni, Ari Holtzman, and LukeZettlemoyer. Qlora: Eﬃcient ﬁnetuning of quantized llms,2023.[21] Cristian Rodriguez-Opazo, Edison Marrese-Taylor, BasuraFernando, Hongdong Li, and Stephen Gould. Dori: Dis-covering object relationships for moment localization ofa natural language query in a video. In Proceedings ofthe IEEE/CVF Winter Conference on Applicationsof Computer Vision, pp. 1079–1088, 2021.
+
+Global Context PromptThe image presented contains a set of frames sampled from a video, with the frames arranged in a grid-like fashion, and each one labeled witha number in red.
+Please describe what is happening in the video as if it was the transcript of someone providing live commentary.
+As such,describe aspects of the actions to listeners who cannot see it for themselves, count the number of participants, and make educated guessesabout the overall context of the video, such as the location where actions are taking place.
+If you believe the same person or object appearsmultiple times, make sure to account for it.
+Use the text displayed on the frames to help yourself.
+DO NOT mention speciﬁc frames.
+Figure 3 Prompt fed to the LVLM to obtain a blueprint of the live commentary based on a sparse visual summary of the entire video.
+Local Context PromptThe image presented contains a set of frames sampled from a video.
+The frames are sorted temporally in a grid and each one is labeled withan index from 1 up to 8 in red.
+What is happening in this portion of the video?
+Focus on the main action you can identify.
+You are allowed tomake educated guesses about the overall context of the video.
+Use text displayed on the images to help yourself.
+Reply in one sentence.
+Figure 4 Prompt fed to the LVLM to obtain succinct, ﬁne-grained details of the main action occurring on a given section of a video,based on a dense visual summary of the section.
+Commentary Composition PromptThe data below, provided in JSON format, contains automatically-generated descriptions of a video.
+The description denoted as ’global_context’present an overview or summary of the contents of the video to help you understand its overall context.
+The descriptions denoted as’local_context’ focus on the details of what is happening at speciﬁc segments of the video, each denoted by a speciﬁc index, and sorted by time.{data}Based on this information, generate a transcript in the style of live commentary for the video, making sure to tell a cohesive story and to providean utterance for each input index of ’local_ context’.
+As such, describe aspects of the actions to listeners who cannot see it for themselves, andmake educated guesses about the overall content of the video, such as the location where actions are taking place.
+Format your output in JSONformat, with one entry for each input index.
+Reply with the JSON data output ONLY.Figure 5 Prompt fed to the LLM to compose the ﬁnal commentary based on the local and global contexts.

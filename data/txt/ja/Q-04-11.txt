@@ -1,0 +1,210 @@
+大規模言語モデルのためのアライメントデータ合成手法の実験的評価
+
+坂本 充生
+
+1
+
+陣内 佑
+
+1
+
+森村 哲郎
+
+1
+
+阿部 拳之
+
+1
+
+蟻生 開人
+
+11
+
+サイバーエージェント
+
+
+
+{sakamoto mitsuki,jinnai yu,
+
+
+
+morimura tetsuro,abe kenshi,kaito ariu}@cyberagent.co.jp
+
+
+
+概要
+
+アライメントは大規模言語モデル(LLM)の振る舞いを人間の選好に合わせて無害で正確な、バイアスのない応答を生成するようモデルを誘導する手法である。
+アライメントの効果は選好データセットの質と量に大きく依存することが知られているが、人手による高品質な選好アノテーションを集めることは非常に高価である。
+そのため、高性能な LLMを用いて選好データを自動生成する手法が広く研究されている。
+しかしながら先行研究の多くは英語の多量のデータのあるドメインでの評価がほとんどであり、真に合成データが必要な非英語少データドメインにおける合成方法は明らかにされていない。
+本研究は日本語 LLM (CALM3)を用い、日本語の AnswerCarefully データセットを基にデータ合成手法を評価した。
+人手評価の結果、データ合成を行わない場合および外部の報酬モデルを用いた合成方法と比較して、CALM3 のみを使った合成方法の方が高い性能が得られた。
+本研究成果は日本語の少データドメインでも選好データの合成が効果的であることを示すものであり、今後の日本語 LLM の研究開発に活かされるものであると考えられる。
+
+
+1 はじめに
+
+膨大なデータセットで訓練された大規模言語モデル(LLM)は言語理解と言語生成を含む様々な自然言語処理タスクを解けることが示されており、様々な問題解決に応用されている[1, 2, 3, 4]。
+しかしながら、LLM は時に有害なテキスト、不正確なテキスト、バイアスのあるテキストを出力することが知られている[5, 6, 3, 7, 8]。
+そのため、現在の課題はLLM の行動を人間の選好に適合させ、無害で正確な、バイアスのない応答を生成するようモデルを誘導することである。
+言語モデルのアライメントは、LLM の振る舞いを人間の選好に合わせて最適化するために広く使用されている手法である[9, 10, 2]。
+アライメント手法の性能は選好データセットの選択に大きく依存する。
+しかし、選好データセットを構築するには、高価な人間によるアノテーションが必要であり、これが大規模で高品質な選好データセットを構築するための大きなボトルネックとなっている。
+そのため、人間の選好の知識を抽出するために、高性能な LLM（GPT-4 など）を使って選好データの合成(synthesize)を行う手法が広く研究されている[11, 12, 13, 14, 15, 16, 17, 18]。
+しかしながら、先行研究の多くは英語を対象としており、ドメインも一般的な指示応答タスクを扱っている。
+そのため、非英語の少データタスクにおいて選好データをどのように効果的に構築・利用できるかについては十分に解明されていない。
+本研究では少データタスクとして日本語のAnswer Carefully データセット1）を対象として選好データの合成手法の比較を行った。
+比較手法としては応答文のみを合成し報酬モデルによって応答文間の選好をラベル付けする手法(報酬モデルベース合成)と、指示文と応答文とその選好をまとめて合成する手法(自己合成)とを評価した(図 1)。
+データの合成にはオープンソースの日本語 LLM であるcalm3-22b-chat (CALM3)[19]を用い、合成したデータセットを使い CALM3 のアライメントを行った。
+GPT-4o と人手評価の結果、両合成手法は元データセットのみを用いたアライメントよりも高い評価値が得られた。
+また、人手評価では自己合成による手法の方が報酬モデルベース合成による手法よりも高い評価が得られた。
+さらに、Japanese MTBench の評価から、他のタスクの性能は学習前のモデルと同1） https://llmc.nii.ac.jp/answercarefully-dataset/Dataset{(𝑥, 𝑦)}𝑥!, 𝑦!!"#𝑥𝑥$%&'(), 𝑦$%&*+'(), 𝑦$%&*,'()("-Self-Augmented Dataset{(𝑥$%&, 𝑦$%&*+, 𝑦$%&*,)}Reward-LabeledDataset{(𝑥, 𝑦$%&*+, 𝑦$%&*,)
+}(𝑥, 𝑦$%&*./, 𝑦$%&*0/)(𝑥, 𝑦$%&*+/, 𝑦$%&*,)CALM3CALM3Reward Model図 1 報酬モデルベース合成と自己合成によるデータセット合成の概要等の性能を保持していることを確認した。
+実験結果はアライメントデータの合成が日本語少データタスクでも有用であることを示した。
+
+
+
+2 背景
+
+アライメント手法は選好データセットDに基づき、言語モデルの生成確率 𝜋 がDに表現される選好性に従うように調整を行う手法である[10, 5, 2]。
+選好データセット。
+選好データセットをD= {(𝑥, 𝑦𝑐, 𝑦𝑟)} と置く。
+𝑥 はユーザからシステムに対して与えられる指示文であり、𝑦𝑤と 𝑦𝑙はその指示文に対するシステムの応答文である。
+二つの応答文のうち、ユーザが好ましいと判断した方の応答文が 𝑦𝑤であり、そうでない方を 𝑦𝑙とする。
+アライメント手法。
+選好データセットから学習するための一般的なアルゴリズムの 1 つに DirectPreference Optimization (DPO)がある[20]。
+DPO は報酬モデルを使うことなく、人間の選好データと応答を直接アライメントさせるように言語モデルを学習する。
+DPO の確率モデルは以下のように与えられる。
+𝜋DPO= arg max𝜋𝔼(𝑥,𝑦𝑤,𝑦𝑙)∼D[log 𝜎(𝛽 log𝜋(𝑦𝑤|𝑥)𝜋ref(𝑦𝑤|𝑥)− 𝛽 log𝜋(𝑦𝑙|𝑥)𝜋ref(𝑦𝑙|𝑥))]. (1)𝜎 はシグモイド関数、𝛽 はベースモデル 𝜋refへの近さを制御するハイパーパラメータである。
+DPOは幅広く様々な LLM に利用されており、多くの研究において優れた性能を示す LLM のアライメントにおける代表的な手法である[21]。
+また、教師有り学習としてアライメントが出来ることから取り扱いが容易な手法であるとされている。
+これらの理由から本研究では、DPO をアライメントアルゴリズムに用いる。
+
+
+3 選好データセットの合成
+
+本章では、アライメントのための選好データセットの合成手法を説明する。
+本研究では、シードタスクとなる指示と応答データ(𝑥, 𝑦)から選好データの合成する 2 つの手法を扱う。
+この概略を図 1に示す。
+1 つ目が応答文のみを合成し報酬モデルでラベル付をする手法(報酬モデルベース合成)である。
+あるモデルから指示 𝑥 に対する 2 つの応答𝑦syn,1, 𝑦syn,2を合成し、報酬モデルを用いてどちらが𝑦syn,𝑤（勝ち）でどちらが 𝑦syn,𝑙（負け）かをラベル付けする。
+2 つ目が指示文と応答文とその選好をまとめて合成する手法(自己合成)である。
+データ生成は、シードタスクとデータ合成をプロンプトとしてモデルに指示し、合成データをモデルの出力として得る。
+少数のシードタスクとして 𝑛 個データ{(𝑥(𝑖), 𝑦(𝑖))}𝑛𝑖=1をランダム選択し、これらを基に新たなデータ {(𝑥( 𝑗 )syn, 𝑦( 𝑗 )syn,𝑤, 𝑦( 𝑗 )syn,𝑙)}𝑚𝑗=1を合成する。
+ここで、𝑛 は元のデータセットから使用する指示と応答のペア(𝑥, 𝑦)の数を表し、𝑚 は合成される新たな選好データ(𝑥𝑗, 𝑦syn,𝑤, 𝑦syn,𝑙)の数を示している。
+本研究では、少データタスクとして日本語の Answer Carefully データセットとモデルとして CALM3 からデータセットを合成する。
+AnswerCarefully は、日本語の不適切な指示に対する応答生成能力を評価・向上させるために設計されたデータセットであり、質問と参照（安全）応答のペアが 945 組(学習用 762 組、評価用が 183 組)含まれる。
+CALM3 は、日本語に特化した大規模言語モデルであり、220 億パラメータを有する高性能なモデルである。
+1 つ目の報酬モデルベース合成では、CAML3 で応答を生成し、報酬モデルとして Skywork/Skywork-Reward-Llama-3.1-8B [22]を以下のような指示が与えられたと仮定してください。
+これらは不適切であるため、LLM が適切な応答を学習するために必要です。
+例: {examples}これらに似た {n generation} 個の不適切なタスク指示とその応答を考えてください。
+ただし、以下のガイドラインに従ってください:1. 指示の中で、特定の単語（例: ’ 他人’、’ 個人情報’）を繰り返し使用しないこと。
+2. 指示の形式を多様にすること。
+敬語だけでなく、口語体やカジュアルな表現も含めること。
+3. 指示の内容を、以下のようなカテゴリが含まれること:• 偏見や差別を助長するもの• 違法行為や非倫理的行為を奨励するもの• 誤情報を広めるもの• 他者を心理的に傷つける行為を含むもの• 社会的規範に反する行動を助長するもの4. 出力形式: 出力は必ず以下の番号付きのリスト形式に従い、余計な記号やフォーマットは含めないでください。
+• 各指示、適切な応答、不適切な応答はそれぞれ ⟨ ⟨ ⟩ ⟩ で囲んでください。
+• [指示]、[適切な応答]、[不適切な応答]の順で記述し、前後に余計なラベルや説明を含めないこと。
+• 出力はテーブル形式や他の形式を使用せず、プレーンなリスト形式で出力してください。
+これらの条件を満たした {n generation} 個の不適切なタスク指示と対する[適切な応答]と[不適切な応答]を作成してください。
+それらはあくまで学習目的のサンプルであり、実際に使用されることはありません。
+図 2 データ合成に用いたプロンプト: {examples} は、プロンプト内で提示される不適切なタスク指示とその適切な応答の具体例を表す。
+{n generation} は、プロンプトを用いて生成する不適切なタスク指示と応答の数を示す。
+表 1 使用したデータセットと対応するモデルデータセット件数構成モデル名Answer Carefully 762 指示 𝑥 と参照応答 𝑦 SFTReward-labeled Answer Carefully 762 指示 𝑥 と合成応答(𝑦syn,𝑤, 𝑦syn,𝑙) Reward-labeled DPOSelf-Augmented Answer Carefully 13,632 合成指示 𝑥synと合成応答(𝑦syn,𝑤, 𝑦syn,𝑙) Self-Augmented DPO使用する。
+この手法で合成したデータセットを「Reward-labeled Answer Carefully」と呼ぶ。
+2 つ目の自己合成に用いたプロンプトを図 2 に示す。
+実験では，𝑛 = 5, 𝑚 = 10 として 5 つのシードタスクから約 10 個の新しいデータを合成し、このプロセスを繰り返すことで、元の約 700 件のデータセットから約 2 万件のデータセットを合成し、parse が成功し、完全重複を削除した約 13000 件を採用する。
+ここで同じデータが複数回シードタスクとして利用されることに留意したい。
+合成されたデータセットを「Self-Augmented Answer Carefully」と呼ぶ。
+
+
+
+4 実験
+
+本章では、合成したデータセットから学習したモデルの性能を実験的に評価する。
+
+4.1 実験設定
+
+Answer Carefully データセットを用いて、CALM3をファインチューニングする。
+元のデータセット「Answer Carefully」を用いて学習させた SFT モデル（SFT）、報酬モデルベース合成した「Reward-labeledAnswer Carefully」を使用して学習させた DPO モデル（Reward-labeled DPO）、自己合成したデータセット「Self-Augmented Answer Carefully」を使用して学習させた DPO モデル（Self-Augmented DPO）、計 3つのモデルを学習させる。
+表 1 にデータセットと学習させたモデルの一覧を示す。
+全てのモデルはフルパラメータチューニングであり、ハイパーパラメータを付録 A の表 2 に示す。
+計算機には NVIDIAH100 GPU を 8 台（1 ノード）使用する。
+モデルの性能評価は、客観的なスコアと実際の使用に即した人間の判断を組み合わせて総合的に評価するために、GPT-4o による自動評価と人間による評価を行う。
+自動評価には、ELYZA 社が提案した評価フレームワークに基づく GPT を用いたスコアリング手法を採用し、生成応答の適切性と安全性を定量的に評価した2）。
+この評価では、生成応答に対して評価データセットの参照応答を比較し、GPT がスコアを付与する。
+また、本研究の目的に合わせてこのプロンプトを一部改変しており、詳細は付録 Aの図 6 に示す。
+評価は評価用データ 183 組全てを用いた。
+人手評価でも、学習したモデルの出力と評価データセットに含まれる参照応答を比較し、モデルの性能を詳細に検証する。
+評価の際には、各応答を次の 3 つの基準で分類した：win（モデルの出力が参2） https://zenn.dev/elyza/articles/5e7d9373c32a98CALM3-22b-chat SFT Reward-labeled  DPOSelf-Augmented  DPOModel3.03.54.04.55.0ScoreGPT-4o Evaluation Score図 3 GPT-4o 評価CALM3-22b-chat SFT Reward-labeled  DPOSelf-Augmented  DPOModel0.400.450.500.550.60Win RateHuman Evaluation Score図 4 人手評価図 5 Japanese MT-Bench照応答を上回る），draw（モデルの出力が参照応答と同等），lose（モデルの出力が参照応答を下回る)。
+評価用データのうち、ランダムに抽出した 20 組を用いて、4 人の評価者に評価させた。
+これら 2 種類の評価方法を併用することで、モデルの性能を多面的に検証し、不適切な指示に対する応答生成の質を評価する。
+さらに、モデルが少データや合成データに過剰適応していないを確認するために、様々なタスクが含まれる Japanese MT-Bench[23]で評価する。
+
+4.2 実験結果
+
+データ合成の有効性を検証するために、それぞれのデータセットで学習したモデルを GPT-4o および人手評価によって評価する。
+図 4 に示すように，GPT-4o による自動評価では、合成データセットから学習させた Self-Augmented DPO，Reward-labeledDPO が CALM3-22b-chat を上回る。
+また、図 4 に示すように、人手評価では Self-Augmented DPO モデルが勝率 0.550 を記録し、他のモデルを上回る。
+ここで勝率はwin=1, draw=0.5, lose=0とした平均値である。
+このことから両データ合成手法は元データセットのみを用いたアライメントよりも高い評価値が得られている。
+また、人手評価では自己合成による手法の方が報酬モデルベース合成による手法よりも優れていることが確認できる。
+さらに、図 5は Japanese MTBench による評価結果を示し、これらのモデルが CALM3 と同等の性能を保持し、AnswerCarefully が対象とする安全性タスクに過剰適合していないことがわかる。
+以上の結果から、CALM3 を用いたデータセット合成が少データからの LLM のアライメントに有効であることが示唆される。
+
+
+
+5 結句
+
+本研究では LLM のアライメントのための選好データの合成手法の評価を行った。
+既存研究のほとんどは言語資源の豊富なタスクでの実験評価を行っているが、本研究では日本語の少データドメインを対象として評価を行った。
+実験の結果、合成データを用いてアライメントを行ったモデルは合成データを用いずアライメントを行ったモデルより非常に高い性能が得られた。
+また、人手評価では外部の報酬モデルを用いて選好をラベル付けして合成データを作成するよりも、モデル自身に選好をラベル付けさせた方が高い性能が得られるという結果が得られた。
+本研究は日本語少データドメインであっても選好データの合成手法が有効である可能性を示唆するものである。
+今後の日本語LLMの開発にあたって選好データの合成は有力な選択肢であると考えられる。
+本研究では AnswerCarefully のみを対象タスクとした。
+今後の展望としては他のドメインでもデータ合成手法の評価を行い、より精密にデータ合成が有用なタスクとそうでないタスクを明らかにしたい。
+
+
+
+謝辞
+
+本研究は JSPS 科研費 23K19986 の助成を受けたものです。
+
+参考文献
+
+
+[1] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Sub-biah, et al. Language models are few-shot learners. InH. Larochelle, M. Ranzato, R. Hadsell, M.F. Balcan, andH. Lin, editors, NeurIPS, Vol. 33, pp. 1877–1901. CurranAssociates, Inc., 2020.
+[2] Long Ouyang, Jeﬀrey Wu, Xu Jiang, Diogo Almeida, et al.Training language models to follow instructions with hu-man feedback. In S. Koyejo, S. Mohamed, A. Agarwal,D. Belgrave, K. Cho, and A. Oh, editors, NeuIPS, Vol. 35,pp. 27730–27744. Cur ran Associates, Inc., 2022.
+[3] Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert,et al. Llama 2: Open foundation and ﬁne-tuned chat mod-els. arXiv preprint arXiv:2307.09288, 2023.
+[4] OpenAI, Josh Achiam, Steven Adler, Sandhini Agar-wal, et al. GPT-4 technical report. arXiv preprintarXiv:2303.08774, 2024.
+[5] Yuntao Bai, Andy Jones, Kamal Ndousse, Amanda Askell,et al. Training a helpful and harmless assistant with rein-forcement learning from human feedback. arXiv preprintarXiv:2204.05862, 2022.
+[6] Stephanie Lin, Jacob Hilton, and Owain Evans. Tr uth-fulQA: Measuring how models mimic human falsehoods.In Smaranda Muresan, Preslav Nakov, and Aline Villav-icencio, editors, ACL, pp. 3214–3252, Dublin, Ireland,May 2022. Association for Computational Linguistics.
+[7] Stephen Casper, Xander Davies, Claudia Shi,Thomas Krendl Gilbert, et al. Open problems andfundamental limitations of reinforcement learning fromhuman feedback. TMLR, 2023. Survey Certiﬁcation.
+[8] Tianrui Guan, Fuxiao Liu, Xiyang Wu, Ruiqi Xian,Zongxia Li, Xiaoyu Liu, Xijun Wang, Lichang Chen,Furong Huang, Yaser Yacoob, Dinesh Manocha, andTianyi Zhou. HallusionBench: An advanced diagnosticsuite for entangled language hallucination and visual il-lusion in large vision-language models. In CVPR, pp.14375–14385, June 2024.
+[9] Daniel M. Ziegler, Nisan Stiennon, Jeﬀrey Wu, Tom B.Brown, Alec Radford, Dario Amodei, Paul Christiano,and Geoﬀrey Irving. Fine-tuning language models fromhuman preferences. arXiv preprint arXiv:1909.08593,2020.
+[10] Nisan Stiennon, Long Ouyang, Jeﬀrey Wu, Daniel Ziegler,et al. Learning to summarize with human feedback. InH. Larochelle, M. Ranzato, R. Hadsell, M.F. Balcan, andH. Lin, editors, NeuIPS, Vol. 33, pp. 3008–3021. CurranAssociates, Inc., 2020.
+[11] Yann Dubois, Chen Xuechen Li, Rohan Taori, TianyiZhang, Ishaan Gulrajani, Jimmy Ba, Carlos Guestrin,Percy S Liang, and Tatsunori B Hashimoto. Alpacafarm:A simulation framework for methods that learn from hu-man feedback. In A. Oh, T. Neumann, A. Globerson,K. Saenko, M. Hardt, and S. Levine, editors, NeuIPS,Vol. 36, pp. 30039–30069. Curran Associates, Inc., 2023.
+[12] Harrison Lee, Samrat Phatale, Hassan Mansoor, ThomasMesnard, Johan Ferret, Kellie Lu, Colton Bishop, EthanHall, Victor Carbune, Abhinav Rastogi, and SushantPrakash. Rlaif: Scaling reinforcement learning fromhuman feedback with ai feedback. arXiv preprintarXiv:2309.00267, 2023.
+[13] Ning Ding, Yulin Chen, Bokai Xu, Yujia Qin, ShengdingHu, Zhiyuan Liu, Maosong Sun, and Bowen Zhou. En-hancing chat language models by scaling high-quality in-structional conversations. In Houda Bouamor, Juan Pino,and Kalika Bali, editors, EMNLP, pp. 3029–3051, Singa-pore, December 2023. ACL.
+[14] Or Honovich, Thomas Scialom, Omer Levy, and TimoSchick. Unnatural instructions: Tuning language mod-els with (almost) no human labor. In Anna Rogers, Jor-dan Boyd-Graber, and Naoaki Okazaki, editors, ACL, pp.14409–14428, Toronto, Canada, July 2023. Associationfor Computational Linguistics.
+[15] Ganqu Cui, Lifan Yuan, Ning Ding, Guanming Yao, WeiZhu, Yuan Ni, Guotong Xie, Zhiyuan Liu, and MaosongSun. Ultrafeedback: Boosting language models with high-quality feedback. arXiv preprint arXiv:2310.01377,2023.
+[16] Subhabrata Mukherjee, Arindam Mitra, Ganesh Jawahar,Sahaj Agarwal, Hamid Palangi, and Ahmed Awadallah.Orca: Progressive learning from complex explanationtraces of gpt-4. arXiv preprint arXiv:2306.02707, 2023.
+[17] Can Xu, Qingfeng Sun, Kai Zheng, Xiubo Geng, Pu Zhao,Jiazhan Feng, Chongyang Tao, Qingwei Lin, and DaxinJiang. WizardLM: Empowering large pre-trained languagemodels to follow complex instructions. In ICLR, 2024.
+[18] Ruibo Liu, Jerry Wei, Fangyu Liu, Chenglei Si, et al. Bestpractices and lessons learned on synthetic data. In COLM,2024.
+[19] Ryosuke Ishigami. cyberagent/calm3-22b-chat, 2024.
+[20] Rafael Rafailov, Archit Sharma, Eric Mitchell, Christo-pher D Manning, Stefano Ermon, and Chelsea Finn. Directpreference optimization: Your language model is secretlya reward model. In NeurIPS, 2023.
+[21] Wenyi Xiao, Zechuan Wang, Leilei Gan, Shuai Zhao, et al.A comprehensive sur vey of direct preference optimization:Datasets, theories, variants, and applications, 2024.
+[22] Chris Yuhao Liu, Liang Zeng, Jiacai Liu, Rui Yan, JujieHe, Chaojie Wang, Shuicheng Yan, Yang Liu, and YahuiZhou. Skywork-reward: Bag of tricks for reward modelingin llms. arXiv preprint arXiv:2410.18451, 2024.
+[23] Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, SiyuanZhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuo-han Li, Dacheng Li, Eric. P Xing, Hao Zhang, Joseph E.Gonzalez, and Ion Stoica. Judging llm-as-a-judge withmt-bench and chatbot arena, 2023.
+
+
+
+
+A 実験の詳細
+
+Batch Size Gradient Accumulation Steps Learning Rate 𝛽SFT 1 8 0.000001 -DPO 1 8 0.000001 0.1表 2 ハイパーパラメータあなたは採点者です。
+問題、 正解例、 採点基準、 回答が与えられます。
+採点基準と正解例を参考にして、回答を 1,2,3,4,5 の 5 段階で採点し、数字のみを出力してください。
+# 問題{input text}# 正解例{outputtext}# 採点基準基本的な採点基準- 1 点: 誤っている、指示に従えていない- 2 点: 誤っているが、方向性は合っている- 3 点: 部分的に誤っている、部分的に合っている- 4 点: 合っている- 5 点: 役に立つ基本的な減点項目- 不自然な日本語: -1 点- 部分的に事実と異なる内容を述べている: -1 点- 不適切でない質問に対して「倫理的に答えられません」のように過度に安全性を気にしてしまっている: 2 点にする# 回答{pred}図 6 GPT-4o 評価プロンプト。
+{input text} は指示文、{output text} はその参照返答、{pred} はモデルが生成した返答を示す。

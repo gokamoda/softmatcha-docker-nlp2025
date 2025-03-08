@@ -1,0 +1,248 @@
+沿革情報を用いた企業名変遷の構造化
+
+澤田 悠冶
+
+1,3
+
+,
+
+
+
+大内 啓樹
+
+1,3
+
+,
+
+
+
+安井 雄一郎
+
+2
+
+,
+
+
+
+寺西 裕紀
+
+1,3
+
+,
+
+
+
+松本 裕治
+
+3
+
+, 渡辺 太郎
+
+1
+
+, 石井 昌之
+
+2
+
+,
+
+1
+
+奈良先端科学技術大学院大学
+
+2
+
+日本経済新聞社
+
+3
+
+理化学研究所革新知能統合研究センター
+
+
+
+{sawada.yuya.sr7,hiroki.ouchi,taro}@is.naist.jp
+
+
+
+{hiroki.teranishi,yuji.matsumoto}@riken.jp
+
+
+
+{
+
+
+
+yuichiro.yasui,masayuki.ishii
+
+
+
+}
+
+
+
+@nex.nikkei.com
+
+
+
+概要
+
+ニュース記事では、企業などの組織名に関する情報を報じる記事が多く、組織名が頻繁に登場する。
+企業名は時間と共に変化しやすく、企業名の変化がエンティティリンキングを困難にしている問題がある。
+本研究は、企業名の変遷に関わる情報をイベントとして抽出することで、歴代の企業名を構造化し、企業名の曖昧性を解消することを目指す。
+社名の変更や企業の統廃合に関する 5 種類のイベントを定義し、有価証券報告書の企業沿革テキストに各イベントをアノテーションを付与した企業名変化イベント抽出データセットを作成する。
+作成データセットを使用した評価実験では、LLM によるイベント抽出結果を評価し、一部の企業イベントに対して改善の余地が見られることを確認した。
+
+
+1 はじめに
+
+エンティティリンキングは、メンションとエンティティ定義文の対照学習によってエンティティの検索精度が向上していることが知られている[1, 2]。
+一方で、エンティティの正規名は時間軸で変化しており、過去の正規名と類似するメンションに対してリンキング性能が低下することが報告されている[3]。
+エンティティリンキングの教師データには、過去から現在に至るまでのエンティティの正規名が混在しており、メンションの曖昧性や多様化を生む原因となっている。
+そこで本研究は、特にエンティティの正規名が変化しやすい企業名に焦点を当て、企業名変遷の構造化を目指す。
+企業名は、業態転換や M&A によって、エンティティの吸収・分裂・名称変更が起きやすい特徴がある[3]。
+実例として、ソニーの企業名Sony Electronics Corporation2020/4~2021/4ID: 5010401152129Sony Corporation1858/1~2021/4ID: 5010401067252Sony Group Corporation2021/4~ID: 5010401067252Sony Home Entertainment & Sound Products Inc.2019/4~2021/4ID: 9010701029477Sony Visual Products Inc.2015/4~2019/4ID: 9010701029477Sony Video & Sound Products Inc.2015/10~2019/4ID: 5010701031040Sony Imaging Products & Solutions Inc.2017/4~2021/4ID: 5010401127782Sony Mobile Communications Inc.2001/4~2021/4ID: 2010401103588Sony Corporation2021/4~ID: 7010401045660Sony Semiconductor Solutions Corporation2016/4~ID: 7021001057797図 1: 企業名の時間変化の一例。
+紫色の線は社名変更、 緑色の線は分社化、水色の線は企業間の合併を表す。
+の
+変遷をまとめたグラフを図 1 に示す。
+ソニーは、2015 年から 2021 年にかけて 4 回の合併・分社化・社名変更が実施されており、最終的に 7 つの企業名が 2 つの企業名(“Sony Corporation”; “Sony GroupCorporation”)に集約されている。
+さらに、2021 年 4月に社名変更された企業名（“Sony Corporation”）は別企業に継承されており、過去に使用された企業名と現在の企業名の間に法人番号の不一致が起きていることも確認できる。
+このような企業名の変化を時系列に整理することで、テキストの投稿時期に応じたメンションの曖昧性解消が期待できる。
+本研究は、企業沿革情報から企業名の変化に関するイベントを抽出するタスクを提案し、LLM によるイベント抽出性能を評価する。
+210 社の有価証券報告から作成したデータセットによる実験の結果、LLM は一部のイベントにおいて抽出に課題が見られたものの、全体で 75 ポイント程度の精度でイベントが抽出可能であることが示された。
+[x1]
+1946年10月本田宗一郎が静岡県浜松市に本田技術研究所を開設、内燃機関および各種工作機械の製造ならびに研究に従事[x2] 1949年9月二輪車生産開始[x3] 1948年9月本田技術研究所を継承して本田技研工業株式会社を設立…[x11] 1960年7月本田技術研究所を当社より分離し、株式会社本田技術研究所を設立…[x16] 1970年9月狭山製作所第2工場工機部門を当社より分離し、ホンダ工機株式会社を設立…[x23] 2004年1月中国に中国事業の統轄機能を有する本田技研工業(中国)投資有限公司を設立企業設立設立日設立企業1946年10月本田技術研究所2004年1月本田技研工業(中国)投資有限公司分社化分社日分社元企業分社先企業1960年7月本田技研工業株式会社本田技術研究所1970年9月本田技研工業ホンダ工機株式会社イベントテーブル企業沿革テキスト属性値レコードイベント属性図 2: 企業名変化イベント抽出の概要表 1: イベントタイプとイベント属性一覧イベントイベント属性企業設立設立日、 設立企業社名変更変更日、 変更前企業名、 変更後企業名合併合併日、 消滅企業、 存続企業分社化分社日、 分社元企業、 分社先企業企業清算清算日、 清算企業
+
+2 企業名変化イベント抽出
+
+企業名変化イベント抽出タスクの概要図を図2 に示す。
+本研究は、企業名変化イベント抽出タスクを企業沿革テキストから 5 種類のイベントテーブルに変換するタスクとして設計する1）。
+図 2 のように、イベントテーブルにはそれぞれイベント属性（表 1）が定義されており、テキストからイベント属性に当てはまる日付表現・企業名を属性値として抽出し、レコードへ入力する。
+例えば、図 2 左の企業沿革テキストには “1946 年 10 月に本田技術研究所が開設された” と記載されているため、企業設立イベントのテーブルに { 設立日: 1946 年 10 月、 設立企業: 本田技術研究所 } のレコードが入力される。
+
+
+
+2.1 企業名変化イベント
+
+本研究は、5 種類のイベント（企業設立、 社名変更、 企業合併、 分社化、 企業清算）を定義し、属性値となる日付表現・企業名は関根の拡張固有表現階層[8]の定義に当てはまる固有表現を表す。
+分社化イベントは、企業内の事業を子会社として新設する1） 従来のイベント抽出[4, 5]では、イベント発生の手がかりとなる動詞・名詞・形容詞をトリガーとして使用する。
+しかし、企業沿革テキストには “当社より分離し、株式会社ホンダ研究所を設立” のようなトリガーの曖昧性が見られたため、トリガーを扱わない Event Table Filling タスク[6, 7]を元に設計した。
+場合のみを対象とし、事業譲渡や株式交換は対象外とする。
+また、企業合併は “消滅企業”、分社化は “分社先企業” が同時に 2 社以上出現する場合があるため、これらのイベント属性には 1 社以上の企業名を入力する。
+例えば、“1969 年 4 月に川崎航空機工業と川崎車輛を川崎重工業に吸収合併” は、二つの企業（“川崎航空機工業”, “川崎車輛”）が吸収されたことを表すため、消滅企業の属性値は “ 川崎航空機工業” と “川崎車輛” になる。
+“日清ディー・シー・エー食品株式会社（日清テクノミック株式会社に商号変更）” のように一部の属性値がテキストに出現していない場合は、属性値が空の状態でレコードに入力する2）．
+
+2.2
+
+
+
+データセット構築
+
+企業沿革テキストは、EDINET3）で公開されている有価証券情報の企業年表から作成する。
+企業年表は母体の企業が現在の社名に至るまでの歴史を要約した表であり、過去の企業名が変更された日付と変更事由が説明されている。
+本研究は、2023 年度に公開された有価証券報告書の企業年表の中から、10 行以上 100 行未満の年表4）をランダムサンプリングし、図 2 のような日付と出来事を並べた企業沿革テキストに変換する。
+以上のプロセスで作成した 210社の企業沿革テキストに 5 種類のイベント情報を付与し、企業沿革テキストから属性値の判定が困難な場合は、企業 HP の沿革情報や当時のプレスリリー2） この場合、レコードへの入力は { 変更日: Null, 変更前企業名: 日清ディー・シー・エー食品、 変更後企業名: 日清テクノミック株式会社 } となる。
+3） https://disclosure2.edinet-fsa.go.jp/WEEK0010.aspx4） 極端に行数が少ない文書は歴史の浅い企業が多く、行数が極端に多い企業は複数の関連企業の年表が併記されている場合がある。
+これらの年表はアノテーションコストを考慮して対象から削除した。
+表 2: 各イベントタイプの出現頻度。
+Ratio は各イベントが出現する沿革テキストの件数、 Avg はイベントが出現する文書における平均出現数を表す。
+Total Ratio Avg企業設立 2,400 100 11.4社名変更 799 94.3 4.0企業合併 736 89.0 3.9分社化 136 37.1 1.7企業清算 153 31.9 2.3スなどの外部情報を元に属性値を特定する。
+作成したデータセットのイベント出現頻度を表 2に示す。
+本データセットは、平均で 46.6 行、2,128文字のテキストからなり、全 4,224 件のイベントが出現する。
+また、210 社のうち約 90%の企業が合併や社名変更を経験している一方で、分社化や企業清算は 30%程度の企業でのみ発生している。
+分社化や企業清算は事業の独立や撤退によって起こるため、これらのイベントの発生は多角的に事業を行う企業に限られることが要因として考えられる。
+
+
+3 評価実験
+
+
+
+3.1 実験設定
+
+評価方法本研究では、LLM から生成されたJSON Lines 形式のテンプレートをイベントテーブルに変換することで抽出性能を評価する。
+具体的には、各イベントタイプの定義文を加えた 5 種類のプロンプト（付録 B）からテンプレートを生成し、テンプレートから変換された 5 種類のイベントテーブルのレコード抽出精度を算出する。
+データセットは50 社の企業沿革テキストをモデル学習用に使用し、残り 160 社の企業沿革テキストで抽出精度を評価する。
+比較モデル LLama-3-8B と GPT-4o によるイベント抽出性能を比較する5）．LLama-3 は、Meta6），ELYZA-JP7），Swallow [9, 10]8）を使用し、モデル学習用データによる LoRA Finetuning モデル9）と、モデル学習用データからランダムサンプリングした5） データセットのトークン長が先行研究モデル[6, 7]の最大トークン数を上回るため、企業沿革テキストとイベント系列を入力・生成可能な LLama-3，GPT-4o モデルを採用した。
+6） https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct7） https://huggingface.co/elyza/Llama-3-ELYZA-JP-8B8） https://huggingface.co/tokyotech-llm/Llama-3-Swallow-8B-Instruct-v0.19） LoRA のハイパーパラメータは付録 A 参照。
+表 3: 企業名変化イベントデータセットのにおける各 LLM の抽出精度Precision Recall F1Llama-3-8B (In-context)Swallow 16.6 (± 1.0) 36.6 (± 0.9) 22.8 (± 1.1)Meta 30.8 (± 0.6) 59.4 (± 1.5) 40.5 (± 0.2)ELYZA-JP 22.2 (± 0.9) 12.8 (± 0.6) 16.2 (± 0.7)Llama-3-8B (Finetuning)Swallow 78.0 (± 1.4) 74.4 (± 1.3) 76.2 (± 1.0)Meta 74.1 (± 1.4) 70.6 (± 1.2) 72.1 (± 0.5)ELYZA-JP 76.0 (± 0.0) 69.5 (± 0.0) 72.6 (± 0.0)GPT-4o (In-context)GPT-4o-mini 74.0 (± 0.5) 65.7 (± 0.7) 69.6 (± 0.5)GPT-4o 80.5 (± 0.8) 77.8 (± 0.4) 79.1 (± 0.4)2 件の Demonstration を加えた In-context learning モデル10）の性能を示す11）．GPT-4o は GPT-4o [11]とGPT-4o-mini [12]を使用して、LLama-3 と同様の方法でサンプリングした In-context learning モデルの性能のみを示す。
+評価尺度イベント情報の時系列の一致を考慮し、レコード内の属性値が全て正解と一致するレコードの件数から評価する。
+全属性値が正解レコードと一致するレコードの件数を算定し、モデルが抽出したレコード件数、正解レコードの件数をそれぞれ適合率と再現率の分母として計算する。
+また、Demonstration の内容によるモデルの性能差を考慮して，In-context learning モデルは 5 種類のシード（付録 A）でサンプリングした Demonstration による抽出精度の平均値と標準偏差を示す。
+Finetuning モデルも同様のシードを用いてモデルを学習し、抽出精度の平均値と標準偏差を示す。
+
+3.2 実験結果
+
+実験結果を表 3 に示す。
+GPT-4o と GPT-4o-miniは，Finetuning した LLama-3-8B と同等の精度を示しており、2 件の Demonstration だけでもイベントがある程度抽出できる傾向が見られた。
+一方で、イベント抽出のようなタスク仕様が複雑な情報抽出タスクでは、In-context Learning モデルは性能が低下することも報告されている[13, 14, 15, 16]。
+イベント属性10） 企業設立イベント以外は文書中に出現しない事例が含まれるため、文中に出現する事例と出現しない事例（出力がNone となる）を 1 件ずつサンプリングして使用する。
+11） ELYZA-JP と Swallow は日本語の指示文で継続学習を行っている点を考慮し、付録 B のプロンプトを日本語に翻訳して使用する。
+表 4: 企業名をマスキングした文書に対するイベント抽出精度。
+各スコアはシード=0 でサンプリングしたデモサンプルによる F 値を示す。
+Precision Recall F1GPT-4o-mini 73.5 65.3 69.2+ 匿名化 34.9 30.9 32.8GPT-4o 79.5 78.0 78.8+ 匿名化 35.6 35.4 35.5表 5: 企業設立・社名変更・企業合併イベントに対する LLM の抽出精度（F1-score）企業設立社名変更企業合併Llama-3-8B (Finetuning)Swallow 88.1 (± 1.1) 65.5 (± 2.9) 57.2 (± 0.8)Meta 85.4 (± 0.6) 57.8 (± 0.6) 52.8 (± 1.2)ELYZA-JP 85.9 (± 0.0) 59.6 (± 1.9) 49.6 (± 0.0)GPT-4o (in-context)GPT-4o-mini 86.2 (± 0.6) 52.8 (± 1.6) 43.1 (± 1.6)GPT-4o 92.1 (± 0.5) 61.5 (± 3.6) 64.4 (± 1.3)の元となる日付表現と企業名は、GPT-4o でも抽出が容易12）であり、図 2 にように日付表現はイベントが発生する文の周辺に位置するため、日付表現が各イベントのトリガーの役割を果たしたと考えられる。
+また、企業沿革テキストに出現する企業名を匿名化13）すると、表 4 のように GPT-4o と GPT-4o-miniの抽出性能が In-context Learning の Llama-3-8B の性能と同程度まで低下することから、GPT-4o が事前学習によって企業名を記憶している可能性も考えられる．LLama-3-8B の各モデルにおいては、Finetuningモデルでは Swallow と ELYZA-JP が Meta を上回る性能を示し、Finetuning では日本語テキストによる継続学習が Finetuning に有効に働いたことが確認できる。
+しかし、In-context learning モデルでは Meta を20 ポイント程度下回ったことから、訓練事例なしでは日本語の指示文が理解できていない傾向が見られる。
+
+
+
+3.3 各イベントタイプの抽出精度
+
+各イベントタイプの抽出精度を表 5, 6 に示す。
+全モデルにおいて企業設立は 85 ポイント以上の F 値12） 実際に、日付表現は正規表現の文字列マッチで大半が抽出可能であり、企業名も GPT-4o による事前実験で 97 ポイント程度の F 値を示している。
+13） 企業名毎に番号を付与した Special Token（例：[COM-PANY 1]）を割り当て、予測した属性値の Special Token の番号が一致していれば正解とする。
+表 6: 分社化・企業清算イベントに対する LLM の抽出精度（F1-score）分社化企業清算Llama-3-8B (Finetuning)Swallow 40.2 (± 1.9) 74.0 (± 5.4)Meta 37.5 (± 1.5) 73.3 (± 6.0)ELYZA-JP 34.0 (± 4.4) 76.8 (± 4.7)GPT-4o (in-context)GPT-4o-mini 25.6 (± 1.7) 58.3 (± 5.5)GPT-4o 34.7 (± 3.6) 74.0 (± 5.6)を示した一方、その他のイベントは企業設立より 10ポイント以上下回った。
+企業設立と似たイベント属性を持つ企業清算で F 値が 74 ポイント程度あることから、文書中のイベントの有無の判定が性能差に表れたと考えられる。
+また、企業名に関するイベント属性が複数存在する合併と分社化は、企業設立・企業清算と比べて抽出精度がやや低く、特に分社化は最も低い F 値を示した。
+分社化は事業譲渡と分社化の判定に曖昧性があり、人手でも企業沿革テキストのみでは解釈が難しい事例が多い。
+複数の企業名を対象にしたイベント属性の関係予測の性能改善と、文脈から判定が困難なイベントに対する定義の改善は今後の課題である。
+
+
+4 まとめ
+
+本研究は、企業名の時間変化への対応に焦点をあて、企業沿革テキストから企業名の変化を構造化するイベント抽出タスクを提案した。
+企業名変化イベント抽出タスクでは、企業名の変化に関わる 5 種類のイベントを定義し、有価証券報告書の企業年表を用いて 210 社のイベント抽出データセットを作成した。
+作成したデータセットによる評価実験の結果、LLM によるイベント抽出モデルは、一部のイベントで改善の余地が見られたものの、少量の訓練事例からでもイベントがある程度抽出可能であることを確認した。
+今後の課題として、抽出したイベント情報を補完情報とするエンティティリンキングへの拡張が挙げられる。
+また、人名・地名などのエンティティも同様の時間変化が起きるため、その他のエンティティを対象にした構造化タスクの設計も課題である。
+
+
+
+謝辞
+
+本研究は、日本経済新聞、理化学研究所革新知能統合研究センター、奈良先端科学技術大の共同プロジェクトとして実施したものです。
+
+参考文献
+
+
+[1] Daniel Gillick, Sayali Kulkarni, Larry Lansing, Alessan-dro Presta, Jason Baldridge, Eugene Ie, and Diego Garcia-Olano. Learning dense representations for entity retrieval.In Proceedings of the 23rd Conference on Compu-tational Natural Language Learning (CoNLL), pp.528–537, Stroudsburg, PA, USA, November 2019. Asso-ciation for Computational Linguistics.
+[2] Ledell Wu, Fabio Petroni, Martin Josifoski, SebastianRiedel, and Luke Zettlemoyer. Scalable zero-shot entitylinking with dense entity retrieval. In Proceedings ofthe 2020 Conference on Empirical Methods in Nat-ural Language Processing (EMNLP), pp. 6397–6407,Stroudsburg, PA, USA, November 2020. Association forComputational Linguistics.
+[3] 澤田悠冶, 安井雄一郎, 大内啓樹, 渡辺太郎, 石井昌之, 石原祥太郎, 山田剛, 進藤裕之. 企業名の類似度に基づく日経企業 id リンキングシステムの構築と分析. 自然言語処理, Vol. 31, No. 3, pp. 1330–1355, 2024.
+[4] Christopher Walker, Stephanie Strassel, Julie Medero, andKazuaki Maeda. Ace 2005 multilingual training corpus,2006.
+[5] Seth Ebner, Patrick Xia, Ryan Culkin, Kyle Rawlins, andBenjamin Van Durme. Multi-sentence argument linking.In Proceedings of the 58th Annual Meeting of theAssociation for Computational Linguistics, pp. 8057–8077, Stroudsburg, PA, USA, 2020. Association for Com-putational Linguistics.
+[6] Hang Yang, Yubo Chen, Kang Liu, Yang Xiao, and JunZhao. DCFEE: A document-level Chinese ﬁnancial eventextraction system based on automatically labeled trainingdata. In Proceedings of ACL 2018, System Demon-strations, pp. 50–55, 2018.
+[7] Shun Zheng, Wei Cao, Wei Xu, and Jiang Bian.Doc2EDAG: An end-to-end document-level framework forChinese ﬁnancial event extraction. In Proceedings of the2019 Conference on Empirical Methods in Natu-ral Language Processing and the 9th InternationalJoint Conference on Natural Language Processing(EMNLP-IJCNLP), pp. 337–346, 2019.
+[8] Satoshi Sekine, Kiyoshi Sudo, and Chikashi Nobata. Ex-tended named entity hierarchy. In Proceedings of theThird International Conference on Language Re-sources and Evaluation (LREC’02), 2002.
+[9] Kazuki Fujii, Taishi Nakamura, Mengsay Loem, HirokiIida, Masanari Ohi, Kakeru Hattor i, Hirai Shota, SakaeMizuki, Rio Yokota, and Naoaki Okazaki. Continualpre-training for cross-lingual llm adaptation: Enhancingjapanese language capabilities. In Proceedings of theFirst Conference on Language Modeling, COLM, p.(to appear), University of Pennsylvania, USA, October2024.
+[10] Naoaki Okazaki, Kakeru Hattori, Hirai Shota, Hiroki Iida,Masanari Ohi, Kazuki Fujii, Taishi Nakamura, MengsayLoem, Rio Yokota, and Sakae Mizuki. Building a largejapanese web corpus for large language models. In Pro-ceedings of the First Conference on Language Mod-eling, COLM, p. (to appear), University of Pennsylvania,USA, October 2024.
+[11] OpenAI. Hello GPT-4o, 2024.
+[12] OpenAI. GPT-4o mini: advancing cost-eﬃcient intelli-gence, 2024.
+[13] Xiaozhi Wang, Hao Peng, Yong Guan, Kaisheng Zeng,Jianhui Chen, Lei Hou, Xu Han, Yankai Lin, Zhiyuan Liu,Ruobing Xie, Jie Zhou, and Juanzi Li. MAVEN-ARG:Completing the puzzle of all-in-one event understandingdataset with event argument annotation. In Proceedingsof the 62nd Annual Meeting of the Association forComputational Linguistics (Volume 1: Long Pa-pers), pp. 4072–4091, 2024.
+[14] Hao Peng, Xiaozhi Wang, Jianhui Chen, Weikai Li, YunjiaQi, Zimu Wang, Zhili Wu, Kaisheng Zeng, Bin Xu, LeiHou, and Juanzi Li. When does in-context learning fallshort and why? a study on speciﬁcation-heavy tasks, 2023.
+[15] Bo Li, Gexiang Fang, Yang Yang, Quansen Wang, Wei Ye,Wen Zhao, and Shikun Zhang. Evaluating chatgpt’s infor-mation extraction capabilities: An assessment of perfor-mance, explainability, calibration, and faithfulness, 2023.
+[16] Ridong Han, Chaohao Yang, Tao Peng, Prayag Tiwari,Xiang Wan, Lu Liu, and Benyou Wang. An empirical studyon information extraction using large language models,2024.
+
+
+
+
+A ハイパーパラメータ
+
+表 7: ハイパーパラメータ一覧ParametersSeed [0, 21, 42, 63, 84]Training Epochs 2Batch size 2Scheduler cosineOptimizer AdamWWarmup 0.1Max grad norm 0.3LoRA r 128LoRA 𝛼 128LoRA Dropout 0.05評価実験に使用した LoRA Finetuning のハイパーパラメータとシードの一覧を表 7 に示す。
+
+
+
+B プロンプト一覧
+
+各イベントタイプの抽出に使用したプロンプト一覧を表 8, 9, 10,11, 12 に示す。
+表 8: 企業設立イベントの抽出プロンプトPlease analyze the following document to determine if itcontains any of the events expressing that a company isestablished. If events are detected, kindly provide thefollowing arguments: established date (”date”), anestablished company (”subject”), and format your responseas jsonline: {“date”: established date, “subject”:established company}If no arguments are found, simply respond with “None”.Document:[COMPANY HISTORY DOCUMENT]Response:表 9: 社名変更イベントの抽出プロンプトPlease analyze the following document to determine if itcontains any of the events expressing that a company nameis changed to another name. If events are detected, kindlyprovide
+the following arguments:changed date (”date”), a previous company name (”subject”),a last company name (”object”), and format your responseas jsonline:{“date”: changed date, “subject”: previous company name,“object”: last company name}If no arguments are found, simply respond with “None”.Document:[COMPANY HISTORY DOCUMENT]Response:表 10: 企業合併イベントの抽出プロンプトPlease analyze the following document to determine if itcontains any of the events expressing that companies aremerged or absorbed into one. If events are detected, kindlyprovide the following arguments:merged date (“date”), list of absorbed companies (“subject”),a survived company (“object”), and for mat your response
+asjsonline:{“date”: merged date, “subject”: [list ofabsorbed companies], “object”: a survived company}If no arguments are found, simply respond with “None”.Document:[COMPANY HISTORY DOCUMENT]Response:表 11: 分社化イベントの抽出プロンプトPlease analyze the following document to determine if itcontains any of the events expressing that a company isspun oﬀ a section as a separate company. It is distinctfrom a sell-oﬀ, where a company sells a section to anothercompany or ﬁrm in exchange for cash or securities. If eventsare detected, kindly provide the following arguments:split date (”date”), a parent company (”subject”), list
+ofseparated companies (”object”), and format your responseas jsonline: {“date”: split date, “subject”:a parent company, “object”: [list of separated companies]}If no arguments are found, simply respond with “None”.Document:[COMPANY HISTORY DOCUMENT]Response:表 12: 企業清算イベントの抽出プロンプトPlease analyze the following document to determine if itcontains any of the events expressing that a company isestablished. If events are detected, kindly provide thefollowing arguments: liquidated date (”date”), a liquidatedcompany (”subject”), and format your response as jsonline:{”date”: liquidated date, ”subject”: liquidated company}If no arguments are found, simply respond with “None”.Document:[COMPANY HISTORY DOCUMENT]Response:

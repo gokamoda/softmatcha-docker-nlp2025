@@ -1,0 +1,236 @@
+Exploring LLM-based Data Synthesis Strategies forConversational Semantic Frame Analysis
+
+Shiho Matta
+
+†
+
+, Yin Jou Huang
+
+†
+
+, Fei Cheng
+
+†
+
+, Hirokazu Kiyomaru
+
+∗
+
+, Yugo Murawaki
+
+††
+
+Kyoto University
+
+∗
+
+Research and Development Center for Large Language Models, National Institute of Informatics
+
+
+
+{matta, huang, feicheng, murawaki}@nlp.ist.i.kyoto-u.ac.jp,
+
+
+
+kiyomaru@nii.ac.jp
+
+
+
+Abstract
+
+Creating training data for supervised learning mod-els has traditionally been time-consuming and costly.
+However, recent advancements in large language models(LLMs) have enabled many studies to leverage these mod-els for synthesizing training data.
+In this paper, we exploredata synthesis strategies for conversational semantic frameanalysis, a complex task involving the extraction of enti-ties and relations from dialogue contexts.
+We propose twonovel methods tailored for this purpose: Forward Synthesisand Reverse Synthesis.
+Our results demonstrate that For-ward Synthesis can achieve performance levels comparableto its creator LLM.
+Additionally, we provide an in-depthanalysis of Reverse Synthesis, highlighting the challengesin this approach.
+
+
+1 Introduction
+
+Collecting training data for supervised learning models(SLMs) can be costly.
+As a result, many studies have pro-posed leveraging large language models (LLMs) to synthe-size training data to address this issue.
+Recent studies haveexplored generating training data for various SLMs andtasks using techniques such as few-shot learning [1] andself-instruct [2], aiming for high-quality and diverse syn-thetic data.
+For tasks such as text classiﬁcation and questionanswering, studies have demonstrated that synthetic train-ing data performs comparable to human-annotated datawith signiﬁcantly reduced costs [3, 4].In this paper, we explore data synthesis strategies for thetask of conversational semantic frame analysis (SFA).
+Thistask aims to capture knowledge transfer between two speak-ers in a dialogue by extracting semantic frames that rep-ExpertInterviewerTimeObjectPLACETemperatureBAKE_FRYLine up these Gyozas and first fry them for about two minutes.
+Is it okay to use high heat?Yes, that will be fine.
+Figure 1: An example dialogue with SFA annotation, trans-lated from Japanese.
+Triggers are marked in green, andarguments in orange.
+Relations are illustrated with arrows.resent events.
+Each semantic frame consists of a trigger,which denotes the core action of the event, and arguments,which provide details about the event and are always linkedto the event-evoking trigger.
+An example of dialogue andSFA annotation is presented in Figure 1.
+Compared tothe target tasks in previous data synthesis eﬀorts, SFA issigniﬁcantly more labeling-intensive and requires the anal-ysis of complex relational structures among entities withinthe dialogue.
+As a result, few prior works address tasksas complex as SFA, necessitating independent explorationand the development of novel approaches in this study.
+We explored two data synthesis strategies for SFA: For-ward Synthesis and Reverse Synthesis.
+In Forward Syn-thesis, we ﬁrst synthesize pseudo-dialogues and then applypseudo-labels to them.
+In Reverse Synthesis, we reverse theprocess: we ﬁrst synthesize pseudo-labels, and then gener-ate pseudo-dialogues that contain those labels.
+The latterapproach is inspired by Josifoski et al.
+[5], who showed thatLLMs are more eﬀective at generating context when pro-vided with the label ﬁrst.
+This is particularly relevant forinformation extraction tasks like relation extraction, whichshare similarities with SFA.Our experimental results show that Forward Synthesisgenerates data that achieves performance comparable to― 3575 ―Dialogue 1: Interviewer: About the order of…Dialogue 2: Expert: Put some salt in…Dialogue 8: Interviewer: The next step…Expert: Line up these Gyozas and first fry them (...)
+User Prompt: Input ContextAssistant Prompt: Output Multi-step Labeling ProcessStep 1.
+Mark up the text with entities.
+Step 2.
+Identify triggers-
+(E1, PLACE)- (E3, BAKE_FRY)(...)Expert: <E1>Line up</E1> these <E2>Gyozas</E2> and first <E3>fry</E3>them for <E4>about two minutes</E4>.
+(...)
+User Prompt: Dialogue DemonstrationsAssistant Output: Pseudo-dialoguesDialogue 9: Interviewer:
+So the heat is…Dialogue 12: Expert: Alright.
+Here we boil………Step 3.
+Identify relations- (E1, Object, E2)- (E3, Time, E4)(...)Forward DataPseudo-dialogue SynthesisText-to-label SynthesisForward Synthesis+TextLabelsFigure 2: The overview of Forward Synthesis.
+User Prompt: Label Set DemonstrationsAssistant Output: Pseudo-label SetsLabel Set 1:Triggers: - (E1, BAKE_FRY)- (E2, MIX)- (E3, MIX)Relations:- (E2, ECR, E3)Label Set 8:Triggers: - (E1, BAKE_FRY)- (E3, CHANGE)- (E4, COMPOUND)Relations:- (E1, Manner, E2)Label Set 9:Triggers: - (E1, HEAT)- (E3, HEAT)Relations:- (E1, ECR, E3)Label Set 12:Triggers: - (E2, PUT-ON)- (E3, WAIT)Relations:- (E2, Manner, E1)- (E3, Time, E4)……User Prompt: Input LabelsAssistant Prompt: Output Context With Entity TagsExpert: <E1>Line up</E1> these <E2>Gyozas</E2> and first <E3>fry</E3>them for <E4>about two minutes</E4>.
+(...)Triggers:-
+(E1, PLACE)- (E3, BAKE_FRY)(...)Relations:- (E1, Object, E2)- (E3, Time, E4)(...)Reverse
+DataPseudo-label SynthesisLabel-to-text SynthesisReverse Synthesis+TextLabelsFigure 3: The overview of Reverse Synthesis.its creator, GPT-4.
+In contrast, Reverse Synthesis faces adiversity issue in our setting, which limits its eﬀectiveness.
+We investigate the root cause of this limitation in this paper.
+
+
+2 SFA Data Synthesis Using LLMs
+
+SFA is a complex task that requires extracting entitiesand relations from a given context.
+Previous attempts tocreate training data for downstream tasks only focused onsentence-level labels or were limited to identifying a singleclass of entity at a time.
+[4, 6].To create training data for SFA, we design two datasynthesis methods: Forward Synthesis and Reverse Syn-thesis that enable an LLM to handle this task in a textgeneration manner, eﬃciently capturing all the entities,spans, and relations within the context in a single run.
+Tobe noted, it is essential to consider entity spans within thecontext to capture multiple and recurring entities acrossutterances due to the colloquial nature of the dialogue.
+
+
+2.1 Forward Synthesis
+
+In Forward Synthesis (Figure 2), we ﬁrst generatepseudo-dialogues, and then apply pseudo-labels to them.2.1.1 Pseudo-dialogue SynthesisThe ﬁrst step of Forward Synthesis is to generate thedialogues, which are the text part of the data.
+Adoptingthe self-instruct method
+[2], we utilize an LLM to boot-strap generating pseudo-dialogues based on a few reservedseed dialogues from human-generated data.
+We do this byrandomly sampling human dialogues and previously gener-ated pseudo-dialogues as few-shot examples for the LLM.Pseudo-dialogues are included in the few-shot examplesto further encourage diversity.
+The model is instructed tomimic the style of the dialogue examples while generatingnew and diverse topics.2.1.2 Text-to-label SynthesisAfter generating the pseudo-dialogues, we applypseudo-labels to them via a novel three-step tagging andlabeling prompting scheme that converts SFA into a textgeneration task, which we refer to as the multi-step la-beling process.
+The steps are as follows, given an inputcontext:1.
+Entity Tagging:
+Insert entity tags in numerical order,― 3576 ―such as <En> and </En> (𝑛 is an integer starting from1), to mark the start and end of entities within thecontext.
+The LLM should copy the context perfectlywhile adding the entity tags where appropriate.2.
+Trigger Detection: Identify the triggers among theentities tagged in Step 1.3.
+Relation Detection:
+Determine the relationships be-tween the entities tagged in Step 1.Speciﬁcally, Step 1 is inspired by Wang et al.
+[7], who usetag pairs to indicate the span of an entity.
+We provide few-shot labeling demonstrations from re-served human-annotated data to the LLM for each pseudo-dialogue created.
+Deﬁnitions and common examples foreach label type are provided in the model’s instructions.
+
+
+2.2 Reverse Synthesis
+
+In Reverse Synthesis (Figure 3), we adopt a label-ﬁrst,text-next strategy.2.2.1 Pseudo-label SynthesisWe ﬁrst generate pseudo-label sets, also adopting theself-instruct method.
+Each label set contains only triggerand relation labels, corresponding to the style of steps twoand three of the multi-step labeling process outlined inForward Synthesis (Section 2.1.2).
+It is important to notethat the pseudo-labels here include only the label type, suchas BAKE FRY, and do not specify the entities, such as “炒める(to fry)” corresponding to BAKE FRY.
+In addition tothe task descriptions for this step, we provide the LLM witha complete list of available entity types in the instructions.2.2.2 Label-to-text SynthesisTo generate dialogue contexts containing these labels,we prepare few-shot demonstrations for each pseudo-labelset.
+The input in the user prompt is a pseudo-label set,while the output in the assistant prompt is structured inthe style of the ﬁrst step in the multi-step labeling processin Section 2.1.2.
+The LLM is expected to generate thedialogue context while inserting entity tag pairs to denotethe entities, ensuring alignment with the labels providedin the input.
+We provided the LLM with deﬁnitions andcommon examples for each label type.
+
+
+3 Experimental Settings
+
+To outline our experiments, we ﬁrst synthesized For-ward and Reverse Data and then trained the supervisedlearning model (SLM) for SFA using these data.
+Then, weevaluated the performance using a classiﬁcation metric,where a higher F1 score indicates better data quality.
+In the experiments, we sampled few-shot examples andused the test data from the EIDC dataset
+[8, 9], whichincludes transcriptions of Japanese interview dialoguespaired with their corresponding semantic frame annota-tions.1）The semantic frames in the cooking domain aredesigned to capture cooking-related events.
+A complete listof entity types for this domain is shown in Appendix A.2.We created 4,300 instances each for the Forward andReverse Data.
+Detailed data statistics are available in Ap-pendix A.2.
+Hyperparameters such as the number of few-shots and temperature in each process are listed in Table 3in the Appendix.
+
+
+3.1 Settings for Forward Synthesis
+
+For pseudo-dialogue synthesis, we used GPT-4-0613.The seed human dialogue examples were sampled from areserved pool of 51.2）We initially sampled 8 human dia-logues for few-shot learning when generating the ﬁrst 100pseudo-dialogues.
+Then, we adjusted the sampling strategyto include 6 human dialogues and 2 pseudo-dialogues.
+In text-to-label synthesis, we utilized GPT-4-0613.
+Few-shot examples were retrieved by calculating the ROUGE-Lsimilarity between the context of the labeling target and thecandidate examples, selecting the highest-scoring ones.
+
+
+3.2 Settings for Reverse Synthesis
+
+To synthesize pseudo-label sets, we used GPT-4o-2024-11-203）in a manner that is similar to the pseudo-dialoguesynthesis process (Table 3).We utilized GPT-4-0613 in label-to-text synthesis.
+Thefew-shot examples were selected based on their similarity1）
+In the following experiments, we used a heuristic method to seg-ment a dialogue into smaller sessions, each consisting of up to 10turns of utterances.
+All data in this paper were created in this manner.2） A ﬁxed set of 51 training data samples from the EIDC datasetis designated as the exclusive pool of few-shot candidates for allLLM-related data synthesis processes discussed in this paper.3）
+We empirically observed that the pseudo-label sets generated byGPT-4-0613 lacked diversity in various classes.
+Switching to GPT-4o signiﬁcantly improved this issue.― 3577 ―Table 1: Trigger and argument detection performance inweighted-F1 score.
+Training data Trigger F1 Argument F13-shot GPT-4-0613 0.526 0.30751 Few-shot Data 0.398 0.177Forward
+Data 0.538 0.296Reverse Data 0.389 0.186in label occurrences to the target pseudo-label set.
+Referto Appendix A.1 for a detailed demonstration.
+
+
+3.3 SFA Model and Evaluation Metric
+
+We adopted JaMIE [10] as the SLM for SFA.
+Its ar-chitecture consists of a transformer encoder and multipledecoding heads, allowing it to perform sequence labelingand relation extraction tasks.
+We employed the JapaneseDeBERTa-V2-base4）as the pre-trained encoder for JaMIEand trained the relation decoding heads from scratch.
+We evaluated the performance of Trigger Detection andArgument Detection using a classiﬁcation metric that ac-counts for both type and span accuracy of entities.
+Correctpredictions require both the entity’s type and span to beaccurate.
+Argument predictions are marked false if theirassociated trigger is incorrect.
+The overall performance ismeasured using a weighted F1 score, aggregated from theF1 scores of each class.
+
+
+4 Results and Analysis
+
+The performance of JaMIE trained on Forward and Re-verse Data compared to their creator: GPT-4, is presentedin Table 1.
+Forward Data achieved performance com-parable to few-shot GPT-4, whereas Reverse Data signif-icantly underperforms, reaching comparable levels onlywhen trained on the 51 few-shot examples.
+To understand why Reverse Data performed worse thanForward Data, we conducted a case study on the REMOVEtrigger.
+In this case, Forward Data achieved an F1 scoreof 0.681, while Reverse Data only reached 0.403 (-0.278).Analyzing mentions (words/tokens) for REMOVE triggersin the test and Reverse Data (Figure 4), we observed adominant mention, “取り除く(to remove),” in ReverseData (>50%, Figure 4b), which appears in <5% of the testdata.
+Additionally, top mentions except for “取り出す(to4） https://huggingface.co/ku-nlp/deberta-v2-base-japanese(a) REMOVE in test data.
+(b) REMOVE in Reverse Data.
+Figure 4: Mentions of trigger REMOVE in test and Reversedata.
+The pink color in (b) means the same mention is lessthan 5% in the test data.take out)” in the test data (Figure 4a) were underrepresentedin Reverse Data.
+Forward Data, on the other hand, has abetter mention diversity (Figure 5 in Appendix), explainingthe performance gap.
+The issue of limited and biased mention diversity in Re-verse Data stemmed from the design of Reverse Synthesis.
+During label-to-text synthesis, the LLM is expected to gen-erate the context by referencing both the instruction and thefew-shot examples.
+However, the LLM focused excessivelyon a single mention of REMOVE in the instruction:• REMOVE: 何かから何かを取り除く。（例：洗う、剥く、取り除く、剥ぐ、取る）Although other mentions for REMOVE (e.g., “取る”,“洗う”, and “流す”) were included in the few-shot exam-ples, the LLM showed little inclination to generate thesealternatives.
+In contrast, during Forward Synthesis, theLLM generated the context in the pseudo-dialogue synthe-sis process without being constrained by entity mentiondemonstrations in the instruction, as none were provided.
+
+
+5 Conclusion
+
+In this paper, we explored the Forward and Reversedata synthesis strategies for semantic frame analysis (SFA).Experimental results demonstrate that Forward Synthesiscan generate training data that achieves performance onpar with its creator, GPT-4.
+In contrast, Reverse Synthesisin our setting suﬀers from a label diversity issue, whichlimits its eﬀectiveness.
+We hope our in-depth analysis willcontribute to advancing data synthesis methods, enablingthe creation of high-quality and diverse LLM-generateddata for tasks such as SFA.― 3578 ―
+
+
+
+Acknowledgement
+
+This paper is based on results obtained from a project,JPNP20006, commissioned by the New Energy and Indus-trial Technology Development Organization (NEDO).
+
+References
+
+
+[1] Tom B. Brown, Benjamin Mann, Nick Ryder, MelanieSubbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Nee-lakantan, Pranav Shyam, Girish Sastry, Amanda Askell,Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger,Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M.Ziegler, Jeﬀrey Wu, Clemens Winter, Christopher Hesse,Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Ben-jamin Chess, Jack Clark, Christopher Berner, Sam McCan-dlish, Alec Radford, Ilya Sutskever, and Dario Amodei.Language models are few-shot learners, 2020.
+[2] Yizhong Wang, Yeganeh Kordi, Swaroop Mishra, AlisaLiu, Noah A. Smith, Daniel Khashabi, and HannanehHajishirzi. Self-instruct: Aligning language models withself-generated instructions. In Anna Rogers, Jordan Boyd-Graber, and Naoaki Okazaki, editors, Proceedings of the61st Annual Meeting of the Association for Compu-tational Linguistics (Volume 1: Long Papers), pp.13484–13508, Toronto, Canada, July 2023. Associationfor Computational Linguistics.
+[3] Xingwei He, Zhenghao Lin, Yeyun Gong, A-Long Jin,Hang Zhang, Chen Lin, Jian Jiao, Siu Ming Yiu, NanDuan, and Weizhu Chen. AnnoLLM: Making large lan-guage models to be better crowdsourced annotators. InYi Yang, Aida Davani, Avi Sil, and Anoop Kumar, editors,Proceedings of the 2024 Conference of the NorthAmerican Chapter of the Association for Computa-tional Linguistics: Human Language Technologies(Volume 6: Industry Track), pp. 165–190, MexicoCity, Mexico, June 2024. Association for ComputationalLinguistics.
+[4] Shuohang Wang, Yang Liu, Yichong Xu, Chenguang Zhu,and Michael Zeng. Want to reduce labeling cost? GPT-3 can help. In Marie-Francine Moens, Xuanjing Huang,Lucia Specia, and Scott Wen-tau Yih, editors, Findingsof the Association for Computational Linguistics:EMNLP 2021, pp. 4195–4205, Punta Cana, DominicanRepublic, November 2021. Association for ComputationalLinguistics.
+[5] Mar tin Josifoski, Marija Sakota, Maxime Peyrard, andRobert West. Exploiting asymmetry for synthetic train-ing data generation: SynthIE and the case of informationextraction. In Houda Bouamor, Juan Pino, and Kalika Bali,editors, Proceedings of the 2023 Conference on Em-pirical Methods in Natural Language Processing,pp. 1555–1574, Singapore, December 2023. Associationfor Computational Linguistics.
+[6] Bosheng Ding, Chengwei Qin, Linlin Liu, Yew Ken Chia,Boyang Li, Shaﬁq Joty, and Lidong Bing. Is GPT-3 a gooddata annotator? In Anna Rogers, Jordan Boyd-Graber, andNaoaki Okazaki, editors, Proceedings of the 61st An-nual Meeting of the Association for ComputationalLinguistics (Volume 1: Long Papers), pp. 11173–11195, Toronto, Canada, July 2023. Association for Com-putational Linguistics.
+[7] Shuhe Wang, Xiaofei Sun, Xiaoya Li, Rongbin Ouyang,Fei Wu, Tianwei Zhang, Jiwei Li, and Guoyin Wang. GPT-NER: Named entity recognition via large language models.arXiv preprint arXiv:2304.10428, 2023.
+[8] Taro Okahisa, Ribeka Tanaka, Takashi Kodama, Yin JouHuang, and Sadao Kurohashi. Constructing a culinaryinterview dialogue corpus with video conferencing tool.In Nicoletta Calzolari, Fr´ed´eric B´echet, Philippe Blache,Khalid Choukri, Christopher Cieri, Thierry Declerck, SaraGoggi, Hitoshi Isahara, Bente Maegaard, Joseph Mariani,H´el`ene Mazo, Jan Odijk, and Stelios Piperidis, editors,Proceedings of the Thirteenth Language Resourcesand Evaluation Conference, pp. 3131–3139, Marseille,France, June 2022. European Language Resources Asso-ciation.
+[9] Taishi Chika, Taro Okahisa, Takashi Kodama, Yin JouHuang, Yugo Murawaki, and Sadao Kurohashi. Do-main transferable semantic frames for expert interviewdialogues, 05 2024.
+[10] Fei Cheng, Shuntaro Yada, Ribeka Tanaka, Eiji Aramaki,and Sadao Kurohashi. JaMIE: A pipeline Japanese medicalinformation extraction system with novel relation annota-tion. In Proceedings of the Thirteenth Language Re-sources and Evaluation Conference (LREC 2022),2022.― 3579 ―
+
+Figure 5: Mentions of trigger RE-MOVE in Forward Data.
+Table 2: Statistics of the data.
+Few-shots Test Data Forward ReverseData Size 51 379 4300 4300Length 108 ± 41 103 ± 33 107 ± 19 103 ± 29Turns 5.61 ± 2.04 5.87 ± 1.90 4.66 ± 1.13 6.57 ± 2.03Triggers 4.22 ± 2.78 4.08 ± 2.51 6.24 ± 2.39 5.52 ± 0.71Relations 6.51 ± 5.44 5.51 ± 4.09 12.9 ± 4.80 7.92 ± 1.11Table 3: Hyperparameters in each process.
+Process Model Temperature Presence Penalty #Few-shot (H: Human, P: Pseudo)Pseudo-dialogues GPT-4-0613 0.7 2 8 H (for ﬁrst 100)
+→ 6 H + 2 PText-to-label GPT-4-0613 0 0 3HPseudo-labels GPT-4o-2024-11-20 0.7 0 8 H (for ﬁrst 100) → 6 H + 2 PLabel-to-text GPT-4-0613 0 0
+4H
+
+A Experimental Settings: Details
+
+
+
+A.1 Few-shot retrieval in Reverse Synthesis: label-to-text.
+
+
+To measure similarity, we count the occurrences of each label type and calculate the cosine similarity.
+For instance, ifthe target pseudo-label set is represented as (3,0,2), corresponding to 3 BAKE FRY, 0 Object, and 2 Instrument, then themost similar few-shot example would be one with a vector like (2,0,3) ― that is, 2 BAKE FRY, 0 Object, and 3 Instrument.
+This is because it has a higher cosine similarity to the target vector compared to an example like (0,1,0).5）
+
+A.2 Data Statistics
+
+We provide data statistics for the data used or synthesized in this paper (Table 2).
+The length, number of turns, triggercounts, and relation counts are averaged across sessions, with the standard deviation indicated by ±.
+The frequencies foreach label per dialogue session are presented in Figure 6.Figure 6: The distributions of label frequencies.5）
+This is a simpliﬁed demonstration.
+In practice, there are 18 types of triggers and relations, meaning the vectors have a length of 18.― 3580 ―

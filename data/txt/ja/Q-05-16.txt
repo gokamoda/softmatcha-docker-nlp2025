@@ -1,0 +1,226 @@
+任意の題目に対する多様な視点の獲得を目的としたラップバトル形式のディベート生成システムの提案
+
+三林亮太
+
+1
+
+ 浦川通
+
+2
+
+ 高梨大
+
+3
+
+ 諸星智也
+
+4
+
+ 山岸奏大
+
+3
+
+ 関川龍宝
+
+4
+
+ 西村保彦
+
+4
+
+ 竹内祐太
+
+3
+
+ 田森秀明
+
+2
+
+ 山本岳洋
+
+1
+
+ 大島裕明
+
+11
+
+兵庫県立大学 
+
+2
+
+株式会社朝日新聞社 
+
+3
+
+Dentsu Lab Tokyo 
+
+4
+
+Think & Craft
+
+
+
+ {af22h007@guh, t.yamamoto@sis, ohshima@ai}.u-hyogo.ac.jp
+
+
+
+ {urakawa-t,tamori-h}@asahi.com sekikawa.ko@keio.jp
+
+
+
+ {takanashi.dai,yamagishi.kanata,yuta.takeuchi}@dentsu.co.jp
+
+
+
+ {nishimura-y, morohoshi-t}@dentsu-crx.co.jp
+
+
+
+概要
+
+本研究では、任意の題目に対する多様な視点の獲得を目的とした、ラップバトル形式のディベート生成システムを提案する。
+意見の対立する即興のディベートを視聴することで、多様な視点を養えることが知られており、これに類似する競技として、即興のラップを通じてお互いの意見を主張するラップバトルがある。
+本研究では、手動で作成したプロンプトを基に GPT-4o でラップバトル形式のディベートを生成し、その視聴を円滑にするためのデモシステムの作成に取り組んだ。
+評価は、全国中学・高校ディベート選手権の題目を基に生成したディベート20 件に対して、評価者 3 名の人手評価をおこなった。
+結果として、生成したディベートがラップバトルの形式に準拠しつつ、多様な視点の獲得に貢献していることを示した。
+
+
+1 はじめに
+
+近年、ユーザの好みに特化した推薦アルゴリズムの影響により、異なる意見や新しい情報に触れる機会が失われている[1]。
+この問題はフィルターバブル[2]と呼ばれ、偏った意見や情報ばかりを取り入れてしまうことが問題視されている。
+このような状態下での公平な意見形成は難しく、多様な視点から情報に触れる必要がある。
+多様な視点から情報に触れる方法として、パーラメンタリー・ディベート（即興的なディベート）がある。
+パーラメンタリー・ディベートは指定された題目に対して、肯定派と否定派のチームに分かれて即興のディベートをおこなう取り組みである。
+パー長崎の歴史が染み込む港俺のラップで首振る皆も何が長崎、言葉軽すぎ驚くお前とザラメの甘さに龍馬も歩いた出島の石畳文句があるお前の言い方にラッパー A ラッパー Bバース N♪♬バース 1バース 2図 1 ラップバトルの概要ラメンタリー・ディベートをおこなうことで、題目に対する多様な視点を得られるという報告がある。
+さらに、実際にディベートをおこなう以外にもディベートを視聴し、ジャッジをすること自体も教育的であると述べられている[3]。
+しかし、パーラメンタリー・ディベートは 1 つの題目に対して数十分以上の時間を使用するため各題目に対する視聴コストが高いと言える。
+もし、1 つの題目に対する短いディベートを自動的に生成することができれば、低いコストで視聴が可能となり、複数の題目に対して多様な視点を獲得できる可能性がある。
+そこで、パーラメンタリー・ディベートと類似する競技であるラップバトルに着目し、ディベートの生成に取り組む。
+ラップバトルとは、図 1 に示すように、2 名のラッパーが交互に即興のラップをおこなう競技である。
+即興のラップ（バース）には、ライム（韻）とアンサー（返答）を含むことが期待される。
+競技時間は数分と短く簡潔であり、対話が即興ラップでおこなわれるユニークさから、この競技の視聴者は多い[4]。
+また、このような勝敗を競うディベートにも教育効果があるという報告があるため[5]、ラップバトル形式でのディベートを視聴することで、低い視聴コストで多様な視点を獲得できる可能性があると考える。
+そこで、本研究ではディベートの視聴による多様な視点を獲得を目的とし、ラップバトル形式でのディベートの自動生成に取り組む。
+提案手法では、GPT-4o を用いた生成に取り組み、ディベートの一貫性を保持しつつ、ラップバトルの形式での生成が可能となるプロンプトの作成をおこなった。
+さらに、ディベートの視聴をエンターテインメントとして広く楽しむことができるように、視聴が円滑になるようなディベート視聴デモシステムを作成し、ラップの音声合成と Web ブラウザ上で閲覧可能なサイトを作成した。
+評価では、全国中学・高校ディベート選手権の題目 20 件を基に、提案手法で生成したディベートを視聴デモシステムを用いて評価者に視聴してもらった。
+結果として、生成したディベートがラップバトルの形式に準拠しつつ、多様な視点の獲得に貢献していることを示した。
+
+
+2 関連研究
+
+これまでのラップ生成手法では、ラップ歌詞内の単語を置き換えることでライムを考慮する方法や[6]、歌詞コーパス内のライムの情報を学習する方法が提案されている[7, 8, 9, 10]。
+さらに、ラップバトルに特化したラップの生成に関する研究も数件存在し[4, 11, 12, 13]、これらは LSTM やTransformer [14]をベースとした生成手法に取り組んでいる。
+また、近年では LLM を用いて、題目に対する多様な意見を生成する手法[15]も提案されている。
+本研究では、GPT-4o をベースに文脈内学習[16]を用いた生成手法に取り組み、ライムやディベートの内容を考慮したラップバトルを生成する。
+
+
+3 ディベート生成システム
+
+
+
+3.1 ラップバトル形式のディベート生成
+
+ディベートの生成には、OpenAI の API を利用し、モデルは GPT-4o1）を使用した。
+GPT-4o に入力するプロンプトは、ラップバトル形式でおこなうディベートの制約と 1 つの対話のラリーを 1-shot として与える文脈内学習[16]として日本語によるプロンプトを作成した。
+ディベートは、一般的なラップバトルの形式に1） https://platform.openai.com/docs/models#gpt-4o図 2 ディベート生成に使用したプロンプト沿って、2 回の対話のラリーで構成される合計 4 つの即興ラップ（バース）の生成に取り組んだ。
+各バースは 8 行で構成され、文長の制限は設けなかった。
+また、視聴を補助するために、ディベートの英訳と 2 名のラッパー名も同時に生成するように考慮した。
+作成したプロンプトを図 2 に示す。
+このプロンプトを GPT-4o に事前に与え、その後ユーザが題目を入力することでディベートを生成した。
+
+
+
+3.2 ディベート視聴デモシステム
+
+本研究では、ディベートの視聴を補助するためにデモシステムを作成した[17]。
+デモシステムは Webシステムとして作成し、Web サイト上で題目を入力することで、ディベート内容を生成し、描画し再生することができる。
+まず、デモシステムは図 3 に示すように、Webサイト上で、ディベートの対象となる題目を入力図 3 ディベート視聴システムの流れする。
+次に、入力した題目を前節で解説したプロンプトに組み込み、GPT-4o を用いてディベートを生成する。
+その後、生成したディベートに対して音声合成をおこない、テキストをラップの音声に変換する。
+音声合成には、Style-Bert-VITS2 を用いた．Style-Bert-VITS2 は、2 名のラッパーから提供してもらったラップの音声データでファインチューニングしてから使用し、テキストエンコーダ部分には、京都大学が公開している事前学習済みのDeBERTa [18]2）を使用した。
+最後に、生成したディベートの音声とテキストを基に、Web サイト上でラップバトルと同じプロセスで描画した。
+
+
+
+4 評価
+
+
+
+4.1 生成結果の定性評価
+
+評価で使用する題目は、全国中学・高校ディベート選手権で使用された過去の論題3）からランダムに20 件選択して使用した。
+これら 20 件の題目を基に生成したディベートを視聴してもらい、各評価項目に対して、1（そう思わない）から 5（そう思う）の5 段階で評価してもらった。
+評価項目は、指定した題目対してディベートが適切に生成できているか、ラップバトルの形式に沿っているかの観点から、表 1 に示す 6 項目を設定した。
+評価は、大学院生 2名と大学生 1 名の計 3 名におこなってもらった。
+評価結果を表 1 に示す。
+評価結果から、提案システムで生成されたディベートは全体を通して高い評2） ku-nlp/deberta-v2-large-japanese-char-wwm3） https://nade.jp/koshien/rondai-history/価値を得られていることがわかる。
+特に、「肯定意見と否定意見が含まれているか」と「それぞれの主張に一貫性があるか」の 2 つの項目においては、4.5を超える評価値を得られていることから、生成されたディベート内容は、肯定派と否定派に正しく分かれており、それぞれの主張において一貫性を持っていることがわかる。
+さらに、「多様な視点が得られたか」についても評価値が 4.41 と高いことから、題目に対する多様な視点を得られていることがわかる。
+このことから、提案システムは多様な視点の獲得に寄与できる可能性を示している。
+ただし、「ライムが含まれているか」「アンサーが含まれているか」「ラップとして自然であるか」の 3つの項目は、他の項目より評価値が低い結果となった。
+これは、ディベート内容を保持しつつ、ラップバトル形式でテキストを生成することが難しいことを示しており、特に、「ライムが含まれているか」は評価値が 4 を下回っていることから、ライムの生成は現状のプロンプトで十分でないことがわかる。
+
+4.2 生成結果の考察
+
+生成結果について具体的な事例を基に考察をおこなう。
+表 2 に「日本は救急車の利用を有料化すべきである。
+是か非か」という題目に対する生成結果を示す。
+生成結果を見ると、先攻のラッパーはターン1 の 1 行目で「救急車有料、無駄な呼び出しストップ」や、ターン 2 のバースの 5 行目で「誤用が減って、質が向上する」と発言していることから、日本は救急車の利用を有料化すべきという題目に対して、肯定的な意見を述べていることがわかる。
+さら表 1 20 件のディベートに対する 3 名の評価者の評価値の平均値評価者 1 評価者 2 評価者 3 平均値肯定意見と否定意見が含まれているか 5.00 4.55 5.00 4.85それぞれの主張に一貫性があるか 4.90 4.20 4.90 4.66多様な視点が得られたか 5.00 3.45 4.80 4.41ライムが含まれているか 3.35 3.60 4.65 3.86アンサーが含まれているか 4.15 3.35 4.75 4.08ラップとして自然であるか 4.00 3.20 4.90 4.03表 2 「日本は救急車の利用を有料化すべきである。
+是か非か」という題目に対するディベートの生成結果。
+𝑛 はターン数を表す。
+𝑛 先攻のラッパー後攻のラッパー11. 救急車有料、無駄な呼び出しストップ2. リソースを大事に、負担をカット3. 本当に必要な人に届くサポート4. 資源の無駄遣いは未来のリード5. 制度改革で街が進化6. 緊急だけ対応、正しい選択肢7. 使い方誤ると責任の重荷8. 有料化の流れで安心を取り戻す1. 救急車に値段つけるのは無理2. 命を救うために必要な助け3. 金のために躊躇するなんて矛盾4. みんなが平等に受けるべきなサポート5. 有料化で命の価値が失われる6. 財政じゃなく人命が優先7. 緊急時の判断は難しい場面8. 無料の救急車こそ守るべき精神21. 無料にして無駄は重なるばかり2. 救急車が遅れる、まさに悪夢3. コストは透明に、みんなで分かち合う4. 公平な社会を目指すべきなんだ5. 誤用が減って、質が向上する6. 有料化で制度が潤う、これは確か7. 命を守るため改革が必要になる8. 未来のため、今こそ目を覚まそう1. 無駄な懸念、命に焦点を当てろ2. 遅延の原因は資金より手法の改善3. 透明性のためには別の方策4. 負担を避け、本当の価値を伝える道5. 緊急時のストレス、料金が重荷になる6. 公共の安全を先に考える7. 無償こそが皆の命を守る盾8. 人間らしさを、助け合いのために再確認に、後攻のラッパーはターン 1 の 7 行目で「緊急時の判断は難しい場面」や、ターン 2 の 7 行目で「無償こそが皆の命を守る盾」と発言しており、有料化に対して否定的な意見を述べていることがわかる。
+このように、ディベート内において肯定意見と否定意見を含むことができているかつ、それらが一貫した主張をしており、人手評価の結果とも一致する。
+また、先攻のラッパーの肯定意見には、「本当に必要な人に届くサポート」や「誤用が減って、質が向上する」といった「サービスの質」に関する論点が含まれており、後攻のラッパーの否定意見には、「金のために躊躇するなんて矛盾」や「財政じゃなく人命が優先」といった「人命の優先」に関する論点が含まれている。
+このように、多様な論点がディベート内に含まれていることがわかり、これらを視聴することで多様な視点を獲得できる可能性がある。
+ラップの内容に関しても自然な生成ができており、例えば、各ラッパーのターン 2 の 2 行目では、「救急車が遅れる、まさに悪夢」に対して「遅延の原因は資金より手法の改善」というアンサーができていることがわかる。
+しかし、人手評価の結果と同じく、ライムに関しては生成が不十分な部分が多く、ライムは目視で数件程度しか確認できなかった。
+これは GPT-4o が発音等を考慮したモデルではないため、プロンプトの指示レベルでは、ライムを生成するに至らなかったと考えられる。
+
+
+5 おわりに
+
+本論文では、任意の題目に対する多様な視点の獲得を目的としたラップバトル形式のディベート生成手法について述べた。
+ディベートの生成には、GPT-4o を用いて文脈内学習による生成をおこない、ディベートの内容を実際のラップバトルの形式で視聴可能なデモシステムを構築した。
+評価は、評価者3 名による人手評価をおこない、生成したディベートがラップバトルの形式に準拠しつつ、多様な視点の獲得に貢献していることを示した。
+しかし、ライムの生成については他の観点より評価値が低く、プロンプト指示レベルではライムを生成できないなど、課題が残る結果となった。
+
+
+
+謝辞
+
+本研究は、JST 次世代研究者挑戦的研究プログラム JPMJSP2175、ならびに、JSPS 科研費 JP21H03775，JP24K03228，JP21H03554，JP22H03905 の支援を受けたものです。
+
+参考文献
+
+
+[1] Koen Zoetekouw. A critical analysis of the negative con-sequences caused by recommender systems used on socialmedia platforms, 2019.
+[2] Eli Pariser. The Filter Bubble: How the New Person-alized Web is Changing What We Read and HowWe Think. Penguin, 2011.
+[3] 伊藤利明, 石村由利子. 即興型日本語ディベートの有用性. 人文科学論集, Vol. 103, No. 1, pp. 17–35, 2024.
+[4] 三林亮太, 山本岳洋, 佃洸摂, 渡邉研斗, 中野倫靖, 後藤真孝, 大島裕明. ラップバトルにおける逆向き生成によるライムを含む返答バース生成. 情報処理学会論文誌データベース TOD, Vol. 17, No. 2, pp. 28–39,2024.
+[5] 吉永潤. 勝敗を競うディベート学習の社会科教育における意義 ── Ｃ．ムフのラディカル・デモクラシー論に基づいて ──. 日本社会科教育学会『社会科教育研究』, No. 123, pp. 1–12, 2014.
+[6] Tomas Mikolov, Ilya Sutskever, Kai Chen, Greg Corrado,and Jeﬀrey Dean. Distributed representations of wordsand phrases and their compositionality. In Proceedingsof the 26th International Conference on Neural In-formation Processing Systems, NIPS 2013, pp. 1–9,2013.
+[7] Peter Potash, Alexey Romanov, and Anna Rumshisky.GhostWriter: Using an LSTM for automatic rap lyric gen-eration. InProceedings of the 2015 Conference onEmpirical Methods in Natural Language Process-ing, EMNLP 2015, pp. 1919–1924, 2015.
+[8] Eric Malmi, Pyry Takala, Hannu Toivonen, Tapani Raiko,and Aristides Gionis. DopeLearning: A computationalapproach to rap lyrics generation. In Proceedings of the22nd ACM SIGKDD International Conference onKnowledge Discovery and Data Mining, SIGKDD2016, pp. 195–204, 2016.
+[9] Enrique Manjavacas, Mike Kestemont, and Folgert Kars-dorp. Generation of hip-hop lyrics with hierarchical mod-eling and conditional templates. In Proceedings ofthe 12th International Conference on Natural Lan-guage Generation, INLG 2019, pp. 301–310, 2019.
+[10] Lanqing Xue, Kaitao Song, Duocai Wu, Xu Tan, NevinZhang, Tao Qin, Wei-Qiang Zhang, and Tie-Yan Liu.DeepRapper: Neural rap generation with rhyme andrhythm modeling. In Proceedings of the 59th An-nual Meeting of the Association for ComputationalLinguistics and the 11th International Joint Confer-ence on Natural Language Processing, ACL 2021, pp.69–81, 2021.
+[11] Ryota Mibayashi, Takehiro Yamamoto, Kosetsu Tsukuda,Kento Watanabe, Tomoyasu Nakano, Masataka Goto, andHiroaki Ohshima. Verse generation by reverse genera-tion considering rhyme and answer in Japanese rap bat-tles. In Proceedings of the 16th International Sym-posium on Computer Music Multidisciplinary Re-search, CMMR 2023, pp. 30–41, 2023.
+[12] Dekai Wu and Karteek Addanki. Learning to rap battlewith bilingual recursive neural networks. In Proceedingsof the 24th International Joint Conference on Ar-tiﬁcial Intelligence, IJCAI 2015, pp. 2524–2530, 2015.
+[13] Richard Savery, Lisa Zahray, and Gil Weinberg. Shimonthe rapper: A real-time system for human-robot interac-tive rap battles. In Proceedings of the 11th Inter-national Conference on Computational Creativity,ICCC 2020, pp. 212–219, 2020.
+[14] Ashish Vaswani, Noam Shazeer, Niki Parmar, JakobUszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser,and Illia Polosukhin. Attention is all you need. In Pro-ceedings of the 31st International Conference onNeural Information Processing Systems, NIPS 2017,pp. 6000–6010, 2017.
+[15] Shirley Anugrah Hayati, Minhwa Lee, Dheeraj Rajagopal,and Dongyeop Kang. How far can we extract diverseperspectives from large language models? In Proceed-ings of the 2024 Conference on Empirical Methodsin Natural Language Processing, EMNLP 2024, pp.5336–5366, 2024.
+[16] Tom B. Brown, Benjamin Mann, Nick Ryder, MelanieSubbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Nee-lakantan, Pranav Shyam, Girish Sastry, Amanda Askell,Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger,Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M.Ziegler, Jeﬀrey Wu, Clemens Winter, Christopher Hesse,Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Ben-jamin Chess, Jack Clark, Christopher Berner, Sam McCan-dlish, Alec Radford, Ilya Sutskever, and Dario Amodei.Language models are few-shot learners. In Proceedingsof the 34th Conference on Neural Information Pro-cessing Systems, NeurIPS 2020, pp. 1877–1901, 2020.
+[17] Ryota Mibayashi, Toru Urakawa, Dai Takanashi, To-moya Morohoshi, Kanata Yamagishi, Ryuho Sekikawa,Yasuhiko Nishimura, Yuta Takeuchi, Mina Shibasaki,Hideaki Tamori, Takehiro Yamamoto, and HiroakiOhshima. Debate generation system in japanese rap battleformat. In Proceedings of the SIGGRAPH Asia 2024Real-Time Live!, SIGGRAPH Asia 2024, pp. 1–2, 2024.
+[18] Pengcheng He, Xiaodong Liu, Jianfeng Gao, and WeizhuChen. DeBERTa: Decoding-enhanced bert with disen-tangled attention. In Proceedings of the 9th Inter-national Conference on Learning Representations,ICLR 2021, pp. 1–21, 2021.
+
+
+
+
+A ディベートの生成例
+
+𝑛 先攻のラッパー後攻のラッパー題目：日本はフェイクニュースを規制すべきである。
+是か非か11. 情報の波に僕らは乗る2. フェイクニュースを規制する3. 真実の盾で世を守る4. 混乱防ぎ、未来に繋ぐ5. 信頼できる情報が基盤6. これが社会の安定の鍵7. 誤報を減らす、それが義務8. 規制が進めば、広がる道1. 情報は自由に流れるべき2. 規制すれば表現に制限つき3. 真実見極めるのは俺たちの役4. フェイクかどうか、見抜く力育つ5. 多様な声が社会を豊かに6. 規制で消える個々の財産7. 自由と選択、大事な価値8. 過保護すぎるのは逆効果21. 自由は尊重、でもフェイクは罪2. 誤った情報が混乱を呼ぶ3. 真実守れば文化も育つ4. 発展のための基盤を作るぞ5. 悪意の報道、規制で減らす6. 信頼の社会、これが理想の世界7. 個々の声も大事と知る8. だが正しい枠組みは必要な1. 情報の自由が文化を育てる2. 規制は真実を隠す恐れ3. 誤報減らすには教育が鍵4. 規制よりも知識の広がり推進5. 過剰な監視、個人が窮屈に6. 自由な議論こそが力に7. 基盤作るのは我々の手8. 自己判断こそ、未来の選択へ題目：日本は裁判員制度を廃止すべきである。
+是か非か11. 裁判員制度無駄なコスト2. 市民に負担増えるあの日々3. プロが裁くべき正義の法廷4. 誤判のリスク減らせるはずさ5. 時間と金無駄に燃やすだけ6. 国の未来に賭けるべきさ7. 公正な裁きそれが大事8. 裁判員制度廃止が賢い1. 市民の声が裁判に響く2. 公平な判断共に築く3. 誤判のリスク皆で減らす4. 制度の意義理解せよ今5. 参加によって知識も増える6. 平等の精神忘れず進め7. 国民のための法の力8. 裁判員制度継続の価値21. 素人の意見必要ないじゃん2. 複雑な法庭プロに任せ3. 他国の例を見れば分かる4. 裁判員より専門家頼る5. 正確な裁き質を上げる6. 市民の負担無くする努力7. 国の資源を有意義に使う8. 裁判制度の真価を問う1. 素人の視点に価値がある2. 形式だけじゃ中身は足りない3. 他国とは違う日本の文化4. 多様な意見が法を支える5. 市民の体験貴重と知る6. 正義は人の手で紡ぐもの7. 制度を通して社会が成長8. 裁判員制度続ける理由題目：日本は捕鯨を禁止すべきである。
+是か非か11. 鯨の命を守る時代2. 深海の声を聞く未来3. 自然のバランス守るために4. 捕鯨禁止は当然の運命5. 絶滅危惧種を守ろうよ6. 調査捕鯨では未来はない7. 海の生態系に影響大8. 捕鯨やめて共に歩もう1. 伝統文化の意味を知れ2. 捕鯨は食文化、誤解されてるぜ3. 管理された捕鯨で持続可能4. 鯨も資源、無駄にできるのか？5. 科学的に調べることも大事6. 生態系も考慮し、やれてるぜ7. 一方的な禁止は危険すぎ8. 共存の道を模索しよう21. 伝統も大切、でも変化が必要2. 時代の波に乗れ、未来を繋ごう3. 捕鯨による害、無視できない4. 海洋生物は人類の仲間たち5. 守るべき遺産は鯨そのもの6. 共存の鍵は捕鯨の終わり7. 他の文化も同じように変わってる8. 新たな視点で世界を見よう1. 変化もいいが急ぎすぎるな2. 現実も見よう、バランス大事さ3. 規制守り、文化継承する勇気4. 共に学び合う、これが真の道5. 全て保護なら、混乱招く6. 資源として見る視点も必要さ7. 新しい良識、共に育てよう8. 過去を否定せず、未来へ行こう

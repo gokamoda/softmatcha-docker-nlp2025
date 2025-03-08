@@ -1,0 +1,300 @@
+BiMax: Bidirectional MaxSim Score forBilingual Document Alignment
+
+Xiaotian Wang
+
+1
+
+ Takehito Utsuro
+
+1
+
+ Masaaki Nagata
+
+21
+
+Deg.
+Prog.
+Sys.&Inf.
+Eng., Grad.
+Sch.
+Sci.&Tech., University of Tsukuba
+
+2
+
+NTT Communication Science Laboratories, NTT Corporation, Japan
+
+1
+
+wangxiaotian1999 @ outlook.com  
+
+1
+
+utsuro @ iit.tsukuba.ac.jp
+
+2
+
+masaaki.nagata @ ntt.com
+
+
+
+Abstract
+
+Document alignment is necessary for the hierarchicalmining [1, 2], which aligns documents across source andtarget languages within the same web domain.
+Severalhigh-precision sentence embedding-based methods havebeen developed, such as TK-PERT [3] and Optimal Trans-port (OT)[4, 5].
+However, given the massive scale ofweb mining data, both accuracy and speed must be consid-ered.
+In this paper, we propose a cross-lingual sentence-level Bidirectional Maxsim score (BiMax) for computingdoc-to-doc similarity, to improve eﬃciency compared tothe OT method.
+Meanwhile, we also conduct a compre-hensive analysis to investigate the performance of currentstate-of-the-art multilingual sentence embedding models.
+
+
+1 Introduction
+
+Document alignment is the task of ﬁnding parallel doc-ument pairs, which are identiﬁed as translations of eachother, within a collection of documents obtained throughweb crawling.
+There are four mainstream approaches:URL matching [6, 7], bilingual lexicon
+[8, 9], machinetranslation
+[10, 11], sentence embedding [4, 3, 5, 12].Wang et al.
+[13] proposed the overlapping ﬁxed-Lengthsegmentation (OFLS) as an alternative to sentence-basedsegmentation (SBS) for generating embeddings.
+When ap-plied to Mean-Pool, TK-PERT [3], and OT
+[4, 5], this strat-egy led to speed and accuracy improvements.
+Among thesemethods, OT achieves the highest recall on the WMT16bilingual document alignment shared task based on theLaBSE model [14].
+However, the computation of OT in-herently involves an optimization process, necessitatingmultiple iterative operations at the algorithmic level.
+Thisresults in high computational complexity, limiting its per-formance in terms of speed.
+Furthermore, as the numberof document segments increases, the processing speed ofOT tends to decrease.
+Thus, we propose theBidirectionalMaxSim score (Bi-Max), which matches the maximum similarity between agiven segment and the opposed segment collection (e.g., agiven source segment and target segment collection) andthen sums and averages the similarity scores.
+The im-plementation is computationally eﬃcient, requiring only asingle similarity matrix computation followed by two max-pooling operations.
+This idea is inspired by the MaxSimScore in ColBERT
+[15, 16], which employs a late interac-tion mechanism to reduce the computational cost betweenthe query and passage by calculating only the maximumsimilarity for each token in the query relative to the tokensin the passage.
+We extend this score to the sentence leveland make it bidirectional.
+Additionally, we evaluate combinations of state-of-the-art embedding models (i.e., models that perform well intasks such as bitext mining and STS) with various seg-mentation strategies and document alignment methods onthe small-scale Ja-En MnRN dataset
+[13], aiming to ﬁndsuitable models and methods for diﬀerent scenarios.
+
+
+2 Related Work
+
+Currently, there are four mainstream approaches to doc-ument alignment.
+The ﬁrst involves simply calculatingsimilarity based on the URLs of the documents [6, 7].
+Thesecond uses a bag-of-words or bag-of-ngrams representa-tion of the document contents, leveraging a bilingual lexi-con for computation [17, 8, 9].
+The third approach employsa Neural Machine Translation (NMT) model to translatedocuments into the same language, followed by similar-ity calculations using ngram-based metrics (e.g., BLEU,ChrF)[18, 10, 11].
+The fourth approach utilizes multi-lingual pre-trained embedding models to map documentsinto a shared vector space, where similarity is determinedby calculating the distances between vectors [4, 3, 5, 12].In the WMT16 bilingual document alignment shared task[19], numerous techniques and system tools were proposedto align cross-lingual document pairs.
+However, due to thelimitations of technology at the time, all eﬀorts focusedon the ﬁrst three approaches mentioned above, with noexploration of embedding-based methods.
+With the proposal and development of pre-trained mul-tilingual sentence embedding models (e.g., LASER [20],mSBERT
+[21, 22], LaBSE
+[14]), which map sentencesfrom diﬀerent languages into a shared multilingual vec-tor space, bitext mining (i.e., matching translation pairs)and Semantic Textual Similarity (STS) calculation havebecome feasible.
+This progress also facilitates represent-ing documents using segment embeddings and computingdocument pair similarities via vector-based methods.
+Thompson and Koehn
+[3] introduced TK-PERT, amethod that assigns weights to sentences using regionallyemphasized windows derived from a modiﬁed PERT distri-bution [23] to form document feature vectors.
+Building onthis, Sannigrahi et al.
+[12] evaluated TK-PERT using threemultilingual sentence embedding models: LASER, mS-BERT, and LaBSE.
+Optimal Transpor t (OT) was also ap-plied in cross-lingual document alignment, evolving fromword level with Word Movers’ Distance (WMD)[24] tosentence level with Sentence Movers’ Distance
+[4, 5].Wang et al.
+[13] proposed overlapping ﬁxed-length seg-mentation (OFLS) instead of sentence-based segmenta-tion (SBS) for the embedding step, improving in both accu-racy and speed when replicating previous works.
+However,their work is limited to using only the LaBSE model anddoes not explore new document alignment methods.
+
+
+3 Method
+
+Unlike the MaxSim method utilized in the late interac-tion of ColBERT
+[15, 16], which uses the query’s hiddenword embeddings to search for the most similar token inthe passage undirectionally, we apply it to sentence-levelas the Bidirectional MaxSim Score (BiMax), introducingthe following key modiﬁcations: (1) transfor ming frommonolingual to cross-lingual, (2) shifting from word-levelembeddings to sentence-level embeddings and (3) movingfrom one-sided maximum similarity matching to a bidirec-tional approach.
+
+
+3.1 Bidirectional MaxSim Score
+
+We deﬁne the source document set asD𝑆and the targetdocument set asD𝑇. Following the research of Thompsonand Koehn
+[3], we adopt a 2-stage approach to consider theD𝑆×D𝑇possible document pairs:1.
+Candidate Generation: We ﬁrst use Mean-Pool orTK-PERT method to generate a single feature vectorfor each document, and then employ Faiss Search
+[25]to retrieve 𝐾 target documents as potential matches foreach source document.2.
+Candidate Re-ranking: We re-rank theD𝑆×𝐾 pairsusing a more accurate but slower and sometimes morememory-intensive scoring method, such as OT andour proposed BiMax.
+Let 𝑠𝑖for 𝑖 ∈ {0, ..., 𝑁𝑆− 1} be the 𝑁𝑆segments in agiven source document 𝑆 and 𝑡𝑗for 𝑗 ∈ {0, ..., 𝑁𝑇− 1} bethe𝑁𝑇segments in a given target document𝑇.
+The BiMaxScore is deﬁned as:MaxSim(𝑆, 𝑇) =1𝑁𝑆𝑁𝑆∑𝑖=1max𝑡 ∈𝑇Sim(𝑠𝑖, 𝑡)(1a)BiMax(𝑆, 𝑇) =12(MaxSim(𝑆, 𝑇) + MaxSim(𝑇 , 𝑆))(1b)where Sim(𝑠, 𝑗 ) represents for the similarity score.
+In thiswork, we use a pre-trained multilingual sentence embed-ding model to map the source segment 𝑠 and the targetsegment 𝑡 into the same vector space, producing embed-dings 𝐸𝑠and 𝐸𝑡, and then adopt their cosine similarity𝑐𝑜𝑠(𝐸𝑠, 𝐸𝑡) as the similarity score.
+
+
+4 Analysis on the MnRN Dataset
+
+We use the small-scale MnRN dataset
+[13], which con-tains 232 Japanese documents, 931 English documents,and 263 gold pairs1）within four web domains, to con-duct the analysis under various sentence embedding mod-els, two segmentation strategies, SBS2）and OFLS3）, andfour document alignment methods, focusing on three mainpoints: (1) which models are suitable (or unsuitable) for1）
+Because the English documents contain duplicates, the number ofgold pairs exceeds that of the Japanese documents.2） Sentence-based Segmentation (SBS): split a document into non-overlapping sentences using delimiters such as line breaks or periods.3）
+Overlapping Fixed-Length Segmentation (OFLS): split a docu-ment into segments through a ﬁxed-length sliding window, with aproportion of overlap between adjacent segments.
+Table 1
+The results for comparing SBS and OFLS under each embedding model on the Ja-En MnRN dataset, whereFLrepresentsfor ﬁxed-length, OR represents for overlapping rate.
+For each model and the four document alignment methods, we underline andbold the result that achieves the higher F1 score or shorter embedding time under SBS or OFLS.Strategies & ModelsEmbedding Models(a) LaBSE (b) LEALLA-large (c)paraphrase-multi-MiniLM-L12-v2(d)distiluse-base-multi-cased-v2(e) LASER-2 (f)BGE M3(dense only)(g) jina-embeddings-v3Experiments (F1 Score ↑ / Embed.
+Time (sec.)
+↓)SBSMean-Pool 0.8362 / 131.27s 0.3750 / 60.54s 0.7543 / 59.00s 0.8362 / 80.40s 0.5862 / 543.10s 0.8448 / 637.01s 0.8362 /
+133.72sTK-PERT 0.8448 / 206.19s 0.5129 / 158.54s 0.7845 / 158.38s
+0.8147 / 164.89s
+0.5819 / 652.32s 0.8362 / 745.57s 0.8706 / 247.22sOT w/Mean 0.8448 / 131.58s 0.4525 / 60.87s 0.7845 / 58.98s 0.8448 / 80.46s 0.4784 / 543.87s 0.8621 / 642.20s 0.8578 / 132.73sBiMax w/Mean 0.8922 / 131.47s 0.4655 / 60.83s 0.8319 / 59.35s 0.9052 / 80.49s 0.7414 / 543.61s 0.9181 / 640.27s 0.9310 / 134.52sOFLS(FL 30, OR 0.5)Mean-Pool 0.8707 / 71.59s 0.3836 / 52.76s 0.7759 / 49.06s 0.8233 / 49.23s 0.5302 / 1246.64s 0.8491 / 119.38s 0.7716 /
+380.98sTK-PERT 0.9483 / 569.54s 0.6034 /
+548.93s 0.8707 / 578.17s 0.8966 / 591.48s 0.8134 / 1860.80s 0.9224 / 650.14s 0.9310 / 912.74sOT w/Mean 0.9569 / 71.33s 0.4782 / 52.47s 0.8578 / 49.08s 0.9397 / 49.10s 0.4354 / 1223.61s 0.8879 / 119.36s 0.8966 / 379.59sBiMax w/Mean 0.9612 / 71.14s 0.5348 / 52.93s 0.9052 / 49.09s 0.9569 / 49.32s 0.7845 / 1205.91s 0.9483 / 119.36s 0.9267 / 381.05sOFLS segmentation, (2) how diﬀerent document align-ment methods perfor m under each model, and (3) whichcombination of these three factors yields the best results.
+The reasons for selecting embedding models and thedetailed model settings are recorded in Appendix A and B.
+
+4.1 Performance Comparison
+
+(1) Which models are suitable (or unsuitable) for OFLSsegmentation?As shown in Table 1, for models (a)∼(d), and (f), OFLSdemonstrates similar characteristics, with an improvementin the F1 score in most cases and an acceleration in em-bedding speed (except for TK-PERT) compared to the SBSsegmentation.
+However, for the LASER-2 model, althoughthe use of OFLS improves the accuracy of the TK-PERTand BiMax methods, its performance on Mean-Pool andOT remains poor.
+Additionally, the embedding speed isobviously reduced, which may be attributed to the chainstructure of LSTM, due to the rise in the total number oftokens resulting from overlapping segments in OFLS.Speciﬁcally, the jina-embeddings-v3 model achieves arelatively high F1 score compared to other models whenusing the SBS segmentation, with embedding time com-parable to LaBSE.
+Although employing the OFLS strategymay further enhance accuracy, the embedding time forthe jina-embeddings-v3 model, unlike other Transformer-based models, becomes longer, which may be caused by theuse of RoPE
+[26] and
+FlashAttention 2
+[27] mechanisms.(2) How diﬀerent document alignment methods performunder each model?We select four well-performing models from Table 1,LaBSE, distiluse-base-multi-cased-v2, BGE M3, and jina-embeddings-v3, for further comparison of document align-ment methods.
+As described in Table 3, ﬁrstly, as a com-mon feature across all models and segmentation strategies,the embedding time required by the Mean-Pool method isless than TK-PERT.
+However, in terms of similarity com-putation, Mean-Pool and TK-PERT cost similarly, as theyonly involve cosine similarity calculations under suﬃcientGPU memory.
+Furthermore, due to the limited scale of theMnRN dataset, the times for similarity calculation underdiﬀerent segmentation strategies and embedding modelsdo not diﬀer signiﬁcantly for the four document alignmentmethods.
+Thus, we present these times in ranges in Ta-ble2, while Appendix A provides detailed results.
+It canbe observed that the time required for BiMax to calculatesimilarity scores is shor ter than OT.Table 2
+The time consumption for calculating similarity.
+Methods Mean-Pool TK-PERT OT w/Mean BiMax w/MeanSim Time (sec.)
+↓ 2.06s∼3.03s 2.09∼2.97s 12.66s∼24.57s 2.12s∼3.23sSubsequently, across the segmentation strategies foreach model in Table 3, BiMax achieves the best per for-mance in most cases, except for the jina-embeddings-v3model employing OFLS with ﬁxed-length 30 for segmen-tation.
+The method yielding the second-highest accuracyis generally OT or TK-PERT, but OT shows a higher sen-sitivity to the window length setting using OFLS.Table 3 The results for comparing the four document align-ment methods under each embedding model and the segmentationstrategy.
+For each segmentation strategy under each model, wehighlight the best and second among the document alignmentmethods.
+(Comparisons are conducted for each cell of the table.)Strategies & Models LaBSEdistiluse-base-multi-cased-v2BGE M3 jina-embed-v3Experiments (F1 Score ↑ / Embed.
+Time (sec.)
+↓)SBSMean-Pool 0.8362 / 131.27s 0.8362 / 80.40s 0.8448 / 637.01s 0.8362 /
+133.72sTK-PERT 0.8448 / 206.19s 0.8147 / 164.89s 0.8362 / 745.57s
+0.8706 / 247.22sOT w/Mean 0.8448 / 131.58s 0.8448 / 80.46s 0.8621 / 642.20s 0.8578 / 132.73sBiMax w/Mean 0.8922 / 131.47s 0.9052 / 80.49s 0.9181 / 640.27s 0.9310 / 134.52sOFLS(30, 0.5)Mean-Pool 0.8707 / 71.59s 0.8233 / 49.23s 0.8491 / 119.38s 0.7716 /
+380.98sTK-PERT 0.9483 / 569.54s 0.8966 / 591.48s 0.9224 /
+650.14s 0.9310 / 912.74sOT w/Mean 0.9569 / 71.33s 0.9397 / 49.10s 0.8879 / 119.36s 0.8966 / 379.59sBiMax w/Mean 0.9612 / 71.14s 0.9569 / 49.32s 0.9483 / 119.36s 0.9267 / 381.05sOFLS(100, 0.5)Mean-Pool 0.8663 / 67.85s 0.8577 / 46.93s 0.8663 / 103.28s 0.7845 /
+169.16sTK-PERT 0.8966 / 208.19s 0.9052 / 209.13s 0.8836 / 261.69s 0.8836 / 329.34sOT w/Mean 0.8922 /
+68.35s 0.8707 / 47.01s 0.8405 / 103.16s 0.8491 / 167.97sBiMax w/Mean 0.9440 / 68.32s 0.9353 / 47.02s 0.9224 / 103.19s 0.9397 / 168.55s(3)
+Which combination of these three factors yields the bestresults?Furthermore, we record the maximum memory consump-tion4）of the four well-performing models in Table 4.Table 4 The maximum memory consumption of the four em-bedding models.
+Strategies & Models LaBSEdistiluse-base-multi-cased-v2BGE M3 jina-embed-v3Memory
+Consumption: Embedding (MB.)↓SBSMean-Pool 4455.33 7267.58 57924.36 7036.57TK-PERT 4478.97 7291.22 57948.21 7052.71OFLS(30, 0.5)Meam-Pool 2758.95 1685.84 2338.35 3203.90TK-PERT 2782.64 1715.25 2370.38 3235.67OFLS(100, 0.5)Mean-Pool 2541.99 1670.95 1731.11 2450.66TK-PERT 2565.64 1694.64 1762.69 2482.38Overall, when using OFLS, LaBSE demonstrates supe-rior accuracy compared to other models, and among thedocument alignment methods, according to Table 3, Bi-Max achieves the best performance.
+The model closestto LaBSE under OFLS, distiluse-base-multilingual-cased-v2, while lower in accuracy, oﬀers advantages in terms ofspeed and memory eﬃciency.
+Regarding SBS, the jina-embeddings-v3 model attainshigher accuracy while demonstrating a speed comparableto LaBSE, performing the best in the BiMax method.
+Al-though the BGE M3 model also achieves a relatively highF1 score, its memory consumption indicates ineﬃciencyin handling the long-text challenge caused by SBS.In addition, in the case of low-resource language pairs,where regardless of the embedding model, high embeddingaccuracy cannot be fully guaranteed, if LaBSE covers thelanguages, the LaBSE + OFLS + BiMax approach, whichachieves fast speed while maintaining a relatively high levelof accuracy, may be a recommended method.
+
+
+5 Experiment on the WMT16 doc-
+
+
+
+ ument alignment shared task
+
+To test the BiMax method further, we conduct experimentson the WMT16 document alignment task.
+For a compar-ison with the work of Wang et al.
+[13], we set the ﬁxed-length to 100 and the overlapping rate to 0.5 for OFLS,while using the LaBSE model for embedding generation.
+The results are presented in Table 5.
+Similarly, under theOFLS segmentation, the BiMax method improves 0.3% to2.4% recall than SBS.
+Compared with the results of Wanget al.
+[13], the BiMax method demonstrates slightly higher4）
+Since the memory used to calculate similarity scores using OT andBiMax does not exceed the memory required during the embeddingprocess, we limit our comparisons to Mean-Pool and TK-PERT.accuracy than the OT and TK-PERT methods under SBS.However, the opposite trend is observed when employingOFLS.
+Although the BiMax method cannot comprehen-sively outperform OT and TK-PERT in terms of recall, wehave shown its eﬃciency in speed in Section 4.1.
+Further-more, rather than solely prioritizing precision, this researchemphasizes the eﬃciency of the method.
+While there isstill room for improvement in the accuracy of the BiMaxscore, such as incorporating weights (e.g., LIDF) for themaximum similarity score of each segment, we opt fora lightweight approach to minimize additional computa-tional overhead and time consumption.
+Table 5
+The results of soft recall on WMT16 test data, com-pared to previous best-reported results, where the ﬁxed-length is100, the overlapping rate is 0.5 for OFLS.MethodSegmentStrategyRecallWang et al.
+[13](LaBSE)Mean-Pool SBS 82.6%Mean-Pool OFLS 92.6%TK-PERT SBS 95.2%TK-PERT OFLS 96.3%OT w/Mean-Pool SBS 90.6%OT w/Mean-Pool OFLS 93.7%OT w/TK-PERT SBS 95.6%OT w/TK-PERT OFLS
+96.8%This work (LaBSE)BiMax w/Mean-Pool SBS 90.7%BiMax w/Mean-Pool OFLS 93.1%BiMax w/TK-PERT SBS 95.8%BiMax w/TK-PERT OFLS 96.1%
+
+6 Conclusion
+
+This paper introduces a novel and eﬃcient BiMax Scorefor the document alignment task, reducing computationalcomplexity compared to OT.
+However, while BiMax showsthe best performance across almost all models and varioussegmentation strategies on the small-scale MnRN dataset,results from the WMT16 document alignment task revealthat we cannot deﬁnitively assert BiMax’s accuracy sur-passes OT or TK-PERT.
+Instead, we advocate for BiMaxprimarily for its eﬃciency in scenar ios such as process-ing large-scale web-crawled data or low-resource languagepairs.
+In these cases, according to our analysis experi-ments, the LaBSE + OFLS + BiMax approach is recom-mended, which outperforms all of the other combinations.
+
+
+
+References
+
+
+[1] M. Ba˜n´on, P. Chen, B. Haddow, K. Heaﬁeld, H. Hoang,M. Espl`a-Gomis, M. Forcada, A. Kamran, F. Kirefu,P. Koehn, S. Ortiz Rojas, L. Pla Sempere, G. Ram´ırez-S´anchez, E. Sarr´ıas, M. Strelec, B. Thompson, W. Waites,D. Wiggins, and J. Zaragoza. ParaCrawl: Web-scale ac-quisition of parallel corpora. In Proc 58th ACL, pp.4555–4567, 2020.
+[2] M. Morishita, K. Chousa, J. Suzuki, and M. Nagata.JParaCrawl v3.0: A large-scale English-Japanese paral-lel corpus. In Proc 13th LREC, pp. 6704–6710, 2022.
+[3] B. Thompson and P. Koehn. Exploiting sentence order indocument alignment. In Proc EMNLP 2020, pp. 5997–6007, 2020.
+[4] E. Clark, A. Celikyilmaz, and N. Smith. Sentence mover‘ssimilarity: Automatic evaluation for multi-sentence texts.In Proc 57th ACL, pp. 2748–2760, 2019.
+[5] A. El-Kishky and F. Guzm´an. Massively multilingual doc-ument alignment with cross-lingual sentence-mover‘s dis-tance. In Proc 1st AACL - 10th IJCNLP, pp. 616–625,2020.
+[6] U. Germann. Bilingual document alignment with latentsemantic indexing. In Proc 1st WMT SIGMT, pp. 692–696, 2016.
+[7] V. Papavassiliou, P. Prokopidis, and S. Piperidis. TheILSP/ARC submission to the WMT 2016 bilingual docu-ment alignment shared task. In Proc 1st WMT SIGMT,pp. 733–739, 2016.
+[8] A. Azpeitia and T. Etchegoyhen. DOCAL - vicomtech‘sparticipation in the WMT16 shared task on bilingual docu-ment alignment. In Proc 1st WMT SIGMT, pp. 666–671,2016.
+[9] M. Medveˇd, M. Jakub´ıˇcek, and V. Kov´aˇr. English-Frenchdocument alignment based on keywords and statisticaltranslation. In Proc 1st WMT SIGMT, pp. 728–732,2016.
+[10] A. Dara and Y. Lin. YODA system for WMT16 sharedtask: Bilingual document alignment. In Proc 1st WMTSIGMT, pp. 679–684, 2016.
+[11] C. Buck and P. Koehn. Quick and reliable document align-ment via TF/IDF-weighted cosine distance. In Proc 1stWMT SIGMT, pp. 672–678, 2016.
+[12] S. Sannigrahi, J. van Genabith, and C. Espa˜na-Bonet. Arethe best multilingual document embeddings simply basedon sentence embeddings? In Findings of EACL 2023,pp. 2306–2316, 2023.
+[13] X. Wang, T. Utsuro, and M. Nagata. Document alignmentbased on overlapping ﬁxed-length segments. In Proc.62nd ACL-SRW, pp. 51–61, 2024.
+[14] F. Feng, Y. Yang, D. Cer, N. Arivazhagan, and W. Wang.Language-agnostic BERT sentence embedding. In Proc60th ACL, pp. 878–891, 2022.
+[15] O. Khattab and M. Zaharia. Colbert: Eﬃcient and eﬀectivepassage search via contextualized late interaction over bert.In Proc. 43rd ACM SIGIR, pp. 39–48, 2020.
+[16] K. Santhanam, O. Khattab, J. Saad-Falcon, C. Potts, andM. Zaharia. ColBERTv2: Eﬀective and eﬃcient retrievalvia lightweight late interaction. In Proc NAACL 2022,pp. 3715–3734, 2022.
+[17] P. Fung and P. Cheung. Mining very-non-parallel corpora:Parallel sentence and lexicon extraction via bootstrappingand E. In Proc EMNLP 2024 SIGDAT, pp. 57–63, 2004.
+[18] L. Gomes and G. Pereira Lopes. First steps towardscoverage-based document alignment. In Proc 1st WMTSIGMT, pp. 697–702, 2016.
+[19] C. Buck and P. Koehn. Findings of the WMT 2016 bilin-gual document alignment shared task. In Proc 1st WMTSIGMT, pp. 554–563, 2016.
+[20] M. Artetxe and H. Schwenk. Massively multilingual sen-tence embeddings for zero-shot cross-lingual transfer andbeyond. TACL, pp. 597–610, 2019.
+[21] N. Reimers and I. Gurevych. Sentence-BERT: Sentenceembeddings using Siamese BERT-networks. In ProcEMNLP 2019 - 9th IJCNLP, pp. 3982–3992, 2019.
+[22] N. Reimers and I. Gurevych. Making monolingual sen-tence embeddings multilingual using knowledge distilla-tion. In Proc EMNLP 2020, pp. 4512–4525, 2020.
+[23] D Vose. Risk analysis: a quantitative guide. John Wiley& Sons, 2000.
+[24] M. Kusner, Y. Sun, N. Kolkin, and K. Weinberger. Fromword embeddings to document distances. In Proc 32ndPRML, pp. 957–966, 2015.
+[25] J. Johnson, M. Douze, and H. J´egou. Billion-scale similar-ity search with GPUs. Journal IEEE 2019, pp. 535–547,2019.
+[26] J. Su, M. Ahmed, Y. Lu, S. Pan, W. Bo, and Y. Liu.Roformer: Enhanced transformer with rotary position em-bedding. Neurocomputing, p. 127063, 2024.
+[27] T. Dao. Flashattention-2: Faster attention with better par-allelism and work partitioning. In 12th ICLR, 2024.
+[28] K. Heﬀernan, O. C¸ elebi, and H. Schwenk. Bitext miningusing distilled sentence representations for low-resourcelanguages. In Findings of EMNLP 2022, pp. 2101–2112, 2022.
+[29] Z. Mao and T. Nakagawa. LEALLA: Learning lightweightlanguage-agnostic sentence embeddings with knowledgedistillation. In Proc 17th EACL, pp. 1886–1894, 2023.
+[30] N. Muennighoﬀ, N. Tazi, L. Magne, and N. Reimers.MTEB: Massive text embedding benchmark. In Proc17th EACL, pp. 2014–2037, 2023.
+[31] J. Chen, S. Xiao, P. Zhang, K. Luo, D. Lian, and Z. Liu.M3-embedding: Multi-linguality, multi-functionality,multi-granularity text embeddings through self-knowledgedistillation. In Findings of ACL 2024, pp. 2318–2335,2024.
+[32] S. Sturua, I. Mohr, M. Kalim Akram, M. G¨unther, B. Wang,M. Krimmel, F. Wang, G. Mastrapas, A. Koukounas,A. Koukounas, N. Wang, and H. Xiao. jina-embeddings-v3: Multilingual embeddings with task lora, 2024.
+[33] L. Wang, N. Yang, X. Huang, L. Yang, R. Majumder, andF. Wei. Multilingual e5 text embeddings: A technicalreport. arXiv preprint arXiv:2402.05672, 2024.
+[34] E. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang,and W. Chen. Lora: Low-rank adaptation of large languagemodels. CoRR, 2021.
+
+Table 6
+The results from various sentence embedding models, segmentation strategies, and document alignment methods on theMnRN dataset.
+For the F1 Score, we highlight the best , second, third, and fourth best across the models for each combinationof segmentation strategy and document method.
+For embedding time, we also highlight the best , second, third, and fourth best .Moreover, we put the highest F1 scores achieved by each model under each segmentation strategy in bold.
+Info. & MethodsEmbedding Models(a) LaBSE (b) LEALLA-large (c)paraphrase-multi-MiniLM-L12-v2(d)distiluse-base-multi-cased-v2(e)paraphrase-multi-mpnet-base-v2(f) LASER-2 (g) multi-e5-large (h)BGE M3(dense only)(i) jina-embeddings-v3Model Info.
+Suitable Task Bitext.
+Bitext.
+STS STS STS Bitext.
+Multi-task Multi-task Multi-task#Param.
+471M 147M 118M 135M 278M 43M 560M 567M 572M#Dim.
+768 256 384 512 768 1024 1024 1024 1024#Lang.
+Multi.
+Multi. Multi. Multi. Multi. Mono.
+Multi. Multi. Multi.#Arch.
+Transformer Transformer Transformer Transformer Transformer LSTM Transformer Transformer TransformerExperiments (F1 Score ↑ / Embed.
+Time (sec.)
+↓ / Sim.
+Time (sec.)
+↓)SBSMean-Pool 0.8362 / 131.27s / 2.12s 0.3750 / 60.54s / 2.07s 0.7543 / 59.00s / 2.06s 0.8362 / 80.40s / 2.10s 0.7716 / 148.60s / 2.16s 0.5862 / 543.10s / 2.12s 0.7802 / 457.94s / 2.12s 0.8448 / 637.01s /
+3.03s 0.8362 / 133.72s / 2.38sTK-PERT 0.8448 / 206.19s / 2.18s 0.5129 / 158.54s / 2.09s 0.7845 / 158.38s / 2.17s 0.8147 / 164.89s / 2.12s 0.7931 / 223.87s / 2.11s 0.5819 / 652.32s / 2.11s 0.7845 / 517.99s / 2.16s 0.8362 / 745.57s / 2.97s 0.8706 / 247.22s / 2.47sOT w/Mean 0.8448 / 131.58s / 24.57s 0.4525 / 60.87s / 18.96s 0.7845 / 58.98s / 18.39s 0.8448 / 80.46s / 21.87s 0.7974 / 149.07s / 19.83s 0.4784 / 543.87s / 17.24s 0.8060 / 461.78s / 17.13s 0.8621 / 642.20s / 19.32s 0.8578 / 132.73s /
+19.60sBiMax w/Mean 0.8922 / 131.47s /
+2.19s 0.4655 / 60.83s / 2.13s 0.8319 / 59.35s / 2.12s 0.9052 / 80.49s /
+2.16s 0.8577 / 148.40s / 2.19s 0.7414 / 543.61s / 2.20s 0.8750 / 462.17s / 2.50s 0.9181 / 640.27s / 3.23s 0.9310 / 134.52s / 2.40sOFLS(FL 30, OR 0.5)Mean-Pool 0.8707 / 71.59s / 2.12s 0.3836 / 52.76s / 2.14s 0.7759 / 49.06s / 2.06s 0.8233 / 49.23s / 2.13s 0.7112 / 74.56s / 2.10s 0.5302 / 1246.64s /
+2.11s 0.7543 / 259.61s / 2.14s 0.8491 / 119.38s / 2.92s 0.7716 / 380.98s / 2.43sTK-PERT 0.9483 / 569.54s / 2.10s 0.6034 / 548.93s / 2.10s 0.8707 / 578.17s / 2.18s 0.8966 / 591.48s / 2.12s 0.8793 / 599.66s / 2.10s 0.8134 / 1860.80s / 2.12s 0.8534 / 745.20s / 2.15s 0.9224 / 650.14s / 2.88s 0.9310 / 912.74s / 2.33sOT w/Mean 0.9569 / 71.33s / 14.37s 0.4782 / 52.47s / 14.37s 0.8578 / 49.08s / 13.34s 0.9397 / 49.10s / 14.17s 0.8922 / 74.31s / 13.24s 0.4354 / 1223.61s / 14.48s 0.7801 / 258.70s / 13.91s 0.8879 / 119.36s / 14.67s 0.8966 / 379.59s /14.14sBiMax
+w/Mean 0.9612 / 71.14s / 2.19s 0.5348 / 52.93s / 2.23s 0.9052 / 49.09s / 2.21s 0.9569 / 49.32s / 2.25s 0.9138 / 74.47s / 2.23s 0.7845 / 1205.91s / 2.24s 0.9181 / 258.35s / 2.28s 0.9483 / 119.36s / 3.08s 0.9267 / 381.05s / 2.74sOFLS(FL 100, OR 0.5)Mean-Pool 0.8663 /
+67.85s / 2.09s 0.4138 / 42.03s / 2.15s 0.7413 / 42.03s / 2.07s 0.8577 / 46.93s / 2.10s 0.7672 / 73.84s / 2.09s 0.5517 / 1053.51s / 2.10s 0.7500 / 221.28s / 2.17s 0.8663 / 103.28s / 2.91s 0.7845 / 169.16s
+/ 2.35sTK-PERT 0.8966 / 208.19s / 2.10s 0.5905 / 195.43s / 2.13s 0.8233 / 200.45s / 2.07s 0.9052 / 209.13s / 2.14s 0.8491 / 221.24s / 2.11s 0.7543 / 1257.60s / 2.10s 0.8491 / 322.00s / 2.16s 0.8836 / 261.69s / 2.93s 0.8836 / 329.34s / 2.39sOT w/Mean 0.8922 / 68.35s / 13.69s 0.4741 / 42.02s / 13.58s 0.8190 / 42.05s / 13.37s 0.8707 / 47.01s / 13.91s 0.8319 / 74.31s / 12.89s 0.4440 / 1056.15s / 12.67s 0.7586 / 221.19s / 12.28s 0.8405 / 103.16s / 13.38s 0.8491 / 167.97s / 12.66sBiMax w/Mean 0.9440 / 68.32s / 2.13s 0.5431 / 42.09s /
+2.19s 0.9009 / 42.06s / 2.11s 0.9353 / 47.02s / 2.18s 0.8663 / 74.23s / 2.14s 0.7629 / 1050.41s / 2.25s 0.9009 / 221.45s / 2.27s 0.9224 / 103.19s / 3.00 s 0.9397 / 168.55s / 2.41s
+
+
+A Embedding Model Selection
+
+In Section 4, ﬁrst, we choose the LaBSE
+[14] andLASER-2 models [28], which are frequently used for thebitext mining task, and also include a knowledge-distilled,light-weight variant of LaBSE, the LEALLA model
+[29].Subsequently, we employ two representative multilin-gual models from the Sentence Transformers library5）:paraphrase-multilingual-MiniLM-L12-v2, and distiluse-base-multilingual-cased-v2
+[21], which perform stronglyon the STS task.
+Finally, considering the MTEB bench-mark
+[30], which encompasses several embedding tasks,we select two models that currently achieve state-of-the-artperformance on the leaderboard6）, which are capable ofprocessing long sentences and suitable for multi-task sce-narios:
+BGE M3
+[31], and jina-embeddings-v3
+[32].
+How-ever, additionally, we also consider the multilingual-e5-large model
+[33] and the paraphrase-multilingual-mpnet-base-v2 model
+[21].
+The results are presented in Table 6.
+
+
+B Embedding Model Settings
+
+
+We maintain the default conﬁgurations for all models, asthese conﬁgurations represent the most general use cases.
+However, to establish method consistency, we implementa standardization protocol, converting all vectors to fp32format and utilizing tensors after the embedding process.
+Meanwhile, given that all models except LASER-2 arederived from Hugging Face7）, we can achieve substan-5） https://huggingface.co/sentence-transformers6） https://huggingface.co/spaces/mteb/leaderboard7） https://huggingface.co/tial uniformity in the Python librar y and code framework,thereby facilitating meaningful comparisons of inferencespeeds across models.
+However, due to the LASER-2model’s diﬀerent library and code program, absolute par-ity in comparative speed analysis between LASER-2 andother models cannot be established.
+Because of the multifunctionality of the three multi-taskmodels, we specify distinct usage.
+For the multi-e5-largemodel, which can leverage a preﬁx (either query: orpassage:) as the start of the text, we ﬁnd that appendingquery:to both the source and target produces the highestaccuracy.
+Regarding the BGE M3 model, which providesthree functions for generating diﬀerent scores, we elect touse only its dense embedding as output.
+Finally, for thejina-embeddings-v3 model, which oﬀers a selection amongvarious LoRA adapters
+[34] depending on the desired task,we choose the text-matching task.
+
+
+C Experiment Settings
+
+We follow the experimental settings of Wang et al.
+[13],conﬁguring the hyper-parameters for the WMT16 docu-ment alignment task and the MnRN dataset in the TK-PERT method as 𝐽 = 16, 𝛾 = 20 and 𝐽 = 8, 𝛾 = 16.For evaluation of the WMT16 document alignmentshared task, we adhered to previous work [19, 3, 12, 13]via a soft recall metric, which assigns credit to doc-ument pairs if either the English or French document (butnot both) deviates from the reference document pair byless than 5%, based on text edit distance.
+For the MnRNdataset, the F1 Score is used for evaluation.
+All experiments are conducted on two A6000 GPUs andone H100 GPU.

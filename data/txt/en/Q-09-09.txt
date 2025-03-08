@@ -1,0 +1,487 @@
+Exploring Dynamic Few-Shot Prompting for Word SenseDisambiguation in Historical Chinese
+
+Micah Kitsunai
+
+1
+
+Deborah Watty
+
+1
+
+Shu-Kai Hsieh
+
+11
+
+Graduate Institute of Linguistics, National Taiwan University, Taipei, Taiwan
+
+
+
+{r11142010, r11142012, shukaihsieh}@ntu.edu.tw
+
+
+
+Abstract
+
+This paper proposes a method for word sense disam-biguation in historical Chinese texts using general-purposeLLMs (GPT-4o and GPT-4o-mini).
+The results show thatthe larger model performs better and few-shot examplesimprove performance, though the eﬀectiveness of dynamicexample selection remains unclear.
+The best-performingsetup is applied to visualize the change in meaning of acharacter over approximately 3,000 years of Chinese textdata, demonstrating the potential of this approach for track-ing semantic evolution.
+
+
+1 Introduction
+
+The Chinese language features one of the oldest writingsystems in the world, with characters that have been usedfor thousands of years.
+Despite this continuity, the meaningand usage of individual characters have evolved over time,creating a ﬁeld of research focused on semantic change.
+Large language models have recently emerged as powerfultools for analyzing histor ical Chinese texts.
+While speciﬁ-cally tailored models perform well in this area, they are lessﬂexible than general-purpose models.
+This paper investi-gates the feasibility of using GPT-4o and GPT-4o-mini,two general-purpose LLMs not speciﬁcally ﬁne-tuned forhistorical Chinese, for word sense disambiguation in histor-ical texts.
+To achieve this, we compare dynamic few-shotprompting, a technique designed to enhance model perfor-mance by selecting task-speciﬁc examples based on theirrelevance to the input query, against zero-shot and ﬁxedfew-shot approaches.
+We then use the best-performingsetup to generate an example visualization of the changein sense frequency for a character in a corpus spanningapproximately 3,000 years of Chinese text data.
+
+
+2 Related Work
+
+Dynamic few-shot prompting is a variant of few-shotprompting in which examples are selected from a databaseof annotated examples based on their similarity to the inputquery.
+The goal is to increase the relevance of the selectedexamples for the given task and thereby improve perfor-mance.
+Initially proposed by [1], this method has beensuccessfully applied to various tasks, including coding [2],machine translation [3] and multimodal sentiment analysis[4].Research on historical Chinese texts using this methodremains limited.
+One study incorporated dynamic one-shot prompting for lexical semantic change detection
+[5].Other approaches to analyzing historical Chinese withLLMs have taken diﬀerent directions.
+For example, [6]used dynamic prompting in a translation task, relying ona Retrieval-Augmented Generation (RAG) pipeline to re-trieve relevant contextual information for inclusion in theprompt.
+Broader assessments of LLM performance on historicalChinese have revealed notable challenges.
+For example,a benchmark proposed by [7] demonstrated that even ad-vanced models, such as ChatGLM and ChatGPT, strugglesigniﬁcantly more with historical data compared to modernChinese.
+To address these challenges, tailored approacheshave been proposed, such as GujiBERT and GujiGPT
+[8].A more recent example is [9], who developed a diachroniclanguage model for classical Chinese that achieved strongresults in word sense disambiguation tasks.
+
+Exploring Dynamic Few-Shot Prompting for Word SenseDisambiguation in Historical Chinese
+
+Micah Kitsunai
+
+1
+
+Deborah Watty
+
+1
+
+Shu-Kai Hsieh
+
+11
+
+Graduate Institute of Linguistics, National Taiwan University, Taipei, Taiwan
+
+
+
+{r11142010, r11142012, shukaihsieh}@ntu.edu.tw
+
+
+
+Abstract
+
+This paper proposes a method for word sense disam-biguation in historical Chinese texts using general-purposeLLMs (GPT-4o and GPT-4o-mini).
+The results show thatthe larger model performs better and few-shot examplesimprove performance, though the eﬀectiveness of dynamicexample selection remains unclear.
+The best-performingsetup is applied to visualize the change in meaning of acharacter over approximately 3,000 years of Chinese textdata, demonstrating the potential of this approach for track-ing semantic evolution.
+
+
+1 Introduction
+
+The Chinese language features one of the oldest writingsystems in the world, with characters that have been usedfor thousands of years.
+Despite this continuity, the meaningand usage of individual characters have evolved over time,creating a ﬁeld of research focused on semantic change.
+Large language models have recently emerged as powerfultools for analyzing histor ical Chinese texts.
+While speciﬁ-cally tailored models perform well in this area, they are lessﬂexible than general-purpose models.
+This paper investi-gates the feasibility of using GPT-4o and GPT-4o-mini,two general-purpose LLMs not speciﬁcally ﬁne-tuned forhistorical Chinese, for word sense disambiguation in histor-ical texts.
+To achieve this, we compare dynamic few-shotprompting, a technique designed to enhance model perfor-mance by selecting task-speciﬁc examples based on theirrelevance to the input query, against zero-shot and ﬁxedfew-shot approaches.
+We then use the best-performingsetup to generate an example visualization of the changein sense frequency for a character in a corpus spanningapproximately 3,000 years of Chinese text data.
+
+
+2 Related Work
+
+Dynamic few-shot prompting is a variant of few-shotprompting in which examples are selected from a databaseof annotated examples based on their similarity to the inputquery.
+The goal is to increase the relevance of the selectedexamples for the given task and thereby improve perfor-mance.
+Initially proposed by [1], this method has beensuccessfully applied to various tasks, including coding [2],machine translation [3] and multimodal sentiment analysis[4].Research on historical Chinese texts using this methodremains limited.
+One study incorporated dynamic one-shot prompting for lexical semantic change detection
+[5].Other approaches to analyzing historical Chinese withLLMs have taken diﬀerent directions.
+For example, [6]used dynamic prompting in a translation task, relying ona Retrieval-Augmented Generation (RAG) pipeline to re-trieve relevant contextual information for inclusion in theprompt.
+Broader assessments of LLM performance on historicalChinese have revealed notable challenges.
+For example,a benchmark proposed by [7] demonstrated that even ad-vanced models, such as ChatGLM and ChatGPT, strugglesigniﬁcantly more with historical data compared to modernChinese.
+To address these challenges, tailored approacheshave been proposed, such as GujiBERT and GujiGPT
+[8].A more recent example is [9], who developed a diachroniclanguage model for classical Chinese that achieved strongresults in word sense disambiguation tasks.
+
+
+3 Proposed Method
+
+
+
+3.1 Workﬂow
+
+The proposed method operates through the followingsteps to perform sense labeling given a character in context:1.
+Retrieval of Sense Data: Retrieve a list of possi-ble senses for the target character from MoeDict1）, aTraditional Chinese dictionary.2.
+Select Few-Shot Examples: Embed the contextwith text-embedding-3-small and select the threemost similar examples from the vectorstore (see Sec-tion 3.2)3.
+Sense Labeling: For each retr ieved context, generatea prompt asking the LLM to choose a sense label forthe character in context.
+The prompt contains:• The target character•
+The given context•
+The list of possible senses• The dynamically selected few-shot examplesThe prompt template is included in the Appendix.
+
+
+3.2 Vectorstore for Dynamic Few-Shot
+
+
+
+Examples
+
+The vectorstore contains 2300 randomly se-lected quotes from MoeDict, embedded usingtext-embedding-3-small, along with metadata abouttheir origin, as shown in Table 1.
+
+4 Evaluation
+
+To test the eﬃcacy of our proposed method, we comparethe accuracy achieved with dynamic few-shot promptingagainst two simpler prompting srategies:• Zero-shot: No example sentences are provided in theprompt.
+The model performs sense selection usingonly its pre-trained knowledge.• Fixed Few-Shot: A ﬁxed set of example sentences isprovided in the prompt.
+Like our vectorstore, our test set consists of randomlyselected quotes from MoeDict.
+We randomly selected 312examples to ensure a diverse representation of charactersand senses.1） https://www.moedict.tw/
+
+5 Results
+
+Figure 1 shows the accuracy for diﬀerent prompt typesand LLMs.
+Figure 1 Accuracy Comparison by Model and Prompt TypeGPT-4o consistently outperformed GPT-40-mini acrossall setups.
+Few-shot prompting proved to be more eﬀectivethan zero-shot prompting, regardless of the model used.
+However, increasing the number of examples in few-shotsetups did not lead to signiﬁcant improvements, indicatingdiminishing returns beyond a certain threshold.
+Dynami-cally selecting examples based on input similarity did notprovide the expected performance boost.
+Despite this, thebest overall performance was achieved with GPT-4o usingdynamic 10-shot prompting, making it the most eﬀectiveconﬁguration tested.
+
+
+5.1 Application to Semantic Change Vi-
+
+
+
+sualization
+
+A potential application of histor ical Chinese word sensedisambiguation is visualizing how the meaning of a char-acter changes over time.
+To demonstrate this, we apply thebest-performing method to all occurrences of "家" (jia, ="home", "family", ...) in a historical Chinese corpus whereeach example is annotated with its corresponding dynasty[10].
+We followed these steps:1.
+Retrieve Contexts:• Search for target character in the Chinese histor-ical corpus.• Extract the context surrounding the target char-acters (10 characters before and after).
+In thiswork, we experimentally retrieved 100 randomexamples from each dynasty in the corpus.
+
+Exploring Dynamic Few-Shot Prompting for Word SenseDisambiguation in Historical Chinese
+
+Micah Kitsunai
+
+1
+
+Deborah Watty
+
+1
+
+Shu-Kai Hsieh
+
+11
+
+Graduate Institute of Linguistics, National Taiwan University, Taipei, Taiwan
+
+
+
+{r11142010, r11142012, shukaihsieh}@ntu.edu.tw
+
+
+
+Abstract
+
+This paper proposes a method for word sense disam-biguation in historical Chinese texts using general-purposeLLMs (GPT-4o and GPT-4o-mini).
+The results show thatthe larger model performs better and few-shot examplesimprove performance, though the eﬀectiveness of dynamicexample selection remains unclear.
+The best-performingsetup is applied to visualize the change in meaning of acharacter over approximately 3,000 years of Chinese textdata, demonstrating the potential of this approach for track-ing semantic evolution.
+
+
+1 Introduction
+
+The Chinese language features one of the oldest writingsystems in the world, with characters that have been usedfor thousands of years.
+Despite this continuity, the meaningand usage of individual characters have evolved over time,creating a ﬁeld of research focused on semantic change.
+Large language models have recently emerged as powerfultools for analyzing histor ical Chinese texts.
+While speciﬁ-cally tailored models perform well in this area, they are lessﬂexible than general-purpose models.
+This paper investi-gates the feasibility of using GPT-4o and GPT-4o-mini,two general-purpose LLMs not speciﬁcally ﬁne-tuned forhistorical Chinese, for word sense disambiguation in histor-ical texts.
+To achieve this, we compare dynamic few-shotprompting, a technique designed to enhance model perfor-mance by selecting task-speciﬁc examples based on theirrelevance to the input query, against zero-shot and ﬁxedfew-shot approaches.
+We then use the best-performingsetup to generate an example visualization of the changein sense frequency for a character in a corpus spanningapproximately 3,000 years of Chinese text data.
+
+
+2 Related Work
+
+Dynamic few-shot prompting is a variant of few-shotprompting in which examples are selected from a databaseof annotated examples based on their similarity to the inputquery.
+The goal is to increase the relevance of the selectedexamples for the given task and thereby improve perfor-mance.
+Initially proposed by [1], this method has beensuccessfully applied to various tasks, including coding [2],machine translation [3] and multimodal sentiment analysis[4].Research on historical Chinese texts using this methodremains limited.
+One study incorporated dynamic one-shot prompting for lexical semantic change detection
+[5].Other approaches to analyzing historical Chinese withLLMs have taken diﬀerent directions.
+For example, [6]used dynamic prompting in a translation task, relying ona Retrieval-Augmented Generation (RAG) pipeline to re-trieve relevant contextual information for inclusion in theprompt.
+Broader assessments of LLM performance on historicalChinese have revealed notable challenges.
+For example,a benchmark proposed by [7] demonstrated that even ad-vanced models, such as ChatGLM and ChatGPT, strugglesigniﬁcantly more with historical data compared to modernChinese.
+To address these challenges, tailored approacheshave been proposed, such as GujiBERT and GujiGPT
+[8].A more recent example is [9], who developed a diachroniclanguage model for classical Chinese that achieved strongresults in word sense disambiguation tasks.
+
+
+3 Proposed Method
+
+
+
+3.1 Workﬂow
+
+The proposed method operates through the followingsteps to perform sense labeling given a character in context:1.
+Retrieval of Sense Data: Retrieve a list of possi-ble senses for the target character from MoeDict1）, aTraditional Chinese dictionary.2.
+Select Few-Shot Examples: Embed the contextwith text-embedding-3-small and select the threemost similar examples from the vectorstore (see Sec-tion 3.2)3.
+Sense Labeling: For each retr ieved context, generatea prompt asking the LLM to choose a sense label forthe character in context.
+The prompt contains:• The target character•
+The given context•
+The list of possible senses• The dynamically selected few-shot examplesThe prompt template is included in the Appendix.
+
+
+3.2 Vectorstore for Dynamic Few-Shot
+
+
+
+Examples
+
+The vectorstore contains 2300 randomly se-lected quotes from MoeDict, embedded usingtext-embedding-3-small, along with metadata abouttheir origin, as shown in Table 1.
+
+4 Evaluation
+
+To test the eﬃcacy of our proposed method, we comparethe accuracy achieved with dynamic few-shot promptingagainst two simpler prompting srategies:• Zero-shot: No example sentences are provided in theprompt.
+The model performs sense selection usingonly its pre-trained knowledge.• Fixed Few-Shot: A ﬁxed set of example sentences isprovided in the prompt.
+Like our vectorstore, our test set consists of randomlyselected quotes from MoeDict.
+We randomly selected 312examples to ensure a diverse representation of charactersand senses.1） https://www.moedict.tw/
+
+5 Results
+
+Figure 1 shows the accuracy for diﬀerent prompt typesand LLMs.
+Figure 1 Accuracy Comparison by Model and Prompt TypeGPT-4o consistently outperformed GPT-40-mini acrossall setups.
+Few-shot prompting proved to be more eﬀectivethan zero-shot prompting, regardless of the model used.
+However, increasing the number of examples in few-shotsetups did not lead to signiﬁcant improvements, indicatingdiminishing returns beyond a certain threshold.
+Dynami-cally selecting examples based on input similarity did notprovide the expected performance boost.
+Despite this, thebest overall performance was achieved with GPT-4o usingdynamic 10-shot prompting, making it the most eﬀectiveconﬁguration tested.
+
+
+5.1 Application to Semantic Change Vi-
+
+
+
+sualization
+
+A potential application of histor ical Chinese word sensedisambiguation is visualizing how the meaning of a char-acter changes over time.
+To demonstrate this, we apply thebest-performing method to all occurrences of "家" (jia, ="home", "family", ...) in a historical Chinese corpus whereeach example is annotated with its corresponding dynasty[10].
+We followed these steps:1.
+Retrieve Contexts:• Search for target character in the Chinese histor-ical corpus.• Extract the context surrounding the target char-acters (10 characters before and after).
+In thiswork, we experimentally retrieved 100 randomexamples from each dynasty in the corpus.
+Figure 2 Distribution of the diﬀerent senses of "家" over time.•
+Record all <context, origin> tuples (here, originrefers to the information about the source of thegiven context phrase, including author, publica-tion and dynasty).2.
+Sense Labeling: Perform the steps outlined in Sec-tion 3.1 for each retrieved context.3.
+Visualization:•
+For each time period in the corpus, the occur-rences of each sense label for the given characterare counted.•
+A plot is then generated to show the proportionof each sense label across dynasties.
+The resulting semantic change plot (see Figure 2) illustrateswhich meanings were dominant in diﬀerent dynasties, aswell as how meanings emerged or disappeared over time.
+
+
+6 Discussion
+
+The overall low accuracy across conﬁgurations can beattributed to the inherent complexity of the dataset.
+Formany characters, the set of possible senses is both largeand nuanced, with semantically similar meanings oftenoverlapping.
+This makes accurate disambiguation particu-larly diﬃcult.
+GPT-4o substantially outperforming GPT-4o-mini un-derscores the advantage of scale in language models.
+AsGPT-4o is a larger model, it likely has a better capacity forencoding and diﬀerentiating semantic nuances.
+This result suggests that further improvements might beachievable with even larger models in the future, pointingto an exciting direction for future research.
+Dynamic few-shot prompting did not yield the antici-pated improvements, which may stem from limitations inthe datastore used for example selection.
+With only ap-proximately 300 examples available, it is possible that lessrelevant examples were chosen for certain queries, reduc-ing the eﬀectiveness of the approach.
+
+
+6.1 Limitations
+
+This study faces two key limitations.
+First, like mostsemantic disambiguation tasks on historical Chinese, ourmethod relies on predeﬁned senses for characters.
+We usethe MoeDict deﬁnitions, which, while comprehensive, maynot fully capture all meanings a character could have held inthe past.
+This may limit the model’s ability to disambiguateless common or historically nuanced senses.
+Second, ourdatastore is relatively small, which likely impacts the rele-vance of the few-shot examples selected during prompting.
+A larger datastore might provide examples that are bet-ter aligned with the input queries, potentially improvingperformance.
+Finally, in addition to the limitations of our method, read-ers should note that the setup used to create the semanticchange plot in Figure 2 achieved only 58% accuracy in theexperiment.
+The plot is included solely to illustrate a po-
+
+Exploring Dynamic Few-Shot Prompting for Word SenseDisambiguation in Historical Chinese
+
+Micah Kitsunai
+
+1
+
+Deborah Watty
+
+1
+
+Shu-Kai Hsieh
+
+11
+
+Graduate Institute of Linguistics, National Taiwan University, Taipei, Taiwan
+
+
+
+{r11142010, r11142012, shukaihsieh}@ntu.edu.tw
+
+
+
+Abstract
+
+This paper proposes a method for word sense disam-biguation in historical Chinese texts using general-purposeLLMs (GPT-4o and GPT-4o-mini).
+The results show thatthe larger model performs better and few-shot examplesimprove performance, though the eﬀectiveness of dynamicexample selection remains unclear.
+The best-performingsetup is applied to visualize the change in meaning of acharacter over approximately 3,000 years of Chinese textdata, demonstrating the potential of this approach for track-ing semantic evolution.
+
+
+1 Introduction
+
+The Chinese language features one of the oldest writingsystems in the world, with characters that have been usedfor thousands of years.
+Despite this continuity, the meaningand usage of individual characters have evolved over time,creating a ﬁeld of research focused on semantic change.
+Large language models have recently emerged as powerfultools for analyzing histor ical Chinese texts.
+While speciﬁ-cally tailored models perform well in this area, they are lessﬂexible than general-purpose models.
+This paper investi-gates the feasibility of using GPT-4o and GPT-4o-mini,two general-purpose LLMs not speciﬁcally ﬁne-tuned forhistorical Chinese, for word sense disambiguation in histor-ical texts.
+To achieve this, we compare dynamic few-shotprompting, a technique designed to enhance model perfor-mance by selecting task-speciﬁc examples based on theirrelevance to the input query, against zero-shot and ﬁxedfew-shot approaches.
+We then use the best-performingsetup to generate an example visualization of the changein sense frequency for a character in a corpus spanningapproximately 3,000 years of Chinese text data.
+
+
+2 Related Work
+
+Dynamic few-shot prompting is a variant of few-shotprompting in which examples are selected from a databaseof annotated examples based on their similarity to the inputquery.
+The goal is to increase the relevance of the selectedexamples for the given task and thereby improve perfor-mance.
+Initially proposed by [1], this method has beensuccessfully applied to various tasks, including coding [2],machine translation [3] and multimodal sentiment analysis[4].Research on historical Chinese texts using this methodremains limited.
+One study incorporated dynamic one-shot prompting for lexical semantic change detection
+[5].Other approaches to analyzing historical Chinese withLLMs have taken diﬀerent directions.
+For example, [6]used dynamic prompting in a translation task, relying ona Retrieval-Augmented Generation (RAG) pipeline to re-trieve relevant contextual information for inclusion in theprompt.
+Broader assessments of LLM performance on historicalChinese have revealed notable challenges.
+For example,a benchmark proposed by [7] demonstrated that even ad-vanced models, such as ChatGLM and ChatGPT, strugglesigniﬁcantly more with historical data compared to modernChinese.
+To address these challenges, tailored approacheshave been proposed, such as GujiBERT and GujiGPT
+[8].A more recent example is [9], who developed a diachroniclanguage model for classical Chinese that achieved strongresults in word sense disambiguation tasks.
+
+
+3 Proposed Method
+
+
+
+3.1 Workﬂow
+
+The proposed method operates through the followingsteps to perform sense labeling given a character in context:1.
+Retrieval of Sense Data: Retrieve a list of possi-ble senses for the target character from MoeDict1）, aTraditional Chinese dictionary.2.
+Select Few-Shot Examples: Embed the contextwith text-embedding-3-small and select the threemost similar examples from the vectorstore (see Sec-tion 3.2)3.
+Sense Labeling: For each retr ieved context, generatea prompt asking the LLM to choose a sense label forthe character in context.
+The prompt contains:• The target character•
+The given context•
+The list of possible senses• The dynamically selected few-shot examplesThe prompt template is included in the Appendix.
+
+
+3.2 Vectorstore for Dynamic Few-Shot
+
+
+
+Examples
+
+The vectorstore contains 2300 randomly se-lected quotes from MoeDict, embedded usingtext-embedding-3-small, along with metadata abouttheir origin, as shown in Table 1.
+
+4 Evaluation
+
+To test the eﬃcacy of our proposed method, we comparethe accuracy achieved with dynamic few-shot promptingagainst two simpler prompting srategies:• Zero-shot: No example sentences are provided in theprompt.
+The model performs sense selection usingonly its pre-trained knowledge.• Fixed Few-Shot: A ﬁxed set of example sentences isprovided in the prompt.
+Like our vectorstore, our test set consists of randomlyselected quotes from MoeDict.
+We randomly selected 312examples to ensure a diverse representation of charactersand senses.1） https://www.moedict.tw/
+
+5 Results
+
+Figure 1 shows the accuracy for diﬀerent prompt typesand LLMs.
+Figure 1 Accuracy Comparison by Model and Prompt TypeGPT-4o consistently outperformed GPT-40-mini acrossall setups.
+Few-shot prompting proved to be more eﬀectivethan zero-shot prompting, regardless of the model used.
+However, increasing the number of examples in few-shotsetups did not lead to signiﬁcant improvements, indicatingdiminishing returns beyond a certain threshold.
+Dynami-cally selecting examples based on input similarity did notprovide the expected performance boost.
+Despite this, thebest overall performance was achieved with GPT-4o usingdynamic 10-shot prompting, making it the most eﬀectiveconﬁguration tested.
+
+
+5.1 Application to Semantic Change Vi-
+
+
+
+sualization
+
+A potential application of histor ical Chinese word sensedisambiguation is visualizing how the meaning of a char-acter changes over time.
+To demonstrate this, we apply thebest-performing method to all occurrences of "家" (jia, ="home", "family", ...) in a historical Chinese corpus whereeach example is annotated with its corresponding dynasty[10].
+We followed these steps:1.
+Retrieve Contexts:• Search for target character in the Chinese histor-ical corpus.• Extract the context surrounding the target char-acters (10 characters before and after).
+In thiswork, we experimentally retrieved 100 randomexamples from each dynasty in the corpus.
+Figure 2 Distribution of the diﬀerent senses of "家" over time.•
+Record all <context, origin> tuples (here, originrefers to the information about the source of thegiven context phrase, including author, publica-tion and dynasty).2.
+Sense Labeling: Perform the steps outlined in Sec-tion 3.1 for each retrieved context.3.
+Visualization:•
+For each time period in the corpus, the occur-rences of each sense label for the given characterare counted.•
+A plot is then generated to show the proportionof each sense label across dynasties.
+The resulting semantic change plot (see Figure 2) illustrateswhich meanings were dominant in diﬀerent dynasties, aswell as how meanings emerged or disappeared over time.
+
+
+6 Discussion
+
+The overall low accuracy across conﬁgurations can beattributed to the inherent complexity of the dataset.
+Formany characters, the set of possible senses is both largeand nuanced, with semantically similar meanings oftenoverlapping.
+This makes accurate disambiguation particu-larly diﬃcult.
+GPT-4o substantially outperforming GPT-4o-mini un-derscores the advantage of scale in language models.
+AsGPT-4o is a larger model, it likely has a better capacity forencoding and diﬀerentiating semantic nuances.
+This result suggests that further improvements might beachievable with even larger models in the future, pointingto an exciting direction for future research.
+Dynamic few-shot prompting did not yield the antici-pated improvements, which may stem from limitations inthe datastore used for example selection.
+With only ap-proximately 300 examples available, it is possible that lessrelevant examples were chosen for certain queries, reduc-ing the eﬀectiveness of the approach.
+
+
+6.1 Limitations
+
+This study faces two key limitations.
+First, like mostsemantic disambiguation tasks on historical Chinese, ourmethod relies on predeﬁned senses for characters.
+We usethe MoeDict deﬁnitions, which, while comprehensive, maynot fully capture all meanings a character could have held inthe past.
+This may limit the model’s ability to disambiguateless common or historically nuanced senses.
+Second, ourdatastore is relatively small, which likely impacts the rele-vance of the few-shot examples selected during prompting.
+A larger datastore might provide examples that are bet-ter aligned with the input queries, potentially improvingperformance.
+Finally, in addition to the limitations of our method, read-ers should note that the setup used to create the semanticchange plot in Figure 2 achieved only 58% accuracy in theexperiment.
+The plot is included solely to illustrate a po-tential application, assuming necessary improvements tothe methods are made.
+
+
+6.2 Future Work
+
+Future eﬀorts will focus on expanding the datastore toinclude a broader range of examples, which could furtherimprove the relevance of few-shot prompting.
+Addition-ally, we aim to develop a tool that allows users to input anycharacter and generate a visualization of its senses overtime, similar to the one shown in Figure 2.
+
+7 Conclusion
+
+This study explored the potential of dynamic few-shotprompting with general-purpose LLMs (GPT-4o and GPT-4o-mini) for word sense disambiguation in historical Chi-nese.
+The results indicate that model size plays a crucialrole, with GPT-4o signiﬁcantly outperforming GPT-4o-mini.
+However, the method has notable limitations.
+Over-all accuracy was low, with the best-performing setup―GPT-4o with dynamic 10-shot prompting―achieving only58%.
+Using fewer examples or skipping dynamic selectiondid not result in drastically worse performance, leaving theadvantages of dynamic prompting unproven.
+This maystem from the small datastore, which could limit the avail-ability of relevant examples for some inputs.
+Overall, this study highlights both the promise and thelimitations of dynamic prompting with LLMs for this task.
+Future work should focus on expanding the datastore tofully realize the potential of this approach.
+Character Context Origin Sense Possible Senses Embedding家少小離家老大回、音無改鬢毛衰。」唐：賀知章。回偶書詩二首之一眷屬共同生活的場所[居住。, 眷屬共同生活的場所, 家中的。][0.345, -1.4235, 0.2345.....]...... ... ... ...
+...
+Table 1 Example entries from the vectorstore.
+
+
+References
+
+[1] Jiachang Liu, Dinghan Shen, Yizhe Zhang, Bill Dolan,Lawrence Carin, and Weizhu Chen.
+What makes goodin-context examples for GPT-3?, 2021.[2]
+Dustin Dannenhauer, Zohreh Dannenhauer, DespinaChristou, and Kostas Hatalis.
+A case-based reasoning ap-proach to dynamic few-shot prompting for code generation.
+In ICML 2024 Workshop on LLMs and Cognition,2024.[3] Yasmin Moslem, Rejwanul Haque, John D Kelleher, andAndy Way.
+Adaptive machine translation with large lan-guage models.
+arXiv preprint arXiv:2301.13294, 2023.[4]
+Li Yang, Zengzhi Wang, Ziyan Li, Jin-Cheon Na, andJianfei Yu.
+An empirical study of multimodal entity-basedsentiment analysis with ChatGPT: Improving in-contextlearning via entity-aware contrastive learning.
+Informa-tion Processing & Management, Vol. 61, No. 4, p.103724, 2024.[5] Zhengfei Ren, Annalina Caputo, and Gareth Jones.
+A few-shot learning approach for lexical semantic change detec-tion using GPT-4.
+In Proceedings of the 5th Work-shop on Computational Approaches to HistoricalLanguage Change, pp. 187–192, 2024.[6]
+Andong Chen, Lianzhang Lou, Kehai Chen, Xuefeng Bai,Yang Xiang, Muyun Yang, Tiejun Zhao, and Min Zhang.
+Large language models for classical Chinese poetry trans-lation:
+Benchmarking, evaluating, and improving, 2024.[7] Yixuan Zhang and Haonan Li.
+Can large language modelcomprehend ancient Chinese?
+a preliminary test on aclue.arXiv preprint arXiv:2310.09550, 2023.[8]
+Dongbo Wang, Chang Liu, Zhixiao Zhao, Si Shen, Liu Liu,Bin Li, Haotian Hu, Mengcheng Wu, Litao Lin, Xue Zhao,et al. GujiBERT and GujiGPT: Construction of intelligentinformation processing foundation language models forancient texts.
+arXiv preprint arXiv:2307.05354, 2023.[9]
+Yuting Wei, Meiling Li, Yangfu Zhu, Yuanxing Xu,Yuqing Li, and Bin Wu.
+A diachronic language modelfor long-time span classical Chinese.
+Information Pro-cessing Management, Vol. 62, No. 1, p. 103925, 2025.[10] Micah Kitsunai, Deborah Watty, and Shu-Kai Hsieh.
+Building a semantic search platform for exploring histori-cal Chinese corpora.
+じんもんこん 2024 論文集, Vol.2024, pp.
+241–246, 2024.
+
+
+
+A Appendix
+
+Prompt TemplateYou are an expert in ancient and modern Chinese linguistics. Given a Chinese character, its context, and possiblesense labels, your task is to identify the sense label that best ﬁts the character’s usage in the given context. Use theexamples provided to guide your decision-making process.Examples:Character: {example_char_1}Context: {example_context_1}Origin: {example_origin_1}Possible Sense Labels: {example_sense_labels_1}Correct Sense Label: {correct_sense_1}Character: {example_char_2}Context: {example_context_2}Origin: {example_origin_2}Possible Sense Labels: {example_sense_labels_2}Correct Sense Label: {correct_sense_2}Character: {example_char_3}Context: {example_context_3}Origin: {example_origin_3}Possible Sense Labels: {example_sense_labels_3}Correct Sense Label: {correct_sense_3}Question:Character: {character}Context: {context}Origin: {origin}Possible Sense Labels: {sense_labels}Which of the sense label best ﬁts this usage of the character? Respond with the single most appropriate sense labelin the following format:{"label": string // most appropriate sense label for {character} in {context}}

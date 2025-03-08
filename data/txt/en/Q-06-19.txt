@@ -1,0 +1,266 @@
+Towards Formalizing Socratic Questions forExplainable Socratic Question Generation
+
+Surawat Pothong
+
+1
+
+Paul Reisert
+
+2
+
+Naoya Inoue
+
+1,3
+
+Machi Shimmei
+
+4
+
+Wenzhi Wang
+
+1,3
+
+Shoichi Naito
+
+1,3,5
+
+Jungmin Choi
+
+3
+
+Kentaro Inui
+
+6,4,31
+
+JAIST
+
+2
+
+Beyond Reason
+
+3
+
+RIKEN
+
+4
+
+Tohoku University
+
+5
+
+Ricoh Company, Ltd.
+
+6
+
+MBZUAI
+
+{spothong, naoya-i}@jaist.ac.jp, beyond.reason.sp@gmail.com, machi.shimmei.e6@tohoku.ac.jp{wang.wenzhi.r7, naito.shoichi.t1,}@dc.tohoku.ac.jp, jungmin.choi@riken.jp, kentaro.inui@mbzuai.ac.ae
+
+Abstract
+
+Socratic questioning (SQ) is an eﬀective strategy for fos-tering critical thinking.
+One of the key requirements for us-ing SQs in educational settings is maintaining transparencyand logical alignment with the content.
+For generatingpedagogically appropriate SQs, we explore a logic-basedtemplate approach by ﬁrst leveraging argumentative com-ponents.
+We conduct an annotation on top of argument-SQ pairs and achieve moderate inter-annotator agreement(Cohen’s Kappa: 0.49) and 84% for annotating SQ compo-nents.
+We analyze areas of disagreement, oﬀering insightsfor curating a template set.
+This work lays a foundationfor advancing template-based Natural Language QuestionGeneration methods and improving model transparency.
+
+
+1 Introduction
+
+Socratic questioning is a structured method of inquiryused to explore complex ideas, uncover truths, analyzeconcepts, and reveal assumptions
+[1].
+Unlike regular ques-tioning, it considers key principles, theories, and problemsin a systematic way[2, 3] .SQ is a tool for fostering critical thinking and addressingcognitive biases, but its adoption is limited by the diﬃcultyinstructors face in manually crafting context-speciﬁc ques-tions for each scenario
+[1, 2].
+This hinders scalability andeﬀectiveness in educational settings.
+To address this, weexplore a template-based approach that automates SQ gen-eration by leveraging argumentative components to clarifythe connections between questions and content.
+Recent advances in Natural Language Understandinghave focused on automating SQ generation as an answer-unaware task to foster critical thinking and self-reﬂection[4].
+Studies leveraging advanced language models suchas GPT-2, T5, and ProphetNet
+[5, 6, 7] have introduceddatasets and models for SQ generation.
+While these ap-proaches enable tasks like cognitive reframing [8], theyoften produce repetitive or irrelevant outputs, leading toconfusion and reducing their eﬀectiveness [9, 10].
+More-over, end-to-end models lack transparency, as their black-box mechanisms fail to clarify how generated questionsalign with content
+[11, 12, 13].To address this, we aim to incorporate argumentationtheory to enhance transparency, inspired by Walton’s ar-gumentation schemes [14].
+Compared to Waltons cr it-ical questions, which eﬀectively evaluate an argumentslogical consistency and evidence, SQ oﬀers distinct ad-vantages by fostering deeper exploration of ideas and aricher understanding of their conceptual foundations [2].Additionally, recent work in in NLU has demonstratedthe eﬀectiveness of templates in capturing reasoning pat-terns.
+Logical templates and slot-ﬁlling techniques havebeen applied successfully to identify valid reasoning
+[15],detect fallacies [16], and model counter-argument logic[17].
+These approaches highlight the value of templatesin providing structured and interpretable representations ofcomplex logical structures, oﬀering a robust framework fordeeper reasoning and analysis.
+Building on existing work, we explore a logic-basedtemplate and slot-ﬁlling approach to enhance the trans-parency and explainability of SQ generation.
+Our methodexplicitly links content to generated questions, capturingthe logical structure of arguments and their inferences toproduce more transparent and meaningful outputs.
+ThisSchools should fully embrace policies that affirm gender  diversity tocreate a safe and inclusive environment for all students.
+What might happen if schools only adopt policies that align with one perspective on gender?ArgumentQuestionTen ta tiv e  SQ  Tem pla te sreproductionXArgumentYSchoolGender diversity PROMOTEreproductionXQuestionZ:
+BADone perspective on genderPROMOTESchoolFigure 1: Overview of SQ predicates designed to probebiases or ﬂaws in understanding.
+The ﬁgure illustrates thelogical connections between arguments and questions us-ing templates and slot-ﬁlling techniques.
+Slot ﬁllers X, Y,and Z represent key elements, while predicates explicatethe logical relationships among them.
+The ﬁgure specif-ically demonstrates the ”Probing Implication and Conse-quences” SQ type, which aims to probe the impacts orimplications of a thought.approach addresses the limitations of end-to-end modelswhile providing a systematic framework to help learnersdevelop critical thinking skills.
+To guide our research, we pose the following question:To what extent can we create a repository of predicates thatcapture the structural patterns of SQ to beneﬁt interpretablequestion generation tasks?
+To address this, we build uponthe dataset introduced in [6] by developing argumentativecomponents that encapsulate the structural logic of SQ.Our framework reformulates the task as a combination oftemplate selection and slot ﬁlling, explicitly representingthe logical connections between arguments and questions.
+Figure 1 illustrates our proposed approach, supported bypredicate annotations at both argument and question levels.
+We report an inter-annotator agreement (Cohen’s Kappascore) of 0.49 and a predicate coverage of 84% across 50instances from the SoQG test set.
+Additionally, we analyzedisagreements and distribution patterns, highlighting thepotential for explainable template formulation.
+This worklays the foundation for future large-scale annotations aimedat further enhancing transparency in SQ generation models.
+
+
+2 Towards Formulating Templates
+
+
+
+2.1 Design Principles for Predicates
+
+Explaining Underlying Connections and QuestionIntentions by Coverage
+We aim to formulate tem-plates by ﬁrst developing predicate-level representations,which serve as the foundation for template construction.
+To address the opacity of end-to-end models, our primarygoal is to explicitly establish the relationship between ar-guments and the questions generated.
+These predicatesare designed to be interpretable by humans, thereby facil-itating an understanding of model behavior.
+We evaluatethe interpretability of our approach through the predicates’coverage score, as assessed by human judgment.
+Ease of Annotation We design straightforward andintuitive predicates, enabling annotators to apply themconsistently while achieving an adequate Inter-AnnotatorAgreement (IAA) score, measured using Cohen’s Kappa,consistent with [17, 18].Alignment with Socratic Objectives The predi-cates are carefully designed to align with the core ob-jectives of SQ.
+They are intended to promote thoughtfulexploration, foster critical analysis, and encourage deeperunderstanding, thereby reinforcing the pedagogical goalsof Socratic dialogue.
+
+
+2.2 Socratic Predicate Inventory
+
+We create the predicate inventory using the”M Turk Test set” from Ang et al., preprocessing it witha 300-character limit and ﬁltering out irrelevant questionsto ensure contextual relevance
+[8, 6].
+The predicates ex-plicitly represent logical relationships between questionsand content, improving interpretability and transparency.
+Our focus includes ﬁve types of SQ: (1) Alternative View-point, (2) Probing Assumption, (3) Probing Implicationand Consequences, (4) Probing Reason and Evidence, and(5) Clariﬁcation.
+We formulate the task of SQ predicate instantiation asfollows:
+Given an original argument 𝐴 and a Socratic ques-tion 𝑆𝑄, we ﬁrst identify a relation 𝑅 in 𝐴, composed ofslot-ﬁllers 𝑆1and 𝑆2, where one of the slot-ﬁllers is relatedto an important keyword 𝑍 in 𝑆𝑄. Figure2 illustrates an ex-ample of the inventory, where predicates are derived fromthe Argument from Consequences and the Argument fromC1: PRO(X: Y)C2: SUP(X: Y)C3: ANA(X: Y)ArgumentP1: PRO(Z, X)QuestionP2: PRO(Z, Y)P3: PRO(X, Z:GOOD)P4: PRO(X, Z:BAD)P5: PRO(Y, Z:GOOD)P6: PRO(Y, Z:BAD)S1: SUP(Z, X)S2: SUP(Z, Y)S3: SUP(X, Z:GOOD)S4: SUP(X, Z:BAD)S5: SUP(Y, Z:GOOD)S6: SUP(Y, Z:BAD)E1: Subset_of XE2: Subset_of YE3: Z PRO (C)E4: ANA: (X PRO Y`)E5: ANA: (Z, X or Y)OTHEROTHERFigure 2: Inventory of Proposed Predicates: The argument level consists of four predicates, while the question levelincludes 16 predicates.
+Annotators select one predicate from each level when annotating the SoQG dataset.
+The argumentlevel is represented by the acronym C, and the question level is categorized into three groups: P for Promote, S forSuppress, and E for Extra.
+The Extra group includes speciﬁc categories such as Subset and ANA (Analogical), providingdetailed distinctions for comprehensive annotation.
+Analogy
+[14], as well as counter-argument templates [17].The content and question predicates are represented by fourtypes of relations: PROMOTE, SUPPRESS, ANALO-GOUS, and OTHER.
+This results in four types of initialargument predicates and sixteen question predicates.
+Two variables, X and Y, are used to represent the slotﬁllers in the initial argument.
+For the sixteen questionpredicates, we introduce Z, inspired by [17], to representan additional slot ﬁller that captures the question logic inconnection to the argument.
+Additionally, in the questionpredicates, we include sentiment labels such as GOODandBADto make the predicates more comprehensive byreﬂecting sentiment nuances.
+
+
+2.3 Annotation Guideline
+
+To constr uct annotation guidelines, one annotator ﬁrstindependently created logic predicates for arguments andSQs.
+Inspired by [17], the ”Alternative Viewpoint” typewas focused on ﬁrst, aligning it with existing counter-argument templates.
+A second annotator reviewed anddiscussed results to evaluate agreement and reﬁne insights.
+Expanding to other SQ types, disagreements were resolvedand multiple annotations were conducted to establish thegold standard.
+
+
+3 Pilot Annotation Study
+
+In this section, we conduct a trial annotation study toevaluate the feasibility of our proposed predicates on topof an existing dataset of SQs.
+We assess our predicates interms of coverage and Inter-Annotator Agreement(IAA)on a test set from the SoQG dataset.
+Finally, we presentthe results and analysis to gain insights from the annotationstudy.
+
+
+3.1 Annotating the development set
+
+For our annotation study, we utilize an existing dataset ofSQ provided by Ang et al.
+[6] referred to as SoGQ dataset.
+SoGQ dataset consists of 110 instances, each comprising anargument and a Socratic question extracted from Reddit’sChange
+My View subreddit1）, along with annotations forthe Socratic question type.
+After establishing annotation guidelines, we sampled 50instances (10 per SQ type) from the SoGQ dataset, ﬁlteringirrelevant questions.
+Using the test set as the developmentset, two annotators evaluated the templates for coverageand ease of annotation.
+
+
+3.2 Results and Analysis
+
+Table 3 shows the distribution of argument-level predi-cate annotations between both annotators.
+Both labeled25 instances with the PROMOTE relation and agreedon 12 instances for SUPPRESS, making these the mostfrequent predicates.
+The ANALOGOUS relation showedlower ag reement, reﬂecting the rarity of analogy-based ar-guments.
+The OTHERS relation, appearing in 9 instances,highlights the need to consider additional components.
+We report coverage and inter-annotator agreement (IAA)using Cohen’s Kappa
+[19] on 50 instances annotated bytwo annotators.
+Table 1 shows signiﬁcant agreement, with1） https://www.reddit.com/r/changemyview/Table 1: Coverage results show the instances where theproposed predicates can be instantiated by both annotatorsout of the 50 instances.
+Annotator Annotated Instance CoverageAnnotator 1 42 0.84Annotator 2 39 0.78coverage scores of 84% and 78%, demonstrating the ro-bustness of the predicates for the SoQG dataset.
+Instancesnot covered by the three predicates are labeled as ”Other.
+”Therefore, a signiﬁcant challenge in SQ predicate annota-tion arises from the complexity of arguments, where multi-ple logical connections may exist within a single argument.
+This often leads to ambiguity, as arguments can be mappedto multiple patterns during annotation.
+Additionally, Table 2 presents the IAA measured us-ing Cohen’s Kappa for 50 instances.
+Based on [19], weobtained a moderate agreement score, with an average of0.4917 for the combined argument and question predicates.
+To further evaluate the performance, we conducted an ab-lation test at the predicate level by removing sentimentfrom the predicates to assess its impact.
+This resulted ina slight increase in the average score to 0.5017, indicatingthat sentiment has a relatively minor eﬀect on predicate an-notations.
+Furthermore, we obser ved that some question-level predicates could be combined, such as merging S1and S2 into S1 and S3, S4, S5, S6 into S4 (similarly forP).
+After combining these semantically similar predicates,the score signiﬁcantly increased to 0.5604, highlighting theeﬀectiveness of reducing redundancy in the predicate set.
+
+
+3.3 Discussion
+
+Disagreement Discussion Upon investigating thesources of annotator disagreement, we identiﬁed three pri-mary types of errors contributing to the discrepancies:swapped slot ﬁllers, absence of sentiment in the content,and lack of content with no suitable predicate available.
+For instance, swapped slot ﬁllers occur when an annotatorassigns the same slot ﬁllers for X and Y but inadvertentlyswaps them.
+This results in diﬀerences when selectingpredicates for content and questions, leading to inconsis-tent relationships in the predicates.
+Implicit Elements and Question IntentionsThrough the logical predicates, annotators observed in-stances with implicit elements during the annotation pro-Table 2: Table showing the IAA with Cohen’s Kappascores.
+We present the raw scores, scores after removingsentiment from the predicates, and scores after combiningsemantically similar predicates.
+Category General w/o sentiment w/osentiment +combinedpredicatesArguments 0.5486 0.5486 0.5486Questions 0.4348 0.4549 0.5723Average
+(All) 0.4917 0.5017 0.5604cess, where the question attempts to probe underlying ar-guments made by the argument author, as illustrated in Fig-ure 1.
+Some SQ explanations stem from the SQ author’sbeliefs or assumptions (e.g., perceiving a discrepancy be-tween their interpretation and the Content).
+In other cases,the SQ author aims to explore the implicit logic embed-ded within the original argument provided by the Contentauthor.
+Potential Templates After annotating the predicatesand calculating the IAA, we identiﬁed patterns acrossargument-level and question-level predicates, forming a ba-sis for constructing SoQG templates that explicate logicalconnections between arguments and SQ.
+Tables 4, 5, and6 present the distribution of annotated question-level pred-icates relative to argument-level predicates.
+The analysisshows that the PROMOTE relation frequently associateswith P2: PRO(Z, Y) and E5: ANA(Z, X or Y), while theSUPPRESS relation aligns with P2: PRO(Z, Y) and S2:SUP(Z, Y).
+The ANALOGOUS relation primarily links toE5: ANA(Z, X or Y), capturing analogies or shared char-acteristics.
+These ﬁndings highlight the potential to reﬁnetemplates for SQ generation, ensuring a clear and logi-cal connection between argument-level and question-levelpredicates.
+
+
+4 Conclusion
+
+Towards formalizing SQs for explainable generation, weexplored template techniques to clarify logical connectionsbetween arguments and questions.
+A pilot annotation of 50argument-SQ pairs achieved moderate IAA (0.50 Cohen’sKappa) with signiﬁcant coverage.
+Our analysis identiﬁeduseful components, which will guide future template cura-tion and large-scale annotation.
+
+
+
+Acknowledgements
+
+This work was supported by JSPS KAKENHI GrantNumber 22H00524 and the Nakajima Foundation. Wethanks Apisornpanich Latita, Tungrut Wissanu ,and ShallJaiden for their generous support.
+
+References
+
+
+[1] Richard Paul and AJA Binker. Socratic questioning. Crit-ical thinking: What every person needs to survivein a rapidly changing world, pp. 269–298, 1990.
+[2] Richard Paul and Linda Elder. The thinker’s guide toSocratic questioning. Rowman & Littleﬁeld, 2019.
+[3] Richard Paul and Linda Elder. Critical thinking: Theart of socratic questioning. Journal of developmentaleducation, Vol. 31, No. 1, p. 36, 2007.
+[4] Frederick F Schauer. Thinking like a lawyer: a newintroduction to legal reasoning. Harvard UniversityPress, 2009.
+[5] Erfan Al-Hossami, Razvan Bunescu, Ryan Teehan, LaurelPowell, Khyati Mahajan, and Mohsen Dorodchi. Socraticquestioning of novice debuggers: A benchmark datasetand preliminary evaluations. In Ekaterina Kochmar, JillBurstein, Andrea Horbach, Ronja Laarmann-Quante, NitinMadnani, Ana¨ıs Tack, Victoria Yaneva, Zheng Yuan, andTorsten Zesch, editors, Proceedings of the 18th Work-shop on Innovative Use of NLP for Building Ed-ucational Applications (BEA 2023), pp. 709–726,Toronto, Canada, July 2023. Association for Computa-tional Linguistics.
+[6] Beng Heng Ang, Sujatha Das Gollapalli, and See-KiongNg. Socratic question generation: A novel dataset, models,and evaluation. In Andreas Vlachos and Isabelle Augen-stein, editors,Proceedings of the 17th Conference ofthe European Chapter of the Association for Com-putational Linguistics, pp. 147–165, Dubrovnik, Croa-tia, May 2023. Association for Computational Linguistics.
+[7] Colin Raﬀel, Noam Shazeer, Adam Roberts, KatherineLee, Sharan Narang, Michael Matena, Yanqi Zhou, WeiLi, and Peter J Liu. Exploring the limits of transfer learn-ing with a uniﬁed text-to-text transformer. Journal ofmachine learning research, Vol. 21, No. 140, pp. 1–67,2020.
+[8] Anmol Goel, Nico Daheim, and Iryna Gurevych. Socraticreasoning improves positive text rewriting, 2024.
+[9] Wenting Zhao, Ge Gao, Claire Cardie, and Alexander MRush. I could’ve asked that: Refor mulating unanswerablequestions. arXiv preprint arXiv:2407.17469, 2024.
+[10] Xuan Long Do, Bowei Zou, Shaﬁq Joty, Tran Tai, Liang-ming Pan, Nancy Chen, and Ai Ti Aw. Modeling what-to-ask and how-to-ask for answer-unaware conversationalquestion generation. In Anna Rogers, Jordan Boyd-Graber,and Naoaki Okazaki, editors, Proceedings of the 61stAnnual Meeting of the Association for Computa-tional Linguistics (Volume 1: Long Pap ers), pp.10785–10803, Toronto, Canada, July 2023. Associationfor Computational Linguistics.
+[11] Shasha Guo, Lizi Liao, Cuiping Li, and Tat-Seng Chua. Asurvey on neural question generation: Methods, applica-tions, and prospects, 2024.
+[12] Artidoro Pagnoni, Alexander R Fabbri, WojciechKry´sci´nski, and Chien-Sheng Wu. Socratic pretraining:Question-driven pretraining for controllable summariza-tion. arXiv preprint arXiv:2212.10449, 2022.
+[13] Jing Gu, Mostafa Mirshekari, Zhou Yu, and Aaron Sisto.ChainCQG: Flow-aware conversational question genera-tion. In Paola Merlo, Jorg Tiedemann, and Reut Tsarfaty,editors, Proceedings of the 16th Conference of theEuropean Chapter of the Association for Compu-tational Linguistics: Main Volume, pp. 2061–2070,Online, April 2021. Association for Computational Lin-guistics.
+[14] DN Walton. Argumentation schemes. Cambridge Uni-versity Press, 2008.
+[15] Paul Reisert, Naoya Inoue, Tatsuki Kuribayashi, and Ken-taro Inui. Feasible annotation scheme for capturing policyargument reasoning using argument templates. In NoamSlonim and Ranit Aharonov, editors, Proceedings of the5th Workshop on Argument Mining, pp. 79–89, Brus-sels, Belgium, November 2018. Association for Computa-tional Linguistics.
+[16] Irfan Robbani, Paul Reisert, Naoya Inoue, SurawatPothong, Cam´elia Guerraoui, Wenzhi Wang, ShoichiNaito, Jungmin Choi, and Kentaro Inui. Flee theﬂaw: Annotating the underlying logic of fallacious argu-ments through templates and slot-ﬁlling. arXiv preprintarXiv:2406.12402, 2024.
+[17] Shoichi Naito, Wenzhi Wang, Paul Reisert, Naoya Inoue,Cam´elia Guerraoui, Kenshi Yamaguchi, Jungmin Choi, Ir-fan Robbani, Surawat Pothong, and Kentaro Inui. Design-ing logic pattern templates for counter-argument logicalstructure analysis. In Yaser Al-Onaizan, Mohit Bansal,and Yun-Nung Chen, editors, Findings of the Associa-tion for Computational Linguistics: EMNLP 2024,pp. 11313–11331, Miami, Florida, USA, November 2024.Association for Computational Linguistics.
+[18] Mary L McHugh. Interrater reliability: the kappa statistic.Biochemia medica, Vol. 22, No. 3, pp. 276–282, 2012.
+[19] Matthijs J Warrens. Five ways to look at cohen’s kappa.Journal of Psychology & Psychotherapy, Vol. 5, ,2015.
+
+
+
+A Appendix
+
+
+
+A.1 Potential Templates Distribution
+
+Table 3: The distribution of annotated content level predi-cates among two annotators.
+Argument Annotator 1 Annotator 2C1: PRO(X: Y) 25 25C2: SUP(X: Y) 12 17C3: ANA(X: Y) 4 3OTHER 9 5Table 4: Frequency distribution of question predicates as-sociated with content predicate C1: PRO(X,Y)Question Annotator 1 Annotator 2P1: PRO(Z, X) 0 3P2: PRO(Z, Y) 7 3P3: PRO(X, Z:GOOD) 0
+0P4: PRO(X, Z:BAD) 2 0P5: PRO(Y, Z:GOOD) 1 1P6: PRO(Y, Z:BAD) 1 2S1: SUP(Z, X) 1 2S2: SUP(Z, Y) 1 2S3: SUP(X, Z:GOOD) 1 1S4: SUP(X, Z:BAD) 0
+0S5: SUP(Y, Z:GOOD) 1 1S6: SUP(Y, Z:BAD) 0 0E1:
+Subset of X 1 2E2: Subset of Y 0 0E3: Z PRO (C) 3 1E4: ANA: (X PRO Y‘) 0 0E5: ANA: (Z, X or Y) 4
+5OTHER 2 3Table 5: Frequency distribution of question predicates as-sociated with content predicate C2: SUP(X,Y)Question Annotator1Annotator2P1: PRO(Z, X) 0
+1P2: PRO(Z, Y) 2 2P3: PRO(X, Z:GOOD) 0
+1P4: PRO(X, Z:BAD) 1 2P5: PRO(Y, Z:GOOD) 0
+0P6: PRO(Y, Z:BAD) 1 0S1: SUP(Z, X) 1 2S2: SUP(Z, Y) 2 3S3: SUP(X, Z:GOOD) 2 0S4: SUP(X, Z:BAD) 1 0S5: SUP(Y, Z:GOOD) 0
+1S6: SUP(Y, Z:BAD) 0 0E1:
+Subset of X 0 0E2: Subset of Y 1 1E3: Z PRO (C) 0
+1E4: ANA: (X PRO Y‘) 0 0E5: ANA: (Z, X or Y) 1
+2OTHER 0 0Table 6: Frequency distribution of question predicates as-sociated with content predicate C3: ANA(X,Y)Question Annotator1Annotator2P1: PRO(Z, X) 0 0P2: PRO(Z, Y) 0 0P3: PRO(X, Z:GOOD) 0
+0P4: PRO(X, Z:BAD) 0
+0P5: PRO(Y, Z:GOOD) 0
+0P6: PRO(Y, Z:BAD) 0
+0S1: SUP(Z, X) 0
+0S2: SUP(Z, Y) 0 0S3: SUP(X, Z:GOOD) 0
+0S4: SUP(X, Z:BAD) 0
+0S5: SUP(Y, Z:GOOD) 0
+0S6: SUP(Y, Z:BAD) 0 0E1:
+Subset of X 0 0E2: Subset of Y 0 0E3: Z PRO (C) 0 0E4: ANA: (X PRO Y‘) 0 0E5: ANA: (Z, X or Y) 3
+2OTHER 1 1

@@ -1,0 +1,502 @@
+Domain-Aware Adaptation forUnsupervised Machine Translation
+
+Youyuan Lin
+
+1
+
+Rui Wang
+
+2
+
+Chenhui Chu
+
+11
+
+Kyoto University
+
+2
+
+Shanghai Jiao Tong University
+
+
+
+youyuan@nlp.ist.i.kyoto-u.ac.jp, wangrui12@sjtu.edu.cn, chu@i.kyoto-u.ac.jp
+
+
+
+Abstract
+
+Adapting Unsupervised Neural Machine Translation(UNMT) for domain-speciﬁc tasks often encounters Do-main Mismatch (DM), where one language lacks suﬃcientin-domain monolingual data.
+We observe that while in-domain monolingual corpora enhance translation qualityfor the language they belong to, this improvement doesnot extend to the paired language.
+To address DM, wepropose Domain-Aware Adaptation (DAA).
+DAA selectsin-domain texts according to assigns higher weights to in-domain texts from open-domain corpora.
+Experimentalresults on Japanese-English translation tasks across the IT,Koran, Medical, and TED2020 domains demonstrate thatDAA successfully mitigates the quality disparities in trans-lation caused by DM, enhancing overall domain-speciﬁctranslation performance.
+
+
+1 Introduction
+
+A widely held belief in Neural Machine Translation(NMT) is that increasing training data enhances model ro-bustness and accuracy.
+Traditional NMT relies on paralleltext pairs, which are often costly and scarce, particularlyfor many language pairs and speciﬁc domains [1].
+Thisscarcity has driven interest in Unsupervised Neural Ma-chine Translation (UNMT), which uses abundant mono-lingual corpora
+[2, 3].
+With suﬃcient monolingual data,UNMT can approach the performance of its supervisedcounterparts.
+However, the eﬀectiveness of UNMT depends on theavailability of in-domain monolingual data.
+Domain Mis-match (DM) occurs when in-domain corpora are availablein one language of a pair but not the other, a common issuein low-resource settings.
+Shen et al.
+[4] highlighted thatDM signiﬁcantly aﬀects methods such as back-translation[5] and self-training [6], reducing their eﬀectiveness inlow-resource scenarios.
+Existing approaches to mitigate DM include data selec-tion techniques that prioritize in-domain data from largermonolingual corpora
+[7, 8, 9], and tagging methods thatincorporate domain information through special tokens[10, 11].
+Furthermore, leveraging pre-trained languagemodels for domain-speciﬁc translation has shown promise,although often at the cost of increased computational re-sources and potential over-specialization [12, 13, 14, 15].In this study, we extend the investigation of the impactof DM on UNMT and introduce Domain-Aware Adapta-tion (DAA) as a novel solution.
+Our approach utilizesmulti-domain corpora in a high-resource language to traina domain classiﬁer, which is then transferred to a low-resource language.
+This classiﬁer tags open-domain texts,enabling the selection of in-domain data for training adomain-speciﬁc UNMT model.
+We evaluated DAA in Japanese-English in four do-mains (Information Technology, Koran, Medical, TEDtalk) and three open-domain corpora (WMT16, OpenSub-titles, WIKIMatrix).
+Our results demonstrate that DAAimproves translation quality in the low-resource directionand mitigates the DM problem by selectively incorporatingrelevant in-domain data.
+In summary, the contributions of this work are as follows:• Identiﬁcation of DM as a critical issue that causesbidirectional disparities in domain-speciﬁc translationquality within UNMT models.•
+Introduction of DAA, a method that integrates domainclassiﬁers into the UNMT framework to alleviate theeﬀects of DM.
+
+Domain-Aware Adaptation forUnsupervised Machine Translation
+
+Youyuan Lin
+
+1
+
+Rui Wang
+
+2
+
+Chenhui Chu
+
+11
+
+Kyoto University
+
+2
+
+Shanghai Jiao Tong University
+
+
+
+youyuan@nlp.ist.i.kyoto-u.ac.jp, wangrui12@sjtu.edu.cn, chu@i.kyoto-u.ac.jp
+
+
+
+Abstract
+
+Adapting Unsupervised Neural Machine Translation(UNMT) for domain-speciﬁc tasks often encounters Do-main Mismatch (DM), where one language lacks suﬃcientin-domain monolingual data.
+We observe that while in-domain monolingual corpora enhance translation qualityfor the language they belong to, this improvement doesnot extend to the paired language.
+To address DM, wepropose Domain-Aware Adaptation (DAA).
+DAA selectsin-domain texts according to assigns higher weights to in-domain texts from open-domain corpora.
+Experimentalresults on Japanese-English translation tasks across the IT,Koran, Medical, and TED2020 domains demonstrate thatDAA successfully mitigates the quality disparities in trans-lation caused by DM, enhancing overall domain-speciﬁctranslation performance.
+
+
+1 Introduction
+
+A widely held belief in Neural Machine Translation(NMT) is that increasing training data enhances model ro-bustness and accuracy.
+Traditional NMT relies on paralleltext pairs, which are often costly and scarce, particularlyfor many language pairs and speciﬁc domains [1].
+Thisscarcity has driven interest in Unsupervised Neural Ma-chine Translation (UNMT), which uses abundant mono-lingual corpora
+[2, 3].
+With suﬃcient monolingual data,UNMT can approach the performance of its supervisedcounterparts.
+However, the eﬀectiveness of UNMT depends on theavailability of in-domain monolingual data.
+Domain Mis-match (DM) occurs when in-domain corpora are availablein one language of a pair but not the other, a common issuein low-resource settings.
+Shen et al.
+[4] highlighted thatDM signiﬁcantly aﬀects methods such as back-translation[5] and self-training [6], reducing their eﬀectiveness inlow-resource scenarios.
+Existing approaches to mitigate DM include data selec-tion techniques that prioritize in-domain data from largermonolingual corpora
+[7, 8, 9], and tagging methods thatincorporate domain information through special tokens[10, 11].
+Furthermore, leveraging pre-trained languagemodels for domain-speciﬁc translation has shown promise,although often at the cost of increased computational re-sources and potential over-specialization [12, 13, 14, 15].In this study, we extend the investigation of the impactof DM on UNMT and introduce Domain-Aware Adapta-tion (DAA) as a novel solution.
+Our approach utilizesmulti-domain corpora in a high-resource language to traina domain classiﬁer, which is then transferred to a low-resource language.
+This classiﬁer tags open-domain texts,enabling the selection of in-domain data for training adomain-speciﬁc UNMT model.
+We evaluated DAA in Japanese-English in four do-mains (Information Technology, Koran, Medical, TEDtalk) and three open-domain corpora (WMT16, OpenSub-titles, WIKIMatrix).
+Our results demonstrate that DAAimproves translation quality in the low-resource directionand mitigates the DM problem by selectively incorporatingrelevant in-domain data.
+In summary, the contributions of this work are as follows:• Identiﬁcation of DM as a critical issue that causesbidirectional disparities in domain-speciﬁc translationquality within UNMT models.•
+Introduction of DAA, a method that integrates domainclassiﬁers into the UNMT framework to alleviate theeﬀects of DM.(i) Post pre-train the model by high-resource language X to obtain domain classiﬁcation ability.(ii)
+Select the in-domain texts for language Y from the open-domain texts.
+And generate translations to combine them into a pseudo corpus.(iii) Iteratively train the model to domain-speciﬁc UNMT model with tagged texts.
+Post pre-trainingSelection & TranslationOpen-domainSelected medicalTrans.MedicalITKoranX corpora…MedicalTrans.
+Pseudo X → Y Pseudo Y → XMedicalFiltered MedicalTrans.
+MedicalTrans.
+Medical Selected medicalIterative TrainingX texts Y texts X texts Y textsPseudo X → Y Pseudo Y → XPre-trained modelDomain classiﬁer with weak in-domain translation abilityDomain classiﬁer with weak in-domain translation abilityDomain-speciﬁc UNMT
+modelTranslationTranslationTranslationFigure 1
+An overview of Domain-Aware Adaptation.
+The low-resource language 𝑌 lacks domain-speciﬁc texts.
+We use multi-domaincorpora in a high-resource language 𝑋 to train the model to a domain classiﬁer.
+We demonstrate that the pretrained model can transferthe domain classiﬁcation ability to another language.
+Leveraging this classiﬁcation ability, we perform domain classiﬁcation on theopen-domain texts of 𝑌 and select out the in-domain texts to train the domain-speciﬁc UNMT model.
+
+
+2 Method
+
+The overview of our method is shown in Figure
+1.For training domain-speciﬁc UNMT models, a commonapproach is to utilize Iterative Back-translation (Iterative-BT) with sampled texts from the target domain, as thefollowing equation shows:𝐿BT(𝜃𝑖+1) = −𝔼𝑥∼𝑃( 𝑥)[𝔼𝑦∼ 𝑃 ( 𝑦 |𝑥; 𝜃𝑖)log 𝑃(𝑥|𝑦; 𝜃𝑖+1)].(1)However, this method faces limitations when dealingwith low-resource domain adaptation tasks due to thescarcity of in-domain texts.
+To address this issue, we propose the DAA method.
+We aim to select in-domain texts from an open-domaincorpus.
+Hence, we considering the domain probability inEquation (1) as follows:ˆ𝐿BT(𝜃𝑖+1;X) =−𝔼𝑥∼𝑃( 𝑥)∑𝑑∈ 𝐷𝑃(𝑑|𝑥)[𝔼𝑦∼ 𝑃 ( 𝑦 |𝑥,𝑑; 𝜃𝑖)log 𝑃(𝑥, 𝑑|𝑦; 𝜃𝑖+1)].(2)Based on Equation (2), the DAA method can be dividedinto three steps:1.
+Domain Classiﬁcation: Classify 𝑥 from a open-domain corpusXto determine its domain member-ship.
+Speciﬁcally, 𝑥 is associated with each domain𝑑 in the set of domains 𝐷 with probability 𝑃(𝑑|𝑥).Following the idea of Britz et al.
+[11], we use the ﬁrsttoken output from the decoder to denote the domainof 𝑥.2.
+Pseudo Pair Generation: Generate a pseudotranslation pair using the conditional probability𝑃(𝑦|𝑥, 𝑑; 𝜃𝑖).
+In this process, we assume that 𝑥 be-longs to the domain 𝑑 and convey the domain infor-mation by entering a domain tag into the decoder.
+This results in the generation of a domain-speciﬁctranslation 𝑦, which forms the pair (𝑥, 𝑦).3.
+Model Update: Perform a gradient descent on thepseudo-pair, weighted by the domain probability𝑃(𝑑|𝑥).By following these steps, we perform data selection onarbitrary corpora by assigning higher weights to texts thatare more likely to belong to the speciﬁc domain based ontheir probabilities.
+Some texts may exhibit a low probabil-ity 𝑃(𝑑|𝑥) of being classiﬁed as belonging to the desireddomain, i.e., being out of the domain.
+In practice, toimprove computational eﬃciency, we exclude these out-of-domain texts by applying a probability threshold 𝑝.Establishing a domain classiﬁer during the classiﬁca-tion step typically requires the availability of an in-domain
+
+Domain-Aware Adaptation forUnsupervised Machine Translation
+
+Youyuan Lin
+
+1
+
+Rui Wang
+
+2
+
+Chenhui Chu
+
+11
+
+Kyoto University
+
+2
+
+Shanghai Jiao Tong University
+
+
+
+youyuan@nlp.ist.i.kyoto-u.ac.jp, wangrui12@sjtu.edu.cn, chu@i.kyoto-u.ac.jp
+
+
+
+Abstract
+
+Adapting Unsupervised Neural Machine Translation(UNMT) for domain-speciﬁc tasks often encounters Do-main Mismatch (DM), where one language lacks suﬃcientin-domain monolingual data.
+We observe that while in-domain monolingual corpora enhance translation qualityfor the language they belong to, this improvement doesnot extend to the paired language.
+To address DM, wepropose Domain-Aware Adaptation (DAA).
+DAA selectsin-domain texts according to assigns higher weights to in-domain texts from open-domain corpora.
+Experimentalresults on Japanese-English translation tasks across the IT,Koran, Medical, and TED2020 domains demonstrate thatDAA successfully mitigates the quality disparities in trans-lation caused by DM, enhancing overall domain-speciﬁctranslation performance.
+
+
+1 Introduction
+
+A widely held belief in Neural Machine Translation(NMT) is that increasing training data enhances model ro-bustness and accuracy.
+Traditional NMT relies on paralleltext pairs, which are often costly and scarce, particularlyfor many language pairs and speciﬁc domains [1].
+Thisscarcity has driven interest in Unsupervised Neural Ma-chine Translation (UNMT), which uses abundant mono-lingual corpora
+[2, 3].
+With suﬃcient monolingual data,UNMT can approach the performance of its supervisedcounterparts.
+However, the eﬀectiveness of UNMT depends on theavailability of in-domain monolingual data.
+Domain Mis-match (DM) occurs when in-domain corpora are availablein one language of a pair but not the other, a common issuein low-resource settings.
+Shen et al.
+[4] highlighted thatDM signiﬁcantly aﬀects methods such as back-translation[5] and self-training [6], reducing their eﬀectiveness inlow-resource scenarios.
+Existing approaches to mitigate DM include data selec-tion techniques that prioritize in-domain data from largermonolingual corpora
+[7, 8, 9], and tagging methods thatincorporate domain information through special tokens[10, 11].
+Furthermore, leveraging pre-trained languagemodels for domain-speciﬁc translation has shown promise,although often at the cost of increased computational re-sources and potential over-specialization [12, 13, 14, 15].In this study, we extend the investigation of the impactof DM on UNMT and introduce Domain-Aware Adapta-tion (DAA) as a novel solution.
+Our approach utilizesmulti-domain corpora in a high-resource language to traina domain classiﬁer, which is then transferred to a low-resource language.
+This classiﬁer tags open-domain texts,enabling the selection of in-domain data for training adomain-speciﬁc UNMT model.
+We evaluated DAA in Japanese-English in four do-mains (Information Technology, Koran, Medical, TEDtalk) and three open-domain corpora (WMT16, OpenSub-titles, WIKIMatrix).
+Our results demonstrate that DAAimproves translation quality in the low-resource directionand mitigates the DM problem by selectively incorporatingrelevant in-domain data.
+In summary, the contributions of this work are as follows:• Identiﬁcation of DM as a critical issue that causesbidirectional disparities in domain-speciﬁc translationquality within UNMT models.•
+Introduction of DAA, a method that integrates domainclassiﬁers into the UNMT framework to alleviate theeﬀects of DM.(i) Post pre-train the model by high-resource language X to obtain domain classiﬁcation ability.(ii)
+Select the in-domain texts for language Y from the open-domain texts.
+And generate translations to combine them into a pseudo corpus.(iii) Iteratively train the model to domain-speciﬁc UNMT model with tagged texts.
+Post pre-trainingSelection & TranslationOpen-domainSelected medicalTrans.MedicalITKoranX corpora…MedicalTrans.
+Pseudo X → Y Pseudo Y → XMedicalFiltered MedicalTrans.
+MedicalTrans.
+Medical Selected medicalIterative TrainingX texts Y texts X texts Y textsPseudo X → Y Pseudo Y → XPre-trained modelDomain classiﬁer with weak in-domain translation abilityDomain classiﬁer with weak in-domain translation abilityDomain-speciﬁc UNMT
+modelTranslationTranslationTranslationFigure 1
+An overview of Domain-Aware Adaptation.
+The low-resource language 𝑌 lacks domain-speciﬁc texts.
+We use multi-domaincorpora in a high-resource language 𝑋 to train the model to a domain classiﬁer.
+We demonstrate that the pretrained model can transferthe domain classiﬁcation ability to another language.
+Leveraging this classiﬁcation ability, we perform domain classiﬁcation on theopen-domain texts of 𝑌 and select out the in-domain texts to train the domain-speciﬁc UNMT model.
+
+
+2 Method
+
+The overview of our method is shown in Figure
+1.For training domain-speciﬁc UNMT models, a commonapproach is to utilize Iterative Back-translation (Iterative-BT) with sampled texts from the target domain, as thefollowing equation shows:𝐿BT(𝜃𝑖+1) = −𝔼𝑥∼𝑃( 𝑥)[𝔼𝑦∼ 𝑃 ( 𝑦 |𝑥; 𝜃𝑖)log 𝑃(𝑥|𝑦; 𝜃𝑖+1)].(1)However, this method faces limitations when dealingwith low-resource domain adaptation tasks due to thescarcity of in-domain texts.
+To address this issue, we propose the DAA method.
+We aim to select in-domain texts from an open-domaincorpus.
+Hence, we considering the domain probability inEquation (1) as follows:ˆ𝐿BT(𝜃𝑖+1;X) =−𝔼𝑥∼𝑃( 𝑥)∑𝑑∈ 𝐷𝑃(𝑑|𝑥)[𝔼𝑦∼ 𝑃 ( 𝑦 |𝑥,𝑑; 𝜃𝑖)log 𝑃(𝑥, 𝑑|𝑦; 𝜃𝑖+1)].(2)Based on Equation (2), the DAA method can be dividedinto three steps:1.
+Domain Classiﬁcation: Classify 𝑥 from a open-domain corpusXto determine its domain member-ship.
+Speciﬁcally, 𝑥 is associated with each domain𝑑 in the set of domains 𝐷 with probability 𝑃(𝑑|𝑥).Following the idea of Britz et al.
+[11], we use the ﬁrsttoken output from the decoder to denote the domainof 𝑥.2.
+Pseudo Pair Generation: Generate a pseudotranslation pair using the conditional probability𝑃(𝑦|𝑥, 𝑑; 𝜃𝑖).
+In this process, we assume that 𝑥 be-longs to the domain 𝑑 and convey the domain infor-mation by entering a domain tag into the decoder.
+This results in the generation of a domain-speciﬁctranslation 𝑦, which forms the pair (𝑥, 𝑦).3.
+Model Update: Perform a gradient descent on thepseudo-pair, weighted by the domain probability𝑃(𝑑|𝑥).By following these steps, we perform data selection onarbitrary corpora by assigning higher weights to texts thatare more likely to belong to the speciﬁc domain based ontheir probabilities.
+Some texts may exhibit a low probabil-ity 𝑃(𝑑|𝑥) of being classiﬁed as belonging to the desireddomain, i.e., being out of the domain.
+In practice, toimprove computational eﬃciency, we exclude these out-of-domain texts by applying a probability threshold 𝑝.Establishing a domain classiﬁer during the classiﬁca-tion step typically requires the availability of an in-domaincorpus.
+However, we lack in-domain corpus due to DM.To overcome this challenge, we assume that most domainsexhibit cross-linguistic similarities; that is, texts withinthe same domain share similar patterns regardless of thelanguage.
+Using this assumption, we train the domainclassiﬁer exclusively using a high-resource language suchas English to discriminate domains across diﬀerent lan-guages.
+This enables us to perform domain-aware adapta-tion even in the absence of in-domain texts for low-resourcelanguages.
+
+
+3 Experimental Settings
+
+IT Koran Medical TED2020En 669K 451K 144K 1,000KJa 478K 6K 0K 361KTable 1 Data statistics for domain-speciﬁc monolingual texts.
+Datasets We conducted experiments on Japanese-English translation tasks.
+We selected four domains: (i) IT(GNOME and Ubuntu), (ii) Koran (Tanzil), (iii) Medical(EJMMT) and (iv) TED2020.
+Note that there are no mono-lingual texts.
+We randomly selected 2K parallel texts fromeach domain for the test set and the validation set, respec-tively.
+We used WIKIMatrix as the open-domain monolin-gual Japanese corpus.
+We randomly selected 2.8𝑀 textsfrom the WIKIMatrix.
+All corpora were collected fromOPUS
+[16] except the Medical corpus [17].Models We evaluated UNMT models ﬁne-tuned onmodels pretrained with MASS
+[18].
+MASS models aretrained for language comprehension and language gener-ation capabilities, which facilitates our use of the modelfor domain classiﬁcation and translation.
+We adopted thepretrained model released by Mao et al.
+[19].Hyperparameters We trained and tuned the model for40 epochs and selected the best model by perplexity on thevalidation set.
+The domain threshold was set to 𝑝 = 0.5.Baselines To simulate the DM, for each of the four do-mains, the models were trained without a Japanese in-domain corpus, following the paradigm of iterative back-translation, serving as the baseline.
+For example, in theadaptation task for the IT domain, the Japanese corporawere combined in the Koran, Medical, and TED2020 do-mains, excluding the IT domain, while all English corporawere used as training data.
+For comparison, we used an alternative data selectionmethod based on K-Nearest Neighbors (kNN).
+We com-puted sentence embeddings by summing each tokensrepresentation in the encoders last layer.
+We then deter-mined each domains representation center by averagingits sentence embeddings.
+Subsequently, for each missingdomain, we selected the 𝑘 texts closest to the center ofthe representation of the corresponding domain.
+Here, 𝑘represents the number of missing texts in that domain’scorpus.
+For example, in the En-Ja IT task, we calculatedthe center of the sentence embeddings using the EnglishIT corpus.
+Then, we selected 𝑘 texts from the WikiMa-trix corpus closest to the calculated center, forming thepseudo-Japanese IT domain corpus.
+In addition, we experimented with domain-speciﬁctranslations using LLaMA2-7B [20], TowerInstruct-7B
+[21], and ALMA-7B
+[22] as baselines to represent thetranslation capabilities of Large Language Models (LLMs).We used a zero-shot setting and prompt model by “Translat-ing the following text from 𝑋 to 𝑌 .\n𝑋:{source
+text}\n𝑌 :”,in which 𝑋 and 𝑌 are two languages.
+We repor t the BLEU score
+[23] as the evaluation metric.
+The sentence is segmented by Mecab.1）
+
+4 Results
+
+
+
+4.1 Classiﬁcation
+
+IT Koran Medical TED2020 Avg.
+En 99.00% 98.95% 97.64% 97.88% 98.37%Ja 88.41% 81.56% 87.91% 75.62% 83.38%Table 2 Recall of the domain classiﬁer.
+Table 2 shows the results of the recall in each domain.
+Note that only the English corpus was used to train thedomain classiﬁer.
+In the case of the English corpus, theresults demonstrate exceptional recall in accurately clas-sifying texts into their respective domains.
+For Japanese,despite being slightly dropped compared to English, thedomain classiﬁer still outperforms the random level.
+Theresults indicate that pretrained models can eﬀectively learndomain patterns through the utilization of a single high-resource language.
+Figure 2 shows the visualization results according tot-SNE [24].
+For each text, we added all the word represen-tations output by the encoder as its sentence embedding.
+Texts with the same domain tags are clustered close toeach other.
+This implies that texts in the same domain1）
+https://github.com/taku910/mecab
+
+Domain-Aware Adaptation forUnsupervised Machine Translation
+
+Youyuan Lin
+
+1
+
+Rui Wang
+
+2
+
+Chenhui Chu
+
+11
+
+Kyoto University
+
+2
+
+Shanghai Jiao Tong University
+
+
+
+youyuan@nlp.ist.i.kyoto-u.ac.jp, wangrui12@sjtu.edu.cn, chu@i.kyoto-u.ac.jp
+
+
+
+Abstract
+
+Adapting Unsupervised Neural Machine Translation(UNMT) for domain-speciﬁc tasks often encounters Do-main Mismatch (DM), where one language lacks suﬃcientin-domain monolingual data.
+We observe that while in-domain monolingual corpora enhance translation qualityfor the language they belong to, this improvement doesnot extend to the paired language.
+To address DM, wepropose Domain-Aware Adaptation (DAA).
+DAA selectsin-domain texts according to assigns higher weights to in-domain texts from open-domain corpora.
+Experimentalresults on Japanese-English translation tasks across the IT,Koran, Medical, and TED2020 domains demonstrate thatDAA successfully mitigates the quality disparities in trans-lation caused by DM, enhancing overall domain-speciﬁctranslation performance.
+
+
+1 Introduction
+
+A widely held belief in Neural Machine Translation(NMT) is that increasing training data enhances model ro-bustness and accuracy.
+Traditional NMT relies on paralleltext pairs, which are often costly and scarce, particularlyfor many language pairs and speciﬁc domains [1].
+Thisscarcity has driven interest in Unsupervised Neural Ma-chine Translation (UNMT), which uses abundant mono-lingual corpora
+[2, 3].
+With suﬃcient monolingual data,UNMT can approach the performance of its supervisedcounterparts.
+However, the eﬀectiveness of UNMT depends on theavailability of in-domain monolingual data.
+Domain Mis-match (DM) occurs when in-domain corpora are availablein one language of a pair but not the other, a common issuein low-resource settings.
+Shen et al.
+[4] highlighted thatDM signiﬁcantly aﬀects methods such as back-translation[5] and self-training [6], reducing their eﬀectiveness inlow-resource scenarios.
+Existing approaches to mitigate DM include data selec-tion techniques that prioritize in-domain data from largermonolingual corpora
+[7, 8, 9], and tagging methods thatincorporate domain information through special tokens[10, 11].
+Furthermore, leveraging pre-trained languagemodels for domain-speciﬁc translation has shown promise,although often at the cost of increased computational re-sources and potential over-specialization [12, 13, 14, 15].In this study, we extend the investigation of the impactof DM on UNMT and introduce Domain-Aware Adapta-tion (DAA) as a novel solution.
+Our approach utilizesmulti-domain corpora in a high-resource language to traina domain classiﬁer, which is then transferred to a low-resource language.
+This classiﬁer tags open-domain texts,enabling the selection of in-domain data for training adomain-speciﬁc UNMT model.
+We evaluated DAA in Japanese-English in four do-mains (Information Technology, Koran, Medical, TEDtalk) and three open-domain corpora (WMT16, OpenSub-titles, WIKIMatrix).
+Our results demonstrate that DAAimproves translation quality in the low-resource directionand mitigates the DM problem by selectively incorporatingrelevant in-domain data.
+In summary, the contributions of this work are as follows:• Identiﬁcation of DM as a critical issue that causesbidirectional disparities in domain-speciﬁc translationquality within UNMT models.•
+Introduction of DAA, a method that integrates domainclassiﬁers into the UNMT framework to alleviate theeﬀects of DM.(i) Post pre-train the model by high-resource language X to obtain domain classiﬁcation ability.(ii)
+Select the in-domain texts for language Y from the open-domain texts.
+And generate translations to combine them into a pseudo corpus.(iii) Iteratively train the model to domain-speciﬁc UNMT model with tagged texts.
+Post pre-trainingSelection & TranslationOpen-domainSelected medicalTrans.MedicalITKoranX corpora…MedicalTrans.
+Pseudo X → Y Pseudo Y → XMedicalFiltered MedicalTrans.
+MedicalTrans.
+Medical Selected medicalIterative TrainingX texts Y texts X texts Y textsPseudo X → Y Pseudo Y → XPre-trained modelDomain classiﬁer with weak in-domain translation abilityDomain classiﬁer with weak in-domain translation abilityDomain-speciﬁc UNMT
+modelTranslationTranslationTranslationFigure 1
+An overview of Domain-Aware Adaptation.
+The low-resource language 𝑌 lacks domain-speciﬁc texts.
+We use multi-domaincorpora in a high-resource language 𝑋 to train the model to a domain classiﬁer.
+We demonstrate that the pretrained model can transferthe domain classiﬁcation ability to another language.
+Leveraging this classiﬁcation ability, we perform domain classiﬁcation on theopen-domain texts of 𝑌 and select out the in-domain texts to train the domain-speciﬁc UNMT model.
+
+
+2 Method
+
+The overview of our method is shown in Figure
+1.For training domain-speciﬁc UNMT models, a commonapproach is to utilize Iterative Back-translation (Iterative-BT) with sampled texts from the target domain, as thefollowing equation shows:𝐿BT(𝜃𝑖+1) = −𝔼𝑥∼𝑃( 𝑥)[𝔼𝑦∼ 𝑃 ( 𝑦 |𝑥; 𝜃𝑖)log 𝑃(𝑥|𝑦; 𝜃𝑖+1)].(1)However, this method faces limitations when dealingwith low-resource domain adaptation tasks due to thescarcity of in-domain texts.
+To address this issue, we propose the DAA method.
+We aim to select in-domain texts from an open-domaincorpus.
+Hence, we considering the domain probability inEquation (1) as follows:ˆ𝐿BT(𝜃𝑖+1;X) =−𝔼𝑥∼𝑃( 𝑥)∑𝑑∈ 𝐷𝑃(𝑑|𝑥)[𝔼𝑦∼ 𝑃 ( 𝑦 |𝑥,𝑑; 𝜃𝑖)log 𝑃(𝑥, 𝑑|𝑦; 𝜃𝑖+1)].(2)Based on Equation (2), the DAA method can be dividedinto three steps:1.
+Domain Classiﬁcation: Classify 𝑥 from a open-domain corpusXto determine its domain member-ship.
+Speciﬁcally, 𝑥 is associated with each domain𝑑 in the set of domains 𝐷 with probability 𝑃(𝑑|𝑥).Following the idea of Britz et al.
+[11], we use the ﬁrsttoken output from the decoder to denote the domainof 𝑥.2.
+Pseudo Pair Generation: Generate a pseudotranslation pair using the conditional probability𝑃(𝑦|𝑥, 𝑑; 𝜃𝑖).
+In this process, we assume that 𝑥 be-longs to the domain 𝑑 and convey the domain infor-mation by entering a domain tag into the decoder.
+This results in the generation of a domain-speciﬁctranslation 𝑦, which forms the pair (𝑥, 𝑦).3.
+Model Update: Perform a gradient descent on thepseudo-pair, weighted by the domain probability𝑃(𝑑|𝑥).By following these steps, we perform data selection onarbitrary corpora by assigning higher weights to texts thatare more likely to belong to the speciﬁc domain based ontheir probabilities.
+Some texts may exhibit a low probabil-ity 𝑃(𝑑|𝑥) of being classiﬁed as belonging to the desireddomain, i.e., being out of the domain.
+In practice, toimprove computational eﬃciency, we exclude these out-of-domain texts by applying a probability threshold 𝑝.Establishing a domain classiﬁer during the classiﬁca-tion step typically requires the availability of an in-domaincorpus.
+However, we lack in-domain corpus due to DM.To overcome this challenge, we assume that most domainsexhibit cross-linguistic similarities; that is, texts withinthe same domain share similar patterns regardless of thelanguage.
+Using this assumption, we train the domainclassiﬁer exclusively using a high-resource language suchas English to discriminate domains across diﬀerent lan-guages.
+This enables us to perform domain-aware adapta-tion even in the absence of in-domain texts for low-resourcelanguages.
+
+
+3 Experimental Settings
+
+IT Koran Medical TED2020En 669K 451K 144K 1,000KJa 478K 6K 0K 361KTable 1 Data statistics for domain-speciﬁc monolingual texts.
+Datasets We conducted experiments on Japanese-English translation tasks.
+We selected four domains: (i) IT(GNOME and Ubuntu), (ii) Koran (Tanzil), (iii) Medical(EJMMT) and (iv) TED2020.
+Note that there are no mono-lingual texts.
+We randomly selected 2K parallel texts fromeach domain for the test set and the validation set, respec-tively.
+We used WIKIMatrix as the open-domain monolin-gual Japanese corpus.
+We randomly selected 2.8𝑀 textsfrom the WIKIMatrix.
+All corpora were collected fromOPUS
+[16] except the Medical corpus [17].Models We evaluated UNMT models ﬁne-tuned onmodels pretrained with MASS
+[18].
+MASS models aretrained for language comprehension and language gener-ation capabilities, which facilitates our use of the modelfor domain classiﬁcation and translation.
+We adopted thepretrained model released by Mao et al.
+[19].Hyperparameters We trained and tuned the model for40 epochs and selected the best model by perplexity on thevalidation set.
+The domain threshold was set to 𝑝 = 0.5.Baselines To simulate the DM, for each of the four do-mains, the models were trained without a Japanese in-domain corpus, following the paradigm of iterative back-translation, serving as the baseline.
+For example, in theadaptation task for the IT domain, the Japanese corporawere combined in the Koran, Medical, and TED2020 do-mains, excluding the IT domain, while all English corporawere used as training data.
+For comparison, we used an alternative data selectionmethod based on K-Nearest Neighbors (kNN).
+We com-puted sentence embeddings by summing each tokensrepresentation in the encoders last layer.
+We then deter-mined each domains representation center by averagingits sentence embeddings.
+Subsequently, for each missingdomain, we selected the 𝑘 texts closest to the center ofthe representation of the corresponding domain.
+Here, 𝑘represents the number of missing texts in that domain’scorpus.
+For example, in the En-Ja IT task, we calculatedthe center of the sentence embeddings using the EnglishIT corpus.
+Then, we selected 𝑘 texts from the WikiMa-trix corpus closest to the calculated center, forming thepseudo-Japanese IT domain corpus.
+In addition, we experimented with domain-speciﬁctranslations using LLaMA2-7B [20], TowerInstruct-7B
+[21], and ALMA-7B
+[22] as baselines to represent thetranslation capabilities of Large Language Models (LLMs).We used a zero-shot setting and prompt model by “Translat-ing the following text from 𝑋 to 𝑌 .\n𝑋:{source
+text}\n𝑌 :”,in which 𝑋 and 𝑌 are two languages.
+We repor t the BLEU score
+[23] as the evaluation metric.
+The sentence is segmented by Mecab.1）
+
+4 Results
+
+
+
+4.1 Classiﬁcation
+
+IT Koran Medical TED2020 Avg.
+En 99.00% 98.95% 97.64% 97.88% 98.37%Ja 88.41% 81.56% 87.91% 75.62% 83.38%Table 2 Recall of the domain classiﬁer.
+Table 2 shows the results of the recall in each domain.
+Note that only the English corpus was used to train thedomain classiﬁer.
+In the case of the English corpus, theresults demonstrate exceptional recall in accurately clas-sifying texts into their respective domains.
+For Japanese,despite being slightly dropped compared to English, thedomain classiﬁer still outperforms the random level.
+Theresults indicate that pretrained models can eﬀectively learndomain patterns through the utilization of a single high-resource language.
+Figure 2 shows the visualization results according tot-SNE [24].
+For each text, we added all the word represen-tations output by the encoder as its sentence embedding.
+Texts with the same domain tags are clustered close toeach other.
+This implies that texts in the same domain1）
+https://github.com/taku910/mecabIT
+Koran Medical TED2020
+Avg.
+En ⇔ Ja ⇐ ⇒ ⇐ ⇒ ⇐ ⇒ ⇐ ⇒ ⇐ ⇒LLaMA2-7B 11.96 4.08 5.11 3.84 13.97 5.29 16.43 10.78 11.87 6.00TowerInstruct-7B 21.61 2.56 10.63 1.42 28.15 3.52 27.74 5.25 22.04 3.19ALMA-7B 26.23 9.51 11.14 10.25 32.64 16.92 31.58 20.62 25.40 14.33MASS-200M
+[18] 6.63 3.37 3.06 2.27 12.50 4.68 12.30 8.70 8.62 4.75MASS-200M w/ Iterative-BT 19.89 2.90 7.89 2.73 26.97 2.36 22.57 13.29 19.08 5.32+
+WikiMatrix 18.30 5.10 7.85 3.51 25.31 6.53 25.38 16.23 19.21 7.84+ WikiMatrix, w/ kNN 18.80 5.37 8.20 5.19 25.80 8.24 24.80 18.03 19.40 9.21+ WikiMatrix, w/ DAA 19.77 5.74 8.90 8.12 27.22 9.93 26.17 19.18 20.49 10.74Table 3 Translation result.0.00 0.25 0.50 0.75 1.000.00.20.40.60.81.0News en sent.
+TED2020 en sent.
+Koran en sent.
+Medical en sent.
+IT en sent.
+0.00 0.25 0.50 0.75 1.000.00.20.40.60.81.0News ja sent.
+TED2020 ja sent.
+Koran ja sent.
+Medical ja sent.
+IT ja sent.
+Figure 2 Left: English, Right: Japanese.
+The t-SNE visualization displays sentence embeddings with distinct domain separationindicated by color.
+All representations are generated by pretrained models without any ﬁne-tuning.
+The distribution of patterns in theresults is roughly horizontally symmetric, demonstrating the isomorphism of the domain distributions.have more similar patterns and that there are texts locatedat “domain boundaries” that exhibit characteristics that ﬁtthe patterns of multiple domains.
+Intuitively, these textscan be used as an in-domain corpus.
+Previous works havedemonstrated the isomor phism of word embeddings acrosslanguages [25, 26].
+By categorizing texts into domains, weﬁnd that sentence embeddings from diﬀerent domains arealso approximately isomorphic, which may be a result ofword embedding isomorphism.
+Hence, it is feasible touse text in the domain of one language to train a domainclassiﬁer that classiﬁes the corpus across languages.
+
+
+4.2 Translation
+
+The results are shown in Table 3.
+We obser ved thatacross all domains, DM contributes to the disparity intranslation quality.
+Taking advantage of the presence ofdomain-speciﬁc training texts, the models demonstrate su-perior translation performance when translated into En-glish.
+In contrast, translations into Japanese exhibit sub-par quality as a result of the absence of correspondingin-domain training texts.
+The mere incorporation of Wiki-Matrix does not consistently improve translation qualitywithin speciﬁc domains.
+DAA outperforms the baseline,suggesting that the domain classiﬁer in DAA more eﬀec-tively ﬁlters out in-domain texts.
+Compared to the 7B-sizeLLMs, our model outperformed LLaMA2-7B, while stillhaving a gap of about 4 points compared to ALMA-7B.Note that TowerInstruct-7B sometimes cannot follow theinstruction to generate Japanese translations and hence ob-tained low En-Ja scores.
+
+
+5 Summary
+
+The DM poses a challenge in UNMT.
+To address this, weintroduced DAA, which enhances domain classiﬁcation byusing multi-domain corpora from high-resource languages.
+DAA employs domain tagging and weighting to eﬀectivelyselect in-domain texts from open-domain corpora.
+Ourexperiments in various domains demonstrate the eﬃcacyof DAA in mitigating the adverse eﬀects of DM.However, the eﬀectiveness of DAA diminishes whendomain-speciﬁc monolingual data are limited.
+It also re-mains untested in multilingual settings and on models ex-ceeding 200 million parameters.
+Future work should inves-tigate these scenarios to enhance scalability and robustness.
+
+
+
+Acknowledgement
+
+This work was supported by JSPS KAKENHI GrantNumber JP23K28144.
+
+References
+
+
+[1] Emmanouil Stergiadis, Satendra Kumar, Fedor Kovalev,and Pavel Levin. Multi-domain adaptation in neural ma-chine translation through multidimensional tagging. arXivpreprint arXiv:2102.10160, 2021.
+[2] Guillaume Lample, Myle Ott, Alexis Conneau, LudovicDenoyer, and Marc’Aurelio Ranzato. Phrase-based & neu-ral unsupervised machine translation. arXiv preprintarXiv:1804.07755, 2018.
+[3] Zhen Yang, Wei Chen, Feng Wang, and Bo Xu. Unsu-pervised neural machine translation with weight sharing.arXiv preprint arXiv:1804.09057, 2018.
+[4] Jiajun Shen, Peng-Jen Chen, Matthew Le, Junxian He, Ji-atao Gu, Myle Ott, Michael Auli, and Marc’Aurelio Ran-zato. The source-target domain mismatch problem in ma-chine translation. In Paola Merlo, Jorg Tiedemann, andReut Tsarfaty, editors, Proceedings of the 16th Con-ference of the European Chapter of the Associa-tion for Computational Linguistics: Main Volume,pp. 1519–1533, Online, April 2021. Association for Com-putational Linguistics.
+[5] Rico Sennrich, Barry Haddow, and Alexandra Birch. Im-proving neural machine translation models with monolin-gual data. arXiv preprint arXiv:1511.06709, 2015.
+[6] Zhiwei He, Xing Wang, Rui Wang, Shuming Shi, andZhaopeng Tu. Bridging the data gap between trainingand inference for unsupervised neural machine translation.arXiv preprint arXiv:2203.08394, 2022.
+[7] Roee Aharoni and Yoav Goldberg. Unsupervised domainclusters in pretrained language models. arXiv preprintarXiv:2004.02105, 2020.
+[8] Javad Pourmostafa Roshan Sharami, Dimitar Shterionov,and Pieter Spronck. Selecting parallel in-domain sentencesfor neural machine translation using monolingual texts.arXiv preprint arXiv:2112.06096, 2021.
+[9] Zi-Yi Dou, Antonios Anastasopoulos, and Graham Neubig.Dynamic data selection and weighting for iterative back-translation. arXiv preprint arXiv:2004.03672, 2020.
+[10] Catherine Kobus, Josep Crego, and Jean Senellart. Domaincontrol for neural machine translation. arXiv preprintarXiv:1612.06140, 2016.
+[11] Denny Britz, Quoc Le, and Reid Pryzant. Eﬀective domainmixing for neural machine translation. In Proceedings ofthe Second Conference on Machine Translation, pp.118–126, 2017.
+[12] Keqin Peng, Liang Ding, Qihuang Zhong, Li Shen, XueboLiu, Min Zhang, Yuanxin Ouyang, and Dacheng Tao. To-wards making the most of chatgpt for machine translation.arXiv preprint arXiv:2303.13780, 2023.
+[13] Yongyu Mu, Abudurexiti Reheman, Zhiquan Cao, YuchunFan, Bei Li, Yinqiao Li, Tong Xiao, Chunliang Zhang,and Jingbo Zhu. Augmenting large language modeltranslators via translation memories. arXiv preprintarXiv:2305.17367, 2023.
+[14] Johannes Eschbach-Dymanus, Frank Essenberger, BiankaBuschbeck, and Miriam Exel. Exploring the eﬀectivenessof llm domain adaptation for business it machine transla-tion. In Proceedings of the 25th Annual Conferenceof the European Association for Machine Transla-tion (Volume 1), pp. 610–622, 2024.
+[15] Jiawei Zheng, Hanghai Hong, Xiaoli Wang, Jingsong Su,Yonggui Liang, and Shikai Wu. Fine-tuning large languagemodels for domain-speciﬁc machine translation. arXivpreprint arXiv:2402.15061, 2024.
+[16] J¨org Tiedemann. Parallel data, tools and interfaces in opus.In Lrec, Vol. 2012, pp. 2214–2218. Citeseer, 2012.
+[17] Takeshi Hayakawa and Yuki Arase. Fine-grained erroranalysis on english-to-japanese machine translation in themedical domain. In Proceedings of the 22nd AnnualConference of the European Association for Ma-chine Translation, pp. 155–164, 2020.
+[18] Kaitao Song, Xu Tan, Tao Qin, Jianfeng Lu, and Tie-YanLiu. Mass: Masked sequence to sequence pre-training forlanguage generation. arXiv preprint arXiv:1905.02450,2019.
+[19] Zhuoyuan Mao, Chenhui Chu, and Sadao Kurohashi. Lin-guistically driven multi-task pre-training for low-resourceneural machine translation. Transactions on Asianand Low-Resource Language Information Process-ing, Vol. 21, No. 4, pp. 1–29, 2022.
+[20] Hugo Touvron, Louis Mar tin, Kevin Stone, Peter Albert,Amjad Almahairi, Yasmine Babaei, Nikolay Bashlykov,Soumya Batra, Prajjwal Bhargava, Shruti Bhosale, et al.Llama 2: Open foundation and ﬁne-tuned chat models.arXiv preprint arXiv:2307.09288, 2023.
+[21] Duarte M Alves, Jos´e Pombal, Nuno M Guerreiro, Pedro HMartins, Jo˜ao Alves, Amin Farajian, Ben Peters, RicardoRei, Patrick Fernandes, Sweta Agrawal, et al. Tower: Anopen multilingual large language model for translation-related tasks. arXiv preprint arXiv:2402.17733, 2024.
+[22] Haoran Xu, Young Jin Kim, Amr Sharaf, and Hany Has-san Awadalla. A paradigm shift in machine translation:Boosting translation performance of large language mod-els. arXiv preprint arXiv:2309.11674, 2023.
+[23] Estelle Bettelli, Yijun Carrier, Wenda Gao, Thomas Korn,Terry B Strom, Mohamed Oukka, Howard L Weiner, andVijay K Kuchroo. Reciprocal developmental pathways forthe generation of pathogenic eﬀector th17 and regulatory tcells. Nature, Vol. 441, No. 7090, pp. 235–238, 2006.
+[24] Laurens Van der Maaten and Geoﬀrey Hinton. Visualizingdata using t-sne. Journal of machine learning research,Vol. 9, No. 11, 2008.
+[25] Xilun Chen and Claire Cardie. Unsupervised multilingualword embeddings. arXiv preprint arXiv:1808.08933,2018.
+[26] Takashi Wada, Tomoharu Iwata, and Yuji Matsumoto. Un-supervised multilingual word embedding with limited re-sources using neural language models. In Proceedingsof the 57th Annual Meeting of the Association forComputational Linguistics, pp. 3113–3124, 2019.

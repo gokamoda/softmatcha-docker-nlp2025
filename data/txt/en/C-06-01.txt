@@ -1,0 +1,471 @@
+Evaluating the Impact of Continual Pre-Trainingon Japanese Essay Scoring Tasks
+
+Boago Okgetheng Koichi Takeuchi
+
+
+
+Graduate School of Environmental, Life, Natural Science and Technology,
+
+
+
+Okayama University
+
+
+
+pcqm1k3t@s.okayama-u.ac.jp, takeuc-k@okayama-u.ac.jp
+
+
+
+Abstract
+
+This paper investigates whether continually pre-trainingLarge Language Models on domain-speciﬁc reference textscan improve performance in Japanese Automated EssayScoring tasks.
+We use a dataset covering multiple es-say prompts related to four thematic areas― Globaliza-tion, Natural Science, Critical Thinking, and East AsianEconomics.
+Each essay is scored on a ﬁve-point scalefor Comprehensiveness.
+Models undergo two conﬁgura-tions: (1) direct ﬁne-tuning on the scored essays, and (2)an additional continual pre-training phase using domain-speciﬁc texts prior to ﬁne-tuning.
+Our ﬁndings indicatethat most models beneﬁt from this extra training, as ev-idenced by improvements in evaluation metrics such asthe F1 Score, Quadratic Weighted Kappa, Accuracy, andRoot Mean Squared Error.
+These results underscore theimportance of domain adaptation for more accurate essayscoring.
+
+
+1 Introduction
+
+Automated Essay Scoring (AES) systems aim to assessthe quality of written text using computational methods,thereby reducing the time and eﬀort required for humangrading [1].
+Early AES systems often relied on featureengineering and statistical models, extracting linguisticfeatures and employing regression or classiﬁcation tech-niques to predict essay scores.
+However, recent advancesin transformer-based language models have led to perfor-mance gains that surpass traditional approaches [2, 3, 4].Despite the success of these models, an important lim-itation persists.
+Many of these architectures, such asBERT-based and GPT-based models, are pre-trained onlarge-scale corpora that may lack nuanced, domain-speciﬁcknowledge [5].
+Consequently, their ability to handle spe-cialized content is constrained, particularly in contexts likeJapanese university admissions examinations, where essaytopics can be both technical and diverse.
+To address this challenge, this study explores contin-ual pre-training―a process in which a language model isﬁrst pre-trained on massive, general-purpose corpora andthen re-trained on narrower, domain-speciﬁc texts beforethe ﬁnal ﬁne-tuning phase.
+By continually pre-training ondomain-relevant material, the model may acquire special-ized vocabulary and contextual cues essential for eﬀectiveassessment.
+We investigate whether such continual pre-training leads to higher scores in standard metrics such asthe F1 Score, Quadratic Weighted Kappa, Accuracy, andRoot Mean Squared Error (RMSE).
+
+
+2 Related Work
+
+Automated Essay Scoring systems were initially devel-oped using feature-based and statistical approaches, whichrelied on handcrafted linguistic features such as word 𝑛-grams, part-of-speech tags, and discourse elements
+[1].With the advent of deep learning, research began to shifttoward end-to-end neural architectures, including Convo-lutional Neural Networks [6] and recurrent networks withLong Short-Term Memory [7, 8].
+These approaches re-duced the need for handcrafted features while capturingricher representations of text.
+The introduction of transformer-based architectures rev-olutionized natural language processing.
+Models such asBERT and GPT have attained state-of-the-art results acrosstasks by leveraging large corpora for unsupervised pre-training and then applying supervised ﬁne-tuning [2, 9].However, pre-trained models may still suﬀer from domainmismatch.
+Several studies have highlighted the importance
+
+Evaluating the Impact of Continual Pre-Trainingon Japanese Essay Scoring Tasks
+
+Boago Okgetheng Koichi Takeuchi
+
+
+
+Graduate School of Environmental, Life, Natural Science and Technology,
+
+
+
+Okayama University
+
+
+
+pcqm1k3t@s.okayama-u.ac.jp, takeuc-k@okayama-u.ac.jp
+
+
+
+Abstract
+
+This paper investigates whether continually pre-trainingLarge Language Models on domain-speciﬁc reference textscan improve performance in Japanese Automated EssayScoring tasks.
+We use a dataset covering multiple es-say prompts related to four thematic areas― Globaliza-tion, Natural Science, Critical Thinking, and East AsianEconomics.
+Each essay is scored on a ﬁve-point scalefor Comprehensiveness.
+Models undergo two conﬁgura-tions: (1) direct ﬁne-tuning on the scored essays, and (2)an additional continual pre-training phase using domain-speciﬁc texts prior to ﬁne-tuning.
+Our ﬁndings indicatethat most models beneﬁt from this extra training, as ev-idenced by improvements in evaluation metrics such asthe F1 Score, Quadratic Weighted Kappa, Accuracy, andRoot Mean Squared Error.
+These results underscore theimportance of domain adaptation for more accurate essayscoring.
+
+
+1 Introduction
+
+Automated Essay Scoring (AES) systems aim to assessthe quality of written text using computational methods,thereby reducing the time and eﬀort required for humangrading [1].
+Early AES systems often relied on featureengineering and statistical models, extracting linguisticfeatures and employing regression or classiﬁcation tech-niques to predict essay scores.
+However, recent advancesin transformer-based language models have led to perfor-mance gains that surpass traditional approaches [2, 3, 4].Despite the success of these models, an important lim-itation persists.
+Many of these architectures, such asBERT-based and GPT-based models, are pre-trained onlarge-scale corpora that may lack nuanced, domain-speciﬁcknowledge [5].
+Consequently, their ability to handle spe-cialized content is constrained, particularly in contexts likeJapanese university admissions examinations, where essaytopics can be both technical and diverse.
+To address this challenge, this study explores contin-ual pre-training―a process in which a language model isﬁrst pre-trained on massive, general-purpose corpora andthen re-trained on narrower, domain-speciﬁc texts beforethe ﬁnal ﬁne-tuning phase.
+By continually pre-training ondomain-relevant material, the model may acquire special-ized vocabulary and contextual cues essential for eﬀectiveassessment.
+We investigate whether such continual pre-training leads to higher scores in standard metrics such asthe F1 Score, Quadratic Weighted Kappa, Accuracy, andRoot Mean Squared Error (RMSE).
+
+
+2 Related Work
+
+Automated Essay Scoring systems were initially devel-oped using feature-based and statistical approaches, whichrelied on handcrafted linguistic features such as word 𝑛-grams, part-of-speech tags, and discourse elements
+[1].With the advent of deep learning, research began to shifttoward end-to-end neural architectures, including Convo-lutional Neural Networks [6] and recurrent networks withLong Short-Term Memory [7, 8].
+These approaches re-duced the need for handcrafted features while capturingricher representations of text.
+The introduction of transformer-based architectures rev-olutionized natural language processing.
+Models such asBERT and GPT have attained state-of-the-art results acrosstasks by leveraging large corpora for unsupervised pre-training and then applying supervised ﬁne-tuning [2, 9].However, pre-trained models may still suﬀer from domainmismatch.
+Several studies have highlighted the importanceof domain adaptation or continual pre-training for special-ized areas [5, 10].For example, Hirao et al.[11] found that pre-training onnonnative Japanese data enhanced per formance in scor-ing essays written by second-language learners.
+Similarly,domain-relevant text has been used to improve the perfor-mance of Automated Essay Scoring models [12].
+Yet, ap-plying continual pre-training speciﬁcally to Japanese uni-versity entrance topics remains under-explored, particu-larly with new Large Language Models of diﬀerent param-eter scales.
+
+
+3 Dataset
+
+
+
+3.1 Essay Prompts and Scores
+
+We employ a dataset of Japanese essays written in re-sponse to prompts drawn from four thematic areas:• Globalization• Natural Science• Critical Thinking• East Asian EconomicsEach theme contains several prompts (for example,subtopics focusing on international trade, environmen-tal conservation, or economic interdependence).
+Essaylengths vary between 100 and 800 characters.
+All essaysare labeled with a ﬁve-point score reﬂecting a single traitknown as Comprehensiveness, which captures how thor-oughly and coherently students have addressed the prompt.
+
+
+3.2 Domain-Speciﬁc Texts
+
+
+In addition to the scored essays, each theme is accompa-nied by reference documents that provide domain-speciﬁcbackground knowledge.
+These reference materials includeacademic articles, instructor-prepared sample responses,and explanatory texts.
+To facilitate continual pre-training,we compiled these domain-speciﬁc texts from all themesinto a uniﬁed corpus.
+Speciﬁcally, the Globalization andScience themes each contribute approximately 2,600 char-acters, while the Criticize theme provides around 2,500characters, and the Easia theme adds a more extensive6,300 characters to the corpus.
+
+
+4 Methodology
+
+
+
+4.1 Models
+
+We investigate the performance of several transformer-based models with varying parameter sizes and conﬁgura-tions:1.
+Swallow-7b-hf2.
+Swallow-7b-instruct-hf3.
+Llama-3-Swallow-8B-v0.14. Llama-3-Swallow-8B-Instruct-v0.15.
+llm-jp/llm-jp-13b-v2.0 (for baseline comparison)Each model includes a classiﬁcation head on top of thelanguage model to predict the essay score.
+
+
+4.2 Experimental Design
+
+4.2.1 Continual Pre-TrainingTo narrow the gap between general pre-training and thespecialized context of Japanese university entrance exami-nations, we conduct an intermediate continual pre-trainingphase.
+The language models are exposed to a concatenatedcorpus of domain-speciﬁc texts using a next-token predic-tion objective.
+This is carried out for multiple epochs (twoto ﬁve, depending on the models size and memory con-straints).
+We adopt the AdamW optimizer with a learningrate of 5 × 10−5for stable convergence.4.2.2 Fine-Tuning on Scored EssaysOnce the model is continually pre-trained, it proceeds toa ﬁnal ﬁne-tuning phase on the labeled essay dataset.
+Weconvert the essay scoring task into a ﬁve-class classiﬁcationproblem, where each class corresponds to a speciﬁc scorefrom one to ﬁve.
+We train the model for up to ten epochs,again using AdamW with a learning rate of 5×10−5.
+A ﬁve-fold cross-validation setup is employed: 60% of essays areused for training, 20% for validation, and 20% for testingin each fold.4.2.3 Evaluation MetricsWe report the following metrics on the test partition ofeach fold:• F1 Score: The harmonic mean of precision and recall.•
+Quadratic Weighted Kappa (QWK): A measure of
+
+Evaluating the Impact of Continual Pre-Trainingon Japanese Essay Scoring Tasks
+
+Boago Okgetheng Koichi Takeuchi
+
+
+
+Graduate School of Environmental, Life, Natural Science and Technology,
+
+
+
+Okayama University
+
+
+
+pcqm1k3t@s.okayama-u.ac.jp, takeuc-k@okayama-u.ac.jp
+
+
+
+Abstract
+
+This paper investigates whether continually pre-trainingLarge Language Models on domain-speciﬁc reference textscan improve performance in Japanese Automated EssayScoring tasks.
+We use a dataset covering multiple es-say prompts related to four thematic areas― Globaliza-tion, Natural Science, Critical Thinking, and East AsianEconomics.
+Each essay is scored on a ﬁve-point scalefor Comprehensiveness.
+Models undergo two conﬁgura-tions: (1) direct ﬁne-tuning on the scored essays, and (2)an additional continual pre-training phase using domain-speciﬁc texts prior to ﬁne-tuning.
+Our ﬁndings indicatethat most models beneﬁt from this extra training, as ev-idenced by improvements in evaluation metrics such asthe F1 Score, Quadratic Weighted Kappa, Accuracy, andRoot Mean Squared Error.
+These results underscore theimportance of domain adaptation for more accurate essayscoring.
+
+
+1 Introduction
+
+Automated Essay Scoring (AES) systems aim to assessthe quality of written text using computational methods,thereby reducing the time and eﬀort required for humangrading [1].
+Early AES systems often relied on featureengineering and statistical models, extracting linguisticfeatures and employing regression or classiﬁcation tech-niques to predict essay scores.
+However, recent advancesin transformer-based language models have led to perfor-mance gains that surpass traditional approaches [2, 3, 4].Despite the success of these models, an important lim-itation persists.
+Many of these architectures, such asBERT-based and GPT-based models, are pre-trained onlarge-scale corpora that may lack nuanced, domain-speciﬁcknowledge [5].
+Consequently, their ability to handle spe-cialized content is constrained, particularly in contexts likeJapanese university admissions examinations, where essaytopics can be both technical and diverse.
+To address this challenge, this study explores contin-ual pre-training―a process in which a language model isﬁrst pre-trained on massive, general-purpose corpora andthen re-trained on narrower, domain-speciﬁc texts beforethe ﬁnal ﬁne-tuning phase.
+By continually pre-training ondomain-relevant material, the model may acquire special-ized vocabulary and contextual cues essential for eﬀectiveassessment.
+We investigate whether such continual pre-training leads to higher scores in standard metrics such asthe F1 Score, Quadratic Weighted Kappa, Accuracy, andRoot Mean Squared Error (RMSE).
+
+
+2 Related Work
+
+Automated Essay Scoring systems were initially devel-oped using feature-based and statistical approaches, whichrelied on handcrafted linguistic features such as word 𝑛-grams, part-of-speech tags, and discourse elements
+[1].With the advent of deep learning, research began to shifttoward end-to-end neural architectures, including Convo-lutional Neural Networks [6] and recurrent networks withLong Short-Term Memory [7, 8].
+These approaches re-duced the need for handcrafted features while capturingricher representations of text.
+The introduction of transformer-based architectures rev-olutionized natural language processing.
+Models such asBERT and GPT have attained state-of-the-art results acrosstasks by leveraging large corpora for unsupervised pre-training and then applying supervised ﬁne-tuning [2, 9].However, pre-trained models may still suﬀer from domainmismatch.
+Several studies have highlighted the importanceof domain adaptation or continual pre-training for special-ized areas [5, 10].For example, Hirao et al.[11] found that pre-training onnonnative Japanese data enhanced per formance in scor-ing essays written by second-language learners.
+Similarly,domain-relevant text has been used to improve the perfor-mance of Automated Essay Scoring models [12].
+Yet, ap-plying continual pre-training speciﬁcally to Japanese uni-versity entrance topics remains under-explored, particu-larly with new Large Language Models of diﬀerent param-eter scales.
+
+
+3 Dataset
+
+
+
+3.1 Essay Prompts and Scores
+
+We employ a dataset of Japanese essays written in re-sponse to prompts drawn from four thematic areas:• Globalization• Natural Science• Critical Thinking• East Asian EconomicsEach theme contains several prompts (for example,subtopics focusing on international trade, environmen-tal conservation, or economic interdependence).
+Essaylengths vary between 100 and 800 characters.
+All essaysare labeled with a ﬁve-point score reﬂecting a single traitknown as Comprehensiveness, which captures how thor-oughly and coherently students have addressed the prompt.
+
+
+3.2 Domain-Speciﬁc Texts
+
+
+In addition to the scored essays, each theme is accompa-nied by reference documents that provide domain-speciﬁcbackground knowledge.
+These reference materials includeacademic articles, instructor-prepared sample responses,and explanatory texts.
+To facilitate continual pre-training,we compiled these domain-speciﬁc texts from all themesinto a uniﬁed corpus.
+Speciﬁcally, the Globalization andScience themes each contribute approximately 2,600 char-acters, while the Criticize theme provides around 2,500characters, and the Easia theme adds a more extensive6,300 characters to the corpus.
+
+
+4 Methodology
+
+
+
+4.1 Models
+
+We investigate the performance of several transformer-based models with varying parameter sizes and conﬁgura-tions:1.
+Swallow-7b-hf2.
+Swallow-7b-instruct-hf3.
+Llama-3-Swallow-8B-v0.14. Llama-3-Swallow-8B-Instruct-v0.15.
+llm-jp/llm-jp-13b-v2.0 (for baseline comparison)Each model includes a classiﬁcation head on top of thelanguage model to predict the essay score.
+
+
+4.2 Experimental Design
+
+4.2.1 Continual Pre-TrainingTo narrow the gap between general pre-training and thespecialized context of Japanese university entrance exami-nations, we conduct an intermediate continual pre-trainingphase.
+The language models are exposed to a concatenatedcorpus of domain-speciﬁc texts using a next-token predic-tion objective.
+This is carried out for multiple epochs (twoto ﬁve, depending on the models size and memory con-straints).
+We adopt the AdamW optimizer with a learningrate of 5 × 10−5for stable convergence.4.2.2 Fine-Tuning on Scored EssaysOnce the model is continually pre-trained, it proceeds toa ﬁnal ﬁne-tuning phase on the labeled essay dataset.
+Weconvert the essay scoring task into a ﬁve-class classiﬁcationproblem, where each class corresponds to a speciﬁc scorefrom one to ﬁve.
+We train the model for up to ten epochs,again using AdamW with a learning rate of 5×10−5.
+A ﬁve-fold cross-validation setup is employed: 60% of essays areused for training, 20% for validation, and 20% for testingin each fold.4.2.3 Evaluation MetricsWe report the following metrics on the test partition ofeach fold:• F1 Score: The harmonic mean of precision and recall.•
+Quadratic Weighted Kappa (QWK): A measure ofTable 1 Comparison of Continual Pre-Training vs. Fine-Tun-ing OnlyModel F1 QWK Accuracy RMSEContinual Pre-TrainingSwallow-7b-hf0.7279 0.8244 0.8842 0.2308Swallow-7b-instruct-hf 0.7170 0.8219 0.8803 0.2605Llama-3-Swallow-8B-v0.1 0.8264 0.8160 0.8776 0.2440Llama-3-Swallow-8B-Instruct-v0.1 0.8251 0.8004 0.8758 0.2603Fine-Tuning OnlySwallow-7b-hf 0.7223 0.8237 0.8843 0.2366Swallow-7b-instruct-hf 0.7130 0.8178 0.8793 0.2434Llama-3-Swallow-8B-v0.1 0.6899 0.7743 0.8625 0.3042Llama-3-Swallow-8B-Instruct-v0.1 0.7009 0.7833 0.8674 0.3097llm-jp/llm-jp-13b-v2.0 0.7108 0.7934 0.8648 0.2653rating ag reement that penalizes larger discrepanciesmore heavily.•
+Accuracy: The percentage of exactly correct predic-tions.• Root Mean Squared Error (RMSE):
+The square rootof the average squared diﬀerences between predictedand actual scores.
+
+
+5 Results
+
+Table 1 summarizes the performance of each model.Fine-Tuning Only denotes models that did not undergocontinual pre-training on domain-speciﬁc texts, whileContinual Pre-Training denotes those that received thisadditional training.
+Models that received continual pre-training generallyexhibit higher F1 scores and Quadratic Weighted Kappavalues.
+For instance, Llama-3-Swallow-8B-v0.1 shows anotable jump in F1 from 0.6899 to 0.8264 when domain-speciﬁc pre-training is applied.
+The Swallow-7b-hf vari-ants also see modest gains in both F1 and QuadraticWeighted Kappa, indicating that adding specialized con-tent can beneﬁt even mid-sized models.
+
+
+6 Discussion
+
+The most signiﬁcant result from Table 1 is the perfor-mance boost observed in models that underwent continualpre-training.
+Exposure to reference texts ﬁlled with spe-cialized terminology, context, and examples allows a modelto better capture linguistic and conceptual cues relevant tothe scored essays.
+Although larger models have more capacity, the data andcomputational resources required for continual pre-trainingcan be prohibitive.
+Smaller or mid-sized models can stillproduce competitive results when carefully aligned withthe target domain, in line with prior research in parameter-eﬃcient training methods [13].Our study focuses on the Comprehensiveness dimen-sion of essay scoring, but other traits― such as LogicalConsistency and Grammar― may beneﬁt similarly fromdomain-speciﬁc pre-training.
+Additionally, memory con-straints limited the extent of our experiments on very largemodels.
+More eﬃcient approaches to continuous adapta-tion (such as low-rank parameter updates) may help scalethese methods to even larger models without sacriﬁcingperformance.
+
+
+7 Conclusion
+
+This paper demonstrated that continually pre-trainingLarge Language Models on domain-speciﬁc Japanese textscan substantially enhance Automated Essay Scoring out-comes.
+By leveraging specialized reference materials be-fore the ﬁnal ﬁne-tuning step, models achieved improvedscores on metrics such as the F1 Score and QuadraticWeighted Kappa.
+These ﬁndings underline the value ofbridging the gap between general-purpose pre-training andniche essay topics common in university-level entrance ex-aminations.
+The results open avenues for future researchon multi-trait scoring and eﬃcient parameter adaptationtechniques, contributing to more robust and context-awareessay evaluation systems.
+
+
+Acknowledgement
+
+Part of this study was supported by JSPS KAKENHIGrandt Number 22K00530.
+
+
+References
+
+[1] Yigal Attali and Jill Burstein.
+Automated Essay Scoringwith e-rater V.2.
+The Journal of Technology, Learn-ing, and Assessment, Vol. 4, No. 3, pp.
+1–30, 2006.[2]
+Ruosong Yang, Jiannong Cao, Zhiyuan Wen, YouzhengWu, and Xiaodong He.
+Enhancing automated essay scor-ing performance via ﬁne-tuning pre-trained language mod-els with combination of regression and ranking.
+In TrevorCohn, Yulan He, and Yang Liu, editors, Findings of theAssociation for Computational Linguistics: EMNLP2020, pp.
+1560–1569, Online, November 2020.
+Associa-tion for Computational Linguistics.[3] Rahul Kumar, Sandeep Mathias, Sriparna Saha, and Push-pak Bhattacharyya.
+Many hands make light work: Us-ing essay traits to automatically score essays.
+In MarineCarpuat, Marie-Catherine de Marneﬀe, and Ivan VladimirMeza Ruiz, editors, Proceedings of the 2022 Confer-ence of the North American Chapter of the Asso-
+
+Evaluating the Impact of Continual Pre-Trainingon Japanese Essay Scoring Tasks
+
+Boago Okgetheng Koichi Takeuchi
+
+
+
+Graduate School of Environmental, Life, Natural Science and Technology,
+
+
+
+Okayama University
+
+
+
+pcqm1k3t@s.okayama-u.ac.jp, takeuc-k@okayama-u.ac.jp
+
+
+
+Abstract
+
+This paper investigates whether continually pre-trainingLarge Language Models on domain-speciﬁc reference textscan improve performance in Japanese Automated EssayScoring tasks.
+We use a dataset covering multiple es-say prompts related to four thematic areas― Globaliza-tion, Natural Science, Critical Thinking, and East AsianEconomics.
+Each essay is scored on a ﬁve-point scalefor Comprehensiveness.
+Models undergo two conﬁgura-tions: (1) direct ﬁne-tuning on the scored essays, and (2)an additional continual pre-training phase using domain-speciﬁc texts prior to ﬁne-tuning.
+Our ﬁndings indicatethat most models beneﬁt from this extra training, as ev-idenced by improvements in evaluation metrics such asthe F1 Score, Quadratic Weighted Kappa, Accuracy, andRoot Mean Squared Error.
+These results underscore theimportance of domain adaptation for more accurate essayscoring.
+
+
+1 Introduction
+
+Automated Essay Scoring (AES) systems aim to assessthe quality of written text using computational methods,thereby reducing the time and eﬀort required for humangrading [1].
+Early AES systems often relied on featureengineering and statistical models, extracting linguisticfeatures and employing regression or classiﬁcation tech-niques to predict essay scores.
+However, recent advancesin transformer-based language models have led to perfor-mance gains that surpass traditional approaches [2, 3, 4].Despite the success of these models, an important lim-itation persists.
+Many of these architectures, such asBERT-based and GPT-based models, are pre-trained onlarge-scale corpora that may lack nuanced, domain-speciﬁcknowledge [5].
+Consequently, their ability to handle spe-cialized content is constrained, particularly in contexts likeJapanese university admissions examinations, where essaytopics can be both technical and diverse.
+To address this challenge, this study explores contin-ual pre-training―a process in which a language model isﬁrst pre-trained on massive, general-purpose corpora andthen re-trained on narrower, domain-speciﬁc texts beforethe ﬁnal ﬁne-tuning phase.
+By continually pre-training ondomain-relevant material, the model may acquire special-ized vocabulary and contextual cues essential for eﬀectiveassessment.
+We investigate whether such continual pre-training leads to higher scores in standard metrics such asthe F1 Score, Quadratic Weighted Kappa, Accuracy, andRoot Mean Squared Error (RMSE).
+
+
+2 Related Work
+
+Automated Essay Scoring systems were initially devel-oped using feature-based and statistical approaches, whichrelied on handcrafted linguistic features such as word 𝑛-grams, part-of-speech tags, and discourse elements
+[1].With the advent of deep learning, research began to shifttoward end-to-end neural architectures, including Convo-lutional Neural Networks [6] and recurrent networks withLong Short-Term Memory [7, 8].
+These approaches re-duced the need for handcrafted features while capturingricher representations of text.
+The introduction of transformer-based architectures rev-olutionized natural language processing.
+Models such asBERT and GPT have attained state-of-the-art results acrosstasks by leveraging large corpora for unsupervised pre-training and then applying supervised ﬁne-tuning [2, 9].However, pre-trained models may still suﬀer from domainmismatch.
+Several studies have highlighted the importanceof domain adaptation or continual pre-training for special-ized areas [5, 10].For example, Hirao et al.[11] found that pre-training onnonnative Japanese data enhanced per formance in scor-ing essays written by second-language learners.
+Similarly,domain-relevant text has been used to improve the perfor-mance of Automated Essay Scoring models [12].
+Yet, ap-plying continual pre-training speciﬁcally to Japanese uni-versity entrance topics remains under-explored, particu-larly with new Large Language Models of diﬀerent param-eter scales.
+
+
+3 Dataset
+
+
+
+3.1 Essay Prompts and Scores
+
+We employ a dataset of Japanese essays written in re-sponse to prompts drawn from four thematic areas:• Globalization• Natural Science• Critical Thinking• East Asian EconomicsEach theme contains several prompts (for example,subtopics focusing on international trade, environmen-tal conservation, or economic interdependence).
+Essaylengths vary between 100 and 800 characters.
+All essaysare labeled with a ﬁve-point score reﬂecting a single traitknown as Comprehensiveness, which captures how thor-oughly and coherently students have addressed the prompt.
+
+
+3.2 Domain-Speciﬁc Texts
+
+
+In addition to the scored essays, each theme is accompa-nied by reference documents that provide domain-speciﬁcbackground knowledge.
+These reference materials includeacademic articles, instructor-prepared sample responses,and explanatory texts.
+To facilitate continual pre-training,we compiled these domain-speciﬁc texts from all themesinto a uniﬁed corpus.
+Speciﬁcally, the Globalization andScience themes each contribute approximately 2,600 char-acters, while the Criticize theme provides around 2,500characters, and the Easia theme adds a more extensive6,300 characters to the corpus.
+
+
+4 Methodology
+
+
+
+4.1 Models
+
+We investigate the performance of several transformer-based models with varying parameter sizes and conﬁgura-tions:1.
+Swallow-7b-hf2.
+Swallow-7b-instruct-hf3.
+Llama-3-Swallow-8B-v0.14. Llama-3-Swallow-8B-Instruct-v0.15.
+llm-jp/llm-jp-13b-v2.0 (for baseline comparison)Each model includes a classiﬁcation head on top of thelanguage model to predict the essay score.
+
+
+4.2 Experimental Design
+
+4.2.1 Continual Pre-TrainingTo narrow the gap between general pre-training and thespecialized context of Japanese university entrance exami-nations, we conduct an intermediate continual pre-trainingphase.
+The language models are exposed to a concatenatedcorpus of domain-speciﬁc texts using a next-token predic-tion objective.
+This is carried out for multiple epochs (twoto ﬁve, depending on the models size and memory con-straints).
+We adopt the AdamW optimizer with a learningrate of 5 × 10−5for stable convergence.4.2.2 Fine-Tuning on Scored EssaysOnce the model is continually pre-trained, it proceeds toa ﬁnal ﬁne-tuning phase on the labeled essay dataset.
+Weconvert the essay scoring task into a ﬁve-class classiﬁcationproblem, where each class corresponds to a speciﬁc scorefrom one to ﬁve.
+We train the model for up to ten epochs,again using AdamW with a learning rate of 5×10−5.
+A ﬁve-fold cross-validation setup is employed: 60% of essays areused for training, 20% for validation, and 20% for testingin each fold.4.2.3 Evaluation MetricsWe report the following metrics on the test partition ofeach fold:• F1 Score: The harmonic mean of precision and recall.•
+Quadratic Weighted Kappa (QWK): A measure ofTable 1 Comparison of Continual Pre-Training vs. Fine-Tun-ing OnlyModel F1 QWK Accuracy RMSEContinual Pre-TrainingSwallow-7b-hf0.7279 0.8244 0.8842 0.2308Swallow-7b-instruct-hf 0.7170 0.8219 0.8803 0.2605Llama-3-Swallow-8B-v0.1 0.8264 0.8160 0.8776 0.2440Llama-3-Swallow-8B-Instruct-v0.1 0.8251 0.8004 0.8758 0.2603Fine-Tuning OnlySwallow-7b-hf 0.7223 0.8237 0.8843 0.2366Swallow-7b-instruct-hf 0.7130 0.8178 0.8793 0.2434Llama-3-Swallow-8B-v0.1 0.6899 0.7743 0.8625 0.3042Llama-3-Swallow-8B-Instruct-v0.1 0.7009 0.7833 0.8674 0.3097llm-jp/llm-jp-13b-v2.0 0.7108 0.7934 0.8648 0.2653rating ag reement that penalizes larger discrepanciesmore heavily.•
+Accuracy: The percentage of exactly correct predic-tions.• Root Mean Squared Error (RMSE):
+The square rootof the average squared diﬀerences between predictedand actual scores.
+
+
+5 Results
+
+Table 1 summarizes the performance of each model.Fine-Tuning Only denotes models that did not undergocontinual pre-training on domain-speciﬁc texts, whileContinual Pre-Training denotes those that received thisadditional training.
+Models that received continual pre-training generallyexhibit higher F1 scores and Quadratic Weighted Kappavalues.
+For instance, Llama-3-Swallow-8B-v0.1 shows anotable jump in F1 from 0.6899 to 0.8264 when domain-speciﬁc pre-training is applied.
+The Swallow-7b-hf vari-ants also see modest gains in both F1 and QuadraticWeighted Kappa, indicating that adding specialized con-tent can beneﬁt even mid-sized models.
+
+
+6 Discussion
+
+The most signiﬁcant result from Table 1 is the perfor-mance boost observed in models that underwent continualpre-training.
+Exposure to reference texts ﬁlled with spe-cialized terminology, context, and examples allows a modelto better capture linguistic and conceptual cues relevant tothe scored essays.
+Although larger models have more capacity, the data andcomputational resources required for continual pre-trainingcan be prohibitive.
+Smaller or mid-sized models can stillproduce competitive results when carefully aligned withthe target domain, in line with prior research in parameter-eﬃcient training methods [13].Our study focuses on the Comprehensiveness dimen-sion of essay scoring, but other traits― such as LogicalConsistency and Grammar― may beneﬁt similarly fromdomain-speciﬁc pre-training.
+Additionally, memory con-straints limited the extent of our experiments on very largemodels.
+More eﬃcient approaches to continuous adapta-tion (such as low-rank parameter updates) may help scalethese methods to even larger models without sacriﬁcingperformance.
+
+
+7 Conclusion
+
+This paper demonstrated that continually pre-trainingLarge Language Models on domain-speciﬁc Japanese textscan substantially enhance Automated Essay Scoring out-comes.
+By leveraging specialized reference materials be-fore the ﬁnal ﬁne-tuning step, models achieved improvedscores on metrics such as the F1 Score and QuadraticWeighted Kappa.
+These ﬁndings underline the value ofbridging the gap between general-purpose pre-training andniche essay topics common in university-level entrance ex-aminations.
+The results open avenues for future researchon multi-trait scoring and eﬃcient parameter adaptationtechniques, contributing to more robust and context-awareessay evaluation systems.
+
+
+Acknowledgement
+
+Part of this study was supported by JSPS KAKENHIGrandt Number 22K00530.
+
+
+References
+
+[1] Yigal Attali and Jill Burstein.
+Automated Essay Scoringwith e-rater V.2.
+The Journal of Technology, Learn-ing, and Assessment, Vol. 4, No. 3, pp.
+1–30, 2006.[2]
+Ruosong Yang, Jiannong Cao, Zhiyuan Wen, YouzhengWu, and Xiaodong He.
+Enhancing automated essay scor-ing performance via ﬁne-tuning pre-trained language mod-els with combination of regression and ranking.
+In TrevorCohn, Yulan He, and Yang Liu, editors, Findings of theAssociation for Computational Linguistics: EMNLP2020, pp.
+1560–1569, Online, November 2020.
+Associa-tion for Computational Linguistics.[3] Rahul Kumar, Sandeep Mathias, Sriparna Saha, and Push-pak Bhattacharyya.
+Many hands make light work: Us-ing essay traits to automatically score essays.
+In MarineCarpuat, Marie-Catherine de Marneﬀe, and Ivan VladimirMeza Ruiz, editors, Proceedings of the 2022 Confer-ence of the North American Chapter of the Asso-ciation for Computational Linguistics: Human Lan-guage Technologies, pp.
+1485–1495, Seattle, UnitedStates, July 2022.
+Association for Computational Linguis-tics.[4] Shengjie Li and Vincent Ng. Conundrums in cross-promptautomated essay scoring: Making sense of the state of theart.
+In Lun-Wei Ku, Andre Martins, and Vivek Srikumar,editors, Proceedings of the 62nd Annual Meeting ofthe Association for Computational Linguistics (Vol-ume 1: Long Papers), pp. 7661–7681, Bangkok, Thai-land, August 2024.
+Association for Computational Lin-guistics.[5] Yue Cao, Hanqi Jin, Xiaojun Wan, and Zhiwei Yu.
+Domain-adaptive neural automated essay scoring.
+In Pro-ceedings of the 43rd International ACM SIGIR Con-ference on Research and Development in Informa-tion, pp.
+1011–1020, 2020.[6]
+Fei Dong and Yue Zhang.
+Automatic features for essayscoring – an empirical study.
+In Jian Su, Kevin Duh, andXavier Carreras, editors, Proceedings of the 2016 Con-ference on Empirical Methods in Natural LanguageProcessing, pp.
+1072–1077, Austin, Texas, November2016.
+Association for Computational Linguistics.[7] Kaveh Taghipour and Hwee Tou Ng.
+A neural approachto automated essay scoring.
+In Jian Su, Kevin Duh, andXavier Carreras, editors, Proceedings of the 2016 Con-ference on Empirical Methods in Natural LanguageProcessing, pp. 1882–1891, Austin, Texas, November2016.
+Association for Computational Linguistics.[8]
+Fei Dong, Yue Zhang, and Jie Yang.
+Attention-based re-current convolutional neural network for automatic essayscoring.
+In Roger Levy and Lucia Specia, editors, Pro-ceedings of the 21st Conference on ComputationalNatural Language Learning (CoNLL 2017), pp. 153–162, Vancouver, Canada, August 2017.
+Association forComputational Linguistics.[9] Changrong Xiao, Wenxing Ma, Sean Xin Xu, KunpengZhang, Yufang Wang, and Qi Fu.
+From automation to aug-mentation: Large language models elevating essay scoringlandscape.
+arXiv:2401.06431, 2024.[10]
+Masaki Uto, Yikuan Xie, and Maomi Ueno.
+Neural auto-mated essay scoring incorporating handcrafted features.
+In Donia Scott, Nuria Bel, and Chengqing Zong, edi-tors, Proceedings of the 28th International Confer-ence on Computational Linguistics, pp.
+6077–6088,Barcelona, Spain (Online), December 2020.
+InternationalCommittee on Computational Linguistics.[11]
+Reo Hirao, Mio Arai, Hiroki Shimanaka, Satoru Kat-sumata, and Mamoru Komachi.
+Automated essay scor-ing system for nonnative Japanese learners.
+In Nico-letta Calzolari, Frédéric Béchet, Philippe Blache, KhalidChoukri, Christopher Cieri, Thierry Declerck, Sara Goggi,Hitoshi Isahara, Bente Maegaard, Joseph Mariani, HélèneMazo, Asuncion Moreno, Jan Odijk, and Stelios Piperidis,editors, Proceedings of the Twelfth Language Re-sources and Evaluation Conference, pp.
+1250–1257,Marseille, France, May 2020.
+European Language Re-sources Association.[12]
+Robert Ridley, Liang He, Xin yu Dai, Shujian Huang, andJiajun Chen.
+Automated cross-prompt scoring of essaytraits.
+In Proceedings of the AAAI Conference onArtiﬁcial Intelligence, 35(15), pp.
+13745–13753, 2021.[13] Yaqiong He, Feng Jiang, Xiaomin Chu, and Peifeng Li.
+Automated Chinese essay scoring from multiple traits.
+In Nicoletta Calzolari, Chu-Ren Huang, Hansaem Kim,James Pustejovsky, Leo Wanner, Key-Sun Choi, Pum-Mo Ryu, Hsin-Hsi Chen, Lucia Donatelli, Heng Ji, SadaoKurohashi, Patrizia Paggio, Nianwen Xue, Seokhwan Kim,Younggyun Hahm, Zhong He, Tony Kyungil Lee, EnricoSantus, Francis Bond, and Seung-Hoon Na, editors, Pro-ceedings of the 29th International Conference onComputational Linguistics, pp.
+3007–3016, Gyeongju,Republic of Korea, October 2022.
+International Committeeon Computational Linguistics.

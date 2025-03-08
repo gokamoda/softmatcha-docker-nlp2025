@@ -1,0 +1,233 @@
+Enhancing Fake News Detection through ConsistencyContrastive Learning with MLP-Mixer
+
+Shaodong Cui
+
+1
+
+Wen Ma
+
+1
+
+ Hiroyuki Shinnou
+
+11
+
+Faculty of Engineering, Ibaraki University, Hitachi, Ibaraki, Japan
+
+
+
+22nd312g@vc.ibaraki.ac.jp  19ND302H@vc.ibaraki.ac.jp
+
+
+
+ hiroyuki.shinnou.0828@vc.ibaraki.ac.jp
+
+
+
+Abstract
+
+Detecting and ﬁltering false infor mation has become acritical area of academic research with the rapid spreadof multimodal fake news on major social media platforms.
+However, eﬀectively integrating diverse feature types forreliable fake news detection remains challenging.
+To ad-dress this, we propose a novel fake news detection modelbased on consistency contrastive learning.
+Our model usesan MLP-mixer to extract features, and consistency con-trastive learning to measure the semantic distance betweentext features and text attribute features.
+This approach en-hances the MLP-mixers ability to extract consistent high-level features.
+Experimental results on the LIAR datasetdemonstrate that our proposed model outperforms existingmethods in detecting fake news.
+
+
+1 Introduction
+
+The rapid development of the Internet has changed theway we obtain information.
+However, it has also facilitatedthe spread of fake news.
+To detect fake news, many re-searchers use machine learning to classify fake news.
+Forexample, some studies introduce recurrent neural networksinto the detection process to better understand the time se-ries characteristics in the text
+[1].
+With the continuousdevelopment of fake news detection technology, attentionmechanisms focus on fake news features [2].
+Ran et al.[3] proposed an end-to-end multi-channel graph attentionnetwork, which constructs three sub-graphs in parallel tolearn the semantic information of news propagation struc-ture for rumor detection.
+Although the above studies haveachieved good results in fake news detection, there is a lackof research on the consistency between news text and textattributes.
+In the multimodal ﬁeld, contrastive learning has beenshown to eﬀectively enhance the multimodal joint featurerepresentation that integ rates text and image information.
+Jia et al.
+[4] used contrastive learning loss to train a modelthat merged matching text-image pairs and separated mis-matched text-image pairs to align image and text represen-tations.
+Li et al.
+[5] proposed a contrastive loss to calcu-late the similarity of image and text feature representationsand dynamically construct negative samples to align mul-timodal representations.
+However, current research onlyconsiders contrastive learning between diﬀerent modali-ties.
+Inspired by this, we adopt Consistency ContrastiveLearning to consider the consistent representation learningbetween text and text attributes to extract more consistentfeatures.
+We use MLP-Mixer to replace the convolutionalnetwork and attention mechanism to achieve better perfor-mance.
+The main contributions of this work are as follows:-
+We use MLP-mixer to extract text features and text at-tribute features to replace the attention model to
+capturelong-distance dependencies.-
+We use consistency contrast loss to shorten the semanticdistance between text and text attributes, thereby extractingmore consistent high-level features.
+
+
+2 Proposed Method
+
+Figure 1 shows the proposed model framework.
+We di-vide the LIAR dataset into three types of data: news text,text attributes, and numerical data.
+MLP-mixer is used toextract news text features and text attribute features.
+LSTMis used to process numerical features.
+Consistency Con-trastive Learning shortens the semantic similarity betweennews text and text attributes to improve consistency.
+Can-cat concatenates the three features together and feeds theminto the classiﬁer.
+Figure 1
+The architecture of our model.
+The circle represents the news text, and the triangle represents the news attribute.
+Shapes ofdiﬀerent colors represent diﬀerent samples.
+Consistency Contrastive Learning aims to shorten the similarity distance between diﬀerentrepresentations of the same sample.
+
+
+2.1 MLP-mixer
+
+MLP-Mixer
+[6] is a pure MLP neural network developedby the Google research team in 2021.
+It was initially usedin image classiﬁcation tasks in the CV ﬁeld.
+MLP-Mixeris mainly composed of token-mixing MLP and channel-mixing MLP.
+Token-mixing is responsible for the informa-tion exchange of spatial positions, and channel-mixing isresponsible for the information exchange of feature chan-nels.
+MLP-mixer takes multiple text tensor patches as in-put, and each patch is projected onto the hidden dimensionC.Token-mixing is ﬁrst performed on each patch to fuseadjacent values within each patch and mix spatial infor-mation, then channel-mixing is performed.
+Token MLPacts on the columns of T to fuse spatial information at dif-ferent positions.
+Channel MLP acts on the rows of T tofuse positional feature information of diﬀerent channels.
+In addition, Mixer also draws on the idea of the residualstructure in ResNet, uses skip-connection to add the inputand output, and uses Layer Norm before the fully connectedlayer.
+A single MLP consists of two fully connected layerssandwiched by a GELU activation function.
+MLP-mixercan be represented mathematically as:U∗,𝑖= X∗,𝑖+W2𝜎W1LN (X)∗,𝑖, for𝑖 = 1 . . .
+𝐶 (1)Y𝑗,∗= U𝑗,∗+W4𝜎W3LN (U)𝑗,∗, for 𝑗 = 1 . . .
+𝑆 (2)where 𝑋 is the input feature of the Mixer layer.
+𝐿𝑁 is thelayer normalization operation.
+𝜎 is the activation function.𝑊1, 𝑊2and 𝑊3, 𝑊4are the weight parameters of the twofully connected layers in the MLP1 and MLP2 modulesrespectively.
+
+2.2 Consistency Contrastive Learning
+
+
+We introduce a consistency contrast loss in the networkto reduce the semantic distance between similar parts oftext and text attributes in the feature space and achieve con-sistent representation learning.
+Considering that text andtext attributes from the same sample have similar semanticrepresentations, consistent contrast learning is introducedto help MLP-mixer extract more consistent high-level fea-tures.
+We measure the similarity of text and text attr ibutesby transforming them into cosine space.
+First, mark allinstances: anchor instance 𝐴 = 𝑐(𝑡 )𝑖, positive instance𝐴+= 𝑐(𝑣 )𝑖𝑡≠𝑣, negative instance 𝐴−= 𝑐(𝑡 )𝑗𝑗≠𝑖. 𝑐(𝑡 )𝑖∈
+ℝ𝑑is called the instance of sample 𝑖 in text 𝑡. 𝑐(𝑣 )𝑖∈ ℝ𝑑iscalled the instance of sample 𝑖 in text attribute
+𝑣.
+The posi-tive instances and negative instances here are relative to theanchor instance.
+It should be noted that each instance canbe selected as an anchor instance, and the anchor instanceis combined with the positive instance or the negative in-stance.
+We can get 𝑛 − 1 positive instance pairs and 𝑛 ×𝑙 −𝑛negative instance pairs.
+We aim to minimize the distance between available pos-itive instance pairs and maximize the distance betweenavailable negative instance pairs in the feature space.
+Co-sine similarity is used to measure the distance betweeninstance pairs, which can be represented mathematicallyas:𝑆𝑖𝑚𝑖𝑙𝑎𝑟𝑖𝑡 𝑦(𝑐(𝑡 )𝑖, 𝑐(𝑣 )𝑗)
+=⟨𝑐(𝑡 )𝑖· 𝑐(𝑣 )𝑗⟩||𝑐(𝑡 )𝑖|| · ||𝑐(𝑣 )𝑗||(3)where
+⟨·⟩ is the dot product operation.
+Our optimizationgoal isS(𝐴, 𝐴+)≫S(𝐴, 𝐴−).It maximizes the consis-tency between text and text attributes, and the cosine simi-larity between the anchor instance and the positive instanceis much greater than the cosine similarity between the an-chor instance and the negative instance.
+The instance-level contrastive loss for all text and textattributes can be mathematically expressed as:𝐿𝐶 𝐿= −12𝑛𝑙Õ𝑣=1Õ𝑡≠𝑣𝑛Õ𝑖=1log𝑒𝑆𝑧(𝑣)𝑖,𝑧(𝑡)𝑖/𝜏𝑒𝑆𝑧(𝑣)𝑖,𝑧(𝑡)𝑖/𝜏+Í𝑟=𝑡 ,𝑣Í𝑗=1,𝑗≠𝑖𝑒S𝑧(𝑣)𝑖,𝑧(𝑟 )𝑗/𝜏(4)where 𝜏 is the temperature parameter, indicating the distri-bution concentration degree
+[7].
+The temperature parame-ter 𝜏 controls the weights of hard and soft labels in the lossfunction.
+In many practical applications, such as text classiﬁca-tion, class imbalance is a common problem.
+Traditionalcross entropy loss may cause the model to over-focus onnegative and ignore positive samples.
+Focal loss [8] adds acoeﬃcient factor based on the standard cross entropy loss,thereby weakening the learning of easy samples and thelearning of diﬃcult samples, thereby improving the classi-ﬁcation ability of the model.
+Focal loss can be representedmathematically as:𝐿𝐹 𝐿= −(1 − 𝑝𝑡)𝛾log(𝑝𝑡)=(−(1 − 𝑝)𝛾log( 𝑝), 𝑦 = 1−𝑝𝛾log(1−𝑝), 𝑦=0=
+−𝑦(1 − 𝑝)𝛾log( 𝑝) − (1 − 𝑦)
+𝑝𝛾log(1 − 𝑝)(5)where 𝑦 ∈ {±1} speciﬁes the ground-truth class.
+𝑝
+∈ [0, 1]is
+the models estimated probability for the class with labely = 1.
+𝑝𝑡represents the predicted probability of the truecategory of the sample, 𝑝𝑡=(𝑝, 𝑦 = 11 − 𝑝, 𝑦 = 0.
+𝛾 is anadjustable factor that reduces the loss of simple samples.
+The overall training loss of our modal is representedmathematically as:𝐿 = 𝛾𝐿𝐹 𝐿+ 𝛽𝐿𝐶 𝐿(6)where 𝛾 and 𝛽 are the punishment parameters of 𝐿𝐹 𝐿and𝐿𝐶 𝐿respectively.
+
+
+3 Experiment
+
+
+
+3.1 Experimental Setup and Dataset
+
+We implemented our experiments on a machine witha single 8 GB NVIDIA GeForce RTX 3080 GPU.
+TheTable 1
+The LIAR dataset statistics.
+Statistics NumTraining set size 10,269Validation set size 1,284Testing set size 1,283Avg. statement length (tokens) 17.9Pants on ﬁre 1,050False 2,511Barely-true 2,108Half-true 2,638Mostly-true 2,466True 2,063model has a batch size of 64, an epoch of 10.
+We usethe Adam optimizer for gradient descent with a learningrate of 1e-3.
+For text tokenizer use ’bert-base-uncased’.
+The temperature parameter in the consistency contrast lossfunction is set to 0.9.
+The value ratio of 𝛾 is 2.114, 1.995,1.962, 1.676, 1.654, 0.839.Our study uses LIAR
+[9], a dataset for detecting fakenews.
+It contains 12.8K short, manually annotated sen-tences from the politifact.com API, and the politifact.comeditors rate the authenticity of each sentence, see Table 1.The data comes from various scenarios, including pressreleases, TV or radio interviews, campaign speeches, etc.
+This data set has 6 labels: pants-ﬁre, false, barely-true,half-true, mostly true and true.
+
+
+3.2 Results
+
+Table 2 shows the accuracy comparison of various exist-ing models and our proposed model on the LIAR dataset.
+CNN+LSTM+Fuzzy
+[10] is a hybrid model based on fuzzylogic that considers a combination of news articles and textand digital context information.
+This model achieves 0.465on the LIAR dataset, which is 0.007 lower than our model.
+This shows that our model outperforms this model regard-ing loss function and network structure selection.
+Funnel-CNN
+[11] uses diﬀerent classiﬁers and embedding modelsfor fake news detection, and our model also outperformsit.
+Table 4 shows the impact of diﬀerent temperature pa-rameters on the model performance when our model usesthe consistency contrast loss on the LIAR dataset.
+Themodel’s performance is relatively low when the tempera-ture is between 0.1-0.2.
+The model performs fairly wellwhen the temperature increases to 0.3-0.4.
+When the tem-Table 2 Performance of existing models and our proposedmodel on LIAR dataset.
+Model AccuracyLSTM attention [12] 0.385Capsule neural networks [13] 0.409ANSP
+[14] 0.428Deep Ensemble Model
+[15] 0.448AENeT
+[16] 0.464CNN+LSTM+Fuzzy
+[10] 0.465Funnel-CNN
+[11] 0.467Ours 0.472Table 3 Ablation experiments of our model on the LIARdataset.
+Method Accuracy Precision Recall F1w/o MLP-mixer 0.446 0.550 0.443 0.436w/o Focal Loss 0.452 0.522 0.461 0.452w/o CCL 0.448 0.526 0.460 0.439Ours 0.472 0.553 0.477 0.467perature increases to 0.5-0.7, the model performance de-creases.
+When the temperature is 0.9, the model’s accuracyand F1 score are both the highest, indicating that the modelperforms best on the LIAR dataset at this temperature.
+Figure 2 shows the confusion matrix of our model on theLIAR dataset, showing the classiﬁcation eﬀect of diﬀerentcategories.
+The horizontal axis represents the predictedlabel of the model, the vertical axis represents the truelabel, and the color depth indicates the number.
+Label 0 is’pants-ﬁre’, label 1 is ’false’, label 2 is ’barely-tr ue’, label 3is ’half-true’, label 4 is ’mostly-true’, and label 5 is ’true’.
+Itcan be seen that the model has the best classiﬁcation eﬀecton the half-true category.
+This indicates that the model isnot inclined to recognize the complete truth of the news.
+Figure 3 shows the multi-classiﬁcation ROC curve ofour model on the LIAR dataset.
+The ROC curve shows theclassiﬁcation eﬀect of the model for each category, wherethe horizontal axis is the false positive rate and the verticalaxis is the true positive rate.
+It can be seen that category0 has the highest AUC value of 0.94.
+This shows that themodel has the best classiﬁcation eﬀect on category 0.
+TheAUC values of categories 1, 2, 3, and 4 are similar, whichshows that the model has the same classiﬁcation eﬀect onthem.
+The AUC value of category 5 is the lowest, which is0.61.
+This shows that the model has the worst classiﬁcationeﬀect on category 5.
+The number of samples in category5 is the lowest, which may be related to this.
+Table 4 Performance comparison of diﬀerent temperature pa-rameters in the consistency contrastive loss on the LIAR dataset.
+Temperature Accuracy Precision Recall F10.1 0.444 0.529 0.460 0.4410.2 0.453 0.526 0.473 0.4460.3 0.453 0.535 0.468 0.4500.4 0.463 0.548 0.467 0.4550.5 0.452 0.536 0.457 0.4450.6 0.445 0.531 0.459 0.4390.70.443 0.541 0.445 0.4380.8 0.462 0.551 0.464 0.4480.9 0.472 0.553 0.477 0.467
+
+3.3 Ablation Experiment
+
+Table 3 shows the ablation study results of our pro-posed model on the LIAR dataset.
+After removing theMLP-mixer, the model’s accuracy and F1 score are lower,indicating that the MLP-mixer may signiﬁcantly improvethe overall performance.
+In particular, the recall and F1values are reduced, indicating that the MLP-mixer plays akey role in balancing precision and recall.
+After remov-ing the Focal Loss, the model’s accuracy did not decreasemuch, with the accuracy at 0.452, a decrease of 0.02.
+Thissuggests that the Focal Loss plays a role in the model, butnot as big as that of the MLP-mixer.
+After removing theCCL module, the accuracy is 0.448, a decrease of 0.024.This shows that CCL can improve model performance byimproving text content consistency and attributes.
+
+
+4 Conclusion
+
+In this paper, we propose a novel fake news detectionmodel that uses consistency contrastive learning to en-hance the consistency of text and attribute features.
+Interms of feature extraction, MLP-mixer is used to extracttext and attribute features, thereby replacing the traditionalattention mechanism, enabling it to capture long-range de-pendencies.
+Experiments on the LIAR dataset show thatour model outperforms existing methods, conﬁrming theeﬀectiveness of consistency contrastive learning for fakenews detection.
+
+
+Acknowledgements
+
+This work was supported by JSPS KAKENHI GrantNumber JP23K11212 and the NINJAL Collaborative Re-search Projects.
+
+
+
+References
+
+
+[1] Pritika Bahad, Preeti Saxena, and Raj Kamal. Fake newsdetection using bi-directional lstm-recurrent neural net-work. Procedia Computer Science, Vol. 165, pp. 74–82, 2019.
+[2] Tina Esther Trueman, Ashok Kumar, P Narayanasamy, andJ Vidya. Attention-based c-bilstm for fake news detection.Applied Soft Computing, Vol. 110, p. 107600, 2021.
+[3] Hongyan Ran, Caiyan Jia, Pengfei Zhang, and Xuanya Li.Mgat-esm: Multi-channel g raph attention neural networkwith event-sharing module for rumor detection. Inf. Sci.,Vol. 592, No. C, p. 402–416, May 2022.
+[4] Chao Jia, Yinfei Yang, Ye Xia, Yi-Ting Chen, ZaranaParekh, Hieu Pham, Quoc Le, Yun-Hsuan Sung, Zhen Li,and Tom Duerig. Scaling up visual and vision-languagerepresentation learning with noisy text supervision. InInternational conference on machine learning, pp.4904–4916. PMLR, 2021.
+[5] Junnan Li, Ramprasaath Selvaraju, Akhilesh Gotmare,Shaﬁq Joty, Caiming Xiong, and Steven Chu Hong Hoi.Align before fuse: Vision and language representationlearning with momentum distillation. Advances in neu-ral information processing systems, Vol. 34, pp. 9694–9705, 2021.
+[6] Ilya O Tolstikhin, Neil Houlsby, Alexander Kolesnikov,Lucas Beyer, Xiaohua Zhai, Thomas Unterthiner, JessicaYung, Andreas Steiner, Daniel Keysers, Jakob Uszkor-eit, et al. Mlp-mixer: An all-mlp architecture for vision.Advances in neural information processing systems,Vol. 34, pp. 24261–24272, 2021.
+[7] Zhirong Wu, Yuanjun Xiong, Stella X Yu, and Dahua Lin.Unsupervised feature learning via non-parametric instancediscrimination. In Proceedings of the IEEE confer-ence on computer vision and pattern recognition,pp. 3733–3742, 2018.
+[8] Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He,and Piotr Doll´ar. Focal loss for dense object detection.IEEE Transactions on Pattern Analysis and Ma-chine Intelligence, Vol. 42, No. 2, pp. 318–327, 2020.
+[9] William Yang Wang. liar, liar pants on ﬁre: A newbenchmark dataset for fake news detection. In AnnualMeeting of the Association for Computational Lin-guistics, 2017.
+[10] Cheng Xu and M-Tahar Kechadi. Fuzzy deep hybrid net-work for fake news detection. SOICT ’23, New York, NY,USA, 2023. Association for Computing Machinery.
+[11] Mohammadreza Samadi, Maryam Mousavian, andSaeedeh Momtazi. Deep contextualized text representa-tion and learning for fake news detection. Informationprocessing & management, Vol. 58, No. 6, p. 102723,2021.
+[12] Yunfei Long, Qin Lu, Rong Xiang, Minglei Li, and Chu-Ren Huang. Fake news detection through multi-perspectivespeaker proﬁles. In International Joint Conference onNatural Language Processing, 2017.
+[13] Mohammad Hadi Goldani, Saeedeh Momtazi, and RezaSafabakhsh. Detecting fake news with capsule neural net-works. Applied Soft Computing, Vol. 101, p. 106991,2021.
+[14] Lianwei Wu, Yuan Rao, Ambreen Nazir, and Haolin Jin.Discovering diﬀerential features: Adversarial learning forinformation credibility evaluation. Inf. Sci., Vol. 516,No. C, p. 453–473, apr 2020.
+[15] Arjun Roy, Kingshuk Basak, Asif Ekbal, and Push-pak Bhattacharyya. A deep ensemble framework forfake news detection and classiﬁcation. arXiv preprintarXiv:1811.04670, 2018.
+[16] Vidit Jain, Rohit Kumar Kaliyar, Anurag Goswami, PratikNarang, and Yashvardhan Sharma. Aenet: an attention-enabled neural architecture for fake news detection usingcontextual features. Neural Computing and Applica-tions, Vol. 34, No. 1, pp. 771–782, 2022.
+
+
+
+A Appendix
+
+             
+                     Figure 2 Confusion matrix of our model on LIAR dataset0.0 0.2 0.4 0.6 0.8 1.0False Positive Rate0.00.20.40.60.81.0True
+Positive Ratemicro-average ROC curve (area = 0.78)macro-average ROC curve (area = 0.78)ROC curve of class 0 (area = 0.94)ROC curve of class 1 (area = 0.77)ROC curve of class 2 (area = 0.79)ROC curve of class 3 (area = 0.74)ROC curve of class 4 (area = 0.80)ROC curve of class 5 (area = 0.61)Figure 3 Multi-classiﬁcation ROC curve of our model on LIARdataset

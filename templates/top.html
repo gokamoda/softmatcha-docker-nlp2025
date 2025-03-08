@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- favicon -->
+    <link rel="icon" href="/static/images/favicon.png" type="image/x-icon">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+
+
+    <title>SoftMatcha</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="/static/css/index.css">
+    <script src="/static/js/index.js"></script>
+</head>
+<body style="background-color: #e8e8e8;">
+    <header>
+        <nav id="header" class="navbar navbar-expand-md navbar-light bg-light shadow-sm fixed-top" style="background-color: #b6c072 !important;">
+            <div  class="container px-0">
+                <div class="row justify-content-between align-items-center">
+                    <div class="col-12 col-md-4" id="logo_div">
+                        <a class="navbar-brand " href="/">
+                            <img src="static/images/banner.svg" alt="" id="logo">
+                        </a>
+                    </div>
+                    <div class="col-12 col-md-8">
+                        <form class="" role="search" method="get" action="" onSubmit="return alertLowThreshold()">
+                            <div class="row">
+                                <div class="d-flex">
+                                    <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search"
+                                        size="200" name="query" value="{{ query }}">
+                                    <!-- <button class="btn btn-outline-primary me-2" type="button" id="advanced-search">more</button> -->
+                                    <button class="btn btn-success" type="submit" id="btn-submit">Search</button>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="d-flex w-100">
+                                    <div class="d-flex mt-2 w-100" >
+                                        <select class="form-select form-control me-2 w-100" aria-label="Default select example"
+                                        id="corpus_model_selector" name="corpus_model">
+                                        {% for corpus_model_option in corpus_model_options %}
+                                        <option value="{{ corpus_model_option }}" {% if  corpus_model_option == corpus_model %}selected{% endif %} {% if '-----' in corpus_model_option  %} disabled {% endif %}>{{ corpus_model_option }}</option>
+                                        {% endfor %}
+                                        </select>
+                                        <input type="text" class="form-control align-self-center ms-2" id="filter_regex" name="filter_regex" placeholder="Custom Embeddings URL" value="{{ filter_regex }}">
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- <div class="d-none" id="advanced-fields"> -->
+                            <div id="advanced-fields">
+                                <div class="d-flex mt-2">                                    
+                                    <label for="threshold_slider" class="align-middle align-self-center my-0"
+                                    style="white-space: nowrap;">Threshold: <span>{{threshold}}</span></label>
+                                    <input type="range" id="threshold_slider" name="threshold" min="0.3" max="1" value="{{threshold}}"
+                                    step="0.01" class="form-range align-self-center ms-2">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main id="main" style="background-color: #e8e8e8;">
+        <div class="container py-2">
+            <div class="row justify-content-center">
+                <div class="col-12 mx-2 card border-light pb-2">
+                    <div class="row">
+                        <div class="col-12">
+                            <h2 class="ps-3">Filter Shortcuts</h2>
+                            <button class="btn btn-outline-success mt-2" onclick="fill_regex('.*')">
+                                Clear Filter
+                            </button>
+                            <button class="btn btn-outline-success mt-2" onclick="fill_regex('[A-Z][1234]-')">
+                                3/11 (火)
+                            </button>
+                            <button class="btn btn-outline-success mt-2" onclick="fill_regex('[A-Z][567]-')">
+                                3/12 (水)
+                            </button>
+                            <button class="btn btn-outline-success mt-2" onclick="fill_regex('[A-Z](?:[89]|10)-')">
+                                3/13 (木)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% if query %}
+            <div class="row">
+                <div class="col-12 card border-light mt-2" id="result">
+                    <div class="row align-items-center">
+                        <div class="col-6">
+                            <p class="h2 pt-2 ps-3">Results<br><span class="h6 text-danger" id="notice"></span></p>
+                        </div>
+                        <div class="col-6 d-flex justify-content-end">
+                            <div class="text-start my-2">
+                                <svg id="loading"  width="40" height="40" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>
+                                <span id="n_hits" style="white-space: pre;"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <table class="table w-100">
+                        <tbody id="result_tbody">
+                        </tbody>
+                    </table>
+                    <button class="btn btn-success mb-4 d-none" id="load-more" onclick="get_more_results()">Load More</button>
+                </div>
+                <a href="#" class="stt"></a>
+            </div>
+            {% else %}
+            <div class="row">
+                <div class="col-12 card border-light mt-2">
+                    <div class="row align-items-center">
+                        <div class="col-6">
+                            <p class="h2 pt-2 ps-3">Available Settings</p>
+                        </div>
+                    </div>
+                    <table class="table w-100">
+                        <thead>
+                            <tr>
+                                <th>Language</th>
+                                <th>Embeddings</th>
+                                <th>Corpus</th>
+                            </tr>
+                        </thead>
+                        <tbody id="result_tbody">
+                            <tr>
+                                <td>English</td>
+                                <td><a href="https://nlp.stanford.edu/projects/glove/" target="_blank">glove-wiki-gigaword-300</a></td>
+                                <td><a href="https://www.anlp.jp/proceedings/annual_meeting/2025/" target="_blank">NLP 2025 Proceedings (English)</a></td>
+                            </tr>
+                            <tr>
+                                <td>Japanese</td>
+                                <td><a href="https://huggingface.co/facebook/fasttext-ja-vectors" target="_blank">fasttext-ja-vectors</a></td>
+                                <td><a href="https://www.anlp.jp/proceedings/annual_meeting/2025/" target="_blank">NLP 2025 Proceedings (Japanese)</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p>※ 予稿の言語判定は "Abstract"/"概要" で行っています。</p>
+                    <button class="btn btn-success mb-4 d-none" id="load-more" onclick="get_more_results()">Load More</button>
+                </div>
+                <a href="#" class="stt"></a>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+    <footer style="background-color: #b6c072 !important; height: 80px;">
+        <div class="container h-100 d-flex justify-content-center align-items-center">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <p class="text-muted my-0">
+                        The snippets of the papers are licensed by the author(s) under CC BY 4.0<br>
+                        (https://creativecommons.org/licenses/by/4.0/).
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+</body>
+<script>
+    let in_search = false
+
+    {% if query %}
+    in_search = true
+    var totalHits = 0;
+    var batch_id = -1;
+    var token_end = 0;
+
+    function add_results(result, n_hit_offset = 0){
+        let body = document.getElementById('result_tbody');
+        result.forEach(function (element, index){
+            let row = document.createElement('tr');
+            row.setAttribute("id", "hit_" + (index + n_hit_offset));
+            row.setAttribute("class", "result-row");
+            row.innerHTML = element
+            body.appendChild(row);
+        });
+    }
+
+    window.onload = function() {
+        console.log("onload")
+        disable_all_btns()
+        get_more_results()
+    }
+
+    function XMLHttpRequestInGet(){
+        document.getElementById("btn-submit").disabled = true;
+        var xhr = new XMLHttpRequest();
+        url = '/search';
+        url += '?query=' + "{{ query }}";
+        url += '&threshold=' + "{{ threshold }}";
+        url += '&corpus_model=' + "{{ corpus_model }}";
+        url += '&start=' + token_end;
+        url += '&filter_regex=' + "{{ filter_regex }}";
+
+        xhr.open('GET', url);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                callback(xhr.responseText)
+                enable_all_btns()
+                in_search = false
+            }
+            else {
+                alert('Request failed.  Returned status of ' + status)
+                enable_all_btns()
+                in_search = false
+
+            }
+            function callback(response){
+                response = JSON.parse(response)
+                if (response["error"]){
+                    let notice = document.getElementById("notice");
+                    notice.parentElement.parentElement.classList.replace("col-6", "col-12");
+                    notice.innerHTML = response["error"];
+                    // alert(response["error"])
+                    document.getElementById("loading").classList.add("d-none");
+                    in_search = false
+                    return
+                }
+                console.log(response)
+                totalHits += Number(response["result"]["total_hits"])
+                batch_id += 1
+
+                hit_text = "Displayed Hits:&#009;&#009;&#009;" + totalHits + "<br>"
+                hit_text += 'Search Time (Batch #' + batch_id + '):&#009;' + response["result"]["search_time"].toFixed(3) + " sec<br>";
+                document.getElementById("n_hits").innerHTML = hit_text;
+                document.getElementById("loading").classList.add("d-none");
+
+                add_results(response["result"]["html_lines"], token_end)
+                token_end = response["result"]["end_line"]
+                console.log(response["result"]["result_truncated"])
+                if(response["result"]["result_truncated"]){
+                    document.getElementById("load-more").classList.replace("d-none", "d-block");
+                    //  remove focus from the button
+                    document.getElementById("load-more").blur();
+                }else{
+                    document.getElementById("load-more").classList.replace("d-block", "d-none");
+                }
+                enable_all_btns()
+                in_search = false
+            }
+        };
+        xhr.send(); 
+    }
+
+    function get_more_results(){
+        XMLHttpRequestInGet()
+    }
+
+    function disable_all_btns(){
+        btns = document.getElementsByClassName("btn");
+        console.log(btns)
+        for (let i = 0; i < btns.length; i++) {
+            // disable if tag is a button
+            if(btns[i].tagName == "BUTTON"){
+                btns[i].disabled = true;
+            }else if(btns[i].tagName == "A"){
+                // disable if tag is a link
+                btns[i].classList.add("disabled");
+            }
+        }
+    }
+
+    function enable_all_btns(){
+        btns = document.getElementsByClassName("btn");
+        for (let i = 0; i < btns.length; i++) {
+            // enable if tag is a button
+            if(btns[i].tagName == "BUTTON"){
+                btns[i].disabled = false;
+            }else if(btns[i].tagName == "A"){
+                // enable if tag is a link
+                btns[i].classList.remove("disabled");
+            }
+        }
+    }
+
+    // Function to check and prevent rapid refresh
+    // function preventRapidRefresh() {
+    //     if(in_search){
+    //         return false
+    //     }
+    // }
+    // window.onbeforeunload = preventRapidRefresh;
+    window.onbeforeunload = function() {
+        if(in_search){
+            return "Leaving this page will stop the search";
+        }
+    };
+    {% endif %}
+
+    let threshold_span = document.querySelector('label span');
+    threshold_slider.addEventListener('input', function () {
+        threshold_span.textContent = threshold_slider.value;
+    });
+
+    function fill_regex(regex){
+        document.getElementById("filter_regex").value = regex
+    }
+    
+</script>
+
+</html>

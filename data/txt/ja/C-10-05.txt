@@ -1,0 +1,286 @@
+大規模言語モデルの再パラメタ化に基づく初期化による損失スパイクの抑制
+
+西田光甫 西田京介 齋藤邦子
+
+
+
+日本電信電話株式会社 NTT 人間情報研究所
+
+
+
+{kosuke.nishida, kyosuke.nishida, kuniko.saito}@ntt.com
+
+
+
+概要
+
+大規模言語モデル(LLM)の事前学習中に損失関数値が突然発散してしまう損失スパイクが LLM 事前学習の課題である。
+本研究は、パラメータのノルムに対するパラメータ更新量のノルムの相対値であるパラメータの更新比率がモデル内で不均一であり、この不均一性が損失スパイクの一因であることを指摘した。
+本研究は、全てのパラメータにゲートパラメータを導入し、共通の標準偏差によって初期化することを提案した。
+提案手法が、13B モデルのLLM の事前学習においてモデル内の更新比率を均一化し、損失スパイクを抑制することを確認した。
+
+
+1 はじめに
+
+大規模言語モデル（LLM）の事前学習では、損失関数値が突然発散してしまう損失スパイク現象が知られている[1, 2]。
+損失スパイクは、小さな学習率を設定する必要が生じて LLM の性能が劣化する、時に完全に発散し学習を失敗させる、といった点から，LLM 事前学習の大きな課題である。
+本研究では、損失スパイクを説明するため、パラメータの更新比率 ∥Δ𝑾∥/∥𝑾 ∥ を定義する。
+ここで、𝑾 はパラメータ、Δ𝑾 は 1 時刻における更新量である。
+更新比率はパラメータが相対的にどの程度激しく更新されるかを示す。
+ある 𝑾𝑖の更新比率が極端に大きい場合、𝑾𝑖で更新が安定するように学習率を小さい値に設定するか、他のパラメータの更新を優先して 𝑾𝑖の急激な更新を許容するか、が必要になる。
+よって、更新比率はモデル全体である程度の範囲に収まることが好ましい。
+しかし、LLM の事前学習において更新比率はパラメータによって大きく異なる。
+図 1 に学習初期の損失関数値、最終 down-projection 層の重み 𝑾𝑑とup-projection 層の重み 𝑾𝑢の更新比率を示す。
+学習2.5345678Proposed: LossBaseline: Loss1B 2B 3B 4B 5BTokens0.00.0050.010.015Proposed: Wd/WdBaseline: Wd/WdProposed: Wu/WuBaseline: Wu/Wu図 1 13B モデルの学習初期の損失関数値（上）と最終層の 𝑾𝑑, 𝑾𝑢における更新比率（下)。
+の
+最初期は 𝑾𝑑の更新比率が極端に大きいこと、小規模なスパイクを起こしながら 𝑾𝑑の更新比率が小さくなっていくこと、最後のスパイクの前後で 𝑾𝑑の更新比率の値が大きく減少し、𝑾𝑑, 𝑾𝑢の更新比率がある程度の範囲に収まることが確認できる。
+この観察から、更新比率の不安定性・不均一性と損失スパイクとの関連性が示唆される。
+更新比率の不均一性に対処するため、LLM の初期化手法Weight Scaling as Reparameterization (WeSaR)を提案する。
+WeSaR は、各パラメータ行列 𝑾𝑖をゲートパラメータ 𝛼𝑖∈ ℝ によって¯𝑾𝑖= 𝛼𝑖𝑾𝑖と再パラメタ化し、全てのパラメータ行列 𝑾𝑖を均一な標準偏差で初期化する。
+ここで、パラメータの初期値の平均は 0 であるため、標準偏差は ∥𝑾 ∥ の初期値の期待値に比例する。
+そのため、パラメータの初期値の標準偏差を一定値とすることは、学習初期の更新比率の不均一性を解決する。
+評価実験により、WeSaR が損失スパイクを抑制し、高性能な言語モデルを学習することを確認した。
+
+
+2 準備
+
+本節では Transformer [3]の初期化手法とその背景を概説する。
+表 1 各初期化手法が設定する標準偏差（Weight 列）と，ゲートを通過した¯𝑾 の標準偏差（Gate 列)。
+He Small ProposedGate Weight Gate Weight Gate Weight𝑾𝑒1q1𝑑1q25𝑑1 𝜎𝑾𝑘N/Aq1𝑑N/Aq25𝑑q1𝑑𝜎𝑾𝑞N/Aq1𝑑N/Aq25𝑑q1𝑑𝜎𝑾𝑣N/Aq1𝑑N/Aq25𝑑q1𝑑𝜎𝑾𝑜N/Aq12𝑁 𝑑N/Aq210𝑁 𝑑q12𝑁 𝑑𝜎𝑾𝑢N/Aq1𝑑N/Aq25𝑑q1𝑑𝜎𝑾𝑑N/Aq28𝑁 𝑑N/Aq210𝑁 𝑑q28𝑁 𝑑𝜎𝑾𝑝N/Aq1𝑑N/Aq25𝑑q1𝑑𝜎
+
+2.1 初期化手法
+
+Transformer のパラメータを、𝑾𝑒が埋め込み層、𝑾𝑘, 𝑾𝑞, 𝑾𝑣, 𝑾𝑜がそれぞれ Self-Attention 層の key-,query-, value-, output-projection 層、𝑾𝑢, 𝑾𝑑が MLP 層の up-, down-projection 層、𝑾𝑝が予測層とする。
+また，𝑑 を隠れ次元数、𝑁 を層数とする。
+深層学習モデルの初期化でよく使われる手法はHe Initialization [4]である。
+この手法は、層の前後で勾配のノルムが不変になるように設計されており、モデル全体での勾配爆発・消失を抑制する。
+しかし、大規模言語モデルの初期化では、より小さい標準偏差で初期化する Small Initialization [5]が経験的に安定する。
+これらの初期化手法を表 1 にまとめる。
+なお、文献[6]は Layer Normalization 前後での勾配のノルムの変化を安定化するために埋め込み層𝑾𝑒の出力を標準偏差 1 に再パラメタ化することを提案しており、本研究では全ての実験で採用した。
+
+
+
+2.2 理論的背景
+
+本研究では、𝑾𝑜, 𝑾𝑑の二つの層で標準偏差にq12𝑁の小さな値がかけられている点に着目する。
+この工夫は GPT-2 [7]によって導入されたが、原論文中では根拠が示されていない。
+この工夫の背景を、ResNet における議論[8]に基づいて説明する。
+Self-Attention 変換を 𝑓 を書く。
+このとき、Self-Attention 層は 𝒚 = 𝑓 (LN(𝒙)) + 𝒙 の変換を行う。
+なお、LN は Layer Normalization である。
+このとき、Self-Attention 層における勾配は𝜕L𝜕𝒙=𝜕L𝜕𝒚𝜕𝒚𝜕𝒙=𝜕L𝜕𝒚𝜕 𝑓 (LN(𝒙))𝜕𝒙+ 𝑰(1)である。
+ここで、損失関数値をLとした。
+よって、𝜕 𝑓 (LN (𝒙))𝜕𝒙2のオーダーを 𝑠 としたとき、勾配のノルムの二乗は Self-Attention 層で 𝑠 + 1 倍されて下の層に伝播する。
+式 1 内の +𝑰 は Residual 結合に起因する項であり、同じ事象は MLP 層でも起こる。
+よってモデル全体では、(𝑠 + 1)2𝑁倍の勾配爆発が起こる。
+なお、簡便のため MLP 層の勾配のノルムの二乗も 𝑠 で表した。
+勾配の 𝑁 に関する指数的な増大は，𝑁 が大きくなる LLM では許容できない。
+そこで，𝑾𝑜, 𝑾𝑑層の初期値の標準偏差を通常の 1/√2𝑁倍とすることで、𝐸 [𝑠] =O12𝑁とする。
+すると、モデル全体での勾配爆発(𝑠 + 1)2𝑁が 𝑁 → ∞ で 𝑒 に収束し、𝑁 に関する指数的な増大を回避できる。
+
+
+3 提案手法
+
+前節では、𝑾𝑑, 𝑾𝑜が小さな標準偏差で初期化されることを説明した。
+標準偏差の不均一性は更新比率の不均一性に繋がり、損失スパイクの一因となると考えられる。
+本研究では、標準偏差の不均一性を解消する手法を提案する。
+
+3.1 WeSaR
+
+パラメータ 𝑾𝑖の初期化を確率分布N(0, 𝜎𝑖)で行う場合を考える。
+このとき、提案手法は全パラメータで共通の標準偏差を 𝜎 として、𝑾𝑖∼N(0, 𝜎),¯𝑾𝑖=𝜎𝑖𝜎𝑾𝑖と再パラメタ化する。
+つまり、𝑾𝑖をN(0, 𝜎𝑖)からサンプリングする代わりに、共通の標準偏差 𝜎 からサンプリングされた 𝑾𝑖をモデルに登録する。
+そして、パラメータをモデル内で使う際は常に𝜎𝑖𝜎をかけた¯𝑾𝑖として使用する。
+よって、¯𝑾𝑖の標準偏差は𝜎𝑖となる。
+ここで、𝜎𝑖𝜎は実際には学習可能なゲートパラメータ 𝛼𝑖とし、その初期値を𝜎𝑖𝜎とする。
+再パラメタ化は、モデルの挙動を変えることなく均一な標準偏差での初期化を実現する。
+また、ゲートパラメータは事前学習後に元のパラメータにマージ可能である。
+マージ後のモデルは元にしたモデルと同じ構造を持つため、ライブラリ互換である。
+LLM の推論では専用のライブラリを用いることが多く、ライブラリ互換性は実用上重要である。
+
+
+3.2 理論的正当性
+
+Transformer の学習では、最適化手法 Adam [9]を用いることが安定性に寄与する[10, 11, 12]。
+本節でAdam と併用した場合の WeSaR の挙動を示す。
+Adam では時刻 𝑡 のパラメータの更新量 Δ𝑾𝑡をΔ𝑾𝑡= 𝜇𝑡𝑴𝑡√𝑽𝑡, (2)と定義する。
+ここで、𝑴𝑡は勾配𝜕L𝜕𝑾の指数移動平均，𝑽𝑡は勾配の二乗の指数移動平均、𝜇𝑡は学習率である。
+ゲートパラメータを用いたとき、𝑾 の勾配は𝜕L𝜕𝑾·=𝜕L𝜕¯𝑾·𝜕¯𝑾·𝜕𝑾·=𝜎·𝜎𝜕L𝜕¯𝑾·より、¯𝑾 の勾配から𝜎·𝜎倍される。
+Adam のパラメータ更新(式 2)は分母・分子ともにO𝜕L𝜕𝑾であるため、ゲートパラメータの影響は相殺される。
+すなわち、WeSaR は再パラメタ化によって、パラメータ 𝑾 から初期化手法が指定する標準偏差 𝜎·の影響を排除する。
+全てのパラメータを再パラメタ化する利点は、どんなに極端な初期化手法であっても、その初期化手法を採用しながら、実際に更新されるパラメータを均一な標準偏差に設定できる点である。
+副次的に、初期値のスケールを 𝑑 に依存させる既存研究と異なり、𝑑 への依存もゲートパラメータ 𝛼 が担うことで、モデルサイズに非依存に初期値のスケールを定めることができる。
+また、Adam を用いた場合はパラメータの更新量∥Δ𝑾 ∥ は勾配の指数移動平均と勾配の二乗の指数移動平均の平方根で正規化される。
+この点からも、更新比率 ∥Δ𝑾 ∥/∥𝑾 ∥ を一定にするためには、パラメータのノルム ∥𝑾 ∥、ひいては標準偏差を一定にする必要があることが示唆される。
+
+
+3.3 ハイパーパラメータ設定
+
+ハイパーパラメータ設定の指針の一つに学習の安定性がある。
+提案手法が LLM の事前学習を安定化することで、慣習的な設定よりも急速な損失関数値の減少を実現するハイパーパラメータ値を設定できる。
+なお、提案手法の 𝜎𝑖は He Initialization の規準によって決定した。
+標準偏差 𝜎。
+既存手法と異なり、WeSaR はパラメータの標準偏差 𝜎 を任意の値に設定できる。
+本研究では、𝜎2= 4e-5 と設定した。
+この値は、SmallInitialization の規準q25𝑑では 𝑑 = 10, 000 のモデルに相当する。
+つまり、我々は 𝜎 を慣習的な値よりも小さい標準偏差を設定した1）。
+文献[14]も小さな標準偏差が Transformer の学習に望ましいことを指摘しており、本研究の設定は妥当であると考える。
+1） LLaMA3 70B モデルでは 𝑑 = 8192 である[13]。
+学習率。
+高速な学習を意図し、慣習的な値（1e-4オーダ）よりも大きな 1e-3 を採用した。
+バッチサイズ。
+LLM の事前学習を安定化させるため、バッチサイズは 4M トークンなどの大きな値を指定することが多い。
+小さいバッチサイズを指定することで、同じコーパスで学習したときのステップ数を増やすことができる。
+特に日本語データのように限られたデータで事前学習を行う際には、ステップ数を確保することが重要になる。
+一方で、LLM の事前学習は多数の GPU で並列に計算することが多いため、計算効率の観点からはリソースに合わせて設定することが望ましい。
+本研究では 1Mトークンとして実験を行った。
+
+
+
+4 評価
+
+
+
+4.1 実験設定
+
+パラメータ数 13 億(1.3B)個と 130 億(13B)個の Transformer モデルの事前学習により評価した。
+ReﬁnedWeb [15]データセットから 30B トークンをサンプリングして事前学習を行なった。
+評価尺度はLAMBADA [16]と WikiText [17]における perplexityとした。
+ハイパーパラメータとして、慣習的な値である Stable 設定（学習率 5e-4, バッチサイズ 4M）と、より高速な学習を意図とした Rapid 設定（学習率 1e-3, バッチサイズ 1M）を採用した。
+詳細を付録 A に示す。
+
+
+
+4.2 比較手法
+
+ベースラインモデルとして、LLM の事前学習で広く用いられる Small Initialization を採用した。
+また、再パラメタ化に基づく既存手法 WeightNormalization [18]，𝜎Reparam [19]，Residual Scaling [20]を比較手法に用いた。
+詳細を付録 B に示す。
+前者 2手法と WeSaR との違いに、比較手法がパラメータの正規化を伴う点がある。
+パラメータの正規化は計算量を増加させる。
+Residual Scaling は 𝑾𝑑, 𝑾𝑜のみで再パラメタ化を行う手法であり、WeSaR は全てのパラメータ行列を再パラメタ化する点が異なる。
+
+4.3 結果
+
+提案手法は損失スパイクを抑制するか？ 図 1 は学習初期における Rapid 設定の 2 モデルの比較である。
+提案手法は学習初期の損失関数値の減衰を安定化し、かつ更新比率を一定の小さな範囲に抑制し表 2 事前学習済み 1.3B モデルの perplexity。
+本実験のみ 10B トークンでの事前学習とし、5 回の実験の平均と標準偏差を示す。
+最良の結果を太字、1 標準偏差以内の結果を下線で示す。
+WikiText LAMBADA Time # Param. Best 𝜎2Small Init. 20.64 (0.52) 29.50 (0.53) 18.88 1,339.1M N/AWeight Normalization 18.87 (0.59) 27.69 (0.86) 21.27 (+12.6%) 1,339.6M 16e-5𝜎Reparam 23.64 (1.03) 30.56 (0.89) 20.09 (+6.39%) 1,339.1M 16e-5Residual Scaling 23.56 (1.03) 30.78 (0.35) 19.18 (+1.58%) 1,339.1M N/AWeSaR 17.74 (0.05) 27.52 (0.28) 19.25 (+1.95%) 1,339.1M 4e-55B 10B 15B 20B 25B 30BTokens23456ProposedBaseline (Rapid)Baseline (Stable)図 2 13B モデルの学習中の損失関数値。
+ベースラインモデルでは学習の初期に損失スパイクが発生。
+表 3 事前学習済モデルの perplexity.WikiText LAMBADA1.3BSmall Init. (Rapid) 16.55 26.29Small Init. (Stable) 21.44 28.81WeSaR 14.51 22.8713BSmall Init. (Rapid) 12.72 21.79Small Init. (Stable) 18.66 25.34WeSaR 12.05 21.57ている。
+図 2 はベースラインの Stable 設定を加え、30B トークン全てでの学習の様子を示す。
+Stable 設定であっても損失スパイクが発生すること、提案手法は 30B トークンまで損失スパイクを起こさないことを確認できる。
+提案手法は言語モデルの性能を向上するか？
+表 3 に事前学習済みモデルの perplexity を示す。
+損失関数値に加えて言語モデルの perplexity としても、提案手法は Small Initialization で学習したモデルを上回った。
+提案手法の設計は既存の再パラメタ化手法に対して優れるか？ 表 2 に再パラメタ化手法との比較を示す。
+提案手法は perplexity に関して、全ての既存手法よりも小さい平均値と標準偏差を示す。
+よって、提案手法は高性能な言語モデルを安定して学習したと考える。
+加えて、パラメータの正規化を伴う Weight Normalization と 𝜎Reparam は大きな計算量の増大が観察できる。
+Residual Scaling に対しては、𝑾𝑑, 𝑾𝑜だけでなく全てのパラメータ行列を再パラメタ化し均一な初期化を実現することが、言語モデルの性能向上に寄与することが確認できる。
+
+
+5 関連研究
+
+PaLM [1]と OPT [ 2]は損失スパイクを発見し、スパイクの直前から再開してデータの一部をスキップすることで対処した。
+GLM [21]は埋め込み層における異常な勾配が損失スパイクを引き起こすことを発見した。
+文献[22, 19]は長い系列長や Attention の異常な振る舞いが原因であることを指摘した。
+文献[23]は Adam が仮定する時刻に関する独立性を一因として挙げた。
+文献[6]は Layer Normalization の微分に着目し、埋め込み層出力の正規化[3, 24]の有効性を確認した。
+損失スパイクを対象とする研究の多くは勾配や更新量に着目しているが、本研究はパラメータの更新比率の不均一性に初めて着目した。
+
+
+
+6 おわりに
+
+本研究は LLM の事前学習における損失スパイクの原因とその抑制手法を提案した。
+本研究の独自性。
+本研究はパラメータの更新比率に初めて着目した。
+学習初期に更新比率が大きいパラメータが存在すること、損失スパイクの前後で更新比率が大きく減少することを指摘した。
+更新比率の大きいパラメータの存在が GPT-2 の提案した小さな標準偏差に起因することを議論した。
+本研究の重要性。
+再パラメタ化により全てのパラメータを均一な標準偏差で初期化することを提案し、更新比率の不均一性を解消した。
+提案手法は13B モデルの 30B トークンまでの事前学習において損失スパイクを抑制した。
+提案手法はシンプルかつ、学習後はゲートパラメータをマージすることでライブラリ互換性を損なわないため、導入が容易である。
+本研究は損失スパイクに対してパラメータの更新比率に基づく新たな角度からの分析を可能とし、発生原理の解明の加速が期待できる。
+
+
+
+参考文献
+
+
+[1] Aakanksha Chowdhery, Sharan Narang, Jacob Devlin, MaartenBosma, Gaurav Mishra, Adam Roberts, Paul Barham, Hyung WonChung, Charles Sutton, Sebastian Gehrmann, et al. Palm: Scalinglanguage modeling with pathways. Journal of Machine Learn-ing Research, Vol. 24, No. 240, pp. 1–113, 2023.
+[2] Susan Zhang, Stephen Roller, Naman Goyal, Mikel Artetxe, MoyaChen, Shuohui Chen, Christopher Dewan, Mona Diab, Xian Li,Xi Victoria Lin, et al. Opt: Open pre-trained transformer languagemodels. arXiv preprint arXiv:2205.01068, 2022.
+[3] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit,Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin.Attention is all you need. In NIPS, pp. 5998–6008, 2017.
+[4] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Delv-ing deep into rectiﬁers: Surpassing human-level performance onimagenet classiﬁcation. In Proceedings of the IEEE Interna-tional Conference on Computer Vision, December 2015.
+[5] Toan Q. Nguyen and Julian Salazar. Transformers without tears:Improving the normalization of self-attention. In Proceedingsof the 16th International Conference on Spoken LanguageTranslation, November 2-3 2019.
+[6] Sho Takase, Shun Kiyono, Sosuke Kobayashi, and Jun Suzuki.Spike no more: Stabilizing the pre-training of large language mod-els. arXiv preprint arXiv:2312.16903, 2023.
+[7] Alec Radford, Jeﬀrey Wu, Rewon Child, David Luan, DarioAmodei, Ilya Sutskever, et al. Language models are unsupervisedmultitask learners. Op enAI blog, 2019.
+[8] Masato Taki. Deep residual networks and weight initialization.arXiv preprint arXiv:1709.02956, 2017.
+[9] Diederik P. Kingma and Jimmy Ba. Adam: A method for stochasticoptimization. In ICLR (Poster), 2015.
+[10] Jingzhao Zhang, Sai Praneeth Karimireddy, Andreas Veit, Se-ungyeon Kim, Sashank Reddi, Sanjiv Kumar, and Suvrit Sra. Whyare adaptive methods good for attention models? Advances inNeural Information Processing Systems, Vol. 33, pp. 15383–15393, 2020.
+[11] Yan Pan and Yuanzhi Li. Toward understanding why adam con-verges faster than SGD for transformers. In OPT 2022: Opti-mization for Machine Learning (NeurIPS 2022 Workshop),2022.
+[12] Yushun Zhang, Congliang Chen, Tian Ding, Ziniu Li, Ruoyu Sun,and Zhi-Quan Luo. Why transformers need adam: A hessianperspective. arXiv preprint arXiv:2402.16788, 2024.
+[13] AI@Meta. Llama 3 model card. 2024.
+[14] Biao Zhang, Ivan Titov, and Rico Sennrich. Improving deep trans-former with depth-scaled initialization and merged attention. InProceedings of the 2019 Conference on Empirical Meth-ods in Natural Language Processing and the 9th Interna-tional Joint Conference on Natural Language Processing,pp. 898–909, November 2019.
+[15] Guilherme Penedo, Quentin Malartic, Daniel Hesslow, RuxandraCojocaru, Alessandro Cappelli, Hamza Alobeidli, Baptiste Pan-nier, Ebtesam Almazrouei, and Julien Launay. The reﬁnedwebdataset for falcon llm: outperforming curated corpora with webdata, and web data only. arXiv preprint arXiv:2306.01116,2023.
+[16] Denis Paperno, Germán Kruszewski, Angeliki Lazaridou,Ngoc Quan Pham, Raﬀaella Bernardi, Sandro Pezzelle, MarcoBaroni, Gemma Boleda, and Raquel Fernández. The LAMBADAdataset: Word prediction requiring a broad discourse context. InKatrin Erk and Noah A. Smith, editors, Proceedings of the 54thAnnual Meeting of the Association for Computational Lin-guistics (Volume 1: Long Papers), pp. 1525–1534, August.
+[17] Stephen Merity, Caiming Xiong, James Bradbury, and RichardSocher. Pointer sentinel mixture models. In International Con-ference on Learning Representations, 2017.
+[18] Tim Salimans and Durk P Kingma. Weight normalization: Asimple reparameterization to accelerate training of deep neuralnetworks. In D. Lee, M. Sugiyama, U. Luxburg, I. Guyon, andR. Garnett, editors, Advances in Neural Information Process-ing Systems, Vol. 29, 2016.
+[19] Shuangfei Zhai, Tatiana Likhomanenko, Etai Littwin, Dan Bus-bridge, Jason Ramapuram, Yizhe Zhang, Jiatao Gu, and Joshua M.Susskind. Stabilizing transformer training by preventing attentionentropy collapse. In Andreas Krause, Emma Brunskill, KyunghyunCho, Barbara Engelhardt, Sivan Sabato, and Jonathan Scarlett,editors, Proceedings of the 40th International Conferenceon Machine Learning, Vol. 202 of Proceedings of MachineLearning Research, pp. 40770–40803, 23–29 Jul 2023.
+[20] Lorenzo Noci, Sotiris Anagnostidis, Luca Biggio, Antonio Orvi-eto, Sidak Pal Singh, and Aurelien Lucchi. Signal propagationin transformers: Theoretical perspectives and the role of rankcollapse. In S. Koyejo, S. Mohamed, A. Agarwal, D. Belgrave,K. Cho, and A. Oh, editors, Advances in Neural InformationProcessing Systems, Vol. 35, pp. 27198–27211, 2022.
+[21] Aohan Zeng, Xiao Liu, Zhengxiao Du, Zihan Wang, Hanyu Lai,Ming Ding, Zhuoyi Yang, Yifan Xu, Wendi Zheng, Xiao Xia,Weng Lam Tam, Zixuan Ma, Yufei Xue, Jidong Zhai, Wen-guang Chen, Zhiyuan Liu, Peng Zhang, Yuxiao Dong, and JieTang. GLM-130b: An open bilingual pre-trained model. In TheEleventh International Conference on Learning Represen-tations, 2023.
+[22] Conglong Li, Minjia Zhang, and Yuxiong He. The stability-eﬃciency dilemma: Investigating sequence length warmup fortraining gpt models. In S. Koyejo, S. Mohamed, A. Agarwal,D. Belgrave, K. Cho, and A. Oh, editors, Advances in NeuralInformation Processing Systems, Vol. 35, pp. 26736–26750,2022.
+[23] Igor Molybog, Peter Albert, Moya Chen, Zachary DeVito, DavidEsiobu, Naman Goyal, Punit Singh Koura, Sharan Narang, An-drew Poulton, Ruan Silva, et al. A theory on adam instability inlarge-scale machine learning. arXiv preprint arXiv:2304.09871,2023.
+[24] Teven Le Scao, Thomas Wang, Daniel Hesslow, Stas Bekman,M Saiful Bari, Stella Biderman, Hady Elsahar, Niklas Muen-nighoﬀ, Jason Phang, Oﬁr Press, Colin Raﬀel, Victor Sanh, ShengShen, Lintang Sutawika, Jaesung Tae, Zheng Xin Yong, JulienLaunay, and Iz Beltagy. What language model to train if youhave one million GPU hours? In Findings of the Associationfor Computational Linguistics: EMNLP 2022, pp. 765–782,December 2022.
+[25] Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet,Marie-Anne Lachaux, Timothée Lacroix, Baptiste Rozière, NamanGoyal, Eric Hambro, Faisal Azhar, et al. Llama: Open and eﬃcientfoundation language models. arXiv preprint arXiv:2302.13971,2023.
+[26] Adam Paszke, Sam Gross, Soumith Chintala, Gregory Chanan, Ed-ward Yang, Zachary DeVito, Zeming Lin, Alban Desmaison, LucaAntiga, and Adam Lerer. Automatic diﬀerentiation in pytorch.2017.
+[27] Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond,Clement Delangue, Anthony Moi, Pierric Cistac, Tim Rault,Rémi Louf, Morgan Funtowicz, et al. Huggingface’s transform-ers: State-of-the-art natural language processing. arXiv preprintarXiv:1910.03771, 2019.
+[28] Takeru Miyato, Toshiki Kataoka, Masanori Koyama, and YuichiYoshida. Spectral normalization for generative adversarial net-works. In International Conference on Learning Represen-tations, 2018.
+
+
+
+
+A 実験設定
+
+表 4 と表 5 に設定を示す。
+モデル構造は LLaMA[25]に準拠したが、MLP 層の活性化関数には gelu関数を用いた。
+全てのパラメータを再パラメタ化する手法では、標準偏差 𝜎2を {1, 4, 16, 64, 256}e-5の中で最良のものに設定した。
+実験には 1.3B モデルで 8 個の NVIDIA H100 (80GB) GPUs，13B モデルで 64 個の GPUs を利用した。
+それぞれのモデルの事前学習に 60 時間と 40 時間を要した。
+実験には PyTorch (ver. 2.1.0)2）[26], transformers (ver. 4.37.2)3）[27], llm-foundry (ver. 0.5.0)4）のライブラリを用いた。
+
+B 比較手法
+
+本節では再パラメタ化に基づく比較手法について、各手法の目的・設計と WeSaR との違いを説明する。
+表 6 に概要を列挙する。
+
+
+B.1 Weight Normalization
+
+Weight Normalization [18]はパラメータのノルムの更新と方向の更新を分離するために提案された．Weight Normalization はパラメータ行列の各行𝒘 ∈ ℝ𝑑inに対して、L2 正規化と再パラメタ化を行う¯𝒘 =𝛼∥𝒘 ∥𝒘．WeSaR は Weight Normalization と比較して、行列単位で再パラメタ化し、正規化を行わない点について計算効率が高い。
+Weight Normalizatio はパラメータ行列 𝑾 に対して 𝑑out個のゲートパラメータが必要であるが、提案手法は 1 個である。
+
+
+B.2 𝜎Reparam
+
+𝜎Reparam [19]は Self-Attention 層における Attentionのエントロピーの安定性が学習の安定性に寄与する発見に基づき、パラメータの特異値を制御することで Attention の安定化を図る手法である。
+𝜎Reparamはパラメータ行列 𝑾 ∈ R𝑑out×𝑑inに対して特異値正規化と再パラメタ化を行う¯𝑾 =𝛼∥𝑾 ∥2𝑾．ここで、∥𝑾 ∥2はスペクトルノルム（最大特異値）である。
+最大特異値は毎ステップ一回の冪乗法によって計算する[28]。
+特異値計算に関しては勾配計2） https://pytorch.org/3） https://github.com/huggingface/transformers4） https://github.com/mosaicml/llm-foundry表 4 モデル設定。
+1.3B 13B隠れ次元数 𝑑 2048 5120層数 𝑁 24 40Attention Head 数 16 40系列長 2048語彙サイズ 32000RMSNorm 𝜖 1e-5位置埋込 RoPE線形層のバイアス項 none表 5 訓練設定。
+Rapid Setting Stable Settingバッチサイズ[tokens] 1M 4M学習率 𝜇 1e-3 5e-4Warmup Steps 100 2000精度 bﬂoat16コーパスサイズ[tokens] 30BAdam 𝛽10.9Adam 𝛽20.95Gradient Clipping Threshold 1Weight decay 0.01Z-loss 1e-4表 6 再パラメタ化手法の比較。
+“対象” は再パラメタ化の対象のパラメータを示す。
+“訓練” はゲートパラメータの訓練の有無である。
+“正規化” はパラメータの正規化の有無である。
+“単位” はスケーリングが行列単位か行単位かを示す。
+手法対象訓練正規化単位Weight Normalization all ✓ ✓ by-row𝜎Reparam all ✓ ✓ by-matrixResidual Scaling 𝑾𝑜, 𝑾𝑑by-matrixWeSaR all ✓ by-matrix算を行わない。
+ゲートパラメータ 𝛼 は 1 に初期化する．𝜎Reparam は初期値の最大特異値を 1 にすることを目的とし、WeSaR は任意の初期化手法（e.g., HeInitialization）と組み合わせながら全てのパラメータを共通の標準偏差で初期化することを目的とする。
+
+
+B.3 Residual Scaling
+
+文献[20]は 𝑾𝑑, 𝑾𝑜の初期値の標準偏差を 1/√2𝑁倍する代わりに、Residual 結合を𝒚 =1√2𝑁𝑓 (LN(𝒙)) + 𝒙.と計算する手法を提案した。
+𝑓 内部の最後の変換の線形性により、この手法は 𝑾𝑑, 𝑾𝑜の再パラメタ化として解釈できる。
+WeSaR は全てのパラメータを再パラメタ化し、共通の標準偏差を採用することを提案した。

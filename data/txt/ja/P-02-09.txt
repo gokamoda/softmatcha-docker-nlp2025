@@ -1,0 +1,235 @@
+言語モデルのパラメータから探る Detokenization メカニズム
+
+鴨田豪
+
+1
+
+ 
+
+
+
+Benjamin Heinzerling
+
+2,1
+
+ 稲葉達郎
+
+3
+
+ 工藤慧音
+
+1,2
+
+坂口慶祐
+
+1,2
+
+ 乾健太郎
+
+4,1,21
+
+東北大学 
+
+2
+
+理化学研究所 
+
+3
+
+京都大学  
+
+4
+
+MBZUAI
+
+
+
+go.kamoda@dc.tohoku.ac.jp  benjamin.heinzerling@riken.jp
+
+
+
+ inaba@sap.ist.i.kyoto-u.ac.jp  keito.kudo.q4@dc.tohoku.ac.jp
+
+
+
+  keisuke.sakaguchi@tohoku.ac.jp  kentaro.inui@mbzuai.ac.ae
+
+
+
+概要
+
+トークナイザは単語を複数のサブワードに分割することがあるが、その分割が言語的に意味のあるものになるとは限らない。
+推論の段階仮説（Stages ofinference hypothesis） では、言語モデルの序盤層はこうしたサブワードトークン列をより意味のある表現に変換(Detokenize)するとされている。
+本研究では、従来のプロービングや因果介入などの経験的手法に依存せず、Detokenization をモデルの重みに基づく解析によって観測できることを示す。
+具体的には，GPT-2 の第 1 層の注意機構を解析的に分解し、トークンタイプに由来する寄与とトークンの位置に由来する項の寄与とを切り分けた分析を行い、近いトークンや頻出 Bigram への注意の偏りを明らかにする1）．
+
+1 はじめに
+
+近年の多くの言語モデル(LM)[1–5]はサブワードトークン[6, 7]を入出力に用いる。
+そのため、LMは “Sapiens” のような単語や名前を、“Sap” と “iens”のように部分に分割された形で扱うことがある。
+このようにトークン分割（Tokenization）は必ずしも言語的に意味のあるものになるとは限らず、言語モデルの初期層は、こうしたサブワードトークン列をより意味のある単語や名前の表現に変換する Detokenization の役割を持つとされている[8]。
+Detokenization に関して、これまではモデルへの入力文の選択やプローブの訓練を伴う経験的な実験がなされ、どの層が Detokenization に関連する振る舞いを示すかが示されてきた[9, 10]。
+本研究では、GPT-2 [2]の第 1 層の注意機構を分解することで、Detokenization の重要な側面のいくつかが経験的な1） github.com/gokamoda/lm-detokenization図 1 トークン埋込、位置埋込、LayerNorm と第 1 注意機構に着目し、モデルの重みを分析する。
+モデル計算を分解することで、Detokenization の 2 つの重要な条件であるBigram の再構築と近いトークンへの注意を分離して解釈する。
+手法を用いずともモデルの重みから理解できることを示す。
+Detokenization において重要なのは、単語やフレーズを構成するトークンに対する注意である。
+これまでの研究では、Detokenization の n-gram に対する注意を分析してきた[9, 10]。
+しかし、これらの分析はトークン埋め込みによる影響と位置埋め込みによる影響を分離していない。
+本研究では、LayerNorm を考慮しながら、位置情報を除いた表現の注意に対する影響を分析する(§ 3)。
+もう一つの重要な側面は、近いトークンへの注意である。
+本研究では重みに対する分析を行い、GPT-2 の第 1 層では、入力トークンに関係なく、位置的に近いトークンに高い注意が割り当てられることを示す（§ 4）。
+さらに、学習された絶対位置埋め込みに2つの成分から構成されることを示す。
+第1の成分は、ALiBi [11]に類似した線形バイアス成分と見なすことができる。
+第 2 の成分は、正弦波形状を持ち、正弦波[1]やロータリー[12]位置エンコーディングを思い起こさせる。
+これらの 2 つの成分が重なり合うことで、近いトークンに対する注意の偏りが生じていることを示す。
+
+
+
+2 第 1 層注意機構の分解
+
+本研究では、Lad らの Detokenization や注意の傾向を調査する先行研究[8]に倣い、GPT-2 を分析対象とする。
+GPT-2 は、モデルの解釈可能性に焦点を当てた他の先行研究でも分析対象となっている[13–15]。
+重みの分析を行う前に、モデルのいくつかの重みや関数を再定義して分析を簡単にする。
+続く節では、GPT-2 の LayerNorm、注意機構に焦点を当て、複数の線形変換を一つの線形変換に折り込み、無視できる項が存在することを示す。
+
+2.1 埋め込み層
+
+GPT-2 の初期の隠れ状態は、トークンの ID と絶対位置に基づいて計算される。
+ここで、𝑖 番目のトークンの ID を ID𝑖、語彙を 𝑉、埋め込みの次元数を 𝑑，トークン埋め込み行列を 𝑬 ∈ ℝ|𝑉 |×𝑑とする。
+さらに，GPT-2 は絶対位置エンコーディングを採用しており、モデルが受け付ける最大トークン長を 𝐿，位置エンコーディング行列を 𝑷 ∈ ℝ𝐿×𝑑とすると、位置 𝑖 の埋め込み層の出力 𝒙𝑖は次のように表せる：𝒙𝑖= 𝒆ID𝑖+ 𝒑𝑖(1)
+
+2.2 LayerNorm
+
+Transformer アーキテクチャは、さまざまなポイントで層正規化を適用する。
+GPT-2 で使用されている層正規化(LayerNorm)2）は、次のように表される：LN(𝒙) :=𝒙𝜎(𝒙)𝑰 −1𝑑1⊤1diag(𝜸) + 𝜷 (2)𝜎(𝒙) :=Var(𝒙) + 𝜖 (3)ここで、𝜖 はゼロ除算を防ぐために追加される小さな定数であり、𝜸, 𝜷 ∈ ℝ𝑑は学習可能なパラメータである。
+したがって、LayerNorm は 𝜎(𝒙)による除算以外の部分は線形なアフィン変換である。
+
+
+
+2.3 注意機構
+
+注意機構の役割は、文脈情報を現在のトークンの表現に動的に混ぜ込むことである。
+現在の位置 𝑖 と文脈情報 𝑿 が与えられた場合、Decoder モデルの 𝐻2） 元の定式化からの記号を区別するために、§ 2.4 での再定義された記号を下線で示す個のヘッドを持つ注意層は次の計算を行う:ATTN(𝑖, 𝑿) :=𝐻ℎ=1𝑖𝑗=1𝛼𝑖, 𝑗 ,ℎ𝒗ℎ(𝒙𝑗)𝑾𝑂ℎ+ 𝒃𝑂(4)ここで、𝒗ℎ(𝒙𝑗)は、𝒙𝑗を次元 𝑑′= 𝑑/𝐻 の Value ベクトルに変換するアフィン変換、行列 𝑾𝑂とベクトル𝒃𝑂は出力アフィン変換の重みとバイアスであり、トークン位置 𝑖 から 𝑗 へのヘッド ℎ による注意の重み 𝛼𝑖, 𝑗 ,ℎは次のように与えられる:𝛼𝑖, 𝑗 ,ℎ:= softmax𝑗 ≤𝑖𝑠𝑖, 𝑗 ,ℎ/√𝑑′(5)𝑠𝑖, 𝑗 ,ℎ:= 𝒒ℎ(𝒙𝑖)𝒌ℎ(𝒙𝑗)⊤(6)ここで、𝑗𝛼𝑖, 𝑗 ,ℎ= 1 が成り立ち、𝑠𝑖, 𝑗 ,ℎは正規化されていない注意スコアである。
+また、𝒒ℎと 𝒌ℎは入力 𝒙 から Query ベクトルと Key ベクトルへのアフィン変換である:𝒒ℎ(𝒙) := 𝒙𝑾𝑄ℎ+ 𝒃𝑄ℎ(7)𝒌ℎ(𝒙) := 𝒙𝑾𝐾ℎ+ 𝒃𝐾ℎ(8)
+
+2.4 LayerNorm と注意機構の再定義
+
+式 4, 5 から、ATTN の計算では、入力 𝒙 は最初に必ずアフィン変換されることがわかる。
+ATTN への入力は LN の出力であるため、LNの線形部分は、ATTN の 𝒒ℎ，𝒌ℎ，𝒗ℎ関数のアフィン変換に吸収させることができる。
+これを踏まえて、式 2 の代わりに，LN を再定義する:LN(𝒙) := 𝒙/𝜎(𝒙)(9)更に、式 7 の 𝒒ℎで適用されるアフィン変換を再定義し、𝒌ℎと 𝒗ℎに対しても同様の再定義を行う:𝑾𝑄ℎ:=𝑰 −1𝑑1⊤1diag(𝜸)𝑾𝑄ℎ(10)𝒃𝑄ℎ:= 𝜷𝑾𝑄ℎ+ 𝒃𝑄ℎ(11)次に、式 6 で定義された正規化前の注意スコア𝑠𝑖, 𝑗 ,ℎに着目する:𝑠𝑖, 𝑗 ,ℎ= 𝒒ℎ(𝒙𝑖)𝑾𝐾⊤ℎ𝒙⊤𝑗+ 𝒒ℎ(𝒙𝑖)𝒃𝐾⊤ℎ(12)式 5 では、softmax がトークン位置 𝑗 に適用されているが、式 6 を展開した式 12 の第 2 項は 𝑗 に依存しない．Softmax は定数の加算に対して不変であるため、この項は無視できる。
+これらを考慮して更に式 12を展開すると、𝑾𝑄𝐾ℎ:= 𝑾𝑄ℎ𝑾𝐾⊤ℎ, 𝒃𝑄𝐾ℎ:= 𝒃𝑄ℎ𝑾𝐾⊤ℎを用いて次のように表される:𝑠𝑖, 𝑗 ,ℎ:= 𝒙𝑖𝑾𝑄𝐾ℎ𝒙⊤𝑗+ 𝒃𝑄𝐾ℎ𝒙⊤𝑗(13)
+
+2.5 分解
+
+式 13 の第 1 項は、現在のトークン 𝒙𝑖と過去のトークン 𝒙𝑗の隠れ状態に依存する。
+2 つの隠れ状態 𝒙𝑖と 𝒙𝑗が線形射影 𝑾𝑄𝐾ℎの下で類似しているときに大きくなるため、この項を「比較項」と呼ぶことにする。
+第 2 項は、過去のトークン 𝒙𝑗の隠れ状態にのみ依存し、現在のトークン 𝑖 には依存しない。
+大きな 𝒃𝑄𝐾ℎ𝒙⊤𝑗値は、トークン 𝑗 が文脈に関係なく重要であることを主張していると捉えられるため、以降この項を「自己主張項」と呼ぶ。
+更に式 13 を、Token 埋め込みと位置埋め込みを考慮して展開すれば、モデルの入力から第 1 層の注意機構の出力までの計算は 𝜎𝑖:= 𝜎(𝒆ID𝑖+ 𝒑𝑖)を用いて次のように表される:𝑠𝑖, 𝑗 ,ℎ=𝑇ee𝑖, 𝑗 ,ℎ𝒆id𝑖𝑾𝑄𝐾ℎ𝒆⊤id𝑗𝜎𝑖𝜎𝑗+𝑇pp𝑖, 𝑗 ,ℎ𝒑𝑖𝑾𝑄𝐾ℎ𝒑⊤𝑗𝜎𝑖𝜎𝑗+𝑇pe𝑖, 𝑗 ,ℎ𝒑𝑖𝑾𝑄𝐾ℎ𝒆⊤id𝑗𝜎𝑖𝜎𝑗+𝑇ep𝑖, 𝑗 ,ℎ𝒆id𝑖𝑾𝑄𝐾ℎ𝒑⊤𝑗𝜎𝑖𝜎𝑗+𝑇e𝑗,ℎ𝒃𝑄𝐾ℎ𝒆⊤id𝑗𝜎𝑗+𝑇p𝑗,ℎ𝒃𝑄𝐾ℎ𝒑⊤𝑗𝜎𝑗(14)以降、各項は青字で示した記号で参照する。
+
+
+3 Detokenization とトークン関連度
+
+トークン由来の比較項 𝑇eeは、現在のトークン 𝒆id𝑖と過去のトークン 𝒆id𝑗の埋め込みを線形変換𝑾𝑄𝐾ℎを介して比較するため、Detokenization に非常に関連していると考えられる。
+大きな 𝑇ee値は、ソーストークン(id𝑖)がターゲットトークン(id𝑗)に高い注意を払うことを意味する。
+本章では、 𝑇eeによって行われる Detokenization の例を示し(§ 3.1)、どのヘッドが Detokenization に実際に貢献しているかを調査する(§ 3.2)。
+
+
+
+3.1 Detokenization の例
+
+本節では、ソーストークンが続くと意味のある単語や句を形成するトークンに、注意ヘッドが高い𝑇ee値を割り当てる Detokenization の例を示す。
+GPT-2 トークナイザによって 2 つのトークンに分割される単語や句（例: “sapiens”）について、2 番目のトークン（“iens”）のIDをID𝑖として固定し、すべてのヘッドのすべての ID𝑗∈ 𝑉 に対して 𝑇eeを計算する。
+意味のある単語や句を形成し、高い 𝑇eeを表 1 Detokenization の例。
+ソーストークンが “iens” のとき、 𝑇eeはターゲットトークンが “_sap” のときにヘッド#7 と#4 で最も大きくなる。
+ヘッド Token 𝑖 Token 𝑗 (順位) Detokenization4 iens _sap (1) _sapiens4 iens _Sap (3) _Sapiens7 iens _sap (1) _sapiens7 iens Al (2) Aliens7 iens _al (5) _aliens7 _Jackson _Peter (1) _Peter_Jackson7 _Jackson _Jesse (2) _Jesse_Jackson7 _Jackson _Michael (3) _Michael_Jackson図 2 ソーストークンが “iens”, “ Jackson” のときの ROC曲線。
+持つ ID𝑗と ID𝑖の組を、表 1 に示す。
+例えば、ID𝑖が“iens” に対応する場合、“_sap” と “Al” は、50,257 の語彙の中でヘッド#7 で最も高い 𝑇eeスコアを与えられ，“_sapiens” と “Aliens” を Detokenize する3）．
+
+3.2 Detokenization に貢献するヘッド
+
+本節では、𝑇eeのスコアと Bigram の頻度の関係を調査することで、各注意ヘッドが Detokenization にどの程度貢献しているかを定量的に調査する。
+固定された位置 𝑖 のトークンに対して、まず GPT-2の語彙に含まれる 50,257 のトークンすべてに対して 𝑇eeを計算する。
+次に OpenWebText Corpus [16]のBigram カウントを使用して、 𝑇eeがある閾値を超える Bigram カウントの割合を真陽性率として定義し、AUROC を計算する。
+図 2 では、位置 𝑖 のトークンが“iens” または “Jackson” に固定されたときのヘッド#7 とヘッド#1 の ROC 曲線を示す。
+高い AUC (AreaUnder Curve)は、高いスコアの 𝑇eeが頻繁な Bigramを再構築する可能性が高いことを示している。
+更にすべてのID𝑖∈𝑉についてAUCを計算し、平均を取ることで、各注意ヘッドが Bigram を再構築するのにどの程度貢献しているかを定量化すると、表 2 の結果が得られる。
+この結果は、表 1, 3 でも観察されたヘッド#7 が最も大きな AUROC を持つことを示しており、Detokenization への寄与を裏付けている。
+3） 付録表 3 では、複数のトークンに分割される単語、人名や科学物質の Detokenization に寄与する他の 𝑇eeの例を示す。
+表 2 各ヘッドの平均 AUROC．AUROC が高いヘッドはBigram の再構成に寄与することを示す。
+Head AUROC Head AUROC Head AUROC7 0.88 4 0.69 8 0.4411 0.81 3 0.63 1 0.406 0.79 10 0.62 9 0.400 0.73 2 0.55 5 0.29図 3 左上にヘッド#7 の 𝑇p𝑗を示す。
+右上には現在トークンの位置 𝑖 = 500 のときの 𝑇ppを示し、 𝑇pとの和を左下に示す。
+さらに Softmax 関数を通した結果を右下に示す。
+薄い色で塗られた部分は異なる 𝑒ID𝑖による分散を示しており、青、緑、オレンジの線はそれぞれ 𝜎𝑗をその平均、最小、最大値で代表した時の結果を示している
+
+4 Detokenization と位置情報
+
+Detokenization を行うためには近い Token へ高い注意を払う必要がある。
+本章では、位置情報に基づく自己主張項 𝑇pと比較項 𝑇ppに焦点を当てる。
+𝑇pは、位置情報に基づく自己主張項であり、図 3(左上)より、過去のトークン位置 𝑗 に関して単調増加することがわかる。
+デコーダーモデルであるGPT-2 は、過去のトークンに対してのみ注意を払うため、例えば 𝑖 = 200 のとき、図 3 の 𝑖 = 200 より右側の部分は無視される。
+𝑇p項は 𝑗 に関して単調増加しているため、近くのトークンに高い注意が割り当てられていることがわかる。
+𝑇ppは、位置情報に基づく比較項であり、図 3 (右上)より、波打つようなパターンが観察される。
+また、 𝑇pと同様に最も直近のトークンに高い注意が割り当てられていることがわかる。
+以上 2 つの項、𝑇pと 𝑇ppの和をとり(図 3 左下)、実際の注意機構のように Softmax を取ると更に近いトークンへの注意は更に顕著になる。
+
+
+5 経験的な確認
+
+§ 4 では言語モデルの重みを分析し、近いトークンへの注意が高くなることを示したが、これが図 4 左に、OpenWebText Corpus の自然言語文を入力したときの、ヘッド#7，𝑖 = 500 のときの注意の重み 𝛼500, 𝑗,7を青線で示す。
+赤線は図 3 の右下の図に対応する。
+右図は式 14 で計算される、各項の 𝛼𝑖, 𝑗,7への寄与の大きさを示す。
+実際のモデル推論でも観察されるかを確認する。
+OpenWebText Corpus [16]を用いて、最初の Attention層から実際の 𝛼𝑖, 𝑗 ,ℎを取得し、𝑖 = 500 のときの結果を図 4 の左図に示す。
+赤い線は位置情報に由来する項のみで分析した図 3 の右下図に対応し、青い線が実際の注意の重みを示している。
+赤い線と青い線は概ね同じ挙動をするが、トークン関連度も含んでいる青い線は直前のトークンに対して高い注意を向けていることがわかる。
+更に、本稿では 𝑇eeおよび 𝑇p, 𝑇ppのみを扱ったがそれらの項及び他の項が式 14 の中でどの程度重要であるかを調査する。
+各項の寄与を定量的に評価するために KL-Divergence を用いる。
+例えば、 𝑇eeの寄与 𝑐eeは以下のように定義する:𝛼′𝑖, 𝑗 ,ℎ= softmax𝒙𝑗∈𝑿 , 𝑗 ≤𝑖(𝑠𝑖, 𝑗 ,ℎ−𝑇ee𝑖, 𝑗 ,ℎ)/√𝑑′(15)𝑄𝑖,ℎ=𝛼𝑖,0,ℎ·· · 𝛼𝑖,𝑖,ℎ(16)𝑃𝑖,ℎ=𝛼′𝑖,0,ℎ·· · 𝛼′𝑖,𝑖,ℎ(17)𝑐ee𝑖,ℎ= 𝐷KL(𝑃𝑖,ℎ||𝑄𝑖,ℎ)(18)図 4 は、§§ 3, 4 で分析した 3 つの項が比較的高い寄与を持っていることを示している。
+
+
+6 まとめ
+
+我々は，Detokenization のメカニズムに迫るため、GPT-2 の最初の Attention 層を分解し、トークン埋込由来の計算と位置情報由来の計算を分離して分析した。
+トークン間の関連度に関しては、トークン埋め込みに由来する比較項が貢献していることを示した。
+また、位置情報由来の自己主張項や比較項は、相対的に近いトークンに高い注意を張ることを示した。
+これら 2 つの結果はどちらもモデルの重みを分析することで得られており、連続し、かつ関連性の高いトークンに大して高い注意を払うことでDetokenization に寄与していることを示した。
+
+
+
+謝辞
+
+本研究は、JST/CREST (JPMJCR20D2)，JST/博士後期課程学生支援(JPMJBS2421)の支援を受けたものである。
+
+参考文献
+
+
+[1] Ashish Vaswani, Noam Shazeer, Niki Parmar, JakobUszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser,and Illia Polosukhin. Attention is All you Need. In Ad-vances in Neural Information Processing Systems,Vol. 30, 2017.
+[2] Alec Radford, Jeﬀrey Wu, Rewon Child, David Luan,Dario Amodei, Ilya Sutskever, and Others. Language mod-els are unsupervised multitask learners. OpenAI blog,2019.
+[3] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Sub-biah, Jared D Kaplan, Prafulla Dhariwal, Arvind Nee-lakantan, Pranav Shyam, Girish Sastry, Amanda Askell,et al. Language models are few-shot learners. Vol. 33, pp.1877–1901, 2020.
+[4] Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Ah-mad Kadian, Abhishek Al-Dahle, and others. The Llama3 herd of models. arXiv [cs.AI], 31 July 2024.
+[5] Gemma Team. Gemma 2: Improving open language mod-els at a practical size. arXiv [cs.CL], 31 July 2024.
+[6] Taku Kudo. Subword Regularization: Improving NeuralNetwork Translation Models with Multiple Subword Can-didates. In Proceedings of the 56th Annual Meet-ing of the Association for Computational Linguis-tics (Volume 1: Long Papers), pp. 66–75, 2018.
+[7] Rico Sennrich, Barry Haddow, and Alexandra Birch. Neu-ral Machine Translation of Rare Words with SubwordUnits. In Proceedings of the 54th Annual Meeting ofthe Association for Computational Linguistics (Vol-ume 1: Long Papers), pp. 1715–1725, 2016.
+[8] Vedang Lad, Wes Gurnee, and Max Tegmark. The Re-markable Robustness of LLMs: Stages of Inference? InICML 2024 Workshop on Mechanistic Interpretabil-ity, 24 June 2024.
+[9] Wes Gurnee, Neel Nanda, Matthew Pauly, Katherine Har-vey, Dmitrii Troitskii, and Dimitris Bertsimas. Findingneurons in a haystack: Case studies with sparse probing.arXiv [cs.LG], 2 May 2023.
+[10] Guy Kaplan, Matanel Oren, Yuval Reif, and Roy Schwartz.From tokens to words: On the inner lexicon of LLMs.arXiv [cs.CL], 8 October 2024.
+[11] Oﬁr Press, Noah Smith, and Mike Lewis. Train Short,Test Long: Attention with Linear Biases Enables InputLength Extrapolation. In International Conference onLearning Representations, 29 January 2022.
+[12] Jianlin Su, Murtadha Ahmed, Yu Lu, Shengfeng Pan, WenBo, and Yunfeng Liu. RoFormer: Enhanced transformerwith Rotary Position Embedding. Neurocomputing, Vol.568, No. 127063, p. 127063, 1 Februar y 2024.
+[13] Mor Geva, Jasmijn Bastings, Katja Filippova, and AmirGloberson. Dissecting recall of factual associations inauto-regressive language models. In Proceedings of the2023 Conference on Empirical Methods in NaturalLanguage Processing, pp. 12216–12235. Associationfor Computational Linguistics, December 2023.
+[14] Michael Hanna, Ollie Liu, and Alexandre Variengien. Howdoes GPT-2 compute greater-than?: Interpreting math-ematical abilities in a pre-trained language model. InThirty-seventh Conference on Neural InformationProcessing Systems, 2 November 2023.
+[15] Arthur Conmy, Augustine Mavor-Parker, Aengus Lynch,Stefan Heimersheim, and Adrià Garriga-Alonso. To-wards Automated Circuit Discover y for Mechanistic Inter-pretability. Advances in Neural Information Process-ing Systems, Vol. 36, pp. 16318–16352, 15 December2023.
+[16] Aaron Gokaslan, Vanya Cohen, Ellie Pavlick, and StefanieTellex. OpenWebText Corpus. http://Skylion007.github.io/OpenWebTextCorpus, 2019.
+
+
+
+
+A 表記法
+
+𝑬 :=𝒆1...𝒆|𝑉 |∈ℝ|𝑉 |×𝑑(19)𝑷 :=𝒑1...𝒑𝐿∈ℝ𝐿×𝑑(20)𝑿 :=𝒙1...𝒙𝑛∈ℝ𝑛×𝑑(21)𝑾𝑂:=𝑾𝑂1...𝑾𝑂𝐻∈ℝ𝑑×𝑑(22)𝑾𝑄:=𝑾𝑄1·· · 𝑾𝑄𝐻∈ℝ𝑑×𝑑(23)𝑾𝐾:=𝑾𝐾1·· · 𝑾𝐾𝐻∈ℝ𝑑×𝑑(24)𝑾𝑉:=𝑾𝑉1·· · 𝑾𝑉𝐻∈ℝ𝑑×𝑑(25)𝒃𝑄:=𝒃𝑄1·· · 𝒃𝑄𝐻∈ℝ𝑑(26)𝒃𝐾:=𝒃𝐾1·· · 𝒃𝐾𝐻∈ℝ𝑑(27)𝒃𝑉:=𝒃𝑉1·· · 𝒃𝑉𝐻∈ℝ𝑑(28)𝑰 :=1 0 ··· 00 1 ··· 0............0 0 ··· 1∈ℝ𝑑×𝑑(29)1 :=1 ··· 1∈ℝ𝑑(30)
+
+B Detokenization の例
+
+表 3 表 1 以外の Detokenization の例。
+ヘッド Token 𝑖 Token 𝑗 (順位) Detokenization4 tarian Liber (1) Libertarian4 tarian _Liber (2) _Libertarian3 yo Tok (1) Tokyo3 yo _Tok (2) _Tokyo4 yo Tok (6) Tokyo7 yo Tok (1) Tokyo4 ation anim (1) animation4 ation _Represent (3) _Representation7 ation _dict (1) _dictation7 ation _Fabric (3) _Fabrication7 ation _coron (5) _coronation7 ation valid (7) validation7 ation Gener (8) Generation4 _Korea _North (1) North_Korea7 _Korea _North (1) _North_Korea7 _Korea North (2) North_Korea7 _Korea _South (3) _South_Korea7 _Korea South (4) _South_Korea1 _Obama _Barack (3) _Barack_Obama1 _Obama President (8) _President_Obama4 _Obama _Barack
+(3) _Barack_Obama5 _Obama _Barack (5) _Barack_Obama7 _Obama _President (2) _President_Obama7 _Obama _Michelle (3) _Michelle_Obama7 _Einstein _Albert (1) _Albert_Einstein7 _Einstein Albert (2) Albert_Einstein7 _Jackson _Michael (1) _Michael_Jackson7 _Jackson _Peter (2) _Peter_Jackson7 _Jackson Michael (3) Michael_Jackson7 _Jackson _Jesse (4) _Jesse_Jackson7 _Jackson Peter (5) Peter_Jackson7 _Jackson _Janet (6) _Janet_Jackson7 _chloride _aluminum (1) _aluminum_chloride7 _chloride _copper (3) _copper_chloride7 _chloride _vinyl (6) _vinyl_chloride7 _chloride _sodium (7) _sodium_chloride7 _chloride _platinum (8) _platinum_chloride10 _chloride _potassium (2) _potassium_chloride10 _chloride _sodium (3) _sodium_chloride3 _century _19 (1) _19_century3 _century _nineteenth (7) _nineteenth_century7 _century _21 (1) _21_century7 _century _twentieth (6) _nineteenth_century

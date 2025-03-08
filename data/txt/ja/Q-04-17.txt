@@ -1,0 +1,220 @@
+Padding vs. Packing: 大規模言語モデルのファインチューニングにおける学習効果の検証
+
+塩野 大輝
+
+1
+
+田中 涼太
+
+1,2
+
+宮脇 峻平
+
+1
+
+工藤 慧音
+
+1
+
+鈴木 潤
+
+11
+
+東北大学
+
+2
+
+日本電信電話株式会社 NTT 人間情報研究所
+
+
+
+daiki.shiono.s1@dc.tohoku.ac.jp
+
+
+
+概要
+
+大規模言語モデル(LLM)のファインチューニングにおける入力系列の作成時には、1 つのサンプルに[PAD]トークンを最大系列長まで連結する Padding戦略が広く採用される。
+しかしファインチューニング時には、最大系列長に収まるように複数サンプルを連結し入力系列を作成する Packing 戦略を採用する選択肢も考えられる。
+この Packing 戦略は、複数のサンプルを連結して入力するので、Padding 戦略と比較して学習効率が高い利点がある。
+しかし、Packing 戦略が、Padding 戦略を採用した時と同様の学習効果が得られるかどうかは明らかになっていない。
+本研究では、LLM のファインチューニング段階における、Packing 戦略の学習効果を検証し、特定の学習データに対しては、Padding 戦略で学習した場合と同等の学習効果が得られることを示す。
+
+
+
+1 はじめに
+
+大規模言語モデル(LLM)は、事前学習によって、大規模なテキストコーパスから言語に関する知識や常識的な知識を獲得する[1, 2]。
+さらに事前学習済み LLM に対して、入力文（指示文）と回答文のペアデータでファインチューニングすることにより、自然言語で記述された指示文に従って回答を生成する能力（指示追従能力）を獲得する[3]。
+これにより，LLM は指示追従能力が向上し、多様な自然言語処理タスクに対して高い汎化性能を示す。
+一般的に『ファインチューニング』時の入力系列の作成には、Padding 戦略が広く採用される。
+Padding 戦略は実装が容易である一方で、1 サンプル分のトークン以外を最大系列長まで全て[PAD]トークンで埋めるため、計算上無駄な[PAD]トークンが多く含まれてしまい、メモリ効率や計算効率が最適ではない[4]。
+一方で、『事前学習』時には複数のサ59.4159.56Padding Packing0.020.040.060.080.0100.07(1)Padding戦略[EOS][PAD] ……[PAD](2)Packing戦略サンプル !!
+[EOS]!!=サンプル !
+"[EOS][PAD][PAD]サンプル !
+"[EOS][PAD]…[PAD]!!=……サンプル !!・Packing戦略はPadding戦略と比較して学習効率が高い・同程度の性能を示した図 1 Padding 戦略及び Packing 戦略で、前処理済みのWildChat を用いてファインチューニングした LLM の最終チェックポイントにおける、7 つの英語理解・生成評価データセットの正解率平均スコア。
+7 スコア正解率平均の誤差は約 0.15 ポイントであり、Padding 戦略と Packing 戦略の両者間において、顕著な差はほとんど見られない。
+ンプルを連結し、最大系列長を超えない範囲で入力系列を作成する Packing 戦略1）が広く用いられてきた[1, 5]。
+Packing 戦略では、複数のサンプルを 1 つの入力系列にまとめるので、Padding 戦略と比較して、使用する[PAD]トークン数が減少し、学習効率が向上することが期待される。
+この Packing 戦略は、事前学習段階において、性能や計算効率における優れた効果が実証されている[6, 1, 5]一方で、ファインチューニング段階においてどのような学習効果が得られるのか完全には明らかになっていない。
+本研究では、ファインチューニングにおけるPacking 戦略の導入が LLM の性能に及ぼす影響を、下流タスクの定量評価および定性評価から明らかにすることを目的とする。
+具体的には、Padding 戦略と Packing 戦略の学習効果の同一性を厳密に比較調査するため、1 ステップあたりの損失計算対象となるトークン数を揃えた上で、Padding 戦略と Packing戦略を用いてファインチューニングした 100 学習ステップごとのチェックポイントを 7 つの英語理解・生成評価タスクで評価する。
+その結果、Padding 戦― 1698 ―追加学習用データセット 𝑪今回の場合、WildChat が該当(1)Padding戦略[EOS][PAD] ……[PAD](2)Packing戦略サンプル 𝒄𝟏[EOS]𝑩𝟏=サンプル 𝒄𝟐[EOS][PAD][PAD]サンプル 𝒄𝟐[EOS][PAD]…[PAD]𝑩𝟏=……サンプル 𝒄𝟏𝒄𝟏𝒄𝟐𝒄𝟑チャンク 𝑺 の全トークン数 𝑺 = 最大系列長 𝑳 :𝟒, 𝟎𝟗𝟔■ 単一ターン(𝒎 = 𝟏)の場合■ 複数ターン(𝒎 ≥ 𝟐)の場合指示文 𝒙𝟏回答文 𝒚𝟏指示文 𝒙𝟏回答文 𝒚𝟏指示文 𝒙𝟐回答文 𝒚𝟐…サンプル 𝒄 =サンプル 𝒄 =サンプル𝒄の回答文𝒚のみが損失計算対象マイクロバッチ𝑩あたりのトークン数を揃える図 2 本研究の実験設定における、1 学習ステップあたりの損失計算対象となるトークン数を固定した場合の、Padding戦略と Packing 戦略のマイクロバッチ 𝐵 の作成例。
+(1) Padding 戦略: 1 チャンクに 1 サンプルを含めてマイクロバッチサイズを 2 に設定し、最大系列長 𝐿 に満たない部分を特殊トークン[PAD]で埋める。
+(2) Packing 戦略: 1 チャンクに 2 サンプルを含めてマイクロバッチサイズを 1 に設定し、最大系列長 𝐿 に満たない部分を特殊トークン[PAD]で埋める。
+略と Packing 戦略が特定の学習データの下では、ほとんど同等の学習効果を持つことを示す（図 1)。
+
+
+
+2 関連研究
+
+事前学習において、Packing 時に、関連するサンプル同士を連結して因果的マスキングを適用することで，LLM の文脈内学習能力を向上させることができるという報告が複数挙げられている[7, 8]。
+また、連結した複数のサンプルが互いに干渉しないように各サンプル内の先行トークンのみに条件付けして次のトークンを予測できるようにする文書内因果的マスキング手法も使われ始めている[9, 2]。
+文書内因果的マスキング手法は、不要なサンプルからの干渉を完全に排除できる利点があるが、学習効率に悪影響を及ぼすことが主張されている[1, 10]。
+本研究では、因果的マスキング適用時のファインチューニング段階における Packing 戦略の効果検証のみに焦点を当て、文書内因果的マスキングやその他のマスキング手法については効果検証調査の範囲外とする。
+我々の知る限り、Wang ら[4]が初めて、ファインチューニング段階における Padding 戦略と Packing戦略の性能を比較調査している。
+彼らは、Packing戦略で学習した LLM は、Padding 戦略で学習したLLM と比較して、さまざまなベンチマークにおいて平均的に優れた性能を示すと報告している。
+しかし、彼らの実験設定では、Padding 戦略と Packing 戦略で、1 学習ステップあたりの損失計算対象となるトークン数が異なるため、正確な比較ができていない可能性がある。
+本研究では、1 学習ステップあたりの損失計算対象となるトークン数を厳密に揃えた上で、Padding 戦略と Packing 戦略の学習効果の同一性を比較調査することを目指す。
+
+
+3 入力系列の構築戦略
+
+本研究における、ファインチューニング時の入力系列を作成するための手法である Padding 戦略と Packing 戦略1）の違いを説明する。
+図 2 に示すように、WildChat [11]などのファインチューニング用の学習データサンプル集合を 𝐶 = {𝑐1, . . . , 𝑐𝑁} と定義する。
+ここで、𝑁 はデータサンプル数を表す。
+また，𝑐𝑖=((𝑥𝑖1, 𝑦𝑖1), . . . , (𝑥𝑖𝑚, 𝑦𝑖𝑚))(𝑚 ≥ 1)であり、𝑚はサンプル 𝑐𝑖に含まれる指示文 𝑥 と回答文 𝑦 のペアの個数（複数ターン数）を指す。
+ファインチューニング段階においては、Padding 戦略と Packing 戦略のいずれも、回答文 𝑦 に含まれるトークンのみが損失計算の対象となる。
+Padding 戦略 Padding 戦略は、学習データサンプル集合 𝐶 中の、各データサンプル 𝑐𝑖に対して、最大系列長𝐿に満たない部分を特殊トークン[PAD]で埋めることで、全入力系列の長さを 𝐿 に揃えたチャンク 𝑆 を作成する手法である。
+Padding されたチャンク 𝑆 は以下のように表される:𝑆𝑖= (𝑐𝑖[EOS][PAD] . . . [PAD])(|𝑆𝑖| = 𝐿)(1)Packing 戦略 Packing 戦略は、学習データサンプル集合 𝐶 の中から、最大系列長 𝐿 を超えない範囲1） 本研究で使用する Packing 戦略は、事前学習時に頻繁に使用される複数サンプルを連結していき最大系列長を超えたサンプルは切り詰める戦略とは異なり、最大系列長を超えない範囲でサンプルを連結し、残りの部分は[PAD]トークンで埋めるような実装になっていることに注意したい。
+― 1699 ―で、複数のデータサンプル 𝑐 を抽出・連結し、最後に最大系列長 𝐿 に満たない部分を特殊トークン[PAD]で埋めることで、全入力系列の長さを 𝐿 に揃えたチャンク 𝑆 を作成する手法である。
+Packing されたチャンク 𝑆 は以下のように表される:𝑆𝑖= (𝑐𝑘[EOS] . . . 𝑐𝑘+𝑙[EOS][PAD] . . . [PAD])(|𝑆𝑖| = 𝐿)(2)ただし、𝑙 + 1 は 𝐿 を超えない範囲で Packing されたチャンク 𝑆 に含まれるデータサンプル数を表す。
+また、一度チャンク 𝑆 に含まれたデータサンプル 𝑐は、その後の学習データサンプル集合 𝐶 から削除され、複数回抽出されることはない。
+Packing 戦略と Padding 戦略の利点と欠点Padding 戦略は、1 サンプル分のトークン以外を最大系列長まで全て[PAD]トークンで埋める簡単な実装となる利点がある一方で、系列長が短いサンプル 𝑐 が多く含まれる学習データサンプル集合 𝐶 ほど学習時の計算効率が悪くなる。
+一方、Packing 戦略は、チャンク 𝑆 に各サンプル 𝑐 を密に詰め込むことができるので、学習上無駄なトークン[PAD]を最小限に抑えられ、Padding 戦略に比べて計算効率が高い利点がある。
+しかし、2 章で説明した文書内因果的マスキングのような特殊なマスキング手法を用いない限り、連結した複数のサンプル中の不要なサンプルからの干渉を受ける可能性がある。
+本研究では，Padding 戦略と比較した Packing 戦略の学習効果の同一性を厳密に比較調査することに焦点を当てるため、因果的マスキングに特別な工夫は施さず、Packing 戦略と Padding 戦略で 1 学習ステップあたりの損失計算対象となるトークン数を揃える。
+
+
+
+4 実験設定
+
+本研究では、Padding 戦略と Packing 戦略の学習効果の同一性を比較調査するため、1 学習ステップあたりの損失計算対象となるトークン数を固定した（図 2）。
+具体的には、Padding 戦略では 1 チャンクに1 サンプルを含めてマイクロバッチサイズを 2 に設定し、Packing 戦略では 1 チャンクに 2 サンプルを含めてマイクロバッチサイズを 1 に設定した。
+LLMには、Llama 3 8B [2]を採用し、データセットとして、トークン数が 2, 000 を超えるサンプルを除いたWildChat（約 3.6 万件）を使用した（A.1）。
+ファインチューニング時には、100 ステップごとにモデルのチェックポイントを保存した。
+なお最終学習ステッ<sample1_x>:<|start_header_id|>user<|end_header_id|><sample1_x><|eot_id|><|start_header_id|>assistant<|end_header_id|><sample1_y><|eot_id|>■ [EOS]で区切る場合Context:My pet cat's name is "Tiger."Heis 3years old.Question:Please answer the cat's age.Answer:<sample1_y>:Your cat is 3years old.<sample2_x>:Question:What is thename of my pet cat?
+<|begin_of_text|>/<|start_header_id|>user<|end_header_id|><sample2_x><|eot_id|><|start_header_id|>assistant<|end_header_id|>■ [EOS]で区切らない場合<|begin_of_text|>サンプル #2サンプル #1図 3 定性分析に使用した 2 つのサンプル同士を[EOS]で区切るか否かの違いを持つ 2 つのテストプロンプトの実例．<|begin_of_text|>が[EOS]トークンに相当する。
+プ数は、2, 287 となった。
+
+
+
+4.1 定量評価: 学習効果の同一性検証
+
+Padding 戦略と Packing 戦略の学習効果の同一性を比較調査するため、2 つの戦略で学習した全てのチェックポイントで、MMLU [12]，TriviaQA [13]，GSM8K [14]，OpenBookQA [15]，Hel-laSwag [16]，XWINO [17]，SQuAD2 [18]の 7 つの英語理解・生成評価データセット（表 2）を用いて性能を測定した。
+MMLU は、5-shot、それ以外の評価データセットでは、4-shot で評価を実施した。
+評価指標には、正解率を用いた。
+
+
+
+4.2 定性分析: [EOS] トークンの機能分析
+
+Packing 戦略で学習する場合、連結した同一チャンク内のサンプル間を[EOS]トークンで区切るので、サンプル 𝑐𝑘+1の回答生成時に、[EOS]トークンが出現するより前のサンプル 𝑐𝑘内のトークンを参照しないように LLM の学習が進むことが期待される。
+そこで 5.2 節では、2 つのサンプル間を[EOS]で区切ったプロンプトと区切らないプロンプトをそれぞれ用意し（図 3），Packing 戦略で学習されたLLM が期待される振る舞いをするか確認した。
+
+
+
+5 実験結果と分析
+
+
+
+5.1 定量評価: 学習効果の同一性検証
+
+Packing 戦略、Padding 戦略ともに、それぞれ 100学習ステップごとに 7 つの評価データセットを用い― 1700 ―63.664.264.865.450.052.054.056.061.261.662.062.437.838.439.039.634.535.035.536.070.070.571.071.50 400 800 1200 1600 200090.290.490.690.8Packing Padding (5-shot) ()(4-shot)(4-shot)(4-shot) ()(4-shot) ()(4-shot)(4-shot)MMLUGSM8KHellaSwagOpenBookQASQuAD2TriviaQAXWINOLoading [MathJax]/extensions/MathMenu.js図 4 Packing 戦略、Padding 戦略ともに、それぞれ 100 学習ステップごとに 7 つの英語理解・生成評価データセットを用いて、LLM を評価した結果。
+て，LLM の評価実験を行った結果を図 4 に示す。
+また、最終チェックポイント（学習ステップ数: 2, 287）での評価結果を図 1 に示す。
+多様な英語理解・生成評価タスクにおいて、同じ学習ステップ数におけるPadding 戦略と Packing 戦略のスコア間の 7 タスク平均誤差は約 0.49 ポイントであった。
+このことから、特定の学習データ（WildChat）において、Packing 戦略と Padding 戦略の両者は、同様の学習効果を有している可能性があるといえる。
+そのため、ファインチューニングデータセットに含まれるサンプル数が大きいかつ各サンプルあたりのトークン数が少ない場合には、Packing 戦略を採用することで、Padding戦略を採った場合と同程度の性能をより短い学習時学習ステップ数The name of yourpet cat is "Tiger."300のモデル[EOS]で区切る場合の生成結果400のモデル2287のモデル[EOS]で区切らない場合の生成結果The name of yourpet cat is "Tiger."The name of yourpet cat is "Tiger."Asan AIlanguage model,Idonot have access toyour personalinformation.However,Icansuggest that youprovide mewith thename of your pet cat sothat Icananswer yourquestion accurately.I'm sorry,but asan AIlanguage model,Icannot access yourpersonalinformation.However,Icanhelp youwith generalquestionsabout cats or otheranimals.Is there anythingelse Icanassist you with?
+The name of yourpet cat is "Tiger."図 5 図 3 に示した 2 つのテストプロンプトに対する、Packing 戦略で学習したステップ数: 300, 400, 2, 287(最終チェックポイント)の LLM の出力結果。
+学習ステップ数400 以降の LLM は、連結したサンプル同士を[EOS]トークンで区切ることで、1 つ目のサンプル内に与えらている猫の名前を回答することができなくなる挙動を示した。
+間で達成できる可能性がある。
+
+5.2 定性分析: [EOS] トークンの機能分析
+
+定性分析の結果を図 5 に示す。
+Packing 戦略で学習した最終チェックポイント（学習ステップ数:2, 287）を用いて、定性分析を実施した結果、連結したサンプル間を[EOS]トークンで区切ることで、LLM が 1 つ目のサンプル内に与えられた猫の名前を回答しなくなった。
+この結果は、Packing 戦略でLLM を学習することによって、[EOS]トークンが自身以降のトークン出力時に自身以前のトークンを参照しないようにする目印としての機能を獲得している可能性を示唆する。
+加えて、学習ステップ数が300 から 400 の箇所で、[EOS]ありの生成結果が変化したことから、Packing 戦略では学習の比較的早い段階で、この機能が発現している可能性が高い。
+
+
+6 おわりに
+
+本研究では、LLM のファインチューニングにおける Packing 戦略の学習効果を調査した。
+定量評価より、特定の学習データに対しては、Packing戦略とPadding 戦略は、同様の学習効果を有している可能性があることが示唆された。
+これより Packing 戦略は，Padding 戦略を採った場合と同程度の性能をより短い学習時間で達成できる可能性がある。
+― 1701 ―
+
+
+
+謝辞
+
+本研究は、JST ムーンショット型研究開発事業JPMJMS2011-35 (fundamental research)、文部科学省の補助事業「生成 AI モデルの透明性・信頼性の確保に向けた研究開発拠点形成」，JST 国家戦略分野の若手研究者及び博士後期課程学生の育成事業（博士後期課程学生支援）JPMJBS2421 の支援を受けたものです。本研究の一部は九州大学情報基盤研究開発センター研究用計算機システムの一般利用を利用しています。研究遂行にあたりご協力を賜りました TohokuNLPグループの皆様に感謝申し上げます。また評価の細かい技術的知見に関して、Swallow チーム（東京科学大）の解説記事を大いに参考にさせていただきました。この場を借りて、感謝申し上げます。
+
+参考文献
+
+
+[1] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah,Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, PranavShyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, ArielHerbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child,Aditya Ramesh, Daniel Ziegler, Jeﬀrey Wu, Clemens Winter, ChrisHesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Ben-jamin Chess, Jack Clark, Christopher Berner, Sam McCandlish,Alec Radford, Ilya Sutskever, and Dario Amodei. Language Mod-els are Few-Shot Learners. In Advances in Neural InformationProcessing Systems (NeurIPS), pp. 1877–1901, 2020.
+[2] Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, AbhishekKadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, AlanSchelten, Amy Yang, Angela Fan, et al. The Llama 3 Herd ofModels. arXiv preprint, cs.CL/2407.21783v3, 2024.
+[3] Jason Wei, Maarten Bosma, Vincent Zhao, Kelvin Guu,Adams Wei Yu, Brian Lester, Nan Du, Andrew M. Dai, and Quoc VLe. Finetuned Language Models are Zero-Shot Learners. In Inter-national Conference on Learning Representations (ICLR),2022.
+[4] Shuhe Wang, Guoyin Wang, Yizhong Wang, Jiwei Li, EduardHovy, and Chen Guo. Packing analysis: Packing is more appropri-ate for large models or datasets in supervised ﬁne-tuning. arXivpreprint, cs.CL/2410.08081v3, 2024.
+[5] Peiyuan Zhang, Guangtao Zeng, Tianduo Wang, and Wei Lu.Tinyllama: An open-source small language model. arXivpreprint, cs.CL/2401.02385v2, 2024.
+[6] Mohammad Shoeybi, Mostofa Patwary, Raul Puri, Patrick LeGres-ley, Jared Casper, and Bryan Catanzaro. Megatron-LM: TrainingMulti-Billion Parameter Language Models Using Model Paral-lelism. arXiv preprint, cs.CL/1909.08053v4, 2019.
+[7] Yuxian Gu, Li Dong, Furu Wei, and Minlie Huang. Pre-Training toLearn in Context. In Proceedings of the 61st Annual Meetingof the Association for Computational Linguistics (ACL), pp.4849–4870, 2023.
+[8] Weijia Shi, Sewon Min, Maria Lomeli, Chunting Zhou, MargaretLi, Xi Victoria Lin, Noah A. Smith, Luke Zettlemoyer, Wen tauYih, and Mike Lewis. In-Context Pretraining: Language ModelingBeyond Document Boundaries. In The Twelfth InternationalConference on Learning Representations (ICLR), 2024.
+[9] Yu Zhao, Yuanbin Qu, Konrad Staniszewski, Szymon Tworkowski,Wei Liu, Piotr Mi l o´s, Yuxiang Wu, and Pasquale Minervini.Analysing The Impact of Sequence Composition on LanguageModel Pre-Training. In Proceedings of the 62nd AnnualMeeting of the Association for Computational Linguistics(ACL), pp. 7897–7912, 2024.
+[10] Matteo Pagliardini, Daniele Paliotta, Martin Jaggi, and Franc¸oisFleuret. Faster causal attention over large sequences through sparseﬂash attention. arXiv preprint, cs.CL/2306.01160v1, 2023.
+[11] Wenting Zhao, Xiang Ren, Jack Hessel, Claire Cardie, Yejin Choi,and Yuntian Deng. WildChat: 1M ChatGPT Interaction Logs in theWild. In The Twelfth International Conference on LearningRepresentations (ICLR), 2024.
+[12] Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, MantasMazeika, Dawn Song, and Jacob Steinhardt. Measuring MassiveMultitask Language Understanding. In International Confer-ence on Learning Representations (ICLR), 2021.
+[13] Mandar Joshi, Eunsol Choi, Daniel Weld, and Luke Zettlemoyer.TriviaQA: A Large Scale Distantly Supervised Challenge Datasetfor Reading Comprehension. In Proceedings of the 55th An-nual Meeting of the Association for Computational Lin-guistics (ACL), pp. 1601–1611, 2017.
+[14] Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen,Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Ja-cob Hilton, Reiichiro Nakano, et al. Training veriﬁers to solve mathword problems. arXiv preprint, cs.CL/2110.14168v2, 2021.
+[15] Todor Mihaylov, Peter Clark, Tushar Khot, and Ashish Sabharwal.Can a Suit of Armor Conduct Electricity? A New Dataset forOpen Book Question Answering. In Proceedings of the 2018Conference on Empirical Methods in Natural LanguageProcessing (EMNLP), pp. 2381–2391, 2018.
+[16] Rowan Zellers, Ari Holtzman, Yonatan Bisk, Ali Farhadi, and YejinChoi. HellaSwag: Can a Machine Really Finish Your Sentence?In Proceedings of the 57th Annual Meeting of the Associ-ation for Computational Linguistics (ACL), pp. 4791–4800,2019.
+[17] Alexey Tikhonov and Max Ryabinin. It‘s All in the Heads: Us-ing Attention Heads as a Baseline for Cross-Lingual Transfer inCommonsense Reasoning. In Findings of the Association forComputational Linguistics: ACL-IJCNLP 2021, pp. 3534–3546, 2021.
+[18] Pranav Rajpurkar, Robin Jia, and Percy Liang. Know What YouDon‘t Know: Unanswerable Questions for SQuAD. In Proceed-ings of the 56th Annual Meeting of the Association forComputational Linguistics (ACL), pp. 784–789, 2018.
+[19] Kazuki Fujii, Taishi Nakamura, and Rio Yokota. llm-recipes, 2024.
+[20] Leo Gao, Jonathan Tow, Baber Abbasi, Stella Biderman, Sid Black,Anthony DiPoﬁ, Charles Foster, Laurence Golding, Jeﬀrey Hsu,Alain Le Noac’h, Haonan Li, Kyle McDonell, Niklas Muennighoﬀ,Chris Ociepa, Jason Phang, Laria Reynolds, Hailey Schoelkopf,Aviya Skowron, Lintang Sutawika, Eric Tang, Anish Thite, BenWang, Kevin Wang, and Andy Zou. A framework for few-shotlanguage model evaluation, 2024.― 1702 ―
+
+
+
+
+A 参考情報
+
+
+
+A.1 前処理済み WildChat の基本統計量
+
+: 164.6%: 217.4%: 37.87%: 44.01%: 52.34%: 61.37%:  72.38%(a) Padding (WildChat)36,598 0 500 1000 1500 20000500100015002000(b) Padding (WildChat) 0 500 1000 1500 2000 2500 3000 3500 400002004006008001000(c) Packing (WildChat) 図 6 前処理後の WildChat データセットの種々の統計量。
+(a): 複数ターン数の割合、(b): Padding 戦略適用時のサンプルのトークン数ヒストグラム、(c): Packing 戦略適用時のサンプルのトークン数ヒストグラムを表す。
+WildChat データセットから、言語が英語以外のサンプルのものと指示文が空文字列になっているものを除いた。
+さらに、4 章の実験に使用したいため、2, 000 トークンより大きいサンプルは除外した。
+これにより、WildChat のサンプルが約 3.6 万件残った。
+このデータの種々の統計量を図 6 に示す。
+
+A.2 学習設定の詳細
+
+LLM は、事前学習済みの Llama 3 8B2）を採用し、トークナイザーには、Llama 3.1 Instruct3）のものを採用した。
+表 1 に詳細な学習設定を示す。
+表 1 Padding 戦略及び Packing 戦略でファインチューニングした LLM の学習設定の詳細。
+Padding 戦略 Packing 戦略GPU (H100) Num 8 4Global Batch Size 16 8Micro Batch Size 2 2#Samples 36, 598 18, 299#Samples / chunk 1 2#Samples / step 16 16Epoch 1 1Max LR 1.0 × 10−51.0 × 10−5Min LR 1.0 × 10−61.0 × 10−6LR Warmup Steps 228 (10%) 228 (10%)Scheduler cosine cosineOptimizer AdamW AdamWOptimizer Conﬁg 𝛽1= 0.9, 𝛽2= 0.95, 𝜖 = 1.0 × 10−8Weight Decay 0.1 0.1Gradient Clipping 1.0 1.0Sequence Length 4, 096 4, 096
+
+A.3 評価データセットの詳細
+
+表 2 評価タスクに含まれるデータ件数とタスクの説明。
+タスク名件数タスクの説明MMLU 14, 042 57 科目からなる 4 値選択式の試験問題GSM8K 1, 319 小学校の数学の文章題データセットHellaSwag 10, 042 次に起こるイベントを予測する 4 択の選択式問題OpenBookQA 500 科学的な知識と常識に基づく 4 択の選択式問題SQuAD2 11, 873 根拠文書に対して作成された自由記述式質問応答TriviaQA 17, 944 雑学的な知識に基づく自由記述式質問応答XWINO 2, 325 文中の代名詞の先行詞を推定する 2 択の選択式問題
+
+A.4 使用したソフトウェアの詳細
+
+LLM のファインチューニングには、llm-recipes [19](v1.0.1)4）を使用した。
+また、定量評価には、LanguageModel Evaluation Harness [20](v0.4.5)5）を用いた。
+2） https://huggingface.co/meta-llama/Meta-Llama-3-8B3） https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct4） www.github.com/okoge-kaz/llm-recipes/tree/v1.0.15） www.github.com/EleutherAI/lm-evaluation-harness/tree/v0.4.5― 1703 ―

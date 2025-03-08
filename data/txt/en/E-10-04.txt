@@ -1,0 +1,521 @@
+Skip-bigrams reconstruct trigrams in 2-word languages
+
+Shohei Hidaka
+
+11
+
+Japan Advanced Institute of Science and Technology
+
+
+
+shhidaka@jaist.ac.jp
+
+
+
+Abstract
+
+In natural language processing, it has been empiricallyknown that skip-grams, co-occurrence statistics of twowords with some number of words in between them, isan eﬀective source of data to learn semantic nature of thewords.
+In this study, we propose a new theoretical accountfor why a set of skip-grams is eﬀective at least for two-wordlanguages, by giving a theorem that a set of trigram prob-abilities is representable with a set of skip bigrams.
+Thisrepresentation theorem justiﬁes the use of skip bigrams orso-called shiftgrams as a computationally eﬃcient sourceto access higher order n-gram.
+
+
+1 Eﬀectiveness of skip-gram statis-
+
+
+
+tics
+
+In natural language processing, it has been empiricallyknown that semantic structure of words are represented bythe word vector by learning the skip-grams [1, 2], which isco-occurrence statistics ( 𝑋𝑡, 𝑋𝑡+𝑠) of a pair of word at 𝑡 andword 𝑡+𝑠 with a skip length 𝑠 = 1, 2, . .
+..
+There are previousstudies that have tried to explain this empirical ﬁnding[3, 4, 5].
+Most of such previous studies have hypothesizedthat the word vector gives a eﬀective representation due totheir special settings of the learning scheme of the wordvector models (i.e., negative sampling)[3].In this study, we take an apprroach distinct from theseprevious studies, and mathematically analyze the funda-mental nature of language systems, represented by n-gram statistics.
+Our primary focus is how trigram statis-tics, the conditional probability 𝑃(𝑋𝑡+2|𝑋𝑡, 𝑋𝑡+1), can berepresented by a set of 𝑠-skip bigrams, 𝑃(𝑋𝑡+𝑠|𝑋𝑡)
+for𝑠 = 1, 2, . .
+..
+There is a trivial relationship that 𝑠-skip bi-grams 𝑃(𝑋𝑡+𝑠|𝑋𝑡) for each 𝑠 = 1, 2, . . .
+is constructed by agiven trigram 𝑃(𝑋𝑡+2|𝑋𝑡, 𝑋𝑡+1) of a Markov process.
+Ourquestion is the converse – can we construct the trigram onlyfrom a set of 𝑠-skip bigrams?
+This is a focus special case,that may be generalized to the relationship between 𝑠-skipbigrams and a general 𝑛-grams.
+If such fundamental rela-tionship between (n-1)-g rams and n-grams is established,it would explain why skip-gram statistics is a good sourceof data to learn semantic nature of words or language ingeneral – skip-gram gives a suﬃcient statistics of n-gramsand is computable eﬃciently.
+
+2 Skip bigram
+
+In this study, we assume a language 𝐿 has a setof 𝑘 words 𝕎𝑘:= {0, 1, 2, . .
+.
+, 𝑘 − 1}, and we call aMarkov process over a series of 𝑋0, 𝑋1, . . .
+∈ 𝕎𝑘lan-guage system.
+In particular, a language system iscalled 𝑛-grams of 𝐿, if 𝑃(𝑋𝑡|𝑋𝑡 −1, 𝑋𝑡 −2, . .
+.
+, 𝑋𝑡 −𝑛−𝑠) =𝑃(𝑋𝑡|𝑋𝑡 −1, 𝑋𝑡 −2, . . .
+, 𝑋𝑡 −𝑛) for any 𝑡 and 𝑠 = 0, 1, 2, . .
+..
+So any 𝑛-gram language system with 𝑘 words has(𝑘 − 1)𝑘𝑛−1parameters, those are the conditionalprobabilities 𝑃(𝑋𝑡|𝑋𝑡 −𝑛+1, . . .
+, 𝑋𝑡 −2, 𝑋𝑡 −1) ≥ 0
+withÍ𝑋𝑡∈𝕎𝑘𝑃(𝑋𝑡|𝑋𝑡 −𝑛+1, . . .
+, 𝑋𝑡 −2, 𝑋𝑡 −1) = 1.
+In this study,we assume any language system under analysis is ergodic,or equivalently it has a unique set of stationary probabili-ties.
+To encode the joint random variables of 𝑚-series, with-out loss of generality, we ﬁx the encoder map ℎ𝑘,𝑚:𝕎𝑚𝑘→ 𝐶𝑘,𝑚:= {1, 2, . . .
+, 𝑘𝑚} byℎ𝑘,𝑚(𝑋𝑡 −𝑚+1, 𝑋𝑡 −𝑚+2, . . .
+, 𝑋𝑡) := 1 +𝑚Õ𝑗=1𝑋𝑡 −𝑚+ 𝑗− 1𝑘𝑗−1.(1)In this encoding of the joint random variables, the transitionmatrix 𝑄2∈ ℝ𝑘×𝑘of any bigram language system is of theform𝑄2:=©«𝑞0|0𝑞0|1. . .
+𝑞0| 𝑘−1𝑞1|0𝑞1|1. . .
+𝑞1| 𝑘−1............
+𝑞𝑘−1|0𝑞𝑘−1|1. . .
+𝑞𝑘−1| 𝑘−1ª®®®®®®¬,(2)where
+𝑞𝑖| 𝑗:= 𝑃(𝑋𝑡= 𝑖|𝑋𝑡 −1= 𝑗) andÍ𝑖∈𝕎𝑘𝑞𝑖| 𝑗=
+1 forany 𝑗 ∈ 𝕎𝑘.
+Moreover, the transition matrix 𝑄3∈ ℝ𝑘2×𝑘2
+
+Skip-bigrams reconstruct trigrams in 2-word languages
+
+Shohei Hidaka
+
+11
+
+Japan Advanced Institute of Science and Technology
+
+
+
+shhidaka@jaist.ac.jp
+
+
+
+Abstract
+
+In natural language processing, it has been empiricallyknown that skip-grams, co-occurrence statistics of twowords with some number of words in between them, isan eﬀective source of data to learn semantic nature of thewords.
+In this study, we propose a new theoretical accountfor why a set of skip-grams is eﬀective at least for two-wordlanguages, by giving a theorem that a set of trigram prob-abilities is representable with a set of skip bigrams.
+Thisrepresentation theorem justiﬁes the use of skip bigrams orso-called shiftgrams as a computationally eﬃcient sourceto access higher order n-gram.
+
+
+1 Eﬀectiveness of skip-gram statis-
+
+
+
+tics
+
+In natural language processing, it has been empiricallyknown that semantic structure of words are represented bythe word vector by learning the skip-grams [1, 2], which isco-occurrence statistics ( 𝑋𝑡, 𝑋𝑡+𝑠) of a pair of word at 𝑡 andword 𝑡+𝑠 with a skip length 𝑠 = 1, 2, . .
+..
+There are previousstudies that have tried to explain this empirical ﬁnding[3, 4, 5].
+Most of such previous studies have hypothesizedthat the word vector gives a eﬀective representation due totheir special settings of the learning scheme of the wordvector models (i.e., negative sampling)[3].In this study, we take an apprroach distinct from theseprevious studies, and mathematically analyze the funda-mental nature of language systems, represented by n-gram statistics.
+Our primary focus is how trigram statis-tics, the conditional probability 𝑃(𝑋𝑡+2|𝑋𝑡, 𝑋𝑡+1), can berepresented by a set of 𝑠-skip bigrams, 𝑃(𝑋𝑡+𝑠|𝑋𝑡)
+for𝑠 = 1, 2, . .
+..
+There is a trivial relationship that 𝑠-skip bi-grams 𝑃(𝑋𝑡+𝑠|𝑋𝑡) for each 𝑠 = 1, 2, . . .
+is constructed by agiven trigram 𝑃(𝑋𝑡+2|𝑋𝑡, 𝑋𝑡+1) of a Markov process.
+Ourquestion is the converse – can we construct the trigram onlyfrom a set of 𝑠-skip bigrams?
+This is a focus special case,that may be generalized to the relationship between 𝑠-skipbigrams and a general 𝑛-grams.
+If such fundamental rela-tionship between (n-1)-g rams and n-grams is established,it would explain why skip-gram statistics is a good sourceof data to learn semantic nature of words or language ingeneral – skip-gram gives a suﬃcient statistics of n-gramsand is computable eﬃciently.
+
+2 Skip bigram
+
+In this study, we assume a language 𝐿 has a setof 𝑘 words 𝕎𝑘:= {0, 1, 2, . .
+.
+, 𝑘 − 1}, and we call aMarkov process over a series of 𝑋0, 𝑋1, . . .
+∈ 𝕎𝑘lan-guage system.
+In particular, a language system iscalled 𝑛-grams of 𝐿, if 𝑃(𝑋𝑡|𝑋𝑡 −1, 𝑋𝑡 −2, . .
+.
+, 𝑋𝑡 −𝑛−𝑠) =𝑃(𝑋𝑡|𝑋𝑡 −1, 𝑋𝑡 −2, . . .
+, 𝑋𝑡 −𝑛) for any 𝑡 and 𝑠 = 0, 1, 2, . .
+..
+So any 𝑛-gram language system with 𝑘 words has(𝑘 − 1)𝑘𝑛−1parameters, those are the conditionalprobabilities 𝑃(𝑋𝑡|𝑋𝑡 −𝑛+1, . . .
+, 𝑋𝑡 −2, 𝑋𝑡 −1) ≥ 0
+withÍ𝑋𝑡∈𝕎𝑘𝑃(𝑋𝑡|𝑋𝑡 −𝑛+1, . . .
+, 𝑋𝑡 −2, 𝑋𝑡 −1) = 1.
+In this study,we assume any language system under analysis is ergodic,or equivalently it has a unique set of stationary probabili-ties.
+To encode the joint random variables of 𝑚-series, with-out loss of generality, we ﬁx the encoder map ℎ𝑘,𝑚:𝕎𝑚𝑘→ 𝐶𝑘,𝑚:= {1, 2, . . .
+, 𝑘𝑚} byℎ𝑘,𝑚(𝑋𝑡 −𝑚+1, 𝑋𝑡 −𝑚+2, . . .
+, 𝑋𝑡) := 1 +𝑚Õ𝑗=1𝑋𝑡 −𝑚+ 𝑗− 1𝑘𝑗−1.(1)In this encoding of the joint random variables, the transitionmatrix 𝑄2∈ ℝ𝑘×𝑘of any bigram language system is of theform𝑄2:=©«𝑞0|0𝑞0|1. . .
+𝑞0| 𝑘−1𝑞1|0𝑞1|1. . .
+𝑞1| 𝑘−1............
+𝑞𝑘−1|0𝑞𝑘−1|1. . .
+𝑞𝑘−1| 𝑘−1ª®®®®®®¬,(2)where
+𝑞𝑖| 𝑗:= 𝑃(𝑋𝑡= 𝑖|𝑋𝑡 −1= 𝑗) andÍ𝑖∈𝕎𝑘𝑞𝑖| 𝑗=
+1 forany 𝑗 ∈ 𝕎𝑘.
+Moreover, the transition matrix 𝑄3∈ ℝ𝑘2×𝑘2of any trigram language system is of the form𝑄3:=Õ𝑖, 𝑗 ∈𝕎𝑘𝑒𝑘,𝑖⊗ 𝑒𝑘, 𝑗𝑒⊤𝑘, 𝑗⊗ 𝑟𝑖, 𝑗, (3)where 𝑟𝑖, 𝑗= (𝑞𝑖| (0, 𝑗 ), . . .
+, 𝑞𝑖| (𝑘−1, 𝑗 )).Let
+𝜃2= (𝜃0, 𝜃1, . . .
+, 𝜃𝑘−1)⊤∈ ℝ𝑘be the stationaryprobability vector of the bigram system such that 𝜃2=𝑄2𝜃2, and 𝜃3= (𝜃(0,0), 𝜃(1,0), . . . , 𝜃(𝑘−1,𝑘−1))⊤∈ ℝ𝑘2bethe stationary probability vector of the trigram system suchthat 𝜃3= 𝑄3𝜃3.
+
+
+2.1 Tensor form and tensor product
+
+
+The set of 𝑛-gram conditional probabilities𝑃(𝑋𝑡|𝑋𝑡 −1, . .
+.
+, 𝑋𝑡 −𝑛+1)is naturally represented bya 𝑛thorder tensor (𝑛-tensor in short).
+Real-valued 𝑛-tensorℝ𝑘1×𝑘2×...×𝑘𝑛is a vector space of real-valued maps{0, . . .
+, 𝑘1− 1} × . . .
+× {0, . .
+. , 𝑘𝑛− 1} → ℝ. Let usdenote ℝ𝑘𝑛:= ℝ𝑘1×𝑘2×...
+×𝑘𝑛for 𝑘 = 𝑘1= 𝑘2= . . .
+= 𝑘𝑛.We call a tensor product ★ : ℝ𝑘𝑛× ℝ𝑘𝑛→ ℝ𝑘𝑛convo-lution deﬁned by𝑃 ★
+𝑄 := (4)Õ𝑋𝑡 −1∈𝐾𝑃(𝑋𝑡, 𝑋𝑡 −1, . .
+.
+, 𝑋𝑡 −𝑛+1)𝑄(𝑋𝑡 −1, 𝑋𝑡 −2, . . .
+, 𝑋𝑡 −𝑛),for 𝑃, 𝑄 ∈ ℝ𝑘𝑛.
+In particular, denote for 𝑚 ≥ 0𝑄𝑚:=𝐸𝑛, 𝑘if 𝑚 = 0,𝑄𝑚−1★ 𝑄 otherwise, (5)where 𝐸𝑛, 𝑘∈ ℝ𝑘𝑛is the left unit tensor satisfying 𝐸𝑛, 𝑘★𝑄 = 𝑄 for any tensor 𝑄 ∈ ℝ𝑘𝑛. Speciﬁcally,𝐸𝑛, 𝑘(𝑖1, 𝑖2, . .
+.
+, 𝑖𝑛) =1 if 𝑖1= 𝑖20 otherwise.
+(6)This convolution is useful to represent a time-shift oper-ation in the following sense: If 𝑄 ∈ ℝ𝑘𝑛is time-invariant𝑛-gram conditional probability 𝑄(𝑋𝑡, 𝑋𝑡 −1, . . .
+, 𝑋𝑡 −𝑛+1) =𝑃(𝑋𝑡|𝑋𝑡 −1, . . .
+, 𝑋𝑡 −𝑛+1), the convolution of 𝑘thpower rep-resents shift in the time step of random variables:𝑄𝑘(𝑋𝑡, 𝑋𝑡 −𝑘, . . .
+, 𝑋𝑡 −𝑛−𝑘+2)(7)= 𝑃(𝑋𝑡|𝑋𝑡 −𝑘, . . .
+, 𝑋𝑡 −𝑛−𝑘+2).
+(8)Deﬁne reduction operator 𝑟𝜃,𝐼: ℝ𝑘𝑛→
+ℝ𝑘|𝐼 |for any𝐼 ⊆ 𝑁 = { 1, 2, . .
+. , 𝑛} for 𝑄 ∈ ℝ𝑘𝑛by𝑟𝐼(𝑄) =Õ(𝑖𝑗)∈{1,...,𝑛}\𝐼∈𝐾𝑛−|𝐼|𝑄(𝑖1, 𝑖2, . . .
+, 𝑖𝑛), (9)𝑚-shifgram 𝑆𝑚: ℝ𝑘𝑛→ ℝ𝑘2is deﬁned by𝑆𝑚(𝑄) :
+= 𝑟{1,2}𝑄𝑚Θ𝑄, (10)where Θ𝑄is the stationar y tensor associated to 𝑄.The 𝑚-shiftgram of 𝑛-gram tensor 𝑄 ∈ ℝ𝑘𝑛has thefollowing properties.
+For 𝑚′= 2, 3, . . .
+, 𝑛,𝑆𝑚(𝑄) = 𝑟{1,𝑚′}𝑄𝑚−𝑚′+2Θ𝑄. (11)
+
+3 Inverse problem
+
+
+
+3.1 eﬀective isomorphism between tri-
+
+
+
+grams and shiftgrams
+
+Suppose we have the series of all 𝑚-shiftgrams 𝑆(𝑄) :
+={𝑆𝑚(𝑄)}𝑚=0,1,...of some unknown 𝑛-gram probabilitytensor 𝑄 ∈ ℝ𝑘𝑛.
+Then can we uniquely identify theoriginal probability tensor 𝑄 that generates 𝑆(𝑄)?
+Letus focus on 𝑛 = 3 in this paper.
+For each ﬁxed𝑚′= 0, 1, . .
+., we have 𝑛 − 1 diﬀerent 𝑚-shiftgrams𝑆𝑚(𝑄)
+= 𝑟{1, (𝑚+2−𝑚′) }𝑄𝑚′Θ𝑄for 𝑚′≤ 𝑚 ≤ 𝑚′+ 𝑛 − 2due to the identity (11).
+For each 𝑚′, 𝑄 is constrainedby (𝑛 − 1) matrices of 𝑚-shiftgrams 𝑆𝑚(𝑄) and the sumÍ𝑖∈𝐾𝑄𝑚′(𝑖, 𝑗, 𝑘) = 1 is also constrained.
+So 𝑄𝑚′mayhave at most (𝑘 − 1)𝑛polynomial equations, but only(𝑘 − 1)𝑛−1equations are new constraints not expressedby (11) for 𝑚′≥ 𝑛 − 1.
+Thus, there are at most𝑘2+ 𝑘 (𝑘 −1)
++ 𝑚′(𝑘 −1)2polynomial equations for a ser iesof 𝑆0(𝑄), 𝑆1(𝑄), . . . , 𝑆𝑚′(𝑄), and thus at least 𝑚′≥ 𝑘 tohave the suﬃcient number 𝑘3of polynomial equations toidentify 𝑄 ∈ ℝ𝑘𝑛.
+
+3.2 Case with 𝑘 = 2 and 𝑛 = 3
+
+To be speciﬁc, let us study 𝑘 = 2 and 𝑛 = 3as a minimal example.
+In this case 𝑆1(𝑄), 𝑆2(𝑄) isneeded to have a suﬃcient number of equations.
+Let𝑄1𝑄2. . .
+𝑄𝑚denote the third order tensor byseries of matrices 𝑄 (𝑖, 𝑗, 𝑘) = 𝑄𝑘(𝑖, 𝑗) for 𝑖, 𝑗, 𝑘 ∈ 𝐾. For𝑘 = 2 and 𝑛 = 3, the trigram probability tensor is𝑄 =𝑞00𝑞10𝑞01𝑞11(12)= 𝑞0|00𝑞0|10𝑞0|01𝑞0|11𝑞1|00𝑞1|10𝑞1|01𝑞1|11!, (13)where 𝑞𝑖 𝑗= (𝑞0|𝑖 𝑗, 𝑞1|𝑖 𝑗)⊤∈ ℝ2, and𝑄2=(𝑞00, 𝑞10)𝑞00(𝑞01, 𝑞11)𝑞10(𝑞00, 𝑞10)𝑞01(𝑞01, 𝑞11)𝑞11.(14)
+
+Skip-bigrams reconstruct trigrams in 2-word languages
+
+Shohei Hidaka
+
+11
+
+Japan Advanced Institute of Science and Technology
+
+
+
+shhidaka@jaist.ac.jp
+
+
+
+Abstract
+
+In natural language processing, it has been empiricallyknown that skip-grams, co-occurrence statistics of twowords with some number of words in between them, isan eﬀective source of data to learn semantic nature of thewords.
+In this study, we propose a new theoretical accountfor why a set of skip-grams is eﬀective at least for two-wordlanguages, by giving a theorem that a set of trigram prob-abilities is representable with a set of skip bigrams.
+Thisrepresentation theorem justiﬁes the use of skip bigrams orso-called shiftgrams as a computationally eﬃcient sourceto access higher order n-gram.
+
+
+1 Eﬀectiveness of skip-gram statis-
+
+
+
+tics
+
+In natural language processing, it has been empiricallyknown that semantic structure of words are represented bythe word vector by learning the skip-grams [1, 2], which isco-occurrence statistics ( 𝑋𝑡, 𝑋𝑡+𝑠) of a pair of word at 𝑡 andword 𝑡+𝑠 with a skip length 𝑠 = 1, 2, . .
+..
+There are previousstudies that have tried to explain this empirical ﬁnding[3, 4, 5].
+Most of such previous studies have hypothesizedthat the word vector gives a eﬀective representation due totheir special settings of the learning scheme of the wordvector models (i.e., negative sampling)[3].In this study, we take an apprroach distinct from theseprevious studies, and mathematically analyze the funda-mental nature of language systems, represented by n-gram statistics.
+Our primary focus is how trigram statis-tics, the conditional probability 𝑃(𝑋𝑡+2|𝑋𝑡, 𝑋𝑡+1), can berepresented by a set of 𝑠-skip bigrams, 𝑃(𝑋𝑡+𝑠|𝑋𝑡)
+for𝑠 = 1, 2, . .
+..
+There is a trivial relationship that 𝑠-skip bi-grams 𝑃(𝑋𝑡+𝑠|𝑋𝑡) for each 𝑠 = 1, 2, . . .
+is constructed by agiven trigram 𝑃(𝑋𝑡+2|𝑋𝑡, 𝑋𝑡+1) of a Markov process.
+Ourquestion is the converse – can we construct the trigram onlyfrom a set of 𝑠-skip bigrams?
+This is a focus special case,that may be generalized to the relationship between 𝑠-skipbigrams and a general 𝑛-grams.
+If such fundamental rela-tionship between (n-1)-g rams and n-grams is established,it would explain why skip-gram statistics is a good sourceof data to learn semantic nature of words or language ingeneral – skip-gram gives a suﬃcient statistics of n-gramsand is computable eﬃciently.
+
+2 Skip bigram
+
+In this study, we assume a language 𝐿 has a setof 𝑘 words 𝕎𝑘:= {0, 1, 2, . .
+.
+, 𝑘 − 1}, and we call aMarkov process over a series of 𝑋0, 𝑋1, . . .
+∈ 𝕎𝑘lan-guage system.
+In particular, a language system iscalled 𝑛-grams of 𝐿, if 𝑃(𝑋𝑡|𝑋𝑡 −1, 𝑋𝑡 −2, . .
+.
+, 𝑋𝑡 −𝑛−𝑠) =𝑃(𝑋𝑡|𝑋𝑡 −1, 𝑋𝑡 −2, . . .
+, 𝑋𝑡 −𝑛) for any 𝑡 and 𝑠 = 0, 1, 2, . .
+..
+So any 𝑛-gram language system with 𝑘 words has(𝑘 − 1)𝑘𝑛−1parameters, those are the conditionalprobabilities 𝑃(𝑋𝑡|𝑋𝑡 −𝑛+1, . . .
+, 𝑋𝑡 −2, 𝑋𝑡 −1) ≥ 0
+withÍ𝑋𝑡∈𝕎𝑘𝑃(𝑋𝑡|𝑋𝑡 −𝑛+1, . . .
+, 𝑋𝑡 −2, 𝑋𝑡 −1) = 1.
+In this study,we assume any language system under analysis is ergodic,or equivalently it has a unique set of stationary probabili-ties.
+To encode the joint random variables of 𝑚-series, with-out loss of generality, we ﬁx the encoder map ℎ𝑘,𝑚:𝕎𝑚𝑘→ 𝐶𝑘,𝑚:= {1, 2, . . .
+, 𝑘𝑚} byℎ𝑘,𝑚(𝑋𝑡 −𝑚+1, 𝑋𝑡 −𝑚+2, . . .
+, 𝑋𝑡) := 1 +𝑚Õ𝑗=1𝑋𝑡 −𝑚+ 𝑗− 1𝑘𝑗−1.(1)In this encoding of the joint random variables, the transitionmatrix 𝑄2∈ ℝ𝑘×𝑘of any bigram language system is of theform𝑄2:=©«𝑞0|0𝑞0|1. . .
+𝑞0| 𝑘−1𝑞1|0𝑞1|1. . .
+𝑞1| 𝑘−1............
+𝑞𝑘−1|0𝑞𝑘−1|1. . .
+𝑞𝑘−1| 𝑘−1ª®®®®®®¬,(2)where
+𝑞𝑖| 𝑗:= 𝑃(𝑋𝑡= 𝑖|𝑋𝑡 −1= 𝑗) andÍ𝑖∈𝕎𝑘𝑞𝑖| 𝑗=
+1 forany 𝑗 ∈ 𝕎𝑘.
+Moreover, the transition matrix 𝑄3∈ ℝ𝑘2×𝑘2of any trigram language system is of the form𝑄3:=Õ𝑖, 𝑗 ∈𝕎𝑘𝑒𝑘,𝑖⊗ 𝑒𝑘, 𝑗𝑒⊤𝑘, 𝑗⊗ 𝑟𝑖, 𝑗, (3)where 𝑟𝑖, 𝑗= (𝑞𝑖| (0, 𝑗 ), . . .
+, 𝑞𝑖| (𝑘−1, 𝑗 )).Let
+𝜃2= (𝜃0, 𝜃1, . . .
+, 𝜃𝑘−1)⊤∈ ℝ𝑘be the stationaryprobability vector of the bigram system such that 𝜃2=𝑄2𝜃2, and 𝜃3= (𝜃(0,0), 𝜃(1,0), . . . , 𝜃(𝑘−1,𝑘−1))⊤∈ ℝ𝑘2bethe stationary probability vector of the trigram system suchthat 𝜃3= 𝑄3𝜃3.
+
+
+2.1 Tensor form and tensor product
+
+
+The set of 𝑛-gram conditional probabilities𝑃(𝑋𝑡|𝑋𝑡 −1, . .
+.
+, 𝑋𝑡 −𝑛+1)is naturally represented bya 𝑛thorder tensor (𝑛-tensor in short).
+Real-valued 𝑛-tensorℝ𝑘1×𝑘2×...×𝑘𝑛is a vector space of real-valued maps{0, . . .
+, 𝑘1− 1} × . . .
+× {0, . .
+. , 𝑘𝑛− 1} → ℝ. Let usdenote ℝ𝑘𝑛:= ℝ𝑘1×𝑘2×...
+×𝑘𝑛for 𝑘 = 𝑘1= 𝑘2= . . .
+= 𝑘𝑛.We call a tensor product ★ : ℝ𝑘𝑛× ℝ𝑘𝑛→ ℝ𝑘𝑛convo-lution deﬁned by𝑃 ★
+𝑄 := (4)Õ𝑋𝑡 −1∈𝐾𝑃(𝑋𝑡, 𝑋𝑡 −1, . .
+.
+, 𝑋𝑡 −𝑛+1)𝑄(𝑋𝑡 −1, 𝑋𝑡 −2, . . .
+, 𝑋𝑡 −𝑛),for 𝑃, 𝑄 ∈ ℝ𝑘𝑛.
+In particular, denote for 𝑚 ≥ 0𝑄𝑚:=𝐸𝑛, 𝑘if 𝑚 = 0,𝑄𝑚−1★ 𝑄 otherwise, (5)where 𝐸𝑛, 𝑘∈ ℝ𝑘𝑛is the left unit tensor satisfying 𝐸𝑛, 𝑘★𝑄 = 𝑄 for any tensor 𝑄 ∈ ℝ𝑘𝑛. Speciﬁcally,𝐸𝑛, 𝑘(𝑖1, 𝑖2, . .
+.
+, 𝑖𝑛) =1 if 𝑖1= 𝑖20 otherwise.
+(6)This convolution is useful to represent a time-shift oper-ation in the following sense: If 𝑄 ∈ ℝ𝑘𝑛is time-invariant𝑛-gram conditional probability 𝑄(𝑋𝑡, 𝑋𝑡 −1, . . .
+, 𝑋𝑡 −𝑛+1) =𝑃(𝑋𝑡|𝑋𝑡 −1, . . .
+, 𝑋𝑡 −𝑛+1), the convolution of 𝑘thpower rep-resents shift in the time step of random variables:𝑄𝑘(𝑋𝑡, 𝑋𝑡 −𝑘, . . .
+, 𝑋𝑡 −𝑛−𝑘+2)(7)= 𝑃(𝑋𝑡|𝑋𝑡 −𝑘, . . .
+, 𝑋𝑡 −𝑛−𝑘+2).
+(8)Deﬁne reduction operator 𝑟𝜃,𝐼: ℝ𝑘𝑛→
+ℝ𝑘|𝐼 |for any𝐼 ⊆ 𝑁 = { 1, 2, . .
+. , 𝑛} for 𝑄 ∈ ℝ𝑘𝑛by𝑟𝐼(𝑄) =Õ(𝑖𝑗)∈{1,...,𝑛}\𝐼∈𝐾𝑛−|𝐼|𝑄(𝑖1, 𝑖2, . . .
+, 𝑖𝑛), (9)𝑚-shifgram 𝑆𝑚: ℝ𝑘𝑛→ ℝ𝑘2is deﬁned by𝑆𝑚(𝑄) :
+= 𝑟{1,2}𝑄𝑚Θ𝑄, (10)where Θ𝑄is the stationar y tensor associated to 𝑄.The 𝑚-shiftgram of 𝑛-gram tensor 𝑄 ∈ ℝ𝑘𝑛has thefollowing properties.
+For 𝑚′= 2, 3, . . .
+, 𝑛,𝑆𝑚(𝑄) = 𝑟{1,𝑚′}𝑄𝑚−𝑚′+2Θ𝑄. (11)
+
+3 Inverse problem
+
+
+
+3.1 eﬀective isomorphism between tri-
+
+
+
+grams and shiftgrams
+
+Suppose we have the series of all 𝑚-shiftgrams 𝑆(𝑄) :
+={𝑆𝑚(𝑄)}𝑚=0,1,...of some unknown 𝑛-gram probabilitytensor 𝑄 ∈ ℝ𝑘𝑛.
+Then can we uniquely identify theoriginal probability tensor 𝑄 that generates 𝑆(𝑄)?
+Letus focus on 𝑛 = 3 in this paper.
+For each ﬁxed𝑚′= 0, 1, . .
+., we have 𝑛 − 1 diﬀerent 𝑚-shiftgrams𝑆𝑚(𝑄)
+= 𝑟{1, (𝑚+2−𝑚′) }𝑄𝑚′Θ𝑄for 𝑚′≤ 𝑚 ≤ 𝑚′+ 𝑛 − 2due to the identity (11).
+For each 𝑚′, 𝑄 is constrainedby (𝑛 − 1) matrices of 𝑚-shiftgrams 𝑆𝑚(𝑄) and the sumÍ𝑖∈𝐾𝑄𝑚′(𝑖, 𝑗, 𝑘) = 1 is also constrained.
+So 𝑄𝑚′mayhave at most (𝑘 − 1)𝑛polynomial equations, but only(𝑘 − 1)𝑛−1equations are new constraints not expressedby (11) for 𝑚′≥ 𝑛 − 1.
+Thus, there are at most𝑘2+ 𝑘 (𝑘 −1)
++ 𝑚′(𝑘 −1)2polynomial equations for a ser iesof 𝑆0(𝑄), 𝑆1(𝑄), . . . , 𝑆𝑚′(𝑄), and thus at least 𝑚′≥ 𝑘 tohave the suﬃcient number 𝑘3of polynomial equations toidentify 𝑄 ∈ ℝ𝑘𝑛.
+
+3.2 Case with 𝑘 = 2 and 𝑛 = 3
+
+To be speciﬁc, let us study 𝑘 = 2 and 𝑛 = 3as a minimal example.
+In this case 𝑆1(𝑄), 𝑆2(𝑄) isneeded to have a suﬃcient number of equations.
+Let𝑄1𝑄2. . .
+𝑄𝑚denote the third order tensor byseries of matrices 𝑄 (𝑖, 𝑗, 𝑘) = 𝑄𝑘(𝑖, 𝑗) for 𝑖, 𝑗, 𝑘 ∈ 𝐾. For𝑘 = 2 and 𝑛 = 3, the trigram probability tensor is𝑄 =𝑞00𝑞10𝑞01𝑞11(12)= 𝑞0|00𝑞0|10𝑞0|01𝑞0|11𝑞1|00𝑞1|10𝑞1|01𝑞1|11!, (13)where 𝑞𝑖 𝑗= (𝑞0|𝑖 𝑗, 𝑞1|𝑖 𝑗)⊤∈ ℝ2, and𝑄2=(𝑞00, 𝑞10)𝑞00(𝑞01, 𝑞11)𝑞10(𝑞00, 𝑞10)𝑞01(𝑞01, 𝑞11)𝑞11.(14)Thus, with the stationary tensor Θ𝑄(𝑖, 𝑗, 𝑘) := 𝜃𝑗 𝑘, the𝑚-shiftgrams for 𝑚 = 1, 2, 3 are𝑆1(𝑄)
+=Õ𝑗 ∈ {0,1}𝑞𝑖 𝑗𝜃𝑖 𝑗𝑒⊤𝑛,𝑖. (15)𝑆2(𝑄) =Õ𝑖∈ {0,1}𝑞𝑖 𝑗𝜃𝑖 𝑗𝑒⊤𝑛, 𝑗. (16)𝑆3(𝑄) =Õ𝑖, 𝑗 ∈ {0,1}(𝑞0𝑖, 𝑞1𝑖)𝑞𝑖 𝑗𝜃𝑖 𝑗𝑒⊤𝑛, 𝑗. (17)With (15), (16), and the sum-to-one constraint for 𝑖, 𝑗 ∈ 𝐾1⊤𝑘𝑞𝑖, 𝑗= 1, (18)7 independent linear equations are for 𝑄 ∈ ℝ23by ﬁxing1, 2-shiftgrams.
+Lemma 1
+For 𝑘 = 2 and 𝑛 = 3, there are at most twotrigram probability tensors 𝑄 satisfy (18), (15), (16), and(16) for a given 𝑆1(𝑄), 𝑆2(𝑄), and 𝑆3(𝑄), if𝜃𝑖 𝑗= e⊤𝑘,𝑖𝑆1(𝑄)e𝑘, 𝑗(19)1⊤𝑘𝑆1(𝑄)
+= 1⊤𝑘𝑆2(𝑄)(20)𝑆1(𝑄)1𝑘= 𝑆2(𝑄)1𝑘. (21)Otherwise, there is no 𝑄 satisfying the equations (18), (15),(16), and (17).Proof Here we explicitly solve the equations (18), (15),(16), and (16) by letting the tensor 𝑄 as its variables.
+Speciﬁcally, the vectorized variables vec(𝑄)∈ ℝ𝑘𝑛isrequired to be in the kernel of the matrix 𝐶vec(𝑄)= 𝑠 ∈ℝ3𝑘2such that:𝐶 := e3,1⊗ 𝐼𝑘2⊗ 1⊤𝑘+ e3,2⊗ 1⊤𝑘⊗ 𝐼𝑘2+ e3,3⊗ 𝐼𝑘⊗ 1⊤𝑘⊗ 𝐼𝑘(22)𝑠 := e3,1⊗ vecΘ𝑄+ e3,2⊗ vec(𝑆1(𝑄))+ e3,3⊗ vec(𝑆2(𝑄)).(23)This equation 𝐶vec(𝑄)= 𝑠 gives a set of 7 independentlinear equations, only if (19), (20), and (21) holds.
+Speciﬁ-cally, the solution is 𝑞𝑖| 𝑗 𝑘=
+𝑎𝑖 𝑗 𝑘𝑥 +𝑏𝑖 𝑗 𝑘for each 𝑖, 𝑗, 𝑘 ∈
+𝐾with any 𝑥 ∈ ℝ, where𝑎𝑖 𝑗= 𝜃−1𝑖 𝑗(−1)𝑖+ 𝑗(1, −1)⊤(24)𝑏𝑖 𝑗= 𝜃𝑖 𝑗e𝑘,2+𝛿1𝑖𝛿0 𝑗𝑆(2)00+ 𝛿0𝑖𝛿1 𝑗 𝑆(1)00+ 𝛿1𝑖𝛿1 𝑗𝑆(1)01− 𝑆(2)00(1, −1)⊤(25)Inserting 𝑞𝑖| 𝑗 𝑘= 𝑎𝑖 𝑗 𝑘𝑥 + 𝑏𝑖 𝑗 𝑘to (17), it gives a quadraticequation𝛼𝑥2+ 𝛽𝑥 + 𝛾 = 0, (26)where𝛼 =Õ𝑖, 𝑗 ∈𝐾𝜃−1𝑖 𝑗(27)𝛽 = 𝜃00(2𝑎000𝑏000+ 𝑎010𝑏100+ 𝑏010𝑎100)(28)+ 𝜃01(𝑎000𝑏001+ 𝑏000𝑎001+ 𝑎010𝑏101+ 𝑏010𝑎101)𝛾 = (𝑏0|00, 𝑏0|10)𝑏00𝑏01(𝜃00, 𝜃01)⊤. (29)This quadratic equation has the leading coeﬃcient 𝛼 ≠ 0.Thus, it has at most two probability tensors 𝑄 satisfyingthe equations, unless the quadratic equation has a factor(𝑎𝑖 𝑗 𝑘𝑥 + 𝑏𝑖 𝑗
+𝑘− 𝑞𝑖| 𝑗 𝑘) for some 𝑖, 𝑗, 𝑘 ∈ 𝕂. □
+
+4 Summary and Conjecture
+
+Lemma 1 demonstrates a given set of 𝑚-shiftgrams isgenerally suﬃcient to reconstruct trigrams in two-wordlanguages up to ﬁnite samples (there two possible trigramprobability tensors 𝑄).
+We expect that this special lemmacan be probably extended to any general 𝑘 > 2, and perhapsfor 𝑛 > 3 as well.
+This putative generalized theorem wouldfully explains why a set of 𝑚-shiftgrams or skip-bigramsapproximates 𝑛-gram probabilities well.
+Also this general-ized theorem would give mapping how higher 𝑛-grams areembedded into a series of 𝑚-grams, and the number of suchmaps will be bounded by the number of words 𝑘, which ismuch smaller than an exponential function of 𝑛.
+Thus, itmay open up a theoretical explanation why n-grams, withan exponential number of combinations, can be learnedeﬃciently.
+To tackle further general cases with more words 𝑘 > 2and higher 𝑛 > 3-grams, we need to understand how con-volution ★ behaves over 𝑛-gram tensor and which algebrais suitable to understand such tensor operations.
+
+Skip-bigrams reconstruct trigrams in 2-word languages
+
+Shohei Hidaka
+
+11
+
+Japan Advanced Institute of Science and Technology
+
+
+
+shhidaka@jaist.ac.jp
+
+
+
+Abstract
+
+In natural language processing, it has been empiricallyknown that skip-grams, co-occurrence statistics of twowords with some number of words in between them, isan eﬀective source of data to learn semantic nature of thewords.
+In this study, we propose a new theoretical accountfor why a set of skip-grams is eﬀective at least for two-wordlanguages, by giving a theorem that a set of trigram prob-abilities is representable with a set of skip bigrams.
+Thisrepresentation theorem justiﬁes the use of skip bigrams orso-called shiftgrams as a computationally eﬃcient sourceto access higher order n-gram.
+
+
+1 Eﬀectiveness of skip-gram statis-
+
+
+
+tics
+
+In natural language processing, it has been empiricallyknown that semantic structure of words are represented bythe word vector by learning the skip-grams [1, 2], which isco-occurrence statistics ( 𝑋𝑡, 𝑋𝑡+𝑠) of a pair of word at 𝑡 andword 𝑡+𝑠 with a skip length 𝑠 = 1, 2, . .
+..
+There are previousstudies that have tried to explain this empirical ﬁnding[3, 4, 5].
+Most of such previous studies have hypothesizedthat the word vector gives a eﬀective representation due totheir special settings of the learning scheme of the wordvector models (i.e., negative sampling)[3].In this study, we take an apprroach distinct from theseprevious studies, and mathematically analyze the funda-mental nature of language systems, represented by n-gram statistics.
+Our primary focus is how trigram statis-tics, the conditional probability 𝑃(𝑋𝑡+2|𝑋𝑡, 𝑋𝑡+1), can berepresented by a set of 𝑠-skip bigrams, 𝑃(𝑋𝑡+𝑠|𝑋𝑡)
+for𝑠 = 1, 2, . .
+..
+There is a trivial relationship that 𝑠-skip bi-grams 𝑃(𝑋𝑡+𝑠|𝑋𝑡) for each 𝑠 = 1, 2, . . .
+is constructed by agiven trigram 𝑃(𝑋𝑡+2|𝑋𝑡, 𝑋𝑡+1) of a Markov process.
+Ourquestion is the converse – can we construct the trigram onlyfrom a set of 𝑠-skip bigrams?
+This is a focus special case,that may be generalized to the relationship between 𝑠-skipbigrams and a general 𝑛-grams.
+If such fundamental rela-tionship between (n-1)-g rams and n-grams is established,it would explain why skip-gram statistics is a good sourceof data to learn semantic nature of words or language ingeneral – skip-gram gives a suﬃcient statistics of n-gramsand is computable eﬃciently.
+
+2 Skip bigram
+
+In this study, we assume a language 𝐿 has a setof 𝑘 words 𝕎𝑘:= {0, 1, 2, . .
+.
+, 𝑘 − 1}, and we call aMarkov process over a series of 𝑋0, 𝑋1, . . .
+∈ 𝕎𝑘lan-guage system.
+In particular, a language system iscalled 𝑛-grams of 𝐿, if 𝑃(𝑋𝑡|𝑋𝑡 −1, 𝑋𝑡 −2, . .
+.
+, 𝑋𝑡 −𝑛−𝑠) =𝑃(𝑋𝑡|𝑋𝑡 −1, 𝑋𝑡 −2, . . .
+, 𝑋𝑡 −𝑛) for any 𝑡 and 𝑠 = 0, 1, 2, . .
+..
+So any 𝑛-gram language system with 𝑘 words has(𝑘 − 1)𝑘𝑛−1parameters, those are the conditionalprobabilities 𝑃(𝑋𝑡|𝑋𝑡 −𝑛+1, . . .
+, 𝑋𝑡 −2, 𝑋𝑡 −1) ≥ 0
+withÍ𝑋𝑡∈𝕎𝑘𝑃(𝑋𝑡|𝑋𝑡 −𝑛+1, . . .
+, 𝑋𝑡 −2, 𝑋𝑡 −1) = 1.
+In this study,we assume any language system under analysis is ergodic,or equivalently it has a unique set of stationary probabili-ties.
+To encode the joint random variables of 𝑚-series, with-out loss of generality, we ﬁx the encoder map ℎ𝑘,𝑚:𝕎𝑚𝑘→ 𝐶𝑘,𝑚:= {1, 2, . . .
+, 𝑘𝑚} byℎ𝑘,𝑚(𝑋𝑡 −𝑚+1, 𝑋𝑡 −𝑚+2, . . .
+, 𝑋𝑡) := 1 +𝑚Õ𝑗=1𝑋𝑡 −𝑚+ 𝑗− 1𝑘𝑗−1.(1)In this encoding of the joint random variables, the transitionmatrix 𝑄2∈ ℝ𝑘×𝑘of any bigram language system is of theform𝑄2:=©«𝑞0|0𝑞0|1. . .
+𝑞0| 𝑘−1𝑞1|0𝑞1|1. . .
+𝑞1| 𝑘−1............
+𝑞𝑘−1|0𝑞𝑘−1|1. . .
+𝑞𝑘−1| 𝑘−1ª®®®®®®¬,(2)where
+𝑞𝑖| 𝑗:= 𝑃(𝑋𝑡= 𝑖|𝑋𝑡 −1= 𝑗) andÍ𝑖∈𝕎𝑘𝑞𝑖| 𝑗=
+1 forany 𝑗 ∈ 𝕎𝑘.
+Moreover, the transition matrix 𝑄3∈ ℝ𝑘2×𝑘2of any trigram language system is of the form𝑄3:=Õ𝑖, 𝑗 ∈𝕎𝑘𝑒𝑘,𝑖⊗ 𝑒𝑘, 𝑗𝑒⊤𝑘, 𝑗⊗ 𝑟𝑖, 𝑗, (3)where 𝑟𝑖, 𝑗= (𝑞𝑖| (0, 𝑗 ), . . .
+, 𝑞𝑖| (𝑘−1, 𝑗 )).Let
+𝜃2= (𝜃0, 𝜃1, . . .
+, 𝜃𝑘−1)⊤∈ ℝ𝑘be the stationaryprobability vector of the bigram system such that 𝜃2=𝑄2𝜃2, and 𝜃3= (𝜃(0,0), 𝜃(1,0), . . . , 𝜃(𝑘−1,𝑘−1))⊤∈ ℝ𝑘2bethe stationary probability vector of the trigram system suchthat 𝜃3= 𝑄3𝜃3.
+
+
+2.1 Tensor form and tensor product
+
+
+The set of 𝑛-gram conditional probabilities𝑃(𝑋𝑡|𝑋𝑡 −1, . .
+.
+, 𝑋𝑡 −𝑛+1)is naturally represented bya 𝑛thorder tensor (𝑛-tensor in short).
+Real-valued 𝑛-tensorℝ𝑘1×𝑘2×...×𝑘𝑛is a vector space of real-valued maps{0, . . .
+, 𝑘1− 1} × . . .
+× {0, . .
+. , 𝑘𝑛− 1} → ℝ. Let usdenote ℝ𝑘𝑛:= ℝ𝑘1×𝑘2×...
+×𝑘𝑛for 𝑘 = 𝑘1= 𝑘2= . . .
+= 𝑘𝑛.We call a tensor product ★ : ℝ𝑘𝑛× ℝ𝑘𝑛→ ℝ𝑘𝑛convo-lution deﬁned by𝑃 ★
+𝑄 := (4)Õ𝑋𝑡 −1∈𝐾𝑃(𝑋𝑡, 𝑋𝑡 −1, . .
+.
+, 𝑋𝑡 −𝑛+1)𝑄(𝑋𝑡 −1, 𝑋𝑡 −2, . . .
+, 𝑋𝑡 −𝑛),for 𝑃, 𝑄 ∈ ℝ𝑘𝑛.
+In particular, denote for 𝑚 ≥ 0𝑄𝑚:=𝐸𝑛, 𝑘if 𝑚 = 0,𝑄𝑚−1★ 𝑄 otherwise, (5)where 𝐸𝑛, 𝑘∈ ℝ𝑘𝑛is the left unit tensor satisfying 𝐸𝑛, 𝑘★𝑄 = 𝑄 for any tensor 𝑄 ∈ ℝ𝑘𝑛. Speciﬁcally,𝐸𝑛, 𝑘(𝑖1, 𝑖2, . .
+.
+, 𝑖𝑛) =1 if 𝑖1= 𝑖20 otherwise.
+(6)This convolution is useful to represent a time-shift oper-ation in the following sense: If 𝑄 ∈ ℝ𝑘𝑛is time-invariant𝑛-gram conditional probability 𝑄(𝑋𝑡, 𝑋𝑡 −1, . . .
+, 𝑋𝑡 −𝑛+1) =𝑃(𝑋𝑡|𝑋𝑡 −1, . . .
+, 𝑋𝑡 −𝑛+1), the convolution of 𝑘thpower rep-resents shift in the time step of random variables:𝑄𝑘(𝑋𝑡, 𝑋𝑡 −𝑘, . . .
+, 𝑋𝑡 −𝑛−𝑘+2)(7)= 𝑃(𝑋𝑡|𝑋𝑡 −𝑘, . . .
+, 𝑋𝑡 −𝑛−𝑘+2).
+(8)Deﬁne reduction operator 𝑟𝜃,𝐼: ℝ𝑘𝑛→
+ℝ𝑘|𝐼 |for any𝐼 ⊆ 𝑁 = { 1, 2, . .
+. , 𝑛} for 𝑄 ∈ ℝ𝑘𝑛by𝑟𝐼(𝑄) =Õ(𝑖𝑗)∈{1,...,𝑛}\𝐼∈𝐾𝑛−|𝐼|𝑄(𝑖1, 𝑖2, . . .
+, 𝑖𝑛), (9)𝑚-shifgram 𝑆𝑚: ℝ𝑘𝑛→ ℝ𝑘2is deﬁned by𝑆𝑚(𝑄) :
+= 𝑟{1,2}𝑄𝑚Θ𝑄, (10)where Θ𝑄is the stationar y tensor associated to 𝑄.The 𝑚-shiftgram of 𝑛-gram tensor 𝑄 ∈ ℝ𝑘𝑛has thefollowing properties.
+For 𝑚′= 2, 3, . . .
+, 𝑛,𝑆𝑚(𝑄) = 𝑟{1,𝑚′}𝑄𝑚−𝑚′+2Θ𝑄. (11)
+
+3 Inverse problem
+
+
+
+3.1 eﬀective isomorphism between tri-
+
+
+
+grams and shiftgrams
+
+Suppose we have the series of all 𝑚-shiftgrams 𝑆(𝑄) :
+={𝑆𝑚(𝑄)}𝑚=0,1,...of some unknown 𝑛-gram probabilitytensor 𝑄 ∈ ℝ𝑘𝑛.
+Then can we uniquely identify theoriginal probability tensor 𝑄 that generates 𝑆(𝑄)?
+Letus focus on 𝑛 = 3 in this paper.
+For each ﬁxed𝑚′= 0, 1, . .
+., we have 𝑛 − 1 diﬀerent 𝑚-shiftgrams𝑆𝑚(𝑄)
+= 𝑟{1, (𝑚+2−𝑚′) }𝑄𝑚′Θ𝑄for 𝑚′≤ 𝑚 ≤ 𝑚′+ 𝑛 − 2due to the identity (11).
+For each 𝑚′, 𝑄 is constrainedby (𝑛 − 1) matrices of 𝑚-shiftgrams 𝑆𝑚(𝑄) and the sumÍ𝑖∈𝐾𝑄𝑚′(𝑖, 𝑗, 𝑘) = 1 is also constrained.
+So 𝑄𝑚′mayhave at most (𝑘 − 1)𝑛polynomial equations, but only(𝑘 − 1)𝑛−1equations are new constraints not expressedby (11) for 𝑚′≥ 𝑛 − 1.
+Thus, there are at most𝑘2+ 𝑘 (𝑘 −1)
++ 𝑚′(𝑘 −1)2polynomial equations for a ser iesof 𝑆0(𝑄), 𝑆1(𝑄), . . . , 𝑆𝑚′(𝑄), and thus at least 𝑚′≥ 𝑘 tohave the suﬃcient number 𝑘3of polynomial equations toidentify 𝑄 ∈ ℝ𝑘𝑛.
+
+3.2 Case with 𝑘 = 2 and 𝑛 = 3
+
+To be speciﬁc, let us study 𝑘 = 2 and 𝑛 = 3as a minimal example.
+In this case 𝑆1(𝑄), 𝑆2(𝑄) isneeded to have a suﬃcient number of equations.
+Let𝑄1𝑄2. . .
+𝑄𝑚denote the third order tensor byseries of matrices 𝑄 (𝑖, 𝑗, 𝑘) = 𝑄𝑘(𝑖, 𝑗) for 𝑖, 𝑗, 𝑘 ∈ 𝐾. For𝑘 = 2 and 𝑛 = 3, the trigram probability tensor is𝑄 =𝑞00𝑞10𝑞01𝑞11(12)= 𝑞0|00𝑞0|10𝑞0|01𝑞0|11𝑞1|00𝑞1|10𝑞1|01𝑞1|11!, (13)where 𝑞𝑖 𝑗= (𝑞0|𝑖 𝑗, 𝑞1|𝑖 𝑗)⊤∈ ℝ2, and𝑄2=(𝑞00, 𝑞10)𝑞00(𝑞01, 𝑞11)𝑞10(𝑞00, 𝑞10)𝑞01(𝑞01, 𝑞11)𝑞11.(14)Thus, with the stationary tensor Θ𝑄(𝑖, 𝑗, 𝑘) := 𝜃𝑗 𝑘, the𝑚-shiftgrams for 𝑚 = 1, 2, 3 are𝑆1(𝑄)
+=Õ𝑗 ∈ {0,1}𝑞𝑖 𝑗𝜃𝑖 𝑗𝑒⊤𝑛,𝑖. (15)𝑆2(𝑄) =Õ𝑖∈ {0,1}𝑞𝑖 𝑗𝜃𝑖 𝑗𝑒⊤𝑛, 𝑗. (16)𝑆3(𝑄) =Õ𝑖, 𝑗 ∈ {0,1}(𝑞0𝑖, 𝑞1𝑖)𝑞𝑖 𝑗𝜃𝑖 𝑗𝑒⊤𝑛, 𝑗. (17)With (15), (16), and the sum-to-one constraint for 𝑖, 𝑗 ∈ 𝐾1⊤𝑘𝑞𝑖, 𝑗= 1, (18)7 independent linear equations are for 𝑄 ∈ ℝ23by ﬁxing1, 2-shiftgrams.
+Lemma 1
+For 𝑘 = 2 and 𝑛 = 3, there are at most twotrigram probability tensors 𝑄 satisfy (18), (15), (16), and(16) for a given 𝑆1(𝑄), 𝑆2(𝑄), and 𝑆3(𝑄), if𝜃𝑖 𝑗= e⊤𝑘,𝑖𝑆1(𝑄)e𝑘, 𝑗(19)1⊤𝑘𝑆1(𝑄)
+= 1⊤𝑘𝑆2(𝑄)(20)𝑆1(𝑄)1𝑘= 𝑆2(𝑄)1𝑘. (21)Otherwise, there is no 𝑄 satisfying the equations (18), (15),(16), and (17).Proof Here we explicitly solve the equations (18), (15),(16), and (16) by letting the tensor 𝑄 as its variables.
+Speciﬁcally, the vectorized variables vec(𝑄)∈ ℝ𝑘𝑛isrequired to be in the kernel of the matrix 𝐶vec(𝑄)= 𝑠 ∈ℝ3𝑘2such that:𝐶 := e3,1⊗ 𝐼𝑘2⊗ 1⊤𝑘+ e3,2⊗ 1⊤𝑘⊗ 𝐼𝑘2+ e3,3⊗ 𝐼𝑘⊗ 1⊤𝑘⊗ 𝐼𝑘(22)𝑠 := e3,1⊗ vecΘ𝑄+ e3,2⊗ vec(𝑆1(𝑄))+ e3,3⊗ vec(𝑆2(𝑄)).(23)This equation 𝐶vec(𝑄)= 𝑠 gives a set of 7 independentlinear equations, only if (19), (20), and (21) holds.
+Speciﬁ-cally, the solution is 𝑞𝑖| 𝑗 𝑘=
+𝑎𝑖 𝑗 𝑘𝑥 +𝑏𝑖 𝑗 𝑘for each 𝑖, 𝑗, 𝑘 ∈
+𝐾with any 𝑥 ∈ ℝ, where𝑎𝑖 𝑗= 𝜃−1𝑖 𝑗(−1)𝑖+ 𝑗(1, −1)⊤(24)𝑏𝑖 𝑗= 𝜃𝑖 𝑗e𝑘,2+𝛿1𝑖𝛿0 𝑗𝑆(2)00+ 𝛿0𝑖𝛿1 𝑗 𝑆(1)00+ 𝛿1𝑖𝛿1 𝑗𝑆(1)01− 𝑆(2)00(1, −1)⊤(25)Inserting 𝑞𝑖| 𝑗 𝑘= 𝑎𝑖 𝑗 𝑘𝑥 + 𝑏𝑖 𝑗 𝑘to (17), it gives a quadraticequation𝛼𝑥2+ 𝛽𝑥 + 𝛾 = 0, (26)where𝛼 =Õ𝑖, 𝑗 ∈𝐾𝜃−1𝑖 𝑗(27)𝛽 = 𝜃00(2𝑎000𝑏000+ 𝑎010𝑏100+ 𝑏010𝑎100)(28)+ 𝜃01(𝑎000𝑏001+ 𝑏000𝑎001+ 𝑎010𝑏101+ 𝑏010𝑎101)𝛾 = (𝑏0|00, 𝑏0|10)𝑏00𝑏01(𝜃00, 𝜃01)⊤. (29)This quadratic equation has the leading coeﬃcient 𝛼 ≠ 0.Thus, it has at most two probability tensors 𝑄 satisfyingthe equations, unless the quadratic equation has a factor(𝑎𝑖 𝑗 𝑘𝑥 + 𝑏𝑖 𝑗
+𝑘− 𝑞𝑖| 𝑗 𝑘) for some 𝑖, 𝑗, 𝑘 ∈ 𝕂. □
+
+4 Summary and Conjecture
+
+Lemma 1 demonstrates a given set of 𝑚-shiftgrams isgenerally suﬃcient to reconstruct trigrams in two-wordlanguages up to ﬁnite samples (there two possible trigramprobability tensors 𝑄).
+We expect that this special lemmacan be probably extended to any general 𝑘 > 2, and perhapsfor 𝑛 > 3 as well.
+This putative generalized theorem wouldfully explains why a set of 𝑚-shiftgrams or skip-bigramsapproximates 𝑛-gram probabilities well.
+Also this general-ized theorem would give mapping how higher 𝑛-grams areembedded into a series of 𝑚-grams, and the number of suchmaps will be bounded by the number of words 𝑘, which ismuch smaller than an exponential function of 𝑛.
+Thus, itmay open up a theoretical explanation why n-grams, withan exponential number of combinations, can be learnedeﬃciently.
+To tackle further general cases with more words 𝑘 > 2and higher 𝑛 > 3-grams, we need to understand how con-volution ★ behaves over 𝑛-gram tensor and which algebrais suitable to understand such tensor operations.
+
+
+Acknowledgements
+
+This work was supported by JSPS KAKENHIJP23H0369，JST PRESTO JPMJPR20C9.
+
+
+References
+
+[1] Tomas Mikolov, Wen-tau Yih, and Geoﬀrey Zweig.
+Linguis-tic regularities in continuous space word representations.2013.[2] A Vaswani.
+Attention is all you need.
+Advances in NeuralInformation Processing Systems, 2017.[3]
+Omer Levy and Yoav Goldberg.
+Neural word embeddingas implicit matrix factorization.
+In Advances in NeuralInformation Processing Systems, 2014.[4]
+Sanjeev Arora, Yuanzhi Li, Yingyu Liang, Tengyu Ma,and Andrej Risteski.
+Linear algebraic structure of wordsenses, with applications to polysemy.
+Transactions ofthe Association for Computational Linguistics, Vol. 6,pp.
+483–495, 2018.[5]
+Takuma Torii, Akihiro Maeda, and Shohei Hidaka.
+Dis-tributional hypothesis as isomorphism between word-wordco-occurrence and analogical parallelograms.
+PloS one,Vol. 19, No. 10, p. e0312151, 2024.

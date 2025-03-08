@@ -1,0 +1,344 @@
+JMED-DICT: 大規模医療用語辞書の構築
+
+永井宥之
+
+1
+
+西山智弘
+
+1
+
+大槻優佳
+
+1
+
+藤牧貴子
+
+1
+
+川端京子
+
+1
+
+工藤紀子
+
+1
+
+山崎由佳
+
+2
+
+白石暖哉
+
+2
+
+梶原智之
+
+3
+
+進藤裕之
+
+4
+
+河添悦昌
+
+5
+
+今井健
+
+5
+
+矢田竣太郎
+
+1,6
+
+若宮翔子
+
+1
+
+荒牧英治
+
+11
+
+奈良先端科学技術大学院大学
+
+2
+
+京都大学大学院
+
+3
+
+愛媛大学
+
+4
+
+MatBrain 株式会社
+
+5
+
+東京大学大学院
+
+6
+
+筑波大学
+
+
+
+{hiro.nagai, otsuki.yuka.pb0}@naist.ac.jp
+
+
+
+{nishiyama.tomohiro.ns5, takako.fujimaki, kyoko.kawabata, noriko.kudo,
+
+
+
+wakamiya, aramaki}@is.naist.jp
+
+
+
+{yk.ymzaki+ct, shiraishi.h0106}@gmail.com kajiwara@cs.ehime-u.ac.jp
+
+
+
+hshindo@matbrain.jp {kawazoe, imai}@m.u-tokyo.ac.jp yada@slis.tsukuba.ac.jp
+
+
+
+概要
+
+70 万語超を収録した大規模医療用語辞書 JMED-DICT の構築方法およびメンテナンスについて報告する。
+JMED-DICT は、LLM をはじめとして計算機によって利用されることを想定した、医療用語間の対応関係を保持する辞書である。
+本稿では、本辞書の仕様、データ構築の手法、メンテナンス方法を紹介する。
+また、メンテナンスの効率化のために開発した各種ツールおよび、本辞書を利用した応用例である API についても併せて述べる。
+
+
+
+1 はじめに
+
+自然言語処理の発展は、コーパスや辞書といったリソースの発展と歩みを共にしてきた。
+これまでにもさまざまなリソースが開発されてきたが、近年、大規模言語モデル(Large Language Model; 以後LLM)の発達により、求められるリソースも変化している。
+具体的には、LLM の構築に必要な事前学習用のコーパス（アノテーションなしのデータ）や，LLM が検索(Retrieval-Augmented Generation)に利用するリソースへの需要が高まっている。
+医療分野においても、多くの言語リソースが開発されてきたが、今後は LLM が活用することを想定したリソースの整備が重要な課題である。
+我々は，単に用語の意味を知るための辞書ではなく、有害事象報告、診断書作成、研究、市販後調査などの業務に対応するために必須となる、用語間の関係やメタ情報を保持した辞書が求められると考え、医療用語辞書 JMED-DICT の開発を進め、その一部を公開した1）．JMED-DICT は、医療用語間の関係性を保持した辞書であり(図 1)，LLM をはじめとした計算機を通じて利用されることを想定している。
+本稿では、JMED-DICT の構築方法とメンテナンスの手法、応用例について報告する。
+図 1 JMED-DICT 収載内容の概略図。
+病名データの一部を抜粋。
+出現形に対して各種の関係が保持されている。
+実際のデータではさらに多くの情報が表形式で収録される。
+
+
+
+2 関連研究
+
+医療分野において、システム間や施設間での情報共有や情報交換を行うためには標準化された用語を用いる必要がある。
+特に、診療に関わる用語とコードシステムの標準化はもっとも基盤となるレイヤーであり、長年に渡り開発されてきた。
+国内において、医学概念の用語は学会と厚生労働省などにより一定の標準化がなされており、すでに多くの電子カルテシステムで採用されている。
+病名や症状を収載した代表的なリソースとしては、1）MEDIS1） https://sip3-d2.naist.jp/jmed-dict.html標準病名マスター[1]，2)傷病名マスター[2]，3）ICD-10 [3]，4) ICD-11 [4]，5) MedDRA/J [5]などがある。
+標準病名マスターは臨床で使われる詳細な粒度の病名を収載するもので、すべての標準病名が傷病名マスターと ICD-10 の病名に対応付けられている。
+そのため、電子カルテに標準病名を登録すれば、死因統計のための ICD-10 や、診療報酬請求のための傷病名が自動で紐づくことになる。
+MedDRA/J は医薬品による有害事象（副作用）をコード化するためのものであり、医薬品の市販後調査の報告に利用されている。
+医薬品に関しては、厚生労働省標準である HOT コード[6]や YJ コード[7]などがあり、YJコードの上位 4 桁は、商品流通上の分類である薬効分類[8]に対応している。
+検査項目については、日本臨床検査医学会によって制定されたJLAC-10やJLAC-11 [9]がある。
+一方、米国においては、1) SNOMED-CT [10]や 2)ICD-10-CM [11]などが用いられている。
+SNOMED-CT には診療に関する広範囲の用語が収載され，ICD-10-CM には ICD-10 を臨床用に修正した、より詳細な粒度の病名が収載される。
+研究のための用語集もあり、遺伝性疾患に焦点をあてた HPO (Human Phenotype Ontology)[12]，OMIM(Online Mendelian Inheritance in Man)[13]、がんの診療や研究に焦点をあてた NCI (National CancerInstitute)Thesaurus [14]、また、これら用語集を横断して紐付けるための UMLS (Uniﬁed Medical LanguageSystem)[15]が広く利用されている。
+本研究で開発する JMED-DICT は、UMLS のように国内外の他のリソースとの紐付け情報を有することで、異なる用語集やコードシステム間の用語の違いを克服し、医療用語の相互運用性を向上させることを目指すものである。
+UMLS と JMED-DICT の差異は次の 4 点にまとめられる。
+i)日本語に対応していること、ii) 用語の属性情報を付与していること、iii)維持・管理の半自動化を目指していること、iv)汎用的な機能を API として提供しておりアプリケーションからの使用が容易であることである。
+
+
+3 データ構築
+
+
+
+3.1 仕様
+
+JMED-DICT は 4 つのサブデータで構成される。
+病名データは症状や病名を収録し、ICD-10 や標準病名等と紐付ける。
+医薬品データは医薬品名を収録し、医薬品成分である一般名や代表的な医薬品コードである HOT コード等と紐付ける。
+部位データは人体部位表現を収録し、SNOMED-CT-IPS 等と紐付ける。
+検査データは検査表現を収録し、臨床検査項目の分類である JLAC-10 等と紐付ける。
+サブデータ内の各エントリは、2 種類の情報を持つ。
+エントリそのものに関する属性情報と、エントリを別の体系に紐づけるためのリンク情報である。
+属性情報の詳細は付録の表 3 を、リンク情報の詳細は表 4 を参照されたい。
+加えて、それぞれの情報の各項目に信頼度フラグ（表 1）を付与している。
+信頼度フラグは、後述するメンテナンスの進行度を表し、情報ごとに独立した値を持つ。
+表 1 信頼度フラグの一覧信頼度概要S 信頼度最高既存リソースと照合済み。
+A 信頼度高 3 名以上がチェック済。
+B 信頼度中 2 名がチェック済。
+C 信頼度低 1 名がチェック済。
+D 信頼度最低自動推定された結果。
+
+
+3.2 材料・構築方法
+
+初期構築は、次の手順で実施した。
+まず、既存の医療テキストとして、症例報告論文約 9 万件を対象に固有表現抽出(Named Entity Recognition)を利用し、エントリ候補となる医療用語の抽出を行った。
+次に、既存の医療用語リソースである万病辞書[16]および百薬辞書[17]のエントリとのマージを実施した。
+このように得たエントリ候補に対して、プログラムを利用した自動推定により各情報の初期値を付与した。
+表 2 に得られたエントリ数を示す。
+表 2 各データのエントリ数サブデータエントリ数病名データ 534,778医薬品データ 113,256部位データ 40,133検査データ 45,624
+
+3.3 メンテナンス
+
+本研究は、大規模なデータを継続的にメンテナンスし品質を向上させていくことを目指している。
+そのために、人手によるメンテナンスと各種情報の自動推定を繰り返す。
+具体的には、全エントリを頻度上位エントリと頻度下位エントリに分け、メンテナンスを行う。
+各データのエントリには、抽出元の医療テキスト内での出現頻度の情報が含まれる。
+この頻度情報を利用し、上位 10,000 件を頻度上位エントリと呼ぶ。
+これらのエントリは、各情報のメンテナンスを人手で行う。
+それ以外のエントリを頻度下位エントリと呼ぶ。
+頻度下位エントリに対しては、頻度上位エントリの人手メンテナンスの進捗に応じて、そのメンテナンス結果を教師信号とした自動推定を実施して随時各情報の値を更新する。
+以下、人手メンテナンスの手法およびメンテナンスツールとして開発した KnitBoat、スマートフォンビューア、半自動メンテナンスについて述べる。
+3.3.1 人手メンテナンス人手メンテナンスは、自動推定によって各エントリに付与されている初期値を人手で確認し、誤りがあれば修正する作業である。
+メンテナンス作業には、看護師、薬剤師といった医療知識をもつ作業者を含め 12 名が従事し、年間 6000 時間程度を要している。
+本節では人手メンテナンスの概略を示す2）．各サブデータのメンテナンスに共通で利用する仕組みとして、信頼度フラグ(表 1)と例外タグを用いる。
+人手メンテナンスを実施した項目は、信頼度フラグを更新する。
+作業実施後に、作業実施前に入力されていた信頼度を一段階上げた値を入力する。
+例外タグは、出現形 ﬂag に「[TYP]」（タイプミス），正規形に「-1」（該当する正規形なし）と「[ERR]」（エントリとして不適切）を設定し、例外的なエントリに付与することでスクリーニングに利用する3）．基本情報とリンク情報のメンテナンスは、原則、医療知識をもつ作業者の判断による。
+出現形、正規形，TREE の各情報を確認し、誤りがあれば修正する。
+正規形および TREE はサブデータにより依拠するリソースが異なる。
+例えば、病名データの TREEは ICD-10 による分類に依拠しており、出現形および正規形から ICD-10 に対応する TREE を設定する。
+リンク情報については、リンク先のリソースを参照して確認する。
+出現形が、リンク先のリソースのどの項目に対応するかを判定し、自動推定による値に2） 詳細なメンテナンスの基準および事例は https://sip3-d2.naist.jp/data.html 上の公開資料を参照。
+3） 例えば、出現形「甲状腺機能高進」の場合、正しい表記は「甲状腺機能亢進」であるから、出現形 ﬂag に「[TYP]」を付与する。
+また、出現形「合併症」は病名や症状に関する語ではあるが、特定の病名や症状ではないため正規形を「-1」とする。
+出現形「交通事故」は病名や症状とはいえず、抽出時の誤りとみなして正規形を「[ERR]」とする。
+誤りがあれば正しいリンク情報を付与する。
+3.3.2 メンテナンスツールKnitBoat大規模な辞書データを効率的にメンテナンスするため、独自の編集プラットフォーム KnitBoat を設計・開発した。
+KnitBoat は 4 カラムのインターフェースを持つWEB アプリケーションである。
+左から、医学概念、正規形、出現形、さらに出現形の詳細情報の 4 カラムである。
+作業者は、医学概念から順に選択していくことで目的の出現形を絞り込むことができる。
+出現形を選択すると、その出現形のメタデータが表示され、メタデータの各項目を編集できる。
+エントリの詳細情報にはコメントを残すことができ、主にレビュワーによるメタデータ品質への指摘と、作業者による対応についてコミュニケーションができる。
+さらに、KnitBoat は、管理者権限を持つアカウントを使用して、どのエントリのどの作業を担当するか、ユーザごとに割り当てることが可能である。
+病名だけで 50 万語を超える規模の本辞書では、従来のスプレッドシートを用いた素朴な進捗管理では追いつかないため、KnitBoat でシステム化することにより効率化を実現した。
+図 2 辞書編集グループウェア KnitBoat の作業画面。
+左から医学概念、正規形、出現形を階層的に表示するカラム表示を採用し、最右エリアには出現形のメタデータ編集テーブルとユーザ間コミュニケーション用のコメント欄を有する。
+スマートフォンビューア膨大なエントリを手軽に閲覧・確認するため、スマートフォンビューアを設計・開発した。
+スマートフォンビューアは、JMED-DICT に収録されたデータをスマートフォン環境で閲覧するための WEB アプリケーションである。
+スマートフォン上でエントリの検索やメタデータの確認が可能であり、エントリにコメントを残すことができる。
+コメントはKnitBoat と連携しており、KnitBoat 上でコメントを確認し、データを修正できる。
+図3スマートフォンビューアの画面。
+左：個別のエントリを表示する画面。
+右：エントリに対してコメントを付与する画面。
+スマートフォンビューアでは、医学概念による分類の選択、またはフリーワードの検索を利用して任意のエントリを選択し、メタデータを確認できる。
+なお、スマートフォンビューア上ではコメントの付与のみが可能であり、メタデータの編集はできない。
+これは、スマートフォンがデータの編集よりも閲覧に有利なデバイスであるため、スマートフォンビューアはデータのスクリーニングに利用し、本格的なデータの編集は KnitBoat で行うという使い分けを想定しているためである。
+3.3.3 半自動メンテナンス人手のみに頼らず、メンテナンスを半自動化することで、膨大なデータの省コストな維持・管理を目指している。
+LLM が辞書のエントリに付されたメタデータに対して修正案を推定し、人間がその修正案を確認・訂正するというプロセスの半自動メンテナンス手法[18]を用いる。
+半自動メンテナンスでは、1)データ分割、2) LLMによる修正データの推定、3)推定結果を人手で訂正，4)修正プロセスの要約、の 4 段階を 1 サイクルとして、このサイクルを繰り返すことでエントリのメンテナンスを効率化する。
+まず、信頼度フラグ(表 1)に基づき辞書データを高信頼データと低信頼データに分割し、後者を修正案推定の対象とする4）。
+次に、LLM (GPT4o-mini[19])4） 信頼度フラグが C 以上であれば高信頼データ、D であればを用いてテストデータの辞書項目に対して修正案を推定する。
+さらに、推定された修正案を人間の作業者が確認し、必要ならば訂正する。
+最後に再び LLMを利用しここまでのプロセスの分析・要約を行い、次のサイクルに向けた改善案を得る。
+このサイクルを繰り返すことにより、半自動的に継続してデータの改善を進める。
+
+
+
+4 応用：API
+
+豊富なメタデータを電子カルテシステムや医療言語処理アプリケーションから利用しやすくするために，Application Programming Interface (API)を提供する Web アプリケーション(Web API)を開発した。
+現在、以下の機能が実装されている。
+• /entry 単語を入力とし、該当する辞書エントリ（メタデータ含む、以下同様）を返す• /entities テキストを入力とし、テキスト中に含まれる辞書エントリを返す• /norms テキストを入力とし、テキスト中に含まれる辞書エントリがあれば、その正規形だけの列を返す• /codes テキストを入力とし、テキスト中に含まれる辞書エントリがあれば、その医学概念コードだけの列を返す医療分野においては、医療情報の次世代の標準規格である HL-7 FHIR の普及が加速している。
+このなかで、FHIR ターミノロジーサービスは、異なるシステム間での医療用語の相互運用性を確保するうえで重要な役割を担っている。
+このようなターミノロジーサービスを実装するうえで、本辞書の高品質かつ大規模なメタデータと API が活用できると考えており、開発を進めている。
+
+
+
+5 おわりに
+
+大規模医療用語辞書 JMED-DICT の構築およびメンテナンス方法、応用例について報告した。
+引き続き、自動推定によって付与された値の確認を進めつつ、半自動メンテナンスによって全体の品質を向上させる予定である。
+加えて、JMED-DICT を利用した応用として診断支援、医療文書作成補助、患者対応チャットボットの開発を進める。
+本研究の取り組みが、LLM 時代における大規模言語リソース構築の試みとして有益な知見となることを祈念する。
+低信頼データとなる。
+
+
+
+謝辞
+
+本研究は、「戦略的イノベーション創造プログラム（SIP）」「統合型ヘルスケアシステムの構築」JPJ012425 の補助を受けて行った。データ構築にあたり、作業及び管理業務に従事してくださった有森美紀子氏、川端典子氏、鈴木麻衣子氏、中江睦美氏、古川和香菜氏に感謝する。
+
+参考文献
+
+
+[1] 一般財団法人医療情報システム開発センター. ICD10 対応標準病名マスター (Ver. 5.14), 2024. https://www2.medis.or.jp/stdcd/byomei/index.html.
+[2] 社 会 保 険 診 療 報 酬 支 払 基 金. 傷 病 名 マ ス タ ー,2023. https://www.ssk.or.jp/seikyushiharai/tensuhyo/kihonmasta/r04/kihonmasta 07.html.
+[3] World Health Organization. ICD-10 : International StatisticalClassiﬁcation of Diseases and Related Health Problems : TenthRevision, 2nd ed. Technical report, World Health Organization,2004.
+[4] World Health Organization. International Classiﬁcation of Dis-eases, Eleventh Revision (ICD-11), 2021. https://icd.who.int/browse11.
+[5] 一般財団法人医薬品医療機器レギュラトリーサイエンス財 団. ICH 国際 医 薬 用 語集 日 本語 版 MedDRA/J, 2024.https://www.jmo.pmrj.jp/.
+[6] 一般財団法人医療情報システム開発センター. 医薬品 HOTコードマスター, 2024. https://www2.medis.or.jp/hcode/.
+[7] 株式会社医薬情報研究所. YJ コード. https://www.iyaku.info/yjcode/.
+[8] 総 務 省. 日 本 標 準 商 品 分 類（平 成 2 年 6 月 改 定）,1990. https://www.soumu.go.jp/toukei toukatsu/index/seido/syouhin/2index.htm.
+[9] 一般財団法人日本臨床検査医学会. 臨床検査項目分類コード, 2024. https://www.jslm.org/committees/code/.
+[10] SNOMED International. SNOMED CT, 2024. https://www.snomed.org/.
+[11] National Center for Health Statistics. ICD-10-CM, 2024. https://www.cdc.gov/nchs/icd/icd-10-cm/.
+[12] Michael A Gargano, Nicolas Matentzoglu, Ben Coleman, et al.The Human Phenotype Ontology in 2024: phenotypes around theworld. Nucleic Acids Research, Vol. 52, No. D1, pp. D1333–D1346, 11 2023.
+[13] McKusick-Nathans Institute of Genetic Medicine, Johns HopkinsUniversity. Online Mendelian Inheritance in Man, OMIM®, 2024.https://omim.org/.
+[14] Nicholas Sioutos, Sherri de Coronado, Margaret W Haber,Frank W Hartel, Wen-Ling Shaiu, and Lawrence W Wright. NCIThesaurus: a semantic model integrating cancer-related clinicaland molecular information. Journal of Biomedical Informat-ics, Vol. 40, No. 1, pp. 30–43, 2007.
+[15] Olivier Bodenreider. The Uniﬁed Medical Language System(UMLS): integrating biomedical terminology. Nucleic Acids Re-search, Vol. 32, No. Database issue, pp. D267–D270, 2004.
+[16] Kaoru Ito, Hiroyuki Nagai, Taro Okahisa, Shoko Wakamiya, Tomo-hide Iwao, and Eiji Aramaki. J-MeDic: A Japanese disease namedictionary based on real clinical usage. In Nicoletta Calzolari,Khalid Choukri, Christopher Cieri, Thierry Declerck, Sara Goggi,Koiti Hasida, Hitoshi Isahara, Bente Maegaard, Joseph Mariani,H´el`ene Mazo, Asuncion Moreno, Jan Odijk, Stelios Piperidis, andTakenobu Tokunaga, editors, Proceedings of the Eleventh In-ternational Conference on Language Resources and Eval-uation (LREC 2018), Miyazaki, Japan, May 2018. EuropeanLanguage Resources Association (ELRA).
+[17] 奈良先端科学技術大学院大学ソーシャル・コンピューティング研究室. 百薬辞書, 2020. https://sociocom.naist.jp/hyakuyaku-dic/.
+[18] 大槻優佳, 矢田竣太郎, 西山智弘, 工藤紀子, 川端京子, 藤牧貴子, 永井宥之, 若宮翔子, 荒牧英治. 大規模言語モデルを活用した大規模医療用語辞書メンテナンスの効率化. 言語処理学会第 31 回年次大会 (NLP2025), 2025.
+[19] OpenAI. GPT-4o mini. https://platform.openai.com/docs/models#gpt-4o-mini.
+[20] Soichiro Sugihara, Tomoyuki Kajiwara, Takashi Ninomiya, ShokoWakamiya, and Eiji Aramaki. Semi-automatic construction of aword complexity lexicon for Japanese medical terminology. In Tris-tan Naumann, Asma Ben Abacha, Steven Bethard, Kirk Roberts,and Danielle Bitterman, editors, Proceedings of the 6th Clin-ical Natural Language Processing Workshop, pp. 329–333,Mexico City, Mexico, June 2024. Association for ComputationalLinguistics.
+[21] 厚生労 働 省. 処方箋に 記載す る一般 名 処方の 標準的 な記載（一 般 名処 方マ スタ）に つ いて（令 和 6 年 6 月 14日適用）, 2024. https://www.mhlw.go.jp/seisakunitsuite/bunya/kenkou iryou/iryouhoken/shohosen 200401.html.
+[22] 厚 生 労 働 省. 令 和 ６ 年 版 医 師 国 家 試 験 出 題 基 準に つ い て, 2023. https://www.mhlw.go.jp/stf/shingi2/0000128981 00001.html.
+[23] 一般財団法人医療情報システム開発センター. 臨床検査マスター (ver. 3.19), 2024. https://www2.medis.or.jp/master/kensa/index.html.
+[24] 日本医学会医学用語管理委員会. 日本医学会医学用語辞典英和 第 3 版. 南山堂, 2007.
+[25] 一般社 団 法人日 本内科 学会. 診断困 難 例ケー スサー チJ-CaseMap, 2024. https://www.naika.or.jp/j-casemap/.
+[26] 大江和彦. 臨床医学連結知識データベースを用いた問診と診断想起システムの考察. 人工知能学会第二種研究会資料,Vol. 2016, No. AIMED-002, p. 08, 2016.
+[27] Minoru Kanehisa, Susumu Goto, Miho Furumichi, Mao Tanabe,and Mika Hirakawa. KEGG for representation and analysis ofmolecular networks involving diseases and drugs. Nucleic acidsresearch, Vol. 38, No. suppl 1, pp. D355–D360, 2010.
+[28] Sunghwan Kim, Jie Chen, Tiejun Cheng, et al. Pubchem 2023update. Nucleic Acids Research, Vol. 51, No. D1, pp. D1373–D1380, 10 2022.
+[29] WHO Collaborating Centre for Drug Statistics Methodology.Anatomical Therapeutic Chemical Classiﬁcation: ATC, 2024.https://atcddd.fhi.no/atc ddd index/.
+[30] SNOMED International. The International Patient Sum-mary Terminology, 2022. https://www.snomed.org/international-patient-summary-terminology.
+
+
+
+
+A 付録
+
+表 3 基本的な属性情報ラベル概要タイプ基本情報 ID 出現形に対応する一意に割り当てられた ID 文字列出現形よみ出現形のよみ文字列正規形出現形を正規化した表記。
+最大 3 つまでを半角セミコロン(;)で接続し列挙する。
+文字列TREE 最大４桁の記号による分類。
+ビューア使用時のツリー構造の表示に用いる。
+文字列翻訳情報出現形 EN 出現形の英語訳文字列出現形 ZH 出現形の中国語訳文字列関係情報 REL:IS-A 上位下位関係文字列REL:PART-OF 部分全体関係文字列REL:CAUSAL 因果関係文字列その他用語難易度用語の難易度*整数YEAR エントリの収集年度整数FREQ:GLOBAL 大規模医療テキストに基づく頻度整数FREQ:LOCAL 診療記録に基づく頻度整数SOURCE エントリの抽出元の医療テキスト名文字列*用語難易度の初期値付与にあたっては[20]の手法を利用した。
+正規形5）はサブデータごとに参考にした資料が異なる。
+各サブデータの参考資料は以下の通りである。
+• 正規形の参考資料– 病名データ：標準病名マスター病名[1]– 医薬品データ：一般名[21]– 部位データ：ICD-11 のエクステンションコードによる分類等をベースとした表現– 検査データ：医師国家試験出題基準の「主な検査項目の表記」[22]をベースにした表現病名、医薬品、検査データはそれぞれ固有の属性情報をもつ。
+• 病名データ固有の属性情報（boolean）– 症状フラグ：出現形が症状を表すかどうかのフラグ。
+例えば「寒気」は症状を表すため 1 とする。
+– 診断名フラグ：出現形が病名（鑑別されるような診断名）がどうかのフラグ。
+例えば「高血圧症」などの場合は 1 とする。
+– 否定フラグ：出現形が、ある病名を否定する表現かどうかのフラグ。
+例えば「非糖尿病」は 1 とする。
+• 医薬品データ固有の属性情報（文字列）– TYPE: メーカー名：医薬品の製造メーカー名• 検査データ固有の属性情報（文字列）– TYPE: 材料：検査材料の名称。
+臨床検査マスター[23]の材料名称から引用。
+– TYPE: 測定法：検査の測定法。
+臨床検査マスターの測定法名称から引用。
+– TYPE: 単位：検査結果値の単位。
+臨床検査マスターの参考単位から引用。
+表 4 リンク先リソースの一覧リソース名概要リンクを収録するサブデータTO: 日本医学会医学用語辞典日本医学会が出版している日英辞書[24]。
+病名、医薬品、部位、検査各種厚労省標準マスター関連用語集標準病名マスター[1]、臨床検査マスター[23]病名、検査TO:J-CaseMap 自治医科大・東京大学が開発している診断困難例ケースサーチ[25]。
+病名TO:Lilak 医学知識連結 DB。
+東京大学が開発したオントロジー[26]。
+病名、部位TO: 薬効分類医薬品の効能に関する分類[8]。
+医薬品TO:JAPICID 医薬商品に関する分類コード。
+医薬品TO:KEGG エントリ京都大学が管理する医薬品 DB の ID[27]。
+医薬品TO:PubChem アメリカ NCBI が管理する化学物質データベースの ID[28]。
+医薬品TO:ATC WHO による薬品の分類コード[29]。
+医薬品TO:HOT コード各種の医薬品コードを横断的に対応付けしたコード。
+本辞書では HOT-9 に対応[6]。
+医薬品TO:JLAC10 日本臨床検査医学会が制定した臨床検査項目の分類（第 10 回改訂版）[9]。
+検査TO:JLAC11 日本臨床検査医学会が制定した臨床検査項目の分類（第 11 回改訂版）[9]。
+検査TO:ICD-10 WHO が制定した国際的な病名分類（第 10 回改訂版）[3]。
+病名TO:ICD-11 WHO が制定した国際的な病名分類（第 11 回改訂版）[4]。
+病名TO:HPO Human Phenotype Ontology (HPO)人間の疾患表現型の体系。
+病名TO:SNOMED-CT-IPS SNOMED-CT の縮小版。
+SNOMED-CT/International Patient Summary Terminology[30]. 病名TO:MedDRA/J 医薬品規制調和国際会議（ICH）が制定した医薬用語集の日本語版[5]。
+病名TO:UMLS アメリカ NLM が公表している、医療概念のメタシソーラス[15]。
+CUI を収載。
+病名、医薬品、部位、検査TO: 一般名処方マスタ厚生労働省が策定している医薬品の一般名処方の標準的な記載[21]。
+医薬品5） 本研究における正規形は、正しい正規形や標準的な表現を提案するものではないことに注意されたい。
+あくまでビューア上での表示や、概念の理解の補助を目的に正規形を設けている。

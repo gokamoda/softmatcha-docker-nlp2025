@@ -1,0 +1,276 @@
+AoGu: A Japanese-English literary parallel corpus fromAozora Bunko and Project Gutenberg
+
+Guanyu Ouyang
+
+1
+
+ Xiaotian Wang
+
+1
+
+ Takehito Utsuro
+
+1
+
+ Masaaki Nagata
+
+21
+
+Deg.
+Prog.
+Sys.&Inf.
+Eng., Grad.
+Sch.
+Sci.&Tech., University of Tsukuba
+
+
+
+ 
+
+2
+
+NTT Communication Science Laboratories, NTT Corporation, Japan
+
+1
+
+s2420829_@_u.tsukuba.ac.jp 
+
+1
+
+s2320811_@_u.tsukuba.ac.jp 
+
+1
+
+utsuro_@_iit.tsukuba.ac.jp 
+
+2
+
+masaaki.nagata_@_ntt.com
+
+
+
+Abstract
+
+This paper introduces a Japanese-English parallel cor-pus composed of literary works, constructed mainly us-ing bilingual texts from Aozora Bunko and Project Guten-berg.
+Existing Japanese-English parallel datasets, suchas JParaCrawl, JaParaPat, and ASPEC
+[1, 2, 3], oﬀer ingcoverage of common, patent, and academic domains, theylack resources speciﬁcally designed to address discourse-level phenomena and context-aware translation challengeswhich are existed in literary translation task.
+To bridgethis gap, we build upon the "English-Japanese TranslationAlignment Data"1）developed over a decade ago, updatingand expanding it to better support research in discourse-level literary translation and document-level context mod-eling.
+Baseline experiments with transformer models onthe constructed dataset demonstrate limited performance,highlighting the inherent challenges of literary translationand underscoring the need for more advanced methodolo-gies and resources to enhance translation quality for literarytexts.
+
+
+1 Introduction
+
+Neural Machine Translation (NMT) has advanced sig-niﬁcantly in recent years, driven by innovations in neuralarchitectures and the availability of large-scale parallel cor-pora.
+While these developments have greatly improvedgeneral translation tasks, literar y translation presentsunique challenges.
+It demands capturing nuanced seman-tic meanings and addressing complex discourse-level phe-nomena, such as pronoun resolution, inter-sentential con-sistency, and topic coherence
+[4, 5, 6, 7].
+Traditional MT1） https://att-astrec.nict.go.jp/member/mutiyama/align/index.htmlmodels often struggle with these aspects, resulting in trans-lations that lack stylistic ﬁdelity, contextual awareness, andnarrative coherence.
+To address these issues, researchershave increasingly turned to context-aware and document-level translation approaches that incorporate broader con-textual information into the translation process [8, 5].Lin et al.
+[9] noted that the poor performance of context-aware MT models often stems not from their inability tohandle long-distance dependencies but from the sparsity ofdiscourse-level phenomena in existing datasets.
+This un-derscores the critical need for datasets that include suchcomplex linguistic features, alongside advancements intranslation models.
+Meanwhile, recent studies [8, 5] havehighlighted literary translation as an ideal testbed for ad-vancing context-aware MT, given the inherent complexityand abundance of discourse-level phenomena in literarytexts.
+However, resources for Japanese-English literary trans-lation remain scarce.
+The only existing dataset, the"English-Japanese Translation Alignment Data" [10], wasdeveloped over a decade ago and lacks the scale and depthrequired for modern research.
+To address this gap, thisstudy builds upon and signiﬁcantly expands the exist-ing dataset, providing a more comprehensive resource forJapanese-English literar y translation.
+The updated datasetaims to better support research into context-aware anddocument-level translation methods for Japanese-Englishlanguage pair.
+
+2 Related Works
+
+Jin et al.
+[9] developed a paragraph-aligned Chinese-English dataset containing 10,545 parallel paragraphs ex-tracted from six public-domain novels.
+This dataset aims topromote research into paragraph-level context-aware MT.Thai et al.
+[5] introduced Par3, a multilingual datasetof 121,385 parag raphs from public-domain novels, .
+De-spite its broad scope, the Japanese-English portion remainssmall, with only 1,857 paragraphs with averaging 4.4 sen-tences per paragraph(~8,170 sentences).Jin et al.
+[11] constructed a large Chinese-Englishdataset with 5,373 paragraphs, consisting of 548.5K En-glish and 700.9K Chinese sentences.
+They proposed thechallenging chapter-to-chapter (Ch2Ch) translation setting,which showcases the importance of datasets reﬂectingcomplex discourse phenomena for literary texts.
+Jiang et al.
+[12] extended the existing BWB[13]
+corpuswith 15,095 discourse-level annotations across 80 docu-ments (~150K words) to better explore the literary MT.
+
+
+3 Dataset
+
+
+
+3.1 Aozora Bunko
+
+Founded in 1997, Aozora Bunko2）is a digital libraryproviding access to a vast array of public domain works,with a current collection exceeding 17000 items.
+More-over, literary works dominate the collection, accountingfor approximately 72.4% of the total, with 15,696 titlescategorized under this genre alone.
+
+
+3.2 Project Gutenberg
+
+Project Gutenberg3）, established in 1971 by MichaelS. Hart, is the ﬁrst large-scale digital library dedicated toproviding free access to public domain works.
+It oﬀers over60,000 texts across genres such as literature, philosophy,history, and science.
+A notable feature is its collection ofprofessionally translated texts, which ensures high-qualitytranslations for research and linguistic analysis.
+
+
+3.3 Dataset construction
+
+The main process of dataset construction, as shownin Figure 1, consists of four key steps: document align-ment, text preprocessing, paragraph alignment, and sen-tence alignment.2） https://www.aozora.gr.jp/3） https://www.gutenberg.org/3.3.1 Document alignmentA random inspection of works from Aozora Bunko andProject Gutenberg (English works) revealed notable diﬀer-ences in their textual characteristics.
+Most works in Ao-zora Bunko are partial chapters of novels, individual piecesfrom collections, or excerpts chosen based on the transla-tor’s preferences, rather than complete works.
+In contrast,most works in Project Gutenberg are complete novels orfully compiled series.
+This highlights that potential par-allel document pairs often diﬀer signiﬁcantly in content,with an single Aozora Bunko work typically aligning toonly a small portion of a single Project Gutenberg work.
+Based on this observation, rather than relying on traditionalsemantic text similarity methods for mining parallel doc-ument pairs, we leveraged the capabilities of pre-trainedlarge-scale language models, speciﬁcally GPT-4o4）andClaude-3.5-Sonnet5）, to assist in document alignment.
+We adopt a 2-stage approach:1.
+: For each work in Aozora Bunko, we extract the ﬁrst3–5 lines of the text, which typically include the ti-tle of the work, the original author’s name, and thetranslator’s name.
+We deﬁne a pre-trained model asa retrieve-agent, Using a predeﬁned prompt, we aimfor the retrieve-agent to provide the English title ofthe chapter, the potential associated work title, andthe original author’s name in English.
+The details ofthe prompt are shown in the Table 5 in Appendix B.Then we implemented an automated scr ipt to performa global character-level match across all metadata ofEnglish works in Project Gutenberg using the retrievalinformation provided by the retrieve-agent.
+For caseswhere the retrieve-agent returns "No match" or thereare no matching results in Project Gutenberg, we de-ﬁned a RAG-agent, we ﬁrst eliminates Japanese worksfor which they have matched English works.
+For theremaining Japanese works, we also request retrievalinformation from the retrieve-agent.
+If no matchesare found, the RAG-agent extracts the ﬁrst three andlast three lines of the text body of Japanese work andsends an updated query to the retrieve-agent.
+TheRAG-agent works to a maximum of three iterationsfor each Japanese work.
+The implementation involvesRAG-agent module are based on the multi-agent open-4）
+https://openai.com/index/gpt-4o-system-card/5） https://www.anthropic.com/news/claude-3-5-sonnetFigure 1 Pipeline of constructing the corpussource framework AutoGen[14].2.
+: We manually reviewed each parallel document ob-tained from Stage 1, labeled speciﬁc chapters in theEnglish works that correspond to the Japanese works,and removed all non-parallel pairs as well as non-English documents from Project Gutenberg.
+As aresult, we obtained a total of 632 parallel documentpairs.3.3.2 Text cleaningFor the Japanese works, we removed the header de-scriptions and symbol explanations, eliminated phoneticannotations (such as kana readings and kanji readings),deleted input annotations and special character marks, andremoved copyright information at the bottom.
+Addition-ally, we replaced the iteration mark"／＼" with the verticalkana repeat mark (U+3031) and replaced "／″＼" withthe vertical kana repeat with voiced sound mark(U+3032).For the English works, we removed all illustration tagsand all annotation information.3.3.3 Paragraph alignmentUsing the labeling information from Stage 2 of docu-ment alignment, we extracted paragraphs from the Englishdocuments.
+The ﬁnal parallel paragraphs consist of theoriginal documents of the Japanese works and the corre-sponding chapters from the English documents.3.3.4 Sentence alignmentIn the presence of irregular line breaks within the text,including intra-sentence line breaks, we merged all lineswithin each paragraph for both English and Japaneseworks.
+Subsequently, we applied the sat-12l-sm model[15]from wtpsplit
+[16] to perform sentence segmentation on themerged paragraphs, setting a threshold of 0.01 to achieveﬁner-grained sentence segmentation.
+Because we aim touse Vecalign
+[17] to achieve a more reasonable granularityof parallel sentences.
+For all segmented sentences, Vecalign was utilized toperform sentence alignment across all parallel paragraphs.
+The parameters were conﬁgured with an overlap size of12 and a maximum allowable number of merged sub-sentences set to 12.
+The embedding models employedincluded the LaBSE model
+[18] and the LASER2 model[19].
+
+
+3.4 Dataset statistics
+
+We completed sentence alignment for 513 out of the632 parallel documents.
+For sentence embedding, we em-ployed both the LaBSE and LASER2 models.
+Table 1presents detailed statistics of the sentence-level datasetsinitially constructed using these two embedding models.
+To compute the number of subwords, the tokenizer fromthe LaBSE model was utilized.
+Table 1
+Statistics of AoGu and Utiyama’s dataset.
+#subwordrefers to the total number of subwords, #sent refers to the totalnumber of sentence pairs.
+,#doc refers to the total number of doc-ument pairsEmbedding Model#subword #subword #sent #doc #subword/sent #subword/sent #sent/doc(Japanese)(English)(Japanese)(English)LaBSE 9.73M 7.37M 292,298 513 33.3 25.2 569.8LASER2 9.72M 7.16M 311,265 513 31.2 23.0
+606.8Utiyama’s dataset 2.44M 1.72M 109,431 160 22.3 15.8 683.9In 2003, Masao Utiyama et al.developed a Japanese-English parallel corpus6）, aligned at the sentence level,utilizing resources from Aozora Bunko, Project Gutenberg,and Project Sugita Genpaku,et al.
+This corpus is primar-ily composed of literary works and poetry, encompassinga total of 160 documents in both Japanese and English.
+AoGu was built upon this foundation and further updatedand expanded.
+To compare the speciﬁc diﬀerences, Therows of Utiyama’s dataset in Table 1 presents the statisticalinformation of the dataset developed by Masao Utiyama etal.6）
+https://att-astrec.nict.go.jp/member/mutiyama/align
+
+4 Baseline Experiment
+
+We sampled the two datasets obtained using LaBSE andLASER2 with the LaBSE model, setting up two samplinggroups with thresholds of 0.4 and 0.6.
+Four 6-layer trans-former baseline models were trained on the sentence-leveldataset using Fairseq [20].
+The speciﬁc parameter set-tings are as follows: the Adam optimizer was used, witha label smoothing value of 0.1, a dropout rate of 0.3, aninitial learning rate of 4e-4, 3000 warm-up update steps, amaximum of 6144 tokens per batch, an update frequencyof 4, and a total of 50 epochs.
+For evaluation, the BLEU[21] and COMET [22] metrics were adopted, with a beamsearch size of 4.
+The COMET model used is wmt22-comet-da[23].
+The speciﬁc results are shown in Table 2.All experiments are conducted on three A6000 GPUs.
+Table 2
+The baseline of the sentence-level dataset for 4 diﬀer-ent conﬁgurationMethodDataset Size MetricsTrain Valid Test COMET BLEUVecalign (LaBSE) +LaBSE sampling (>0.4)260,802 13,041 13,041 0.683 8.08Vecalign (LaBSE) +LaBSE sampling (>0.6)201,083 10,055 10,055 0.688 8.18Vecalign (LASER2)
++LaBSE sampling (>0.4)272,812 13,640 13,640 0.680 11.83Vecalign (LASER2)
++LaBSE sampling (>0.6)224,702 11,235 11,235 0.685 11.64From the Table 2, it can be observed that the BLEUscores for the four baseline settings are relatively low, whilethe COMET scores are comparatively higher.
+The resultdemonstrates that the baseline model still has signiﬁcantroom for improvement in its understanding of literary textsat the sentence level.
+We also conducted testing on the out-domain ASPECdataset, and the results are shown in Table 3.
+The results in-dicate that the model trained on literary sentence-level datahas signiﬁcantly limited generalization ability, highlight-ing the substantial diﬀerences in characteristics betweenliterary and non-literary texts.
+
+
+5 Discussion
+
+The "document pairs" in this paper are deﬁned as(Japanese source document - English source document,where the Japanese document corresponds to only partof the English document).
+"Paragraph pairs" refer to(Japanese source document - corresponding English sub-Table 3
+The baseline settings tested on out-domain ASPECtest setMethodDataset Size MetricsTest COMET BLEUVecalign (LaBSE) +LaBSE sampling (>0.4)1,808 0.534 2.4Vecalign
+(LaBSE) +LaBSE sampling (>0.6)1,808 0.518 2.8Vecalign (LASER2)
++LaBSE sampling (>0.4)1,808 0.539 2.24Vecalign (LASER2)
++LaBSE sampling (>0.6)1,808 0.529 2.21paragraph).
+Currently, only sentence-level alignment hasbeen completed, as paragraph-level alignment, inﬂuencedby subjective factors, has not yet been performed due to sig-niﬁcant diﬀerences in paragraph division between Japaneseand English texts.
+Furthermore, the use of Vecalign introduces a penaltyparameter that may cause contextually continuous sen-tences to be split in the alignment results.
+The base-line model is trained in the scenario of single-sentencetranslation without contextual information.
+Table 4 in Ap-pendix A presents four examples and detailed case analysisunder the Vecalign (LASER2)
++
+LaBSE sampling withsimilarity > 0.4 setting.
+These cases reveal that the base-line model trained at the sentence level demonstrates lim-ited capabilities in pronoun resolution, modeling complexsemantic relationships, and capturing the stylistic and con-textual nuances of literary texts.
+These limitations un-derscore the need for more advanced approaches, such asparagraph-level or context-aware training, to enhance themodel’s performance in literary translation tasks.
+Future work will focus on exploring literary translationtasks in context-aware settings, and alignment will be con-ducted at the paragraph level, accompanied by a more re-ﬁned approach to sentence-level alignment.
+
+
+6 Conclusion
+
+This paper introduces a parallel Japanese-English liter-ary corpus, detailing its development process and statisticalinformation.
+The baseline experimental results demon-strate that literary machine translation tasks impose higherdemands on translation models in terms of context aware-ness, complex semantic relationship modeling, and con-textual coherence.
+
+
+
+References
+
+
+[1] M. Morishita, K. Chousa, J. Suzuki, and M. Nagata.JParaCrawl v3.0: A large-scale English-Japanese paral-lel corpus. In Proc. 13th LREC, pp. 6704–6710, 2022.
+[2] M. Nagata, M. Morishita, K. Chousa, and N. Yasuda.JaParaPat: A large-scale Japanese-English parallel patentapplication corpus. In Proc. LREC-COLING, pp. 9452–9462, May 2024.
+[3] T. Nakazawa, M. Yaguchi, K. Uchimoto, M. Utiyama,E. Sumita, S. Kurohashi, and H. Isahara. ASPEC: Asianscientiﬁc paper excerpt corpus. In Proc. 10th LREC, pp.2204–2208, 2016.
+[4] E. Matusov. The challenges of using neural machine trans-lation for literature. In Proc. the Qualities of LiteraryMachine Translation, pp. 10–19, 2019.
+[5] K. Thai, M. Karpinska, K. Krishna, B. Ray, M. Inghil-leri, J. Wieting, and M. Iyyer. Exploring document-levelliterary machine translation with parallel paragraphs fromworld literature. In Pro c. EMNLP, pp. 9882–9902, 2022.
+[6] M. Fonteyne, A. Tezcan, and L. Macken. Literary ma-chine translation under the magnifying glass: Assessingthe quality of an NMT-translated detective novel on docu-ment level. In Proc. 12th LREC, 2020.
+[7] Y. Liu, Y. Yao, R. Zhan, Y. Lin, and D. Wong. NovelTrans:System for WMT24 discourse-level literary translation. InProc. 9th WMT, pp. 980–986, 2024.
+[8] K. Marzena and I. Mohit. Large language models eﬀec-tively leverage document-level context for literary transla-tion, but critical errors persist. In Proc. 8th WMT, pp.419–451, 2023.
+[9] J. Lin, J. He, J. May, and X. Ma. Challenges in context-aware neural machine translation. In Proc. EMNLP, p.15246–15263, 2023.
+[10] Utiyama M. and Takahashi M. English-japanese transla-tion alignment data., 2003.
+[11] L. Jin, Li A., and X. Ma. Towards chapter-to-chaptercontext-aware literary translation via large language mod-els, 2024.
+[12] Y. Jiang, T. Liu, S. Ma, D. Zhang, M. Sachan, and R. Cot-terell. Discourse-centric evaluation of document-level ma-chine translation with a new densely annotated parallelcorpus of novels. In Proc. 61st ACL, pp. 7853–7872,2023.
+[13] Y. Jiang, T. Liu, S. Ma, D. Zhang, J. Yang, H. Huang,R. Sennrich, R. Cotterell, M. Sachan, and M. Zhou.BlonDe: An automatic evaluation metric for document-level machine translation. In Proc. NAACL, pp. 1550–1565, 2022.
+[14] Q. Wu, G. Bansal, J. Zhang, Y. Wu, B. Li, E. Zhu, L. Jiang,X. Zhang, S. Zhang, J. Liu, A. Awadallah, R. White,D. Burger, and C. Wang. Autogen: Enabling next-genLLM applications via multi-agent conversations. In Proc.1st COLM, 2024.
+[15] M. Frohmann, I. Sterner, I. Vulić, B. Minixhofer, andM. Schedl. Segment any text: A universal approach forrobust, eﬃcient and adaptable sentence segmentation. InProc. EMNLP, pp. 11908–11941, 2024.
+[16] B. Minixhofer, J. Pfeiﬀer, and I. Vulić. Where’s thepoint? self-supervised multilingual punctuation-agnosticsentence segmentation. In Proc. 61st ACL, pp. 7215–7235, 2023.
+[17] B. Thompson and P. Koehn. Vecalign: Improved sentencealignment in linear time and space. In Proc. EMNLPand 9th IJCNLP, pp. 1342–1348, 2019.
+[18] F. Feng, Y. Yang, D. Cer, N. Arivazhagan, and W. Wang.Language-agnostic BERT sentence embedding. In Proc.60th ACL, pp. 878–891, 2022.
+[19] K. Heﬀernan, O. Çelebi, and H. Schwenk. Bitext miningusing distilled sentence representations for low-resourcelanguages. In Findings of EMNLP, pp. 2101–2112,2022.
+[20] M. Ott, S. Edunov, A. Baevski, A. Fan, S. Gross, N. Ng,D. Grangier, and M. Auli. fairseq: A fast, extensibletoolkit for sequence modeling. In Proc. NAACL, pp.48–53, 2019.
+[21] K. Papineni, S. Roukos, T. Ward, and W. Zhu. Bleu: amethod for automatic evaluation of machine translation.In Proc. 40th ACL, pp. 311–318, 2002.
+[22] R. Rei, C. Stewart, A. Farinha, and A. Lavie. COMET: Aneural framework for MT evaluation. In Pro c. EMNLP,pp. 2685–2702, 2020.
+[23] R. Rei, J. C. de Souza, D. Alves, C. Zerva, A. Far-inha, T. Glushkova, A. Lavie, L. Coheur, and A. Martins.COMET-22: Unbabel-IST 2022 submission for the met-rics shared task. In Proc. 7th WMT, pp. 578–585, 2022.
+
+
+
+A Error Analysis Of Vecalign (LASER2)
++
+LaBSE sampling with similarity
+
+
+
+> 0.4 setting
+
+The Table 4 shows four speciﬁc translation output compared between the Reference and Hypothesis.
+For case 1，The source sentence reﬂects the speaker’s perspective (Gryde speaking), whereas the reference adopts thelistener’s perspective (people listening).
+The model maintained the source’s perspective.
+Additionally, "夢中になって" can be ambiguous, describing either the speaker’s state (chosen by the model) or the listener’s state (chosen by thereference).In case 2, the source text uses "手紙" (letter) as the pronoun, and the reference preserves "letter" in the same role.
+However, the model replaces it with "he," altering the original perspective.
+This demonstrates the model’s insuﬃcientunderstanding of contextual coherence.
+For case 3, the model failed to handle pronouns correctly, and compared to the model’s direct translation"put his foot tomy house twice," the reference translation leans more toward a free translation: "you would never have put another foot.".
+Additionally, the reference tends to use the free translation rather than direct translation: "そいつぁ間違えっこなしだ。" -> "you may lay to that ."For case 4, the reference translation’s sentence structures are more diverse, reﬂecting the characteristics of literary texts,whereas the model’s translation tends to adhere closely to the sentence structure of the source text.
+Table 4 Cases for Vecalign (LASER2) +
+LaBSE sampling with similarity >0.4 settings# Metrics Source Hypothesis Reference1BLEU = 41.80 二十分間グライドは夢中になって喋った。"II
+Fortwenty minutes Gryde was talk-ing wildly.
+""For twenty minutes Gryde was fol-lowed with rapt attention.
+"COMET
+= 0.6742BLEU = 7.24 ここまでは手紙はすこぶる落着いて書いてあったが、ここでペンが急に走り書きになって、筆者の感情が抑え切れなくなっていた。 「Up to this he had written a very quietnote , but here he scribbled a note , andthe writer &apos;s feelings relaxed .So
+far the letter had run composedlyenough, but here with a sudden splut-ter of the pen, the writer’s emotion
+hadbroken looseCOMET = 0.6743BLEU = 4.72 「 もしあんなような奴とつきあってたんなら、二度と己の家へ足を入れさすんじゃなかったぞ。そいつぁ間違えっこなしだ。"If he had met such a fellow, hewouldn’t have put his foot to my housetwice, he would have been mistaken.
+"
+If you had been mixed up with thelike of that , you would never have putanother foot in my house , you may layto that .COMET
+= 0.6814BLEU
+= 9.85 彼の考えそのものが間違いなのか、それとも彼は今、謎の核心へと導かれているのだろうか。」 私はひとり考えた。Was his thoughts doubtless mistaken,or he now led to the point of the mys-tery?"
+I thought.
+"Either
+his whole theory is incorrect,"I thought to myself, "or else he will beled now to the heart of the mystery.
+"COMET = 0.790
+
+B Prompt Setting
+
+Table 5
+The prompt for retrieve-agentYou are now a distinguished scholar of world literature, with a particular expertise in both Japanese andEnglish literature.
+Task:I will provide you with the name of an author in Japanese and the title of their work in Japanese.
+Your task is to:1.
+Identify the English name of the author.2.
+Provide the corresponding English title for the work.3.
+If the provided title represents a chapter or section of a larger work, also provide the title of the larger work towhich it belongs.4.
+If there is no match for one work, please just return "No match".5.
+If you are not conﬁdent with the result, please list all possible result in each "Author", "Chapter Title" and "ParentWork Title" section.6.
+You are also supported by a RAG-agent, in the case I sent the extra content of works, please using this informationto further identify.
+Guidelines:Carefully analyze each input to determine whether the given title is a standalone work or part of a larger collection.
+Provide accurate and internationally recognized English titles wherever possible.
+Always follow the format demonstrated in the example below.
+Example:Q:アーヴィングワシントンウェストミンスター寺院A:Author: Irving, WashingtonChapter Title:
+Westminster AbbeyParent Work Title: The Sketch Book of Geoﬀrey Crayon, Gent.

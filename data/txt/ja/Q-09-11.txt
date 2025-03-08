@@ -1,0 +1,239 @@
+複単語表現検出における LLM ファインチューニングの有効性
+
+井手 佑翼
+
+1
+
+Joshua Tanner
+
+2
+
+Adam Nohejl
+
+1
+
+Justin Vasselli
+
+1
+
+上垣外 英剛
+
+1
+
+渡辺 太郎
+
+11
+
+奈良先端科学技術大学院大学
+
+2
+
+Resolve Research
+
+
+
+ide.yusuke.ja6@is.naist.jp
+
+
+
+概要
+
+複単語表現、すなわちイディオム性を持つ単語の系列の検出は、機械翻訳など様々な下流タスクで重要な役割を果たす。
+本研究では、これまで複単語表現検出で用いられてこなかった大規模言語モデルのファインチューニングについて検証する。
+比較対象として、先行研究で優れた性能を示したエンコーダベースのシステムの検証も行う。
+実験の結果、提案手法が先行手法を大きく上回る性能を見せた。
+一方、提案手法を含む全手法で、再現率の低さが課題であることも明らかになった。
+また、モデルサイズを考慮した比較の結果から、メモリ効率の観点ではエンコーダベースの手法に利があることを示唆する。
+
+
+1 はじめに
+
+言語を理解するためには語彙が必要である。
+一般的に語彙の大部分は単語で構成されるが、複単語表現（multiword expression、MWE）も重要な一部をなす。
+MWE は、イディオム性を持つ単語の系列と定義される[1]。
+たとえば、次の文の太字部分が MWEに該当する1）。
+(a) Pick me up at the station.(b) He has been under the weather lately.テキスト中の MWE を自動的にタグ付けする処理は、複単語表現検出（MWE identiﬁcation、MWEI）と呼ばれる[2]。
+MWEI は、機械翻訳や語彙難解度推定など様々な下流タスクにおいて、重要な役割を果たすことがある[3, 4]。
+近年、MWEI の関連タスクである固有表現抽出を含む自然言語処理タスクにおいて、大規模言語モデル（LLM）のファインチューニングを用いた手法が高い性能を示すと報告されてきた[5]。
+しかし MWEI では、管見のかぎり LLM の性能は検証1） (a)の MWE は「〜を（車などで）迎えに行く」、（b）のMWE は「体の具合が悪い」を意味する。
+されていない。
+これを受けて、本研究では、LLMファインチューニングが MWEI にも有効かどうか検証する。
+実験で用いる LLM は、Llama [6]およびQwen [7]のファミリーから選ぶ。
+また、比較対象として、エンコーダベースの手法である MWEasWSD（MaW）[8]も検証する。
+MaW は、DiMSUM データセット[9]で最高精度を達成したモデルである。
+実験の結果、ファインチューニングされた 72Bパラメータの Qwen モデルが、MWEasWSD の各システムを大きく上回る性能を示した。
+一方で、すべてのモデル・システムが低い再現率（recall）に苦しむという課題もあることが明らかになった（例：Qwen-72B でも 50.7%）。
+エラー分析の結果、real estate など、WordNet [10]に含まれない MWE は、特に検出が難しいことが分かった。
+この事象の原因としては、これらの MWE は、MWE またはイディオムとして広く認識されていないことが考えられる。
+また、モデルサイズを考慮した比較では、最も性能のよい MaW システムは、数倍のメモリを要する Qwen-8B 等と同等の性能を実現することを示し、MaW はメモリ効率に優れることを示唆する。
+
+
+2 手法
+
+本研究で第一に検証する手法は、LLM ファインチューニングである。
+固有表現抽出[5]や文法誤り訂正[11]の先行研究で、LLM にタスクについての詳細な指示を訓練時と推論時に与える手法が、高い性能を示してきた。
+これらの研究と同様に、我々も、MWEI についての指示を LLM に与える手法を検証する。
+第二の手法は、MaW [8]である。
+MaW は、MWE辞書（WordNet [10]）とルールベースのパイプラインにより MWE の候補を列挙したうえで、訓練可能なエンコーダモデルにより候補をフィルタリングするシステムである[8]。
+著者が公開しているシステムのうち、我々は、双エンコーダ（bi-encoder）モデルを用いる Rule+BiEnc、および多エンコーダ（DCA表 1 CoAM の統計。
+文 MWE MWE 内トークン比率(%)訓練 780 489 6.7テスト 521 385 6.5計 1,301 874 6.6poly-encoder）モデルを用いる Rule+DCA を検証する。
+これらのモデルは、いずれも BERT [12]に基づくものである。
+エンコーダによるフィルタリングを省略したルールベースパイプライン（Rule）も公開されているため、これも検証する。
+
+
+3 実験設定
+
+
+
+3.1 モデル
+
+LLM ファインチューニングには、Hugging Faceで公開されている 4 つのインストラクションチューニング済みモデル、すなわち Llama-3.1-8B-Instruct、Llama-3.1-70B-Instruct [6]、Qwen-2.5-7B-Instruct、Qwen-2.5-72B-Instruct [7]を用いる。
+本論文では、バージョン情報を省略し、これらをLlama-8B のように表記する。
+また、訓練および推論を効率化するため、QLoRA [13]を用いる。
+ハイパーパラメータは、付録 A.1 に示すとおりである。
+
+
+3.2 データセット
+
+各モデル・システムの訓練および評価には、MWEIデータセットの CoAM [14]を用いる。
+CoAM の統計は、表 1 に示すとおりである。
+CoAM の評価データに含まれる各 MWE には、その主辞の品詞に基づくMWE タイプの情報が付与されている。
+MWE タイプは、名詞、動詞、修飾語2）・接続詞（修・接）、節、そしてその他の 5 種類である。
+4 節で、この MWEタイプを用いた分析を行う。
+なお、CoAM は、MWEを、意味的、文法的、または語彙的なイディオム性を持つ単語の系列と定義し、透明な（構成素から全体の意味を推測できる）コロケーションを MWE の定義から除外している。
+本研究における MWE の定義も、これに従うこととする。
+
+3.3 定式化
+
+CoAM は、MWEI をトークン単位の系列タグ付けとして定式化している[14]。
+すなわち、MWEI は、各文 𝑠 について、𝑠 に含まれるトークンの系列を入2） 形容詞または副詞。
+表 2 tsv to tsv 形式に基づくプロンプトの例。
+[...]は、スペースの都合で省略した箇所である。
+ロールメッセージSystemYou are a helpful system to identifymultiple-word expressions (MWEs).UserIdentify all the MWEs in the givensentence, and output their surfaceforms and the indices of theircomponents.\n\nHere, an MWE is defined as a sequencethat satisfies the following threeconditions.\n1. It consists of multiple words thatare always realized by the samelexemes. [...]\n2. It displays semantic, lexical, orsyntactic idiomaticity. [...]\n3. It is not a multi-word named entity,i.e., a specific name of a person,facility, etc.\n\nEach sentence is given as a string ofwords delimited by '\n'. Respond inTSV format, where the first and secondcolumns contain words and MWE tags,respectively. The MWE tag should be astring of MWE identifiers. When a wordbelongs to multiple MWEs, the tagshould be a concatenation of theirnumbers delimited by semicolons.\n\nSentence:\nACL\nstands\n...力として、その文に含まれる MWE のリストを出力するタスクである。
+ここで、各 MWE は、そのMWE に含まれるトークンのインデックスのリストとして表される（表 7 参照）。
+なお、CoAM におけるトークンは、SpaCy によるトークナイズの結果として得られた単位である。
+
+
+
+3.4 評価指標
+
+評価には、MWE ベース[15]の適合率、再現率、F1スコアを用いる（正解の MWE と予測された MWEのそれぞれに含まれるトークンが、完全一致しているかどうかに基づいて評価する）。
+
+3.5 予備実験
+
+性能のよい入出力フォーマットを探るため、3 つのフォーマットを比較する予備実験を行った。
+実験の詳細は、付録 A.2 を参照されたい。
+結果として、tsv_to_tsv と呼ぶ形式（表 2 参照）のみが期待通りの出力を実現することが明らかになったため、以降の実験ではこの形式を用いる。
+
+
+
+4 結果・分析
+
+全体スコア実験結果を、表 3 に示す。
+表 3a の左3 列から、ファインチューニング済みの Qwen-72B（FT Qwen-72B）が最高の F1 値を実現したことが読み取れる。
+FT Qwen-72B は、適合率および再現率でもすべての MaW システムを上回った。
+これは、MWEI に対する LLM ファインチューニングの有効性、とりわけ多数のパラメータを持つ LLM のファインチューニングの有効性を示す結果と言える。
+この要因としては、LLM は事前学習を通じて MWE に関する知識を獲得しており、MWEI のためのファインチューニングを行うことでその知識を引き出すことができる、という説明が考えられる。
+一方で、ルールベースパイプラインを除いて、すべてのモデル・システムは、低再現率に苦しむ結果となった。
+最善のシステムである FT Qwen-72B でも、再現率は 50.7%に留まり、検出すべき MWE のほぼ半分は検出できていないことが示された。
+この原因を、次に分析する。
+再現率の分析表3a の右 4 列から、モデル・システムによらず、節 MWE や名詞 MWE は、修・接MWE や動詞 MWE より検出が難しい傾向があることが分かる。
+また、表 3b の左 2 列からは、unseen である MWE（訓練データに現れない MWE）は、seenである MWE より検出しづらいこと、中央 2 列からは、非連続な MWE（構成素のトークンが完全に連続していない MWE）は、連続な MWE より検出しづらいことが読み取れる。
+表 3b の右 2 列は、WordNet 内の（WordNet に含まれる）MWE は、WordNet 外の MWE より検出が難しいことを示している。
+MaW のルールベースパイプラインは、WordNet に含まれない MWE を候補として検出できないため、MaW のシステムが WordNet外 MWE を一切検出できないのは当然の結果である。
+一方で、ファインチューニング済み LLM も、WordNet 外 MWE の検出性能が低くなった点は注目に値する。
+これを説明する仮説としては、WordNetに含まれる MWE は、比較的広く MWE またはイディオムとして認識されており、そのような認識がLLM の訓練データにも反映された結果、これらのMWE の検出性能が高くなった、と考えられる。
+続いて、定性分析を行う。
+表 4 に、ランダムシードによる 3 回の Qwen-72B のファインチューニングの結果、すべての回で正しく検出された MWE と見逃された MWE の例を示す。
+ﬁre up に代表されるMWE 内の動詞 MWE は比較的容易に検出でき、FTQwen-72B の再現率は 79.0%であった。
+一方、非連続な MWE である in . . . hands は正しく検出されなかった。
+また、名詞 MWE の real estate も見逃された。
+real estate は WordNet に含まれない MWE であるため、これは、前述の仮説と整合的な結果と言える。
+このような MWE の検出性能を高めることは、今後の課題である。
+アブレーション FT Qwen-72B が高い性能を示したことを踏まえ、zero-shot 学習（ZSL）および few-shot学習（FSL）との比較により、ファインチューニングがどの程度その性能に貢献したかを調査する。
+ZSL では、FT と同じプロンプトをモデルに与える。
+FSL では、入力（文）と出力（MWE のリスト）のペアを 5 つ訓練データからランダムに抽出し、それらを tsv_to_tsv 形式に変換したのち、プロンプトに事例として含める。
+この抽出プロセスでは、モデルがタスクと入出力形式について学ぶために十分な事例を与えるため、少なくとも 2 つの文が MWE を含むようなサンプルを得られるまで、抽出を繰り返す。
+モデルは、Qwen-72B と Llama-70B を用いる。
+表 5 に、実験の結果を示す。
+ファインチューニングの性能は ZSL や FSL を大きく上回り、ファインチューニングの有効性を示す結果となった。
+モデルサイズを考慮した比較最後に、モデルのサイズ、すなわちパラメータ数を考慮したモデル・システム間の比較を行う。
+言語モデルのパラメータ数は、必要とされる GPU や推論時間を大きく左右するため重要である。
+MaW の各エンコーダ（bert-base-uncased）のパラメータ数はおよそ 110M なので、Rule+BiEnc および Rule+DCA は、（モデルのパラメータのみで）全体で 2 × 110M × 4 = 880M バイトのVRAM を要する（2 はエンコーダ数、4 は 1 パラメータあたりのバイト数）。
+一方、4 ビット量子化を施した Qwen-72B は、およそ 72, 000M × 0.5 = 36, 000M バイト、すなわち MaW の約 40 倍の VRAM を要する。
+表 3 モデル・システムごとの平均スコア（ランダムシードを用いた 3 回の訓練の結果の平均）。
+括弧内の数値は、そのカテゴリに含まれる MWE の数。
+± は標準偏差、太字は最善のスコア、WN は WordNet を表す。
+(a)MWE タイプごと再現率F1 適合率再現率名動修・接節(118)(154)(88)(6)FTLlama-8B 29.4±2.182.6±1.217.9±1.65.9±0.826.4±1.524.2±3.50.0±0.0Llama-70B 38.4±4.874.5±2.626.1±4.619.2±4.235.7±5.725.4±5.60.0±0.0Qwen-7B 45.2±0.663.2±0.935.2±0.826.0±2.047.2±1.031.8±2.00.0±0.0Qwen-72B 55.5±0.561.5±2.650.7±2.544.4±3.260.6±1.050.4±5.122.2±9.6MaWRule 32.7 28.3 38.7 37.3 40.9 47.7 0.0Rule+BiEnc 41.6±0.148.6±0.336.5±0.332.2±0.041.1±0.744.3±0.00.0±0.0Rule+DCA 42.0±0.148.4±0.637.1±0.333.3±0.540.9±0.045.8±0.70.0±0.0(b)Seen/Unseen 別再現率連続／非連続別再現率 WN 内外別再現率Seen Unseen 連続非連続 WN 内 WN 外(138)(247)(335)(50)(163)(222)FTLlama-8B 37.2±3.47.2±0.620.6±1.90.0±0.029.2±1.99.6±1.7Llama-70B 35.0±7.321.1±3.228.7±5.08.7±2.346.8±6.510.8±3.2Qwen-7B 44.4±0.830.0±0.840.1±0.92.0±0.050.1±1.424.2±0.5Qwen-72B 58.2±5.846.6±0.756.3±2.913.3±1.263.6±3.441.3±1.9MaWRule 47.8 33.6 42.1 16.0 91.4 0.0Rule+BiEnc 44.2±0.032.1±0.539.8±0.314.0±0.086.1±0.70.0±0.0Rule+DCA 45.4±0.832.4±0.040.5±0.314.0±0.087.5±0.70.0±0.0表 4 真陽性（TP）および偽陰性（FN）、すなわち Qwen-72B に正しく検出された／見逃された MWE の例。
+結果 MWE 文脈属性TP ﬁre up The allegations have ﬁred up the opposition, . . . WordNet 内、動詞TP at least . . . since at least the 1950s. WordNet 内、修・接FN in . . . hands . . . concentration of power in his own hands. WordNet 内、修・接FN real estate . . . park their toxic real estate assets . . . WordNet 外、名詞FN you know You know, it’s very old . . . WordNet 外、節表 5 平均 F1 スコア（3 回の試行の結果の平均）。
+FT のランダム性は訓練時に、FSL と ZSL のランダム性は事例抽出に際して生じる。
+± は、標準偏差を表す。
+Llama-70B Qwen-72BFT 38.4±4.855.5±0.5FSL 4.3±0.914.1±0.3ZSL 6.9 2.8また、4 ビット量子化を施した Qwen-7B は、MaW の約 4 倍の VRAM を要するが、その性能は Rule+DCAと同程度に過ぎなかった。
+この結果は、MaW のRule+DCA は LLM よりメモリ効率がよいことを示唆する。
+さらに、MaW のボトルネックは MWE 辞書のサイズであることが特定されており[8]、この点を改善することで、Qwen-72B に匹敵する性能を実現できるかもしれない。
+
+
+
+5 おわりに
+
+本研究では、2 つの MWE 検出手法の性能を評価した。
+すなわち、LLM のファインチューニングと、エンコーダベースのシステム MaW を評価した。
+実験の結果、ファインチューニング済み Qwen-72B はMaW を大きく上回る性能を達成し、LLM ファインチューニングの有効性を示した。
+一方、メモリ効率の点では、MaW に利があるという示唆も得られた。
+今後の研究の方向としては、LLM が MWE に関する知識を一定程度保持していることを踏まえ、LLMを活用して大規模な MWE 辞書を作成することが考えられる。
+この辞書をエンコーダベースのシステムと組み合わせることで、メモリ効率を抑えながら高い検出性能を実現できる可能性がある。
+
+
+
+謝辞
+
+本研究は、JST 次世代研究者挑戦的研究プログラム JPMJSP2140 の支援を受けたものである。また、本研究を進めるにあたり、Jacob Hoﬀman 氏からMWE に関する有益なコメントをいただいた。
+
+参考文献
+
+
+[1] Timothy Baldwin and Su Nam Kim. Multiword expres-sions. In Handbook of Natural Language Processing,2010.
+[2] Mathieu Constant, G¨uls¸en Eryi˘git, Johanna Monti, Lon-neke Van Der Plas, Carlos Ramisch, Michael Rosner, andAmalia Todirascu. Multiword expression processing: Asurvey. Computational Linguistics, Vol. 43, No. 4, pp.837–892, 2017.
+[3] Eleftheria Briakou, Jiaming Luo, Colin Cherry, andMarkus Freitag. Translating step-by-step: Decomposingthe translation process for improved translation quality oflong-form texts. In Barry Haddow, Tom Kocmi, PhilippKoehn, and Christof Monz, editors, Proceedings of theNinth Conference on Machine Translation, pp. 1301–1317, Miami, Florida, USA, November 2024. Associationfor Computational Linguistics.
+[4] Ekaterina Kochmar, Sian Gooding, and Matthew Shard-low. Detecting multiword expression type helps lexicalcomplexity assessment. In Nicoletta Calzolari, Fr´ed´ericB´echet, Philippe Blache, Khalid Choukri, ChristopherCieri, Thierry Declerck, Sara Goggi, Hitoshi Isahara,Bente Maegaard, Joseph Mariani, H´el`ene Mazo, Asun-cion Moreno, Jan Odijk, and Stelios Piperidis, editors,Proceedings of the Twelfth Language Resourcesand Evaluation Conference, pp. 4426–4435, Marseille,France, May 2020. European Language Resources Asso-ciation.
+[5] Wenxuan Zhou, Sheng Zhang, Yu Gu, Muhao Chen, andHoifung Poon. UniversalNER: Targeted distillation fromlarge language models for open named entity recognition.In The Twelfth International Conference on Learn-ing Representations, 2024.
+[6] Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Ab-hishek Kadian, Ahmad Al-Dahle, Aiesha Letman, AkhilMathur, Alan Schelten, Amy Yang, Angela Fan, et al. Thellama 3 herd of models, 2024.
+[7] Qwen Team. Qwen2.5: A party of foundation models,September 2024.
+[8] Joshua Tanner and Jacob Hoﬀman. MWE as WSD: Solvingmultiword expression identiﬁcation with word sense dis-ambiguation. In Houda Bouamor, Juan Pino, and KalikaBali, editors, Findings of the Association for Compu-tational Linguistics: EMNLP 2023, pp. 181–193, Sin-gapore, December 2023. Association for ComputationalLinguistics.
+[9] Nathan Schneider, Dirk Hovy, Anders Johannsen, and Ma-rine Carpuat. SemEval-2016 task 10: Detecting mini-mal semantic units and their meanings (DiMSUM). InSteven Bethard, Marine Carpuat, Daniel Cer, David Ju-rgens, Preslav Nakov, and Torsten Zesch, editors, Pro-ceedings of the 10th International Workshop onSemantic Evaluation (SemEval-2016), pp. 546–559,San Diego, California, June 2016. Association for Com-putational Linguistics.
+[10] George A. Miller. Wordnet: A lexical database for english.Communications of the ACM, Vol. 38, No. 1, pp. 39–41, 1995.
+[11] Masahiro Kaneko and Naoaki Okazaki. Reducing se-quence length by predicting edit spans with large languagemodels. In Houda Bouamor, Juan Pino, and Kalika Bali,editors, Proceedings of the 2023 Conference on Em-pirical Methods in Natural Language Processing,pp. 10017–10029, Singapore, December 2023. Associa-tion for Computational Linguistics.
+[12] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and KristinaToutanova. BERT: Pre-training of deep bidirectional trans-formers for language understanding. In Jill Burstein,Christy Doran, and Thamar Solorio, editors, Proceed-ings of the 2019 Conference of the North AmericanChapter of the Association for Computational Lin-guistics: Human Language Technologies, Volume 1(Long and Short Papers), pp. 4171–4186, Minneapo-lis, Minnesota, June 2019. Association for ComputationalLinguistics.
+[13] Tim Dettmers, Artidoro Pagnoni, Ari Holtzman, and LukeZettlemoyer. Qlora: Eﬃcient ﬁnetuning of quantized llms.In A. Oh, T. Naumann, A. Globerson, K. Saenko, M. Hardt,and S. Levine, editors, Advances in Neural InformationProcessing Systems, Vol. 36, pp. 10088–10115. CurranAssociates, Inc., 2023.
+[14] Yusuke Ide, Joshua Tanner, Adam Nohejl, Jacob Hoﬀman,Justin Vasselli, Hidetaka Kamigaito, and Taro Watanabe.CoAM: Corpus of all-type multiword expressions, 2024.
+[15] Agata Savary, Cherifa Ben Khelil, Carlos Ramisch, VoulaGiouli, Verginica Barbu Mititelu, Najet Hadj Mohamed,Cvetana Krstev, Chaya Liebeskind, Hongzhi Xu, SaraStymne, Tunga G¨ung¨or, Thomas Pickard, Bruno Guil-laume, Eduard Bejˇcek, Archna Bhatia, Marie Candito,Polona Gantar, Uxoa I˜nurrieta, Albert Gatt, JolantaKovalevskaite, Timm Lichte, Nikola Ljubeˇsi´c, JohannaMonti, Carla Parra Escart´ın, Mehrnoush Shamsfard,Ivelina Stoyanova, Veronika Vincze, and Abigail Walsh.PARSEME corpus release 1.3. In Archna Bhatia, Kil-ian Evang, Marcos Garcia, Voula Giouli, Lifeng Han, andShiva Taslimipoor, editors, Proceedings of the 19thWorkshop on Multiword Expressions (MWE 2023),pp. 24–35, Dubrovnik, Croatia, May 2023. Association forComputational Linguistics.
+
+
+
+
+A 実験設定
+
+
+
+A.1 ハイパーパラメータ
+
+表 6 ハイパーパラメータ。
+エポック数は[5]、その他のパラメータは[13]を参考に決定した。
+LoRA𝑟 64𝛼 16Dropout 0.05Target modules All linear layers訓練Epoch 3Eﬀective batch size 32Learning rate 2e-4Learning rate scheduler constantOptimizerpaged adamw 8bit(𝛽2= 0.999)Max grad norm 0.3表 6 に、実験で用いるハイパーパラメータを示す。
+なお、推論時は貪欲デコーディングを行う。
+
+
+A.2 入出力の形式
+
+表 7 入出力フォーマット一覧。
+太字は本実験に採用されたフォーマット。
+名称入出力例dict to dict list{1: 'ACL', 2: 'stands',3: 'for', ...}↓[{'surface': 'stands for','indices': [2, 3]}]str to strnumber spanACL stands for Associationfor Computational Linguists .↓ACL <1>stands for</1> Associationfor Computational Linguists .tsv to tsvACL\nstands\nfor\n...↓ACL\t\nstands\t1\nfor\t1\n...性能のよい入出力フォーマットを探るため、表7 に示す 3 つのフォーマットを用いて予備実験を行った。
+これらのフォーマットはすべて、不連続なMWE や、他の MWE と重なる MWE を含む、あらゆる形の MWE を表すことができる。
+実験では、これらのフォーマットおよびCoAMを用いて、Llama-8Bと Qwen-7B を訓練・評価した。
+これらのフォーマットに応じて、プロンプトを変化させる。
+また、本実験と同じく、表 6 に示したハイパーパラメータを用いた。
+実験の結果、tsv_to_tsv のみが、両モデルが従うことのできるフォーマットであることが明らかになった。
+その他のフォーマットについては、モデルがフォーマットに違反する結果を出力する結果となった。
+dict_to_dict_list を用いると、モデルは頻繁に誤った（トークンの）インデックスを出力した。
+str_to_str_number_span を用いると、モデルは句読点の前のスペースを消去した。
+各フォーマットは、フォーマットに合わせて調整されたプロンプトとともに用いられたことを踏まえれば、これは筆者の予想に反する結果であった。

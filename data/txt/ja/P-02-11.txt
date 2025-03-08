@@ -1,0 +1,259 @@
+誤字に対する Transformer ベース LLM のニューロンおよびヘッドの役割調査
+
+辻 航平
+
+1
+
+ 平岡 達也
+
+2
+
+ 鄭 育昌
+
+1,3
+
+荒牧 英治
+
+1
+
+ 岩倉 友哉
+
+1,31
+
+奈良先端科学技術大学院大学 
+
+2
+
+MBZUAI 
+
+3
+
+富士通株式会社
+
+
+
+tusji.kohei.tl1@naist.ac.jp
+
+
+
+tatsuya.hiraoka@mbzuai.ac.ae
+
+
+
+aramaki@is.naist.jp
+
+
+
+{cheng.yuchang,iwakura.tomoya}@fujitsu.com
+
+
+
+概要
+
+本論文では、FFN 層のニューロンや、アテンション層のアテンションヘッドが誤字を認識・修復しているという仮説を立て、誤字を含む文が入力されたときに活発に働く、誤字ニューロンおよび誤字ヘッドを特定する。
+我々の実験結果から以下のことが判明した。
+1)初期層と中間層前半に誤字の認識と修復を行うニューロンが存在し、中間層前半にあるニューロンが誤字の修復の中核である。
+2)広く文脈情報を捉えるヘッドが誤字の修復に貢献している。
+3)誤字ヘッドの中には、単語の意味的な繋がりを認識するヘッドが存在した。
+
+
+
+1 はじめに
+
+大規模言語モデル(LLM)は広く使われており[1]，入力に誤字が含まれている可能性もある。
+LLM が誤字を “修復” して、誤字を含んでいても正しい推論を行うことも多い[2]が、誤字によって LLM が “損害” を受け、間違った推論を行う場合もある[3]。
+実際に図 1 が示すよう、誤字が多い場合には、大きなモデルほど性能を維持しているものの、性能低下が発生している。
+このような誤字による損害を軽減するためには、誤字に対する頑健性と誤字による性能劣化の原因をより深く理解する必要がある。
+誤字に関する既存研究は、摂動に対する頑健性を測るデータセットの作成[3]や、頑健性を向上させるための工夫[4]が主である。
+誤字がどの層で修復されるかを調査した研究[5]も存在するが、単語のみを入力とし、層単位の調査のみが行われている。
+我々は、誤字に対する頑健性は Transformer [6]アーキテクチャの主要部分である Feed-Forward図 1: §2.2 において作成したデータセットに 𝑡 個の誤字を付与した場合の精度。
+Network (FFN)層およびアテンション層の内部挙動によってもたらされると仮定し、検証する。
+具体的には、FFN 層の 2 つの線形層の間の活性化関数の出力 “ニューロン” [7]と、アテンション層の各アテンションヘッドの働きを見ていく。
+これらには、特定のタスク[8]や知識[9, 10]、挙動[11, 12]を促進するものが報告されている。
+これらの中で特に誤字の認識・修復を行う誤字ニューロンや誤字ヘッドを特定することを目的とする。
+本研究では、文脈を用いることができる環境での誤字に対する内部挙動を調査するために、単語特定タスク(§2)を用いる。
+Gemma2 [13]を用いた実験の結果から、以下のことが示唆される。
+• 初期層と中間層前半に誤字の認識と修復を行うニューロンが存在し、中間層前半にあるニューロンが誤字の修復の中核である(§3)。
+• 特定のトークンに注目するヘッドではなく、広く文脈情報を捉えるヘッドが誤字の修復に貢献している( §4.2)。
+• 誤字ヘッドの中には、単語の意味的な繋がりを認識するヘッドが存在した(§4.3)。
+図 2: データセットの概要(左)、LLM への入力例(中)、ニューロンの活性化スコア 𝑠𝑥𝑛を計算するための 𝑀𝑥の可視化(右)。
+
+2 準備
+
+
+
+2.1 モデル
+
+Gemma 2 [13]の 2B，9B，27B モデルを用いた。
+27B モデルのみ bﬂoat16 で読み込み、他は ﬂoat32 で読み込んだ1）。
+また、生成には貪欲法を用いた。
+
+
+
+2.2 誤字のないクリーンデータセット
+
+文脈を考慮した誤字の影響を調べるために、与えられた語義に対応する単語を出力させる単語特定タスクを利用する。
+例えば、“a young swan” が語義として入力された場合には、対応する単語 “cygnet” を出力すれば正解となる。
+[14]に倣い、62,643 組の単語-語義ペアを WordNet [15]から抽出した2）。
+また、図 2 中央に示すように、プロンプトを設計した。
+誤字がない場合に LLM が正答できるようにするため、モデルごとに正答できるデータ 5,000 組の単語ー語義ペアを抽出し、データセットとした。
+
+
+
+2.3 誤字の付与
+
+先行研究[3]に倣って、Gemma 2 2B でタスクを解く際に重要なトークン 𝑡 個を逆伝播により決定し、それらにランダムな 1 文字を追加することで、誤字データセットを作成する(図 2 左)。
+誤字を含む入力のトークン系列は、誤字のない入力のトークン系列と異なるトークン数になる場合が1） Xeon Gold 6230R + NVIDIA A100 40GB*2 を用いた。
+2） NLTK [16] ver.3.9.1 に実装されている WordNet を用いた多い。
+例えば、“young” は 1 トークンだが、誤字を含む “youneg” は “you / neg” と 2 トークンになる。
+これらの比較では、トークン数の違いによる影響を受ける。
+トークン数の違いによる内部挙動の差を除くため、誤字データと同じ長さのトークン化候補を選択したデータで構成される分割データセットも作成した(図 2 左)。
+
+
+
+3 誤字ニューロン
+
+
+
+3.1 誤字ニューロンの特定手法
+
+先行研究[11]に倣い、各データセットで活性化しているニューロンの差を比較して、誤字にのみ反応するニューロンの存在を明らかにしていく。
+トークン系列 𝑥 = 𝑤1, ..., 𝑤𝑚, ..., 𝑤| 𝑥 |のトークン長を |𝑥| とすると、データセット 𝑋 ∋ 𝑥 におけるニューロン 𝑛の活性化スコア 𝑠𝑋𝑛は次のように定義される：𝑠𝑋𝑛=1|𝑋 |𝑥∈ 𝑋1|𝑀𝑥|𝑚∈ 𝑀𝑥𝑓 (𝑥𝑚1, 𝑛), (1)ここで、|𝑋 | はデータ数、 𝑓 (𝑥𝑚1, 𝑛)は、LLM が 𝑥𝑚1=𝑤1, ..., 𝑤𝑚を入力されたときの 𝑤𝑚におけるニューロン 𝑛 の出力、𝑀𝑥はトークン位置を示すインデックス集合、|𝑀𝑥| は 𝑀𝑥の個数である。
+本実験では𝑀𝑥を、答えとなる単語の直前と 𝑡 個の重要語のトークン系列を示すインデックス集合とする。
+図 2 右のオレンジの入力が 𝑀𝑥を構成するトークンである。
+ニューロンの誤字への重要度 Δ𝑛は次の式になる:Δ𝑛= 𝑠𝑋typo𝑛− max𝑠𝑋clean𝑛, 𝑠𝑋split𝑛, (2)図 3: 層ごとの誤字ニューロンの割合。
+左が 𝑡 = 1 の場合、右が 𝑡 = 16 の場合。
+モデルサイズにより層の総数が異なるので，x 軸は 0 から 1 の相対位置で現した。
+図 4: 誤字ニューロンの層ごとの分布。
+黒線より上の値は，LLM が正しい単語を予測したときに誤字ニューロンが多く活性化したことを示す。
+𝑋𝑡 𝑦 𝑝𝑜，𝑋𝑐𝑙𝑒𝑎𝑛，𝑋𝑠 𝑝𝑙𝑖𝑡はそれぞれ誤字データセット、クリーンデータセット、分割データセットを示す。
+Δ𝑛が大きいニューロン 𝑛 は、誤字に特化しており，Δ𝑛上位 𝐾 個を誤字ニューロンとする。
+
+
+3.2 結果
+
+𝑡 = 1, 16 での誤字ニューロンの分布を図 3 に示す。
+Δ𝑛が上位 0.5%以内かつ Δ𝑛> 0 のニューロンを誤字ニューロンとした。
+誤字ニューロンは、𝑡 = 1 で初期層(0.0〜0.2)に多く，𝑡 = 1 と 𝑡 = 16 の両方で中間層前半(0.2〜0.5)に多く存在する。
+中間層前半は文脈を考慮した処理を行っているとされている[17]。
+そのため、初期層で誤字を修復できなかった場合に、中間層前半が広い文脈を用いて修復していることが示唆される。
+最終層付近の誤字ニューロンは、𝑡 = 16 の場合に多い。
+これは最終層付近の内部表現にも誤字による影響が残っているためだと考えられる。
+
+
+3.3 誤字の修復に寄与するニューロン
+
+§3.2 では、LLM が正しく推論しているかどうかを考慮していない。
+本節では、LLM が誤字を修復できた場合とできなかった場合での誤字ニューロンの活性化の違いに注目する。
+また、小型モデル(2B)と大型モデル(9B，27B)で、ニューロンの傾向が異なっていたため、2B と 9B のモデルを用いて実験した。
+5,000 件のデータセットから、誤字による損害を受けず、正しい単語が予測された 100 件と、誤字による損害を受け、誤った単語予測につながった別の100 件を抽出し、誤字ニューロンの活性化の違いを比較した。
+実験は 𝑡 = 1 で行い、Δ𝑛上位 0.5%の誤字ニューロンの層分布の差を調査した。
+図 4 に結果を示す。
+9B モデルでは、損害を受けた場合に初期層の誤字ニューロンが増加する。
+これは、誤字の修復以外の役割の初期層のニューロンの誤った活性化が正しい認識を妨げている可能性がある．2B モデルでは、損害を受けた場合には中間層の誤字ニューロンが増加した。
+これは、2B モデルは、中間層への依存度が高いためだと考えられる。
+どちらのモデルにおいても、誤字を修復できた場合、中間層前半の誤字ニューロンが増加したため、中間層前半の誤字ニューロンは重要だとわかる。
+
+
+4 アテンションヘッド
+
+
+
+4.1 誤字ヘッドの特定手法
+
+サブワード結合[18]のように、誤字の修復がヘッドでも行われている可能性が高い。
+このようなヘッドは、誤字を含む入力でのみ、修復に重要なトークンに注目する、または文脈を見るために複数のトークンに注目が分散することが予想される。
+そこで、アテンションマップの各行を確率分布とみなして一様分布との KL ダイバージェンスを計算しすることで誤字に特化したヘッドを特定する。
+KL ダイバージェンスはトークンの数に対して単調増加であり、誤字データセットや分割データセッ図 5: 各モデル、各誤字数ごとの Δℎの分布トはクリーンデータセットよりもトークンの数が多いため、数値が高くなりやすい。
+そこで、最大値log2𝑚 で正規化した以下の式を用いた:𝑠𝑋ℎ=1|𝑋 |𝑥∈ 𝑋𝑚𝐷KL(𝑃𝑥,𝑚,ℎ||𝑈𝑚)log2𝑚, (3)このとき、𝐷KL(·)は KL ダイバージェンスを返す関数，𝑈𝑚は 𝑚 個の確率変数を持つ一様分布、𝑃𝑥,𝑚,ℎは入力 𝑥 に対するヘッド ℎ のアテンションマップの𝑚 行目である。
+ヘッドの誤字への重要度 Δℎは次の式になる:Δℎ= 𝑠𝑋typoℎ− max𝑠𝑋cleanℎ, 𝑠𝑋splitℎ, (4)𝑋𝑡 𝑦 𝑝𝑜，𝑋𝑐𝑙𝑒𝑎𝑛，𝑋𝑠 𝑝𝑙𝑖𝑡はそれぞれ誤字データセット、クリーンデータセット、分割データセットを示す。
+Δℎの絶対値が大きいヘッドは、誤字を含む入力に対する挙動が、誤字を含まない入力とは大きく異なる。
+そのため、Δℎの絶対値が大きい上位 𝐽 個のヘッドを誤字ヘッドとした。
+
+
+
+4.2 結果
+
+𝑡 ∈ 1, 16 での Δℎは図 5 のようになった。
+すべての設定で、最大値と最小値の絶対値の差は約 10 倍である。
+この結果から、ヘッドにおける誤字の認識と修復は特定のトークンへの集中ではなく、幅広く文脈をみることで行われていることがわかる。
+
+4.3 誤字ヘッドの可視化
+
+9B モデルの Δℎの絶対値上位 1.5%のヘッドを誤字ヘッドとして、各入力に対するアテンションマップを観察した。
+Appendix A にヘッドの可視化の例を載せる。
+初期層の誤字ヘッドは、文の切れ目を認識するヘッドである。
+中間層前半の誤字ヘッドは意味的な繋がりに反応しているヘッドであり、類語から誤字を修復していると考えられる。
+最終層付近のヘッドも、わずかながら誤字がある場合に広く文脈を見ることで修復していると考えられる。
+また、ほとんどの誤字ヘッドは’<bos>’ に強い注意を向けていた。
+
+
+
+5 おわりに
+
+本研究では、Transformer ベースの LLM のニューロンやヘッドの誤字に対する反応を調査した。
+実験結果より、初期層と中間層前半の一部のニューロンが誤字に反応し、特に中間層前半のニューロンが、誤字の修復において重要であると判明した。
+また、広く文脈を見るヘッドが誤字を修復している。
+以上より、誤字に関する分析では初期層や中間層前半に着目することが重要であると言える。
+本研究では 1トークンに 1 文字の人工的な誤字挿入に限定したが、将来的にはより現実的な誤字を考慮してゆく。
+
+
+
+謝辞
+
+本研究は、「戦略的イノベーション創造プログラム（SIP）」「統合型ヘルスケアシステムの構築」JPJ012425 および JST CREST「リアルワールドテキスト処理の深化によるデータ駆動型探」（課題番号：JPMJCR22N1）の支援を受けたものである。
+
+参考文献
+
+
+[1] Sumit Kumar Dam, Choong Seon Hong, Yu Qiao, andChaoning Zhang. A complete survey on llm-based ai chat-bots. arXiv preprint arXiv:2406.16937, 2024.
+[2] Jindong Wang, Xixu Hu, Wenxin Hou, Hao Chen, RunkaiZheng, Yidong Wang, Linyi Yang, Wei Ye, Haojun Huang,Xiubo Geng, et al. On the robustness of chatgpt: An ad-versarial and out-of-distribution perspective. Data Engi-neering, p. 48, 2024.
+[3] Boxin Wang, Weixin Chen, Hengzhi Pei, Chulin Xie,Mintong Kang, Chenhui Zhang, Chejian Xu, Zidi Xiong,Ritik Dutta, Rylan Schaeﬀer, et al. Decodingtrust: Acomprehensive assessment of trustworthiness in gpt mod-els. Advances in Neural Information Processing Sys-tems, Vol. 36, , 2023.
+[4] Hongyi Zheng and Abulhair Saparov. Noisy exemplarsmake large language models more robust: A domain-agnostic behavioral analysis. In Houda Bouamor, JuanPino, and Kalika Bali, editors, Proceedings of the 2023Conference on Empirical Methods in Natural Lan-guage Processing, pp. 4560–4568, Singapore, Decem-ber 2023. Association for Computational Linguistics.
+[5] Guy Kaplan, Matanel Oren, Yuval Reif, and Roy Schwartz.From tokens to words: On the inner lexicon of llms. arXivpreprint arXiv:2410.05864, 2024.
+[6] A Vaswani. Attention is all you need. Advances in Neu-ral Information Processing Systems, 2017.
+[7] Mor Geva, Roei Schuster, Jonathan Berant, and OmerLevy. Transformer feed-forward layers are key-value mem-ories. In Marie-Francine Moens, Xuanjing Huang, LuciaSpecia, and Scott Wen-tau Yih, editors, Proceedings ofthe 2021 Conference on Empirical Methods in Nat-ural Language Processing, pp. 5484–5495, Online andPunta Cana, Dominican Republic, November 2021. Asso-ciation for Computational Linguistics.
+[8] Xiaozhi Wang, Kaiyue Wen, Zhengyan Zhang, Lei Hou,Zhiyuan Liu, and Juanzi Li. Finding skill neurons inpre-trained transformer-based language models. In YoavGoldberg, Zornitsa Kozareva, and Yue Zhang, editors,Proceedings of the 2022 Conference on Empiri-cal Methods in Natural Language Processing, pp.11132–11152, Abu Dhabi, United Arab Emirates, Decem-ber 2022. Association for Computational Linguistics.
+[9] Damai Dai, Li Dong, Yaru Hao, Zhifang Sui, BaobaoChang, and Furu Wei. Knowledge neurons in pretrainedtransformers. In Smaranda Muresan, Preslav Nakov, andAline Villavicencio, editors, Proceedings of the 60thAnnual Meeting of the Association for Computa-tional Linguistics (Volume 1: Long Papers), pp.8493–8502, Dublin, Ireland, May 2022. Association forComputational Linguistics.
+[10] Rhys Gould, Euan Ong, George Ogden, and Arthur Conmy.Successor heads: Recurring, interpretable attention headsin the wild. In The Twelfth International Conferenceon Learning Representations, 2024.
+[11] Tatsuya Hiraoka and Kentaro Inui. Repetition neurons:How do language models produce repetitions? arXivpreprint arXiv:2410.13497, 2024.
+[12] Callum Stuart McDougall, Arthur Conmy, Cody Rush-ing, Thomas McGrath, and Neel Nanda. Copy suppres-sion: Comprehensively understanding a motif in languagemodel attention heads. In Yonatan Belinkov, Najoung Kim,Jaap Jumelet, Hosein Mohebbi, Aaron Mueller, and HanjieChen, editors, Proceedings of the 7th BlackboxNLPWorkshop: Analyzing and Interpreting Neural Net-works for NLP, pp. 337–363, Miami, Florida, US,November 2024. Association for Computational Linguis-tics.
+[13] Gemma Team, Morgane Riviere, Shreya Pathak,Pier Giuseppe Sessa, Cassidy Hardin, Surya Bhupatiraju,L´eonard Hussenot, Thomas Mesnard, Bobak Shahriari,Alexandre Ram´e, et al. Gemma 2: Improving openlanguage models at a practical size. arXiv preprintarXiv:2408.00118, 2024.
+[14] Candida Maria Greco, Lucio La Cava, and AndreaTagarelli. Talking the talk does not entail walking thewalk: On the limits of large language models in lexical en-tailment recognition. In Yaser Al-Onaizan, Mohit Bansal,and Yun-Nung Chen, editors, Findings of the Asso cia-tion for Computational Linguistics: EMNLP 2024,pp. 14991–15011, Miami, Florida, USA, November 2024.Association for Computational Linguistics.
+[15] Christiane Fellbaum. Wordnet and wordnets. In KeithBrown, editor, Encyclopedia of Language and Lin-guistics, pp. 2–665. Elsevier, 2005.
+[16] Steven Bird and Edward Loper. NLTK: The natural lan-guage toolkit. In Proceedings of the ACL InteractivePoster and Demonstration Sessions, pp. 214–217,Barcelona, Spain, July 2004. Association for Computa-tional Linguistics.
+[17] Vedang Lad, Wes Gurnee, and Max Tegmark. The re-markable robustness of LLMs: Stages of inference? InICML 2024 Workshop on Mechanistic Interpretabil-ity, 2024.
+[18] Javier Ferrando and Elena Voita. Information ﬂow routes:Automatically interpreting language models at scale. InYaser Al-Onaizan, Mohit Bansal, and Yun-Nung Chen,editors, Proceedings of the 2024 Conference on Em-pirical Methods in Natural Language Processing,pp. 17432–17445, Miami, Florida, USA, November 2024.Association for Computational Linguistics.
+
+図 6: 2B モデルにおける誤字ヘッドの可視化。
+“ processed” および誤字を付与された “ pbrocessed” のトークン系列を赤色で示している。
+先頭のトークンは’<bos>’，Layer 5 Head 7 において’<bos>’ 以外に強い注意を向けらているトークンは’ reﬁned’ である。
+2B 9BClean Typo Clean TypoVanilla 1.00 0.86 1.00 0.93⊖ Random Neurons 0.98 0.87 0.99 0.93⊖ Typo Neurons 0.84 0.73 0.96 0.90表 1: ニューロン切除(⊖)を行った場合のクリーンデータセットと誤字データセットにおける精度。
+“Vanilla”はニューロン切除なしの精度。
+
+A ヘッドの可視化の具体例
+
+§4.3 の可視化の例を図 6 に示した。
+誤字のない入力は “<bos> / Q / . / What / is / the / word / that/ means / the / following / ?
+/ \n / not / reﬁned / or /processed / \n / A / . / That / is / ’ / un / reﬁned” であり、誤字により “ processed” が “ pbrocessed” になる。
+
+
+
+B ニューロンの切除
+
+データセット中のランダムな 100 件を用いて誤字ニューロンを特定し、それらを切除したうえで、残りの 4,900 件での精度を評価する。
+このとき、上位0.5%のニューロンを誤字ニューロンとして、ベースラインとして 0.5% のランダムなニューロンを切除した場合でも精度を測った。
+ニューロンの出力値をゼロにすることで切除した。
+クリーンデータセットと 𝑡 = 1 の誤字データセットに対して実験を行った。
+表 1 に実験結果を示す。
+誤字データセットでは、ランダムな切除で性能は低下せず、誤字ニューロン2B 9BClean Typo Clean TypoVanilla 1.00 0.86 1.00 0.93⊖ Random Heads 0.87 0.76 0.80 0.76⊖ Typo Heads 0.91 0.80 0.89 0.84表 2: ヘッド切除(⊖)を行った場合の精度。の切除でのみ精度が低下したことから、少数の誤字ニューロンが誤字の修復を担っていることがわかる。
+クリーンデータセットに対しても、誤字ニューロンの切除がランダムな切除よりも性能が低下したため、誤字ニューロンは誤字に限らず、通常の処理においても役割を持っている可能性がある。
+
+C ヘッドの切除
+
+Appendix B と同様の実験を誤字ヘッドに対しても行った。
+このとき、誤字ヘッドおよびランダムなヘッドの割合を 1.5%とし、該当ヘッドのアテンションスコアをすべて 0 にすることで切除した。
+表 2 に実験結果を示す。
+どちらのモデルとデータセットにおいても、ランダムなヘッドの切除の方が、誤字ヘッドの切除よりも精度が低下している。
+これは、4.3 で述べたように誤字ヘッドの多くは’<bos>’ に集中し、通常の処理で他ヘッドと比較して役割が少ないためだと考えられる。
+また、ランダムなヘッドの切除でも誤字データセットの精度が、落ちていることから、誤字の修復はヘッド全体で薄く広く行われている可能性がある。

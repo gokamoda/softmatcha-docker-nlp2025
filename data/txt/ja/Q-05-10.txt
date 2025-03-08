@@ -1,0 +1,245 @@
+最小ベイズリスク復号におけるバイアスと多様性の分解
+
+上垣外 英剛
+
+1
+
+出口 祥之
+
+1∗
+
+坂井 優介
+
+1
+
+林 克彦
+
+2
+
+渡辺 太郎
+
+11
+
+奈良先端科学技術大学院大学
+
+2
+
+東京大学
+
+
+
+{kamigaito.h, deguchi.hiroyuki.db0,
+
+
+
+sakai.yusuke.sr9, kamigaito.h, taro}@is.naist.jp,
+
+
+
+katsuhiko-hayashi@g.ecc.u-tokyo.ac.jp
+
+
+
+概要
+
+一般的な自然言語生成は、探索空間を制限し出力品質を低下させる貪欲法やビーム探索に依存している。
+最小ベイズリスク(MBR)復号は、自動評価尺度とモデルが生成した擬似参照を利用することでこの問題を緩和する。
+従来研究では、MBR 復号による生成性能の改善を明らかにするための経験的分析が行われ、様々な観察結果が報告されている。
+その一方で、それらの理論的な背景は不確かである。
+これに対処するために、本研究ではバイアス-多様性分解の観点から MBR 復号の新しい理論的解釈を提示する。
+この解釈では、MBR 復号による仮説の品質推定の誤差を、効用関数と人間の評価との近接性を考慮したバイアスと効用関数の品質推定のばらつきを表す多様性の二つの主要な要因に分解する。
+理論的分析により、バイアスと多様性の両方を同時に改善することの難しさが明らかになり、多様性を高めることによる MBR 復号の性能向上の妥当性が確認された。
+また、複数の NLP タスクにおける実験により、理論的特性と合致する結果が観測された。
+
+
+1 はじめに
+
+大規模言語モデル(LLM)の成功が示すように[1]、自然言語生成は自然言語処理における重要タスクの一つである。
+これらは一般に、探索空間を制限することで、生成テキストの品質低下を招く可能性がある貪欲法やビーム探索に依存している。
+ベイズ最小リスク(MBR)復号[2]は、モデルが生成した擬似参照と共に、効用関数として自動評価尺度を使用することでこの問題を軽減できる。
+MBR復号は当初、音声認識[2]に適用され、その後、様々な自然言語生成タスクで利用されている。
+このため、人手評価と高い相関を持つ評価尺度∗現在、NTT コミュニケーション科学基礎研究所。
+を
+効用関数として使用することを推奨する研究[3, 4, 5, 6]や人手のものに近い、高品質な擬似参照と、その多様性の重要性を指摘する研究[7, 8]等、様々な経験的分析が行われている。
+これらは MBR復号の様々な側面を扱っているが、理論的背景の欠如により、統一的な解釈が依然として困難である。
+本研究ではこの問題に対処するために、MBR 復号の理論的解釈をバイアス-多様性分解[9, 10]に基づき行う。
+この解釈は、MBR 復号における各仮説への品質推定の誤差に焦点を当てている。
+これらの誤差は、バイアスと多様性の二つの重要な要素に分解される。
+バイアスは効用関数の推定する品質と人間の評価の近さを表し、多様性は効用関数の品質推定のばらつきを反映する。
+この解釈に基づき、MBR 復号における多様性の向上が重要であることと、バイアスと多様性の両方を同時に改善することの困難さを理論的に示し、過去の研究から得られた経験的な知見との対応を確認した。
+さらに、機械翻訳、テキスト要約、画像キャプション生成を対象とした実験を実施した結果、我々の理論的な分析に沿う傾向が実際に観測された。
+
+
+
+2 最小ベイズリスク復号化
+
+MBR 復号[11, 12]は、入力系列 𝑥 に対するモデルの予測確率 𝑃(𝑦|𝑥)からサンプリングされた擬似参照 𝑦 の集合 |Y| を用いて、候補集合H内の仮説 ℎ の品質を推定する。
+評価尺度を効用関数 𝑓𝜃(ℎ, 𝑦)として扱い、ℎ と 𝑦 の類似度を計算し、MBR 復号は以下のようにH内の最良の仮説ˆℎ𝑏𝑒𝑠𝑡を選択する:ˆℎ𝑚𝑏 𝑟= argmaxℎ∈HÕ𝑦∈Y𝑓𝜃(ℎ, 𝑦), 𝑦 ∼ 𝑃(𝑦|𝑥). (1)𝜃 は効用関数 𝑓𝜃(ℎ, 𝑦)として使用される評価尺度のパラメータを表す。
+ここで、効用関数 𝑓𝜃(ℎ, 𝑦)の代わりに、人間が推定する品質[13, 14, 7, 15]をˆ𝑓ˆ𝜃(ℎ)のように仮定できる。
+この仮定下で、人間が推定する理想的な復号は以下で表される:ˆℎℎ𝑢𝑚𝑎𝑛= argmaxℎ∈Hˆ𝑓ˆ𝜃(ℎ). (2)本稿では、MBR 復号により推定される品質と人間が推定する品質との違いを分析し、MBR 復号の特性をより深く理解することに焦点を当てる。
+
+3 理論的解析
+
+人間が推定した品質ˆ𝑓ˆ𝜃(ℎ)と MBR 復号が推定した品質1|Y|Í𝑦∈Y𝑓𝜃(ℎ, 𝑦)との間の不一致を測定するために、𝑗 番目の疑似参照に基づいて各仮説の推定品質を表す |H| 次元のベクトル u𝑗を定義し、全ての u𝑗の平均ベクトル¯u を以下のように定義する:u𝑗=𝑢𝑗1· · ·𝑢𝑗|H|, 𝑢𝑗𝑖= 𝑓𝜃(ℎ𝑖, 𝑦𝑗),¯u =1|Y||Y|Õ𝑗=1u𝑗. (3)同様に、各仮説に対する人間が推定した品質を表す|H| 次元のベクトルˆu を以下のように定義する:ˆu =ˆ𝑢1· · ·ˆ𝑢|H|, ˆ𝑢𝑖=ˆ𝑓ˆ𝜃(ℎ𝑖). (4)ここで、式(3)および式(4)を用いて、式(1)の MBR復号と式(2)の理想的な復号を再定式化する:(1) ≡ˆℎ𝑚𝑏𝑟= argmaxℎ𝑖¯𝑢𝑖, (2) ≡ˆℎℎ𝑢𝑚𝑎𝑛= argmaxℎ𝑖ˆ𝑢𝑖. (5)式(5)に基づき、¯u とˆu を比較することで、MBR 復号と人間の間での品質推定の不一致である予測誤差を調査できる。
+本研究では、平均二乗誤差(MSE)を用いて¯u とˆu の予測誤差を以下のように扱う:𝑀𝑆𝐸 (ˆu,¯u) =1|H||H|Õ𝑖=1( ˆ𝑢𝑖− ¯𝑢𝑖)2. (6)式(6)から以下の定理が導かれる。
+定理 1 MBR 復号における仮説の品質推定誤差𝑀𝑆𝐸 (ˆu,¯u)は、次のようにバイアスと多様性（曖昧さ）の項に分解できる[9]1）:𝑀𝑆𝐸 (ˆu,¯u) =1|H||H|Õ𝑖=11|Y||Y|Õ𝑗=1( ˆ𝑢𝑖− 𝑓𝜃(ℎ𝑖, 𝑦𝑗))2|  {z  }バイアス−1|H||H|Õ𝑖=11|Y||Y|Õ𝑗=1( ¯𝑢𝑖− 𝑓𝜃(ℎ𝑖, 𝑦𝑗))2|  {z  }多様性. (7)1） 証明は付録 A を参照。
+式(7)の二つの項はそれぞれバイアスと多様性を表している。
+有名なバイアス-分散分解[16]が単一の推定器を対象とするのとは異なり、今回のバイアスと多様性への分解は複数の推定結果に基づく u を対象としている。
+また多様性を表す第二項は負となっており、多様性の増加が誤差の低減に寄与することが分かる。
+これが第二項が分散ではなく多様性と呼ばれる理由である[10]。
+バイアス項は、仮説の品質に対する効用関数の推定が人間の評価にどれだけ近いかを、多様性項は、効用関数の各推定品質が互いにどれだけ異なるかを示す。
+この分解は、式(6)の仮説候補全てに対する品質推定誤差を改善するためには、各仮説に対する品質推定誤差( ˆ𝑢𝑖− ¯𝑢𝑖)2を改善する必要があり、各仮説に対するバイアス項を減少させつつ多様性項を増加させることの重要性を強調している。
+
+
+3.1
+
+
+
+解釈
+
+定理 1 で提示された分解は、以下の小節で説明するよう、MBR 復号について従来研究で経験的に分析された結果に対し理論的な解釈を提供する。
+3.1.1 人間による推定との相関バイアス項は、MBR 復号の性能向上のために効用関数と人間の推定が近接する必要性を示している。
+これは効用関数 𝑓𝜃(ℎ𝑖, 𝑦𝑗)が疑似参照 𝑦𝑗に影響されるため、効用関数とサンプリング手法の両方が重要であることを意味する。
+従来研究[15, 7]は、適切な擬似参照を選択する必要性を経験的に示しており、我々の発見はこれらを理論的に支持する。
+3.1.2 評価尺度の多様性分解の多様性項より、多様性を増加させることは、MBR 復号における推定誤差を減少させ、性能向上に寄与する。
+ここでの重要な洞察は、( ¯𝑢𝑖− 𝑓𝜃(ℎ𝑖, 𝑦𝑗))2によって表される多様性が、各効用関数 𝑓𝜃(ℎ𝑖, 𝑦𝑗)によって生成される異なる品質推定に起因することである。
+この多様性は疑似参照 𝑦𝑗や評価尺度のモデルパラメータ 𝜃 による影響を受ける。
+この発見は、サンプリング手法の多様性が MBR 復号の性能向上に不可欠であると結論付けた先行研究[17, 7, 8]を支持する。
+これは、疑似参照の多様性が各 𝑦𝑗によって 𝑓𝜃(ℎ𝑖, 𝑦𝑗)の多様性を間接的に高めることに寄与するためである。
+WMT19 En-DeWMT19 En-RuSAMSumXSumMSCOCONoCapsAvg.Overall BiasOne Best BiasOverall DiversityOne Best DiversityOverall MSEOne Best MSE0.56 0.24 0.75 0.35 -0.21 -0.04 0.320.58 0.36 0.67 0.80 0.59 0.18 0.560.46 0.64 0.30 0.56 0.66 0.04 0.460.44 0.64 -0.04 0.39 0.16 -0.45 0.210.76 0.60 0.87 0.68 0.36 0.15 0.620.79 0.65 0.67 0.79 0.56 0.16 0.64Spearman’s Rank CorrelationWMT19 En-DeWMT19 En-RuSAMSumXSumMSCOCONoCapsAvg.0.06 -0.15 0.78 0.17 0.05 0.04 0.200.10 -0.04 0.63 0.76 0.33 -0.11 0.320.07 0.33 0.11 0.49 0.54 -0.03 0.260.06 0.30 0.03 0.39 0.14 -0.46 0.080.15 -0.01 0.83 0.37 0.23 0.01 0.310.20 0.12 0.59 0.80 0.31 -0.20 0.35Pearson’s Correlation−0.4−0.20.00.20.40.60.8図 1: 各データセットにおけるバイアスと多様性に関する尺度とタスク性能の相関。
+下線付きのスコアは統計的に有意な結果を示す(𝑝 < 0.05)2）。
+平均値 Avg. の斜体のスコアは有意差検定の対象ではないことを示す。
+3.1.3 バイアスと多様性のトレードオフ一見すると、§3.1.1 および §3.1.2 での解釈に基づき、MBR 復号における品質推定性能を向上させるための最善の戦略は、バイアスを減少させつつ多様性を高めることであるように思える。
+この戦略の妥当性は従来研究[7]が経験的な調査に基づく提示している。
+しかし、この戦略の有効性を理解するためには、バイアスと多様性のトレードオフ[9]に注目する必要がある。
+このトレードオフは、バイアスを減少させつつ多様性を高めることの難しさを浮き彫りにする。
+式(7)において、バイアス項がゼロに近づく場合、多様性の項もゼロに近づく。
+この理論的事実は、たとえ人間とよく相関する評価尺度や高品質な擬似参照を用意できても、多様性の低下によりMBR 復号の性能が向上しない可能性があることを示している。
+一方で、評価尺度および擬似参照の品質が低い場合、バイアスの増加を犠牲にして多様性を高めることで性能の向上が期待できる。
+
+
+4 経験的な分析
+
+MBR 復号の包括的な理解を行うために、実験を通じて理論分析に対応する検証を行う。
+
+
+4.1 実験設定
+
+自然言語生成タスクとして、機械翻訳、テキスト要約、画像キャプション生成を対象とする。
+全タスクで、サンプリングの設定は文献[19]に従った。
+仮説の生成は epsilon sampling [20]を用いた。
+擬似参照の生成にはビーム探索とサンプリングとして nucleus [21](𝑝 = 0.9), ancestral, top-𝑘 [22](𝑘 = 10),epsilon (𝜖 = 0.02)を使用した。
+仮説のサイズは 64 に設定し、擬似参照のサイズは{4, 8, 16, 32, 64}から選択した。
+各タスクに対して3）、以下のデータセット、2） 両相関係数に Student の t 検定[18]を用いた。
+3） 詳細な設定は付録 B を参照モデル4）、および評価尺度を使用した:機械翻訳 WMT19 の英語からドイツ語（En-De）および英語からロシア語（En-Ru）のデータセット[24]を使用した。
+En-De には facebook/wmt19-en-de、En-Ruには facebook/wmt19-en-ru を使用した。
+効用関数および評価指標として、Unbabel/wmt22-comet-da モデルを用いた COMET を使用した。
+要約 SAMSum [25]と XSum [26]を使用し、生成にはphilschmid/bart-large-cnn-samsum を SAMSum で、facebook/bart-large-xsum を XSum で利用した。
+効用関数および評価指標として、BERTScore [27]をmicrosoft/deberta-xlarge-mnli で使用した。
+画像キャプション生成 MSCOCO [28]の文献[29]に基づく分割および NoCaps [30]を使用した。
+MSCOCO には Salesforce/blip2-flan-t5-xl-coco、NoCaps には Salesforce/blip2-flan-t5-xl を使用した。
+効用関数および評価指標として、BERTScoreを microsoft/deberta-xlarge-mnli で使用した。
+評価対象は、式(6)として Overall MSE を、式(7)の第一項として Overall Bias を、式(7)の第二項として Overall Diversity を、MBR 復号で最良と推定された候補のみを考慮した際の式(7)の第一項として One Best Bias を、その際の式(7)の第二項としてOne Best Diversity を、その際の式(6)として OneBest MSE を使用した。
+バイアス項の計算については自動評価尺度を用いて近似的に概算した5）。
+
+4.2 実験結果: タスク性能との相関
+
+バイアスと多様性のタスク性能への相関を調査した。
+比較のために、各データセットでの異なる 5 つのサンプリング方法と 5 つのサンプルサイズにおけるタスク性能に対し、評価対象のスピアマンの順位相関およびピアソン相関を計算した。
+性能向上には4） モデルは https://huggingface.co/models [23]から使用。
+5） 詳細は付録 C を参照。
+2.04.0En-De1e 2Overall Bias ()2.04.01e 2One Best Bias ()0.01.01e 2Overall Diversity ()0.01.01e 2One Best Diversity ()85.586.086.5Performance ()1.02.03.0En-Ru1e 21.02.03.01e 20.00.51.01e 20.00.51.01e 287.088.00.51.0SAMSum1e 21.02.03.01e 20.02.01e 30.02.01e 328.029.030.01.02.0XSum1e 21.02.03.01e 22.55.01e 32.55.07.51e 354.056.00.81.01.2MSCOCO1e 22.04.01e 22.04.06.01e 34.06.08.01e 355.056.04 8 16 32 64Sample Size1.21.51.8NoCaps1e 24 8 16 32 64Sample Size2.04.01e 24 8 16 32 64Sample Size0.51.01e 24 8 16 32 64Sample Size1.01.51e 24 8 16 32 64Sample Size45.050.0beam nucleus ancestral topk epsilon図 2: MBR 復号におけるバイアス、多様性、およびタスク性能の関係。
+x 軸は使用された擬似参照の数を示す。
+(↑)はスコアが高いほど良く、(↓)はスコアが低いほど良いことを示す。
+バイアスと MSE が低い方が良いため、相関計算ではこれらの負の値を利用した。
+また、フィッシャーの z 変換[31]により各データセットの相関を平均化して報告した。
+図 1 は各データセットにおける評価対象とタスク性能の相関を示している。
+これらの結果より、One Best Bias、Overall Diversit y、One Best MSE、Overall MSE の各指標がタスク性能に対し良好な順位相関を示すが、ピアソンの相関係数より、値の僅かな差異を正確に捉えることは難しい。
+
+
+4.3 実験結果: バイアスと多様性
+
+バイアスと多様性のトレードオフを検証するために、タスク評価性能に対するバイアスと多様性の関係を調査した。
+図 2 に各データセットにおける異なるサンプリング方法を用いた結果をプロットした。
+SAMSum データセットを除き、ancestral は最悪のバイアスを示す一方、多様性が高いために他のサンプリング方法を上回ることがあることを示している。
+バイアスが最も低い topk に注目すると、SAMSumデータセットを除いて、バイアスの改善が多様性の増加を制限する傾向が見られる。
+この発見は、MBRデコーディングにおけるバイアスと多様性のトレードオフを支持する。
+しかし、多様性が最も低いビーム探索の性能から明らかなように、バイアスと多様性の重要性は対象データセットによって異なる。
+したがって、理論的分析は MBR 復号における性能の傾向を効果的に説明するが、性能向上のためにはタスク固有の特徴を適切に考慮することも依然として重要であることを示唆する。
+
+5 結論
+
+本研究では MBR 復号において経験的に得られた知見を統一的に理解するための理論的解釈を提供した。
+具体的には MBR 復号における生成されたテキストに対する品質推定を行う際に、人間の推定結果との差異、すなわち誤差をバイアスと多様性に分解した。
+そして、これら二つの要素がどのように誤差と関連するかを示し、MBR 復号における誤差の改善におけるバイアスと多様性のトレードオフの関係を明らかにし、既存研究で報告されている経験的に得られた知見と対応付けながら説明した。
+その上で特に多様性の向上の利点を強調した。
+これらにより、我々の理論的洞察が従来の経験的結果と一致しており、また、複数タスクにおける実験結果も我々の理論的発見が妥当であることを示した。
+
+
+
+謝辞
+
+本研究は JSPS 科研費 JP23H03458 の助成を受けたものです。
+
+参考文献
+
+
+[1] OpenAI. Gpt-4 technical report, 2024.
+[2] Vaibhava Goel and William J Byrne. Minimum bayes-r isk automatic speechrecognition. Computer Speech & Language, Vol. 14, No. 2, pp. 115–135,2000.
+[3] Mathias Müller and Rico Sennrich. Understanding the properties of minimumBayes risk decoding in neural machine translation. In Chengqing Zong, FeiXia, Wenjie Li, and Roberto Navigli, editors, Proceedings of the 59thAnnual Meeting of the Association for Computational Linguisticsand the 11th International Joint Conference on Natural LanguageProcessing (Volume 1: Long Papers), pp. 259–272, Online, August2021. Association for Computational Linguistics.
+[4] Markus Freitag, David Grangier, Qijun Tan, and Bowen Liang. High QualityRather than High Model Probability: Minimum Bayes Risk Decoding withNeural Metrics. Transactions of the Association for ComputationalLinguistics, Vol. 10, pp. 811–825, 07 2022.
+[5] Patrick Fernandes, António Farinhas, Ricardo Rei, José G. C. de Souza,Perez Ogayo, Graham Neubig, and Andre Martins. Quality-aware decod-ing for neural machine translation. In Marine Carpuat, Marie-Catherinede Marneﬀe, and Ivan Vladimir Meza Ruiz, editors, Proceedings of the2022 Conference of the North American Chapter of the Associationfor Computational Linguistics: Human Language Technologies, pp.1396–1412, Seattle, United States, July 2022. Association for ComputationalLinguistics.
+[6] Chantal Amrhein and Rico Sennrich. Identifying weaknesses in machinetranslation metrics through minimum Bayes risk decoding: A case studyfor COMET. In Yulan He, Heng Ji, Sujian Li, Yang Liu, and Chua-HuiChang, editors, Proceedings of the 2nd Conference of the Asia-PaciﬁcChapter of the Association for Computational Linguistics and the12th International Joint Conference on Natural Language Process-ing (Volume 1: Long Papers), pp. 1125–1141, Online only, November2022. Association for Computational Linguistics.
+[7] Yuu Jinnai, Ukyo Honda, Tetsuro Morimura, and Peinan Zhang. Gener-ating diverse and high-quality texts by minimum Bayes risk decoding. InLun-Wei Ku, Andre Martins, and Vivek Srikumar, editors, Findings of theAssociation for Computational Linguistics ACL 2024, pp. 8494–8525,Bangkok, Thailand and virtual meeting, August 2024. Association for Com-putational Linguistics.
+[8] David Heineman, Yao Dou, and Wei Xu. Improving minimum bayes riskdecoding with multi-prompt, 2024.
+[9] Anders Krogh and Jesper Vedelsby. Neural network ensembles, cross valida-tion, and active learning. In G. Tesauro, D. Touretzky, and T. Leen, editors,Advances in Neural Information Processing Systems, Vol. 7. MITPress, 1994.
+[10] Danny Wood, Tingting Mu, Andrew M. Webb, Henry W. J. Reeve, MikelLuján, and Gavin Brown. A uniﬁed theory of diversity in ensemble learning.J. Mach. Learn. Res., Vol. 24, No. 1, mar 2024.
+[11] Bryan Eikema and Wilker Aziz. Is MAP decoding all you need? the inade-quacy of the mode in neural machine translation. In Donia Scott, Nuria Bel,and Chengqing Zong, editors,Proceedings of the 28th InternationalConference on Computational Linguistics, pp. 4506–4520, Barcelona,Spain (Online), December 2020. International Committee on ComputationalLinguistics.
+[12] Bryan Eikema and Wilker Aziz. Sampling-based approximations to mini-mum Bayes risk decoding for neural machine translation. In Yoav Goldberg,Zornitsa Kozareva, and Yue Zhang, editors, Proceedings of the 2022Conference on Empirical Methods in Natural Language Process-ing, pp. 10978–10993, Abu Dhabi, United Arab Emirates, December 2022.Association for Computational Linguistics.
+[13] Subhajit Naskar, Daniel Deutsch, and Markus Freitag. Quality estimation us-ing minimum Bayes risk. In Philipp Koehn, Barry Haddow, Tom Kocmi, andChristof Monz, editors, Proceedings of the Eighth Conference on Ma-chine Translation, pp. 806–811, Singapore, December 2023. Associationfor Computational Linguistics.
+[14] Mirac Suzgun, Luke Melas-Kyriazi, and Dan Jurafsky. Follow the wisdomof the crowd: Eﬀective text generation via minimum Bayes risk decoding.In Anna Rogers, Jordan Boyd-Graber, and Naoaki Okazaki, editors, Find-ings of the Association for Computational Linguistics: ACL 2023,pp. 4265–4293, Toronto, Canada, July 2023. Association for ComputationalLinguistics.
+[15] Atsumoto Ohashi, Ukyo Honda, Tetsuro Morimura, and Yuu Jinnai. On thetrue distribution approximation of minimum Bayes-risk decoding. In KevinDuh, Helena Gomez, and Steven Bethard, editors, Proceedings of the2024 Conference of the North American Chapter of the Associa-tion for Computational Linguistics: Human Language Technologies(Volume 2: Short Papers), pp. 459–468, Mexico City, Mexico, June2024. Association for Computational Linguistics.
+[16] Stuart Geman, Elie Bienenstock, and René Doursat. Neural networks andthe bias/variance dilemma. Neural computation, Vol. 4, No. 1, pp. 1–58,1992.
+[17] Markus Freitag, Behrooz Ghorbani, and Patrick Fernandes. Epsilon samplingrocks: Investigating sampling strategies for minimum Bayes risk decodingfor machine translation. In Houda Bouamor, Juan Pino, and Kalika Bali,editors, Findings of the Association for Computational Linguistics:EMNLP 2023, pp. 9198–9209, Singapore, December 2023. Association forComputational Linguistics.
+[18] Student. Probable er ror of a correlation coeﬃcient. Biometrika, pp. 302–310, 1908.
+[19] Yuu Jinnai, Tetsuro Morimura, Ukyo Honda, Kaito Ar iu, and Kenshi Abe.Model-based minimum Bayes risk decoding for text generation. In RuslanSalakhutdinov, Zico Kolter, Katherine Heller, Adrian Weller, Nuria Oliver,Jonathan Scarlett, and Felix Berkenkamp, editors, Proceedings of the 41stInternational Conference on Machine Learning, Vol. 235 of Proceed-ings of Machine Learning Research, pp. 22326–22347. PMLR, 21–27Jul 2024.
+[20] John Hewitt, Christopher Manning, and Percy Liang. Truncation samplingas language model desmoothing. In Yoav Goldberg, Zornitsa Kozareva, andYue Zhang, editors, Findings of the Association for ComputationalLinguistics: EMNLP 2022, pp. 3414–3427, Abu Dhabi, United ArabEmirates, December 2022. Association for Computational Linguistics.
+[21] Ari Holtzman, Jan Buys, Li Du, Maxwell Forbes, and Yejin Choi. Thecurious case of neural text degeneration. In International Conference onLearning Representations, 2020.
+[22] Angela Fan, Mike Lewis, and Yann Dauphin. Hierarchical neural story gen-eration. In Iryna Gurevych and Yusuke Miyao, editors, Proceedings of the56th Annual Meeting of the Association for Computational Linguis-tics (Volume 1: Long Papers), pp. 889–898, Melbourne, Australia, July2018. Association for Computational Linguistics.
+[23] Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond, ClementDelangue, Anthony Moi, Pierric Cistac, Tim Rault, Rémi Louf, Morgan Fun-towicz, Joe Davison, Sam Shleifer, Patrick von Platen, Clara Ma, YacineJernite, Julien Plu, Canwen Xu, Teven Le Scao, Sylvain Gugger, MariamaDrame, Quentin Lhoest, and Alexander M. Rush. Transformers: State-of-the-art natural language processing. In Proceedings of the 2020 Conferenceon Empirical Methods in Natural Language Processing: SystemDemonstrations, pp. 38–45, Online, October 2020. Association for Com-putational Linguistics.
+[24] Loïc Barrault, Ondřej Bojar, Marta R. Costa-jussà, Christian Federmann,Mark Fishel, Yvette Graham, Barry Haddow, Matthias Huck, Philipp Koehn,Shervin Malmasi, Christof Monz, Mathias Müller, Santanu Pal, Matt Post,and Marcos Zampieri. Findings of the 2019 conference on machine trans-lation (WMT19). In Ondřej Bojar, Rajen Chatterjee, Christian Federmann,Mark Fishel, Yvette Graham, Barry Haddow, Matthias Huck, Antonio JimenoYepes, Philipp Koehn, André Martins, Christof Monz, Matteo Negri, AurélieNévéol, Mariana Neves, Matt Post, Marco Turchi, and Karin Verspoor, edi-tors, Proceedings of the Fourth Conference on Machine Translation(Volume 2: Shared Task Papers, Day 1), pp. 1–61, Florence, Italy,August 2019. Association for Computational Linguistics.
+[25] Bogdan Gliwa, Iwona Mochol, Maciej Biesek, and Aleksander Wawer. SAM-Sum corpus: A human-annotated dialogue dataset for abstractive summariza-tion. In Lu Wang, Jackie Chi Kit Cheung, Giuseppe Carenini, and Fei Liu,editors, Proceedings of the 2nd Workshop on New Frontiers in Sum-marization, pp. 70–79, Hong Kong, China, November 2019. Association forComputational Linguistics.
+[26] Shashi Narayan, Shay B. Cohen, and Mirella Lapata. Don’t give me thedetails, just the summary! topic-aware convolutional neural networks forextreme summarization. In Ellen Riloﬀ, David Chiang, Julia Hockenmaier,and Jun’ichi Tsujii, editors, Proceedings of the 2018 Conference onEmpirical Methods in Natural Language Processing, pp. 1797–1807,Brussels, Belgium, October-November 2018. Association for ComputationalLinguistics.
+[27] Tianyi Zhang*, Varsha Kishore*, Felix Wu*, Kilian Q. Weinberger, and YoavArtzi. Bertscore: Evaluating text generation with bert. In InternationalConference on Learning Representations, 2020.
+[28] Tsung-Yi Lin, Michael Maire, Serge J. Belongie, James Hays, Pietro Perona,Deva Ramanan, Piotr Dollár, and C. Lawrence Zitnick. Microsoft coco:Common objects in context. In European Conference on ComputerVision, 2014.
+[29] Andrej Karpathy and Li Fei-Fei. Deep visual-semantic alignments for gen-erating image descriptions. In Proceedings of the IEEE conference oncomputer vision and pattern recognition, pp. 3128–3137, 2015.
+[30] Harsh Agrawal, Karan Desai, Yufei Wang, Xinlei Chen, Rishabh Jain, MarkJohnson, Dhruv Batra, Devi Parikh, Stefan Lee, and Peter Anderson. nocaps:novel object captioning at scale. In Proceedings of the IEEE Interna-tional Conference on Computer Vision, pp. 8948–8957, 2019.
+[31] David M Corey, William P Dunlap, and Michael J Burke. Averaging cor-relations: Expected values and bias in combined pearson rs and ﬁsher’s ztransformations. The Journal of general psychology, Vol. 125, No. 3, pp.245–261, 1998.
+[32] Hiroyuki Deguchi, Yusuke Sakai, Hidetaka Kamigaito, and Taro Watanabe.mbrs: A library for minimum bayes risk decoding, 2024.
+[33] Markus Freitag, Nitika Mathur, Chi-kiu Lo, Eleftherios Avramidis, RicardoRei, Brian Thompson, Tom Kocmi, Frederic Blain, Daniel Deutsch, CraigStewart, Chrysoula Zerva, Sheila Castilho, Alon Lavie, and George Foster.Results of WMT23 metrics shared task: Metrics might be guilty but refer-ences are not innocent. In Philipp Koehn, Barry Haddow, Tom Kocmi, andChristof Monz, editors, Proceedings of the Eighth Conference on Ma-chine Translation, pp. 578–628, Singapore, December 2023. Associationfor Computational Linguistics.
+[34] Ondřej Bojar, Yvette Graham, Amir Kamran, and Miloš Stanojević. Resultsof the WMT16 metrics shared task. In Ondřej Bojar, Christian Buck, RajenChatterjee, Christian Federmann, Liane Guillou, Barry Haddow, MatthiasHuck, Antonio Jimeno Yepes, Aurélie Névéol, Mariana Neves, Pavel Pecina,Martin Popel, Philipp Koehn, Christof Monz, Matteo Negri, Matt Post, LuciaSpecia, Karin Verspoor, Jörg Tiedemann, and Marco Turchi, editors, Pro-ceedings of the First Conference on Machine Translation: Volume2, Shared Task Papers, pp. 199–231, Berlin, Germany, August 2016.Association for Computational Linguistics.
+
+
+
+
+A 定理 1 の証明
+
+まず、( ˆ𝑢𝑖− ¯𝑢𝑖)2を次のように展開する:( ˆ𝑢𝑖− ¯𝑢𝑖)2(8)= ( ˆ𝑢𝑖)2− 2 ˆ𝑢𝑖¯𝑢𝑖+ ( ¯𝑢𝑖)2(9)= ( ˆ𝑢𝑖)2− 2 ˆ𝑢𝑖¯𝑢𝑖+ 2( ¯𝑢𝑖)2− ( ¯𝑢𝑖)2(10)= ( ˆ𝑢𝑖)2− 2 ˆ𝑢𝑖¯𝑢𝑖+ 2 ¯𝑢𝑖¯𝑢𝑖− ( ¯𝑢𝑖)2(11)= ( ˆ𝑢𝑖)2−1|Y||Y|Õ𝑗=12 ˆ𝑢𝑖𝑢𝑗𝑖+1|Y||Y|Õ𝑗=12 ¯𝑢𝑖𝑢𝑗𝑖− ( ¯𝑢𝑖)2(12)=1|Y||Y|Õ𝑗=1( ˆ𝑢𝑖)2−1|Y||Y|Õ𝑗=12 ˆ𝑢𝑖𝑢𝑗𝑖+1|Y||Y|Õ𝑗=12 ¯𝑢𝑖𝑢𝑗𝑖−1|Y||Y|Õ𝑗=1( ¯𝑢𝑖)2(13)=1|Y||Y|Õ𝑗=1(( ˆ𝑢𝑖)2− 2 ˆ𝑢𝑖𝑢𝑗𝑖+ 2 ¯𝑢𝑖𝑢𝑗𝑖− ( ¯𝑢𝑖)2)(14)=1|Y||Y|Õ𝑗=1(( ˆ𝑢𝑖)2− 2 ˆ𝑢𝑖𝑢𝑗𝑖+ (𝑢𝑗𝑖)2− (𝑢𝑗𝑖)2+ 2 ¯𝑢𝑖𝑢𝑗𝑖− ( ¯𝑢𝑖)2)(15)=1|Y||Y|Õ𝑗=1(( ˆ𝑢𝑖)2− 2 ˆ𝑢𝑖𝑢𝑗𝑖+ (𝑢𝑗𝑖)2− ((𝑢𝑗𝑖)2− 2 ¯𝑢𝑖𝑢𝑗𝑖+ ( ¯𝑢𝑖)2))(16)=1|Y||Y|Õ𝑗=1(( ˆ𝑢𝑖− 𝑢𝑗𝑖)2− ( ¯𝑢𝑖− 𝑢𝑗𝑖)2)(17)=1|Y||Y|Õ𝑗=1( ˆ𝑢𝑖− 𝑓𝜃(ℎ𝑖, 𝑦𝑗))2−1|Y||Y|Õ𝑗=1( ¯𝑢𝑖− 𝑓𝜃(ℎ𝑖, 𝑦𝑗))2(18)ここで、式(18)の結果を用いることで、次のように𝑀𝑆𝐸 (ˆu,¯u)を分解する:𝑀𝑆𝐸 (ˆu,¯u)(19)=1|H||H|Õ𝑖=1( ˆ𝑢𝑖− ¯𝑢𝑖)2(20)=1|H||H|Õ𝑖=11|Y||Y|Õ𝑗=1( ˆ𝑢𝑖− 𝑓𝜃(ℎ𝑖, 𝑦𝑗))2−1|Y||Y|Õ𝑗=1( ¯𝑢𝑖− 𝑓𝜃(ℎ𝑖, 𝑦𝑗))2(21)=1|H||H|Õ𝑖=11|Y||Y|Õ𝑗=1( ˆ𝑢𝑖− 𝑓𝜃(ℎ𝑖, 𝑦𝑗))2|  {z  }バイアス−1|H||H|Õ𝑖=11|Y||Y|Õ𝑗=1( ¯𝑢𝑖− 𝑓𝜃(ℎ𝑖, 𝑦𝑗))2|  {z  }多様性(22)以上より、定理 1 が証明された。
+
+
+
+B 実験設定の詳細
+
+生成部分の実装は[19]の公開コード6）を基にしており、MBR デコーディング部分は[32]によるツールキット mbrs7）を基にしている。
+サンプルの生成はNVIDIA GeForce RTX 3090 上で行い、MBR デコーディングは NVIDIA RTX A6000 上で実施した。
+
+
+
+C バイアス項の近似計算
+
+バイアス項の計算には人間による評価が必要であり、各設定ごとに人間による評価を実施することは現実的ではない。
+この問題に対処するために、本研究ではバイアス項の近似として擬似バイアスを導入する。
+人手で作成された参照 ˆ𝑦 の数 |ˆY| を用いて、擬似バイアスは以下のように定義される：1|Y||Y|Õ𝑗=1ˆ𝑢𝑖− 𝑓𝜃(ℎ𝑖, 𝑦𝑗)2|  {z  }バイアス≈1|Y||Y|Õ𝑗=1e𝑢𝑖− 𝑓𝜃(ℎ𝑖, 𝑦𝑗)2|  {z  }擬似バイアス,e𝑢𝑖=1|ˆY||ˆY|Õ𝑗=1𝑓𝜃(ℎ𝑖, ˆ𝑦𝑗). (23)この定式化は、自動評価尺度が人手で作成された参照を使用した際に人手評価と相関するという前提に基づく。
+擬似バイアスには、COMET (Unbabel/wmt22-comet-da)およびmicrosoft/deberta-xlarge-mnli をエンコーダとして使用した BERTScore を用いた。
+これらはそれぞれ WMT23 の英語からドイツ語へのシステムレベル翻訳タスクでのピアソン相関係数が 0.990 [33]、および WMT16 での英語への翻訳タスクで 0.77818）と人手評価への高い相関を示している[34]。
+6） https://github.com/CyberAgentAILab/model-based-mbr7） https://github.com/naist-nlp/mbrs8） https://github.com/Tiiiger/bert_score

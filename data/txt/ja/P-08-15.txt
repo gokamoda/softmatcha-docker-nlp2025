@@ -1,0 +1,217 @@
+逆プロンプトを用いたコールドスタート推薦
+
+草野 元紀
+
+11
+
+日本電気株式会社
+
+
+
+g-kusano@nec.com
+
+
+
+概要
+
+本研究では、新商品などの教師データに該当商品がなくて予測が困難になるコールドスタート推薦に取り組む。
+この問題に取り組むために、従来は商品名やカテゴリーといった補助情報を用いる推薦システムが提案されていたが、十分な量の訓練データが必要であった。
+近年では、大規模言語モデル（LLM）を用いることで教師データなしにコールドスタート問題を解けるようになったが、運用時のコスト面に課題があった。
+本論文では、LLM をデータ拡張機として活用し、教師データ収集とコスト効率の両課題を解消する RevAug を提案する。
+RevAugのアイディアは、ユーザがその商品を好きかどうかを予測させる従来の推薦プロンプトを、ユーザが好きそうな商品を生成させるプロンプトに変換し、それにより得られる出力を擬似サンプルとして学習データに活用したことである。
+4 つの実データを用いた数値実験では、RevAug は少ない教師データで高い推薦精度を達成し、LLM の処理時間と利用料金を大幅に削減した。
+
+
+1 序論
+
+推薦システムは EC サイトや広告配信などで広く利用されており、そこで扱う問題はユーザがアイテムをどのくらい好むかを予測することである。
+古典的には行列分解に代表される協調フィルタリング[1, 2, 3]が、教師データに含まれるユーザ、アイテム、反応の 3 つ組からその対応関係を学習し、ユーザがまだ見ていないアイテムへの反応を予測させている。
+新商品などの教師データにないアイテムを推薦する際、古典的な行列分解では対応するアイテム表現を求められないため予測ができず、これはコールドスタート問題として知られている難問である。
+この問題を解決するため、アイテムに付随する商品名やカテゴリといった補助情報を利用した推薦システム[4, 5, 6, 7, 8]が提案されている。
+これらの手法は、教師データ内のユーザやアイテムの協調埋め込みに加え、補助情報から得られるテキスト表現も学習に活用することで、コールドスタート問題に取り組んでいる。
+しかし、高精度な推薦を行うためには十分な量と質のデータが必要という課題がある。
+近年、大規模言語モデル（Large Language Model,LLM）の技術進歩が著しく、教師データがなくても高精度な推薦が可能であることが知られており、それゆえコールドスタート推薦にも応用されている[9, 10, 11, 12, 13, 14, 15, 16]。
+しかし、これらの方法は推論時のコストが大きいという課題がある。
+例えば、1000 人のユーザと 100 個のアイテムの反応を予測する場合、LLM による推論処理が 10 万回必要となり、膨大な処理時間と利用料金がかかる。
+図 1 提案手法である RevAug の概要。
+従来のコールドスタート推薦手法はウォームスタートデータのみで訓練されるが、RevAug はこのウォームスタートデータからプロンプトを作成し、LLM を用いて擬似サンプルを生成し、それらを用いて推薦システムを強化する。
+本論文では、コールドスタート問題において、推薦精度と推論コストを両立する手法である RevAugを提案する。
+RevAugのアーキテクチャは、補助情報を利用したコスト効率の高いコールドスタート推薦手法である Heater [5]と CLCRec [6]を一般化したものである。
+教師データが限られていることによる推薦性能の低下問題に対しては、LLM を用いたデータ拡張を活用することで対処する。
+従来の LLM ベースの推薦システム[12, 14, 15, 17]は、LLM に “{user} は {item} を好むか？” といった質問（プロンプト）を投げかけるアプローチをとっている。
+これらの研究は、LLM が推薦を高精度に解けるほどまで必要な十分な知識を持っていることを示唆している。
+本研究では、この知識を引き出すために従来のプロンプトを逆転させ、“{user} はどのようなアイテムを好むか？” という形式に変更した。
+この逆プロンプトにより、LLM はユーザが好む可能性のあるアイテムに関する補助情報を生成し、それを推薦モデルの訓練に使用する。
+この出力は擬似サンプルであるため、Heater や CLCRec の基本アーキテクチャに特定の正則化項を加えることで、推薦性能の向上を図った。
+RevAug の有効性を評価するために、実データである Amazon Review Dataset を用いた数値実験を行った。
+その結果、教師データが少ない状況において、RevAug は他の比較手法よりも高い推薦精度を達成した。
+さらに、RevAug を用いた推論は、LLM ベースの推薦システムと比較して最大で 99.9 ％の処理時間を削減した。
+これらの結果は、提案手法の優位性を実証するものである。
+本研究の内容は、国際学会 ACM RecommenderSystems (RecSys) 2024 に採択された[18]に基づく。
+
+
+2 コールドスタート推薦
+
+ユーザ集合を 𝑈、アイテム集合を 𝐼、ユーザがアイテムに反応した際のログをR⊂ 𝑈 × 𝐼 とする。
+ユーザ 𝑢 がアイテム 𝑖 に対して与えた反応は、𝑟𝑢,𝑖∈ ℝ と表すことにする。
+この反応は、5 段階評価のような明示的なもの、もしくは、アイテムが購入されたか否かの 2 値 {0, 1} の暗黙的なものを含む。
+Heater と CLCRec の詳細を説明する前に、いくつかの記法を準備する。
+アイテムの補助情報は、タイトルやカテゴリなどのテキストとして表現され、SimCSE [19]のような文埋め込み手法で、x𝑖∈ ℝℓとしてベクトル化されるとする。
+z𝑢, z𝑖∈ ℝ𝑘を、後ほど学習されるユーザ 𝑢 とアイテム 𝑖 の協調埋め込みとする。
+また、アイテムの補助情報の文埋め込み x𝑖が Wx𝑖≈ z𝑖のように近づけるパラメータW ∈ ℝ𝑘×ℓを用意する。
+他のパラメータ行列として V, V′∈ ℝ𝑑×𝑘を導入し、潜在表現を f𝑖:= VWx𝑖,f𝑢:= V′z𝑢と定義する。
+ユーザ 𝑢 が見ていないアイテムをランダムに 𝑁 個サンプリングしたものを 𝑖1, . . . , 𝑖𝑁とする。
+また、アイテム 𝑖 ∈ 𝐼 に対し、𝑖′1, . . . , 𝑖′𝑁を 𝑖 とは異なるアイテムとしてランダムにサンプリングする。
+この時、a, b, b1, . . . , b𝑁∈ ℝ𝑑,𝜏 > 0 に対して、次のように関数 ℎ を定義する。
+ℎ(a, b, {b𝑛}𝑁𝑛=1) := − log(ˆ𝑝(a, b)ˆ𝑝(a, b) +∑𝑁𝑛=1ˆ𝑝(a, b𝑛))(1)ここで、 ˆ𝑝(a, b) := exp(𝜏−1⟨a, b⟩/∥a∥ ∥b∥)とする。
+関数 ℎ は対照学習（contrastive learning） [20, 21]に由来し、a と b が類似している場合や a がどの b𝑛にも類似していない場合に ℎ は小さくなる。
+表 1 誤差関数Heater [5](Explicit) CLCRec [6](Implicit)ℓ𝐼(𝑢, 𝑖) |𝑟𝑢,𝑖− f𝑇𝑢f𝑖|2ℎ(f𝑢, f𝑖, {f𝑖𝑘}𝑁𝑛=1)ℓ𝐴(𝑖) ∥Wx𝑖− z𝑖∥2ℎ(Vz𝑖, f𝑖, {f𝑖′𝑛}𝑁𝑛=1)これらの記号と表 1 を用いて、Heater と CLCRecの損失関数は、協調埋め込みの誤差 ℓ𝐼と、補助情報に関する誤差 ℓ𝐴の和として表現される1）。
+L𝐵𝑎𝑠𝑒:= 𝔼(𝑢,𝑖) ∈R[ ℓ𝐼(𝑢, 𝑖)] + 𝛼𝔼𝑖∈ 𝐼[ ℓ𝐴(𝑖)] + 𝜆∥Θ∥2𝐹(2)ここで、𝛼 > 0, 𝜆 > 0, Θ = (W, V, V′, {z𝑢}𝑢∈𝑈, {z𝑖}𝑖∈ 𝐼)とする。
+式(2)の最適化には学習効率を向上させるrandomized training [5]として知られる手法を適用し、確率 𝑝 ∈ [0, 1]で f𝑖= VWx𝑖を Vz𝑖に置き換える。
+
+3 RevAug
+
+この章では、提案手法である RevAug を紹介する。
+
+
+
+3.1 逆プロンプト
+
+序論で述べたように、RevAug では LLM を用いて擬似データを生成する。
+ここでは、ユーザの行動履歴を few-shot サンプルとしてプロンプトに含める。
+プロンプトは図 1 や Appendix の図 2 を参照。
+LLMが生成した全ユーザの擬似データをR𝐴𝑢𝑔とする。
+
+
+3.2 訓練
+
+擬似サンプル(𝑢, 𝑖′) ∈R𝐴𝑢𝑔に対して、LLM によって生成されたアイテムテキスト 𝑖′は文埋め込み1） Heater では V を用いた変換が言及されていたが、CLCRecでは導入されていない。
+ただし、V を単位行列と設定することで CLCRec を再現することができる。
+ここでは CLCRec に対しても一般化された設定として V を適用する。
+x𝑖′に変換できる。
+これにより潜在表現 f𝑖′= VWx𝑖′が求まり、協調埋め込みの誤差 ℓ𝐼(𝑢, 𝑖′)を計算できる。
+これらが擬似サンプルであることを考慮し、重みパラメータ 𝛽 > 0 を導入し、RevAug の損失関数を次のように定義する。
+L𝑅𝑒𝑣 𝐴𝑢𝑔:=L𝐵𝑎𝑠𝑒+ 𝛽𝔼(𝑢,𝑖′) ∈R𝐴𝑢𝑔[ ℓ𝐼(𝑢, 𝑖′)].(3)ここで、ハイパーパラメータ 𝛽 の設定方法について説明する。
+まず、ウォームスタートデータRを訓練集合R𝑡𝑟と検証集合R𝑣𝑎𝑙に分割する。
+次に、R𝑡𝑟上で式(3)を最小化することでパラメータ Θ𝛽を得る。
+訓練後、R𝑣𝑎𝑙上で推薦スコア score(R𝑣𝑎𝑙; Θ𝛽)を計算する。
+このスコアは、明示的フィードバックの場合には Mean Absolute Error（MAE）を、暗黙的フィードバックの場合には normalized Documented CumulativeGain（nDCG）を用いる2）。
+最後に、選択されたハイパーパラメータとしてˆ𝛽 = argmin𝛽score(R𝑣𝑎𝑙; Θ𝛽)を採用する。
+
+
+4 数値実験
+
+RevAug の有効性を検証する数値実験を行った。
+
+
+4.1 実験設定
+
+4.1.1 データセットAmazon Review Dataset [22]から、Movie, Music,Book, Grocery の 4 つを使用した。
+このデータセットにはユーザの評価（1 から 5 まで）が含まれており、これを明示的フィードバックとして利用した。
+暗黙的フィードバックの場合、ユーザの評価が付いているアイテムはすべて正例（𝑟𝑢,𝑖= 1）として扱った。
+アイテムの補助情報としてタイトルとカテゴリがあり、アイテムテキストを “An item entitled with {title}has {categories} tags.” と設定した。
+各データにおいて 100 個のアイテムを選択し、これらをアイテム集合 𝐼 として扱った。
+これらのアイテムに反応したユーザ全員を 𝑈 として固定した。
+Movie データに関してはユーザ数が多いため、3000人に制限し、この人数に達するまでランダムに選択した。
+𝑈 内のユーザは 𝐼 以外のアイテムにも反応しており、これらから 100 個のアイテムをランダムに抽出し、コールドスタートアイテムとした3）。
+2） MAE は score(R) := 𝔼(𝑢,𝑖) ∈R[ |𝑟𝑢,𝑖− f𝑇𝑢f𝑖| ]によって定義される。
+nDCG@𝐾 は、全アイテム 𝐼 のうち、ユーザの好み度合い ˆ𝑝 (f𝑢, f𝑖)が上位 𝐾 に含まれるアイテムから計算される。
+3）各データセットにおける統計量は Appendix の表 5 に示す。
+4.1.2 比較手法RevAug は以下の手法と比較した。
+Baseline: コールドスタート推薦では予測がそもそも困難ということから、明示的フィードバックの場合は教師データ内の評価値の平均を出力することが、暗黙的フィードバックの場合はランダムにアイテムを並び替えたものを出力させることが、最低限のベースラインとして機能する。
+Base model: 明示的フィードバックには Heater を、暗黙的フィードバックには CLCRec を使用する。
+これらはデータ拡張なしの RevAug であり、式(3)における 𝛽 ≡ 0 に相当する。
+Ablation: LLM によって生成されたデータの有効性を評価するため、意図的に不正確な拡張データR𝐴𝑏𝐴𝑢𝑔を作成し、それを学習に使用する。
+明示的フィードバックの場合、R𝐴𝑏𝐴𝑢𝑔:= {(𝑢, 𝑖′, 5−𝑟) | (𝑢, 𝑖′, 𝑟) ∈R𝐴𝑢𝑔}とし、暗黙的フィードバックの場合は LLM が好まれないとして出力したアイテムを好まれるアイテムとして使用する（Appendix の図 3）。
+ChatGPT: 明示的フィードバックの予測には[15]で説明されているプロンプト（Appendix の図 4）で推論する。
+コストの都合で、暗黙的フィードバックの予測は行わなかった。
+RevAug のパラメータは以下のように設定した: 𝑘 = 100, 𝑑 = 100, 𝑁 = 5, 𝜏 = 0.1, 𝛼 = 10−3,𝜆 = 10−3, 𝑝 = 0.5, 𝑚 = 5。
+補助情報の文埋め込み表現には SimCSE-RoBERTa-large [19]を使用した。
+RevAug は PyTorch [23]を用いて RAdam [24]により最適化し実装した。
+これらのパラメータは、RevAug のベースモデルである Heater と CLCRecにも適用した。
+ハイパーパラメータ調整では、Rを |R𝑡𝑟| : |R𝑣𝑎𝑙| = 0.8 : 0.2 の比率で分割し、𝛽を {10−𝑘| 𝑘 = 0, 1, 2, 3, 4} から探索した。
+LLM はgpt-3.5-turbo-0125 を使用した。
+LLM を用いたデータ拡張では、few-shot 学習の品質を保つため、購買ログが 3 個以上あるユーザのみをウォームスタートデータとした。
+
+
+4.2 性能評価
+
+4.2.1 明示的フィードバック各手法の性能を MAE と Baseline（平均評価）に対する改善率で評価した。
+表 2 に示すように、RevAugは Music を除くすべてのデータセットで ChatGPT,Heater, Ablation を上回った。
+Music に注目すると、表 2 MAE（左）と Baseline と比較した改善率（右、% 表示）。
+各列で最も優れた数値は太字で示す。
+Movie Music Book Grocer yBaseline 0.857 0.735 0.759 0.670ChatGPT 0.800 (6.7) 0.719 (2.2) 0.718 (5.3) 0.705 (-5.3)Heater 0.806 (5.9) 0.711 (3.2) 0.775 (-2.2) 0.655 (2.2)Ablation 0.820 (4.3) 0.703 (4.4) 0.723 (4.7) 0.628 (6.1)RevAug 0.785 (8.3) 0.714 (2.9) 0.708 (6.6) 0.626 (6.5)表 3 nDCG@10（左）と Baseline と比較した改善率（右、% 表示）。
+各列で最も優れた数値は太字で示す。
+Movie Music Book GroceryBaseline 0.067 0.067 0.059 0.058CLCRec 0.057 (-15.3) 0.085 (26.0) 0.062 (5.4) 0.019 (-67.0)Ablation 0.093 (39.5) 0.080 (18.8) 0.078 (33.2) 0.054 (-7.4)RevAug 0.123 (83.8) 0.087 (29.8) 0.080 (36.0) 0.085 (46.9)RevAug は他の手法を上回らなかったものの、その差はわずかであった。
+これらの結果は、逆プロンプトによるデータ生成を通じて、RevAug が明示的フィードバックのコールドスタート推薦を高精度に解けることを示している。
+4.2.2暗黙的フィードバック各手法の性能を nDCG@10 と Baseline（ランダムソート）に対する改善率で評価した。
+表 3 に示すように、RevAug はすべてのデータセットで最良の結果を達成した。
+Movie と Grocery では、CLCRec の改善率がマイナスとなり学習に失敗した一方で、RevAug は大幅に向上させた。
+これは、生成データにより教師データの不足を補えることを示唆している。
+また、Grocery における Ablation の改善率の低下は、データ拡張の品質が重要であることを確認させる結果となった。
+これらの結果から、RevAug は暗黙的フィードバックにおいてもコールドスタート推薦に効果があることが示された。
+
+
+
+4.3 コスト分析
+
+最後に、LLM に関連する推論コストを報告する。
+ユーザの特徴量 f𝑢は訓練段階で計算されるため、RevAug の推論コストはコールドスタートアイテムの特徴 f𝑖の計算と、行列演算による評価または好みスコアの予測のみを含む。
+一方、ChatGPT は学習時のコストを必要としないが、推論段階で全ユーザとアイテムのペアを予測するにはコストが嵩む。
+表 4 では、RevAug と ChatGPT で明示的フィードバックの推論段階にかかる処理時間と RevAug のデータ拡張段階の処理時間を集計した。
+これによ表 4 処理時間（秒）Movie Music Book GroceryRevAug(データ拡張) 1596 413 337 111推論0.302 0.077 0.071 0.041ChatGPT 1570 366 377 191ると、RevAug の推論時間は ChatGPT と比較して1000 倍以上高速であった。
+学習段階では、RevAugは LLM をデータ拡張のみに使用するため、LLM に関連するコストは推論対象の数に関わらず一定である。
+それに対して、ChatGPT は推論対象が増えるとコストも増加する。
+特に、全ユーザとアイテムの組を予測する必要がある暗黙的フィードバックの場合、組み合わせ的にコストが大きくなる。
+例えば、Movie では明示的フィードバックのために 3069 回の推論が必要だったが（表 5）、暗黙的フィードバックの場合は 3000 × 100 のユーザとアイテムの全ペアに対する推論が必要となる。
+Movie での明示的フィードバック予測の場合、RevAug の学習段階での gpt-3.5-turbo-0125 によるAPI の利用料金は 0.19 USD、ChatGPT は 0.24 USDであった。
+暗黙的フィードバック予測の場合、ChatGPT は単一の小規模データセットに対しても24 USD以上と1.5×106秒（約2.7時間）のコストが必要になった。
+コールドスタートアイテムの数が 10 倍に増えた場合、ChatGPT の推論時間とコストも 10 倍（240 USD ユーザと 27 時間）となる。
+一方、RevAug は追加の API 料金が 0.19 USD を超えることなく、約 600 秒で高速推論が可能である。
+まとめると、RevAug は低コストで高精度な推論が可能である。
+
+
+5 Conclusion
+
+本論文では、ウォームスタートの訓練データが限られている状況で、コスト効率の高いコールドスタート推薦システムを強化するための新しい手法である RevAug を提案した。
+RevAug は LLM を用いて擬似サンプルを生成し、それらを用いて推薦システムを訓練する。
+数値実験により、RevAug が少ないウォームスタートデータで高精度にコールドスタート問題を解けることが検証された。
+また、LLMベースの予測と比較して大幅なコスト削減が可能であった。
+
+
+
+参考文献
+
+
+[1] Yehuda Koren, Robert M. Bell, and Chris Volinsky. Matrixfactorization techniques for recommender systems. Com-puter, Vol. 42, No. 8, pp. 30–37, 2009.
+[2] Steﬀen Rendle, Walid Krichene, Li Zhang, and John R.Anderson. Neural collaborative ﬁltering vs. matrix factor-ization revisited. In RecSys, pp. 240–248. ACM, 2020.
+[3] Maurizio Ferrar i Dacrema, Paolo Cremonesi, and DietmarJannach. Are we really making much progress? A worry-ing analysis of recent neural recommendation approaches.In RecSys, pp. 101–109. ACM, 2019.
+[4] Maksims Volkovs, Guang Wei Yu, and Tomi Poutanen.Dropoutnet: Addressing cold start in recommender sys-tems. In NeurIPS, pp. 4957–4966, 2017.
+[5] Ziwei Zhu, Shahin Sefati, Parsa Saadatpanah, and JamesCaverlee. Recommendation for new users and new itemsvia randomized training and mixture-of-experts transfor-mation. In SIGIR, pp. 1121–1130. ACM, 2020.
+[6] Yinwei Wei, Xiang Wang, Qi Li, Liqiang Nie, Yan Li,Xuanping Li, and Tat-Seng Chua. Contrastive learning forcold-start recommendation. In ACM Multimedia, pp.5382–5390. ACM, 2021.
+[7] Zhihui Zhou, Lilin Zhang, and Ning Yang. Contrastivecollaborative ﬁltering for cold-start item recommendation.InWWW, pp. 928–937. ACM, 2023.
+[8] Haoyue Bai, Min Hou, Le Wu, Yonghui Yang, Kun Zhang,Richang Hong, and Meng Wang. Gorec: A generativecold-start recommendation framework. In Multimedia,pp. 1004–1012. ACM, 2023.
+[9] Likang Wu, Zhi Zheng, Zhaopeng Qiu, Hao Wang,Hongchao Gu, Tingjia Shen, Chuan Qin, Chen Zhu, Heng-shu Zhu, Qi Liu, Hui Xiong, and Enhong Chen. A surveyon large language models for recommendation. WorldWide Web (WWW), Vol. 27, No. 5, p. 60, 2024.
+[10] Yuhui Zhang, Hao Ding, Zeren Shui, Yifei Ma, JamesZou, Anoop Deoras, and Hao Wang. Language models asrecommender systems: Evaluations and limitations. In I(Still) Can’t Believe It’s Not Better! NeurIPS 2021Workshop. OpenReview.net, 2021.
+[11] Yunfan Gao, Tao Sheng, Youlin Xiang, Yun Xiong, HaofenWang, and Jiawei Zhang. Chat-rec: Towards interac-tive and explainable llms-augmented recommender sys-tem. CoRR, Vol. abs/2303.14524, , 2023.
+[12] Xuansheng Wu, Huachi Zhou, Wenlin Yao, Xiao Huang,and Ninghao Liu. Towards personalized cold-start recom-mendation with prompts. CoRR, Vol. abs/2306.17256, ,2023.
+[13] Yaochen Zhu, Liang Wu, Qi Guo, Liangjie Hong, andJundong Li. Collaborative large language model for rec-ommender systems. In WWW, pp. 3162–3172. ACM,2024.
+[14] Dairui Liu, Boming Yang, Honghui Du, Derek Greene,Neil Hurley, Aonghus Lawlor, Ruihai Dong, and Irene Li.Recprompt: A self-tuning prompting framework for newsrecommendation using large language models. In CIKM,pp. 3902–3906. ACM, 2024.
+[15] Junling Liu, Chao Liu, Renjie Lv, Kang Zhou, and YanZhang. Is chatgpt a good recommender? A prelim-inary study. CIKM 2023 GenRec Workshop, Vol.abs/2304.10149, , 2023.
+[16] Scott Sanner, Krisztian Balog, Filip Radlinski, Ben Wedin,and Lucas Dixon. Large language models are competi-tive near cold-start recommenders for language- and item-based preferences. In RecSys, pp. 890–896. ACM, 2023.
+[17] Jianling Wang, Haokai Lu, James Caverlee, Ed H. Chi, andMinmin Chen. Large language models as data augmentersfor cold-start item recommendation. In WWW, pp. 726–729. ACM, 2024.
+[18] Genki Kusano. Data augmentation using reverse promptfor cost-eﬃcient cold-start recommendation. In RecSys,pp. 861–865. ACM, 2024.
+[19] Tianyu Gao, Xingcheng Yao, and Danqi Chen. Simcse:Simple contrastive learning of sentence embeddings. InEMNLP (1), pp. 6894–6910. ACM, 2021.
+[20] Ting Chen, Simon Kor nblith, Mohammad Norouzi, andGeoﬀrey E. Hinton. A simple framework for contrastivelearning of visual representations. In ICML, Vol. 119of Proceedings of Machine Learning Research, pp.1597–1607. PMLR, 2020.
+[21] Prannay Khosla, Piotr Teterwak, Chen Wang, Aaron Sarna,Yonglong Tian, Phillip Isola, Aaron Maschinot, Ce Liu,and Dilip Krishnan. Supervised contrastive learning. InNeurIPS, 2020.
+[22] Jianmo Ni, Jiacheng Li, and Julian J. McAuley. Justifyingrecommendations using distantly-labeled reviews and ﬁne-grained aspects. In EMNLP/IJCNLP (1), pp. 188–197.ACM, 2019.
+[23] Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer,James Bradbury, Gregory Chanan, Trevor Killeen, ZemingLin, Natalia Gimelshein, Luca Antiga, Alban Desmaison,Andreas K¨opf, Edward Z. Yang, Zachary DeVito, Mar-tin Raison, Alykhan Tejani, Sasank Chilamkurthy, BenoitSteiner, Lu Fang, Junjie Bai, and Soumith Chintala. Py-torch: An imperative style, high-performance deep learn-ing librar y. In NeurIPS, pp. 8024–8035, 2019.
+[24] Liyuan Liu, Haoming Jiang, Pengcheng He, Weizhu Chen,Xiaodong Liu, Jianfeng Gao, and Jiawei Han. On thevariance of the adaptive learning rate and beyond. In ICLR.OpenReview.net, 2020.
+
+表 5 データセット統計Movie Music Book Groceryユーザ 3000 573 1591 570レコード数（訓練） 6212 1250 2829 1024レコード数（テスト） 3096 823 841 426図 2 では明示的フィードバック用の擬似サンプル生成に使用するプロンプト、図 3 では暗黙的フィードバック用のプロンプト、図 4 では ChatGPT を用いてユーザの評価を予測する明示的フィードバック用のプロンプトを示す。
+図 2 では、調整可能な単語を黄色でハイライトしている。
+Movie の例として、最初の行で “Here is userrating history for {movie}” と表示しているが、他のデータセットでは “movie” を適切な用語に置き換える。
+また、アイテムテキストを低評価で生成する場合、最後から 2 行目の “like” を “dislike” に変更する。
+図 3 では、ユーザが評価したアイテムを seen アイテムとして扱い、元の評価を 5 に変更している。
+ユーザが評価していないアイテムはランダムにunseen アイテムとして設定した。
+図 2 RevAug の明示的フィードバックに対するプロンプト図 3 RevAug の暗黙的フィードバックに対するプロンプト図 4 ChatGPT による明示的フィードバックに対するプロンプト

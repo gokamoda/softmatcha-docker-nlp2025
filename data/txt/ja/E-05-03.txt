@@ -1,0 +1,204 @@
+Word-level Polarity is All You Need?
+:解釈可能なニューラルネットワークモデルを利用した単語極性変換による効率的な金融センチメント適合
+
+伊藤 友貴
+
+11
+
+三井物産株式会社
+
+
+
+{Tomok.ito@mitsui.com}
+
+
+
+概要
+
+金融分野へのサービス提供時等において、深層学習モデルのドメイン適合実施時において、「計算コスト」や「更新されたパラメータのブラックボックス性」が課題になることがある。
+特に金融分野では単語レベルでのポジネガが時代やドメインが変わると変化することも多く、本課題は当該分野では重要な課題である。
+そこでなニューラルネットワークモデル SINN を活用した単語極性変換手法 Word-level Polarity Adaptation framework based onSINN (WPAS)を提案する。
+景気センチメントに関するデータセットを利用した検証の結果、提案手法WPAS により（１）少ないパラメータ数の更新、かつ（２）更新されたパラメータが解釈可能な形で高性能なドメイン適合ができることを実証した。
+
+
+1
+
+
+
+はじめに
+
+
+
+金融分野におけるドメイン適合時の課題
+
+深層学習モデルは強力なモデルである一方、学習時の計算コストが課題になることが多い。
+特に、金融分野では単語レベルでのポジネガが時代やドメインが変わると変化することも多く、例えば、「特定ドメイン（ソースドメイン）のデータ」を用いて学習されたモデルが別のドメインでは使えないことも十分にあり得る。
+このような状況の場合、再度新しくターゲットドメインのデータを追加データとしてモデルを再学習し、ドメイン適合をさせることが多い。
+一方、このような「愚直な」ドメイン適合には計算コストがかかり、実サービスの提供時等にはユーザーの利便性を損ねる危険がある他、運用負担もかかる。
+特に近年、言語モデルのサイズは増加傾向[1]であり、この学習時の計算コストに関する課題は今後も拡大すると思われる。
+このような背景の下、近年、LoRA[2]や知識編集[3, 4]を始め、「少ないパラメータ数」で効率よくニューラルネットワークモデルを学習させる方法がいくつか提案されている。
+これらの手法は「学習の効率的性」という面で有用であるものの、「更新されるパラメーターの解釈が難しい」という側面もあり、サービス運用時や提供時に支障をきたす可能性もある。
+
+
+本研究の目的
+
+そこで、本研究では、ソースドメインの学習後、ターゲットドメインへの適合時に、以下の２つの要件を予測性能を保持しつつも満たすようにドメイン適合を行えるフレームワークの構築を目指す。
+要件１: 少ないパラメータ数のみの更新でターゲットドメインへの適合できる要件 2: ターゲットドメインへの適合時に更新されるパラメータが解釈可能である
+
+提案アプローチ
+
+本目的達成のため、本研究では「解釈可能なニューラルネットワークモデル[5]」を活用した単語極性変換手法 Word-level Polarity Adaptationframework based on SINN (WPAS)というドメイン適合のフレームワークを提案する。
+WPAS 法では、予測モデルとして[5]や[6]、[7]等で提案されている Sentiment Interpretable Neural Network (SINN)を採用する。
+SINN とは[5]にて提案された、各層が「単語のセンチメント」「極性反転」「大域的重要度」の意味で解釈可能なニューラルネットワークである（図 1）。
+提案手法では SINN における「各層毎にセンチメントを種類別に分離されている」性質を活用し「要件１」及び「要件２」を満たすことを試みる。
+一般に、「単語のセンチメント」や「単語の意味」図 1 SINN。
+提案手法 WPSA ではターゲットドメインへの適合時に WOSL の層のみ更新する。
+に
+比べ、文脈由来の「否定」や「反転」，「強調」等の表現はどのドメインでも共通である可能性が多い。
+よって、これらを表現する層はどのドメインでも共有可能である可能性が高い。
+本仮説の下、提案手法では「否定」や「反転」，「強調」等を表現する層のパラメータは更新せず、「単語のセンチメント」を表す層（WOSL)のみを更新する。
+WPAS により、少ないパラメータ数のみの更新でターゲットドメインへの適合（要件１）ができる。
+また、ドメイン適合時に更新されるパラメーターは WOSL のみ、即ち「単語センチメント値のみ」なので、解釈可能（要件２）となることが期待される。
+本研究の貢献は以下の通りである。
+（１）要件１及び要件２を満たすドメイン適合フレームワーク WPAS 法を提案した。
+（２）提案手法の有効性を実テキストデータを用いて実証した。
+
+
+
+2 関連研究
+
+深層学習モデルのブラックボックス性に関する研究として「ニューラルネットワークモデルの解釈」に関する研究[8, 9, 10, 11]や解釈可能なニューラルネットの構築[5, 6, 7, 12, 13, 14]が挙げられる。
+また、効率的な言語モデルのドメイン適合に関する研究として、知識編集[3, 4]やモデルの量子化[15]、更新パラメータの次元削減等により少ないパラメータ数で学習させる[2, 16]、あるいはモデルマージ[17]等のアプローチが提案されている。
+これらは様々な場面で有用である一方、「更新されるパラメーターの解釈が難しい」という側面もあり、サービスの運用時や提供時に支障をきたす可能性もある。
+
+
+
+3 SINN
+
+提案フレームワークの説明の前に、解釈可能なニューラルネットワークモデル SINN を紹介する。
+SINN は訓練データ Ω𝑠𝑜𝑢𝑟 𝑐𝑒𝑡𝑟 𝑎𝑖𝑛及び小規模な単語のセンチメントスコア辞書を用いた学習 LexicalInitialization Learning (LEXIL)[5]により構築可能である。
+ここで、 Q𝑛はレビュー、𝑑Q𝑛はセンチメントタグ(1: ポジティブ、 2: ネガティブ)である。
+SINN は Word-level Original Sentiment layer (WOSL),Local Word-level Contextual layer (LWCL)、Global Word-level Contextual layer (GWCL)、Word-level ContextualSentiment layer (WCSL)から構成され、入力テキスト Q = {𝑤Q𝑡}𝑛𝑡=1のポジネガ予測結果𝑦Q∈ {0( negative), 1( positive)} を出力する NN である。
+本論文ではコーパスに出現する語彙数 𝑣 の語彙集合を {𝑤𝑖}𝑣𝑖=1, 単語 𝑤𝑖の語彙 ID を𝐼 (𝑤𝑖), 𝒘𝑒𝑚𝑖∈ ℝ𝑒を単語 𝑤𝑖の次元 𝑒 の用意されたコーパスから計算された分散表現とし、さらに𝑾𝑒𝑚∈ ℝ𝑣×𝑒:= [𝒘𝑒𝑚1𝑇, · · · , 𝒘𝑒𝑚𝑣𝑇]𝑇とする。
+WOSL: この層ではコメント Q = {𝑤Q𝑡}𝑛𝑡=1の各単語をその単語が文脈に左右されずに持つセンチメント値、オリジナルセンチメント値に変換する。
+𝑝Q𝑡:= 𝑤𝑝𝐼 (𝑤Q𝑡)(1)ここで、𝑾𝑝∈ ℝ𝑣は各単語のオリジナルセンチメント値を表す。
+𝑤𝑝𝑖は 𝑾𝑝の 𝑖 番目の要素を表し、𝑤𝑝𝑖の値が 𝑤𝑖のオリジナルセンチメント値に対応する。
+LWCL: この層では各単語 𝑤Q𝑡′をセンチメントの反転に関する値へ変換する。
+まず、レビュー Q 内の単語 {𝑤Q𝑡}𝑇𝑡=1を埋め込み表現 {𝒆Q𝑡}𝑇𝑡=1に変換する。
+その後、以下のように、順方向及び逆方向の単方向の言語モデル−−−−→CLM1及び←−−−−CLM1によって、前後の単語列が各単語 𝑤Q𝑡へ与える「反転」に関する影響を表す値−→𝑠Q𝑡及び←−𝑠Q𝑡へ変換する。
+−→𝒉Q𝑡:=−−−−−−−−→CLM𝐷𝐸𝐶1(𝑤Q1, 𝑤Q2, ..., 𝑤Q𝑡 −1), (2)←−𝒉Q𝑡:=←−−−−−−−−CLM𝐷𝐸𝐶1(𝑤Q𝑡+1, 𝑤Q𝑡+2, ..., 𝑤Q𝑛), (3)−→𝑠Q𝑡= tanh(𝒗𝑙𝑒 𝑓 𝑡𝑇·←−𝒉Q𝑡),←−𝑠Q𝑡= tanh(𝒗𝑟𝑖𝑔ℎ𝑡𝑇·−→𝒉Q𝑡). (4)ここで、 𝒗𝑟𝑖𝑔ℎ𝑡, 𝒗𝑙𝑒 𝑓 𝑡∈ ℝ𝑒はパラメータであり、−−−−→CLM𝐷𝐸𝐶1及び←−−−−CLM𝐷𝐸𝐶1はそれぞれ−−−−→CLM1及び←−−−−CLM1によって出力される最終層への変換を表し、LSTM 等を利用することを想定する。
+その後、𝑠Q𝑡:=−→𝑠Q𝑡·←−𝑠Q𝑡(5)の形で前後の単語列が各単語 𝑤Q𝑡へ与える「反転」に関する影響を表すスコアを算出する。
+GWCL: この層はで各単語 𝑤Q𝑡′をその文脈内での強調スコアへ変換する。
+まず、順方向及び逆方向の単方向の言語モデル−−−−→CLM2及び←−−−−CLM2によって、前後の単語列が各単語 𝑤Q𝑡へ与える「強弱」に関する影響を表す値−→𝛼Q𝑡及び←−𝛼Q𝑡へ変換する。
+−→𝛼Q𝑡= tanh(−−−−−−→CLM𝑎𝑡 𝑡2(𝑤Q1, 𝑤Q2, ..., 𝑤Q𝑡 −1)), (6)←−𝛼Q𝑡:= tanh(←−−−−−−CLM𝑎𝑡 𝑡2(𝑤Q𝑡+1, 𝑤Q𝑡+2, ..., 𝑤Q𝑛)). (7)ここで、−−−−→CLM𝑎𝑡 𝑡2及び←−−−−CLM𝑎𝑡 𝑡2は−−−−→CLM2及び←−−−−CLM2による各単語へのアテンションへの変換をし表し、GPT 等の利用を想定する。
+その後、𝛼Q𝑡:=−→𝛼Q𝑡·←−𝛼Q𝑡(8)の形で前後の単語列が各単語 𝑤Q𝑡へ与える「強調」に関する値を算出する。
+WCSL: この層では WOSL 及び WCL の値を各単語の文脈センチメント {𝑐Q𝑡}𝑇𝑡=1へ変換する。
+𝑐Q𝑡:= 𝑝Q𝑡· 𝑠Q𝑡· 𝛼Q𝑡. (9)ここで、𝑠Q𝑡及び 𝛼Q𝑡は以下で定義する。
+𝑠Q𝑡:=−→𝑠Q𝑡·←−𝑠Q𝑡, 𝛼Q𝑡:=−→𝛼Q𝑡·←−𝛼Q𝑡(10)出力: 最後に文の極性 𝑦Qを以下のように出力する𝑦Q=∑𝑇𝑡=1𝑐Q𝑡．ここで、 𝑦Q> 0 は Q がポジティブであることを表し，𝑦Q< 0)は Q がネガティブであることを表す。
+
+4 WPAS（提案手法）
+
+今回提案するドメイン適合フレームワークWord Polarity Domain Adaptation Framework based onSINN(WPAS)は Algorithm 1 の通りである。
+1 行目から 5 行目がソースドメインの学習、6 行目以降がターゲットドメインへの適合に該当する。
+
+ソースドメインの学習
+
+ソースドメインの学習（1–5 行目）では 2 行目のように予め用意した単語の極性（ポジティブ 1, ネガティブ-1)に関する辞書（極性辞書）による初期化を用いた学習 LEXIL を利用する。
+ここで、𝑃𝑆(𝑤𝑖)はAlgorithm 1 Word Polarity Domain Adaptation Frame-work based on SINN(WPAS)1: for 𝑖 ← 1 to 𝑣 do2: 𝑤𝑝𝑖←{𝑃𝑆(𝑤𝑖)(𝑤𝑖∈ 𝑆𝑑)0 (otherwise)3: for 𝑖 ← 1 to 𝑒𝑝𝑜𝑐ℎ do4: forQ∈Ω𝑠𝑜𝑢𝑟 𝑐𝑒𝑡𝑟 𝑎𝑖𝑛do5: Update 𝑾𝑝,−−−−→CLM1,←−−−−CLM1,−−−−→CLM2,←−−−−CLM2, 𝒗𝑟𝑖𝑔ℎ𝑡,𝒗𝑙𝑒 𝑓 𝑡based on the gradient value by 𝑆𝐶𝐸 (𝑦Q, 𝑑Q);6: for 𝑖 ← 1 to 𝑒𝑝𝑜𝑐ℎ do7: for Q ∈ Ω𝑡 𝑎𝑟𝑔𝑒𝑡𝑡𝑟 𝑎𝑖𝑛do8: Update only 𝑾𝑝based on the gradient value by𝑆𝐶𝐸 (𝑦Q, 𝑑Q);単語 𝑤𝑖のセンチメント辞書値であり、 𝑆𝑑はセンチメント辞書内単語の集合である。
+𝑆𝐶𝐸 (𝑎, 𝑏)は 𝑎 と𝑏 のシグモイド損失である。
+LEXIL を使うことで、𝑆𝑑内の各単語のセンチメント辞書値が正しいとき、十分小さい 𝛿 に対し、式 11 を満たす単語については SINN の各層における解釈性が担保され、WOSLから取得できるオリジナル単語センチメントが正しくなることが保証されている[5]min𝑤𝑖∈𝑆𝑑∥𝒘𝑒𝑚𝑖− 𝒘𝑒𝑚𝑗∥2< 𝛿 (11)
+
+ターゲットドメインへの適合
+
+ターゲットドメインへの適合（6–8 行目）では 8行目のように 𝑾𝑝のみ更新させる。
+
+
+5 評価実験
+
+「ソースドメインの学習 → ターゲットドメインへの適合（ドメイン適合タスク）」を実施する際の提案手法 WPAS の有効性を実データを用いて評価した。
+
+
+5.1 評価方法
+
+今回の検証では、下記の「Now → Future タスク」と「Future → 𝑁𝑜𝑤 タスク」という二つのドメイン適合タスクに関する検証を行った。
+Now → Future タスク: 「現状の景気」に関するポジネガ分析のデータセット（EcoRev1）をソースドメインとして学習し、 「景気見通し」に関するポジネガ分析のデータセット(EcoRev2）へのドメイン適合がうまくできるかを評価するドメイン適合タスク。
+Future → Now タスク: EcoRev2 をソースドメインとして学習し、 EcoRev1 へのドメイン適合がうまくできるかを評価するドメイン適合タスク。
+データセット: 本検証のため、景気ウォッチャー調査の現状に関する日本語コメントの「現状の景気」に関するポジネガ分析のデータセット[5]をもとに EcoRev1 及び EcoRev2 を構築した。
+EcoRev1 及びEcoRev2 には訓練データ、検証データ、テストデータから構成され、各データセットにポジティブコメント及びネガティブコメントがそれぞれ 20,000 件、2,000 件、4,000 件格納されている。
+提案手法を以下の３つの切り口から評価した評価 1: 更新パラメータ数が少ないか？: 本評価ではターゲットドメインへの適合時に更新対象となるパラメータ数をもとに評価した。
+評価 2: 「解釈性」が担保されているか？: 本評価では[5]にて提供されている人手で作成された、単語レベルでのポジネガリスト及び極性反転に関するデータセットをもとに WOSL を評価した。
+即ち、WOSL から得られるリスト内単語の極性（ポジティブ 149 件、ネガティブ 165 件）と単語極性リスト内の極性の一致度(macro 𝐹1値)をもとに評価した。
+評価 3: 予測性能が十分に高いか？: 本評価ではタターゲットドメインのテストデータに関するポジネガ分類性能をもとに評価した。
+評価指標として F1値（マクロ平均）を用いた。
+
+
+
+5.2 ベースライン
+
+提案手法の性能評価、特に WPSA の特徴が「ターゲットドメインの適合時に 𝑾𝑃のみを学習対象とすること」にあるため、その有効性を評価するため、提案手法のアプローチ（WPSA）と下記に挙げるベースラインとなるアプローチの結果を比較した。
+Word Tuning (WT): SINN を用いてソースドメインのデータセットを学習後、ターゲットドメインのデータセットを学習するアプローチ。
+但し、更新パラメータは 𝑾𝑃のみとする。
+ソースのみ: SINN を用いてソースドメインのデータセットのみを学習するアプローチFull Fine-Tuning(FFT): SINN を用いてソースドメインのデータセットを LEXIL により学習後、ターゲットドメインのデータセットを学習するアプローチ。
+更新対象は SINN の埋込表現以外の全パラメータ。
+
+
+
+5.3 その他の実験設定
+
+Lexicon Initialization においては「”上がる”, ”回復”, ”上方”, ”増加”, ”上昇”」及び「[”減少”, ”低下”,”損失”, ”遅れ”, ”リスク”]」についてそれぞれ+1 と -1 を入れる形で初期化を実施した。
+また，Tokenizer は rinna/japanese-roberta-base[18]を利用，LLM1には LSTM[19]（中間層の次元 768)，LLM2には rinna/japanese-gpt2-small[20, 21]を利用した。
+
+
+5.4 実験結果・考察
+
+表 1 及び表 2 が評価結果である。
+提案手法 WPSAにより、少ないパラメータ数の更新でも FFT と同等の予測性能（評価３）を解釈性を担保（評価２）しつつ出すことに成功していることがわかる。
+表 1 評価結果(Now2Future タスク)パラメータ数解釈性 L 予測性能（評価 1) （評価 2) （評価 3)WT 0.03 M 0.826 0.867ソースのみ – 0.860 0.914FFT 256 M 0.793 0.929WPSA 0.03M 0.839 0.932表 2 評価結果(Future2Now タスク)パラメータ数 WOSL 予測性能（評価 1) （評価 2) （評価 3)WT 0.03 M 0.834 0.905ソースのみ – 0.821 0.902FFT 128 M 0.817 0.921WPSA 0.03 M 0.818 0.920また、Appendix A のように SINN を活用することで更新されたパラメータの可視化ができる。
+
+
+6 結論
+
+本研究では、大規模なニューラルネットワークのドメイン適合には（１）計算コストがかかり、かつ（２）更新されたパラメータがブラックボックスであるという課題解決のため、解釈可能なニューラルネットワークモデル SINN を活用した単語極性変換手法 Word-level Polarity Adaptation framework based onSINN (WPAS)を提案した。
+景気センチメントに関するデータセットを利用した検証の結果、提案手法により（１）少ないパラメータ数の更新のみでドメイン適合可能、（２）更新されるパラメータが解釈可能、かつ（３）予測性能を保持可能であるようなドメイン適合が可能であることを実証した。
+今後の展開として、異なる言語間のドメイン適合や、離れたドメイン間での適合性能の検証や逆向き言語モデル[22]を利用した性能改善、センチメント分析以外のタスクへの拡張が考えられる。
+
+
+
+参考文献
+
+
+[1] Yupeng Chang, Xu Wang, Jindong Wang, Yuan Wu, LinyiYang, Kaijie Zhu, Hao Chen, Xiaoyuan Yi, CunxiangWang, Yidong Wang, Wei Ye, Yue Zhang, Yi Chang,Philip S. Yu, Qiang Yang, and Xing Xie. A sur vey onevaluation of large language models. ACM Trans. In-tell. Syst. Technol., Vol. 15, No. 3, 2024.
+[2] Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and WeizhuChen. LoRA: Low-rank adaptation of large language mod-els. In International Conference on Learning Repre-sentations, 2022.
+[3] Knowledge mechanisms in large language models: A sur-vey and perspective. In EMNLP 2024 Findings, 2024.
+[4] Editing large language models: Problems, methods, andopportunities. In EMNLP 2023, 2023.
+[5] Tsubouchi K. Sakaji H. Yamashita T. Ito, T. and K. Izumi.Word-level contextual sentiment analysis with inter-pretability. In AAAI 2020, 2020.
+[6] Tsubouchi K. Sakaji H. Yamashita T. Ito, T. and K. Izumi.Csnn: Contextual sentiment neural network. In IEEEICDM 2019, 2019.
+[7] Tsubouchi K. Sakaji H. Yamashita T. Ito, T. and K. Izumi.Sentiment shift neural network. In SDM 2020, 2020.
+[8] S. Bach, A. Binder, G. Montavon, F. Klauschen, K. R.Muller, and W. Samek. On pixel-wise explanations fornonlinear classiﬁer decisions by layer-wise relevance prop-agation. PLOS ONE, Vol. 10, No. 7, pp. 1–46, 2017.
+[9] L. Arras, G. Montavon, K. R. Muller, and W. Samek. Ex-plaining recurrent neural network predictions in sentimentanalysis. In EMNLP Workshop, 2017.
+[10] M. T. Ribeiro, S. Singh, and C. Guestrin. ”why should itrust you?” explaining the predictions of any classiﬁer. InKDD, 2016.
+[11] A. Shrikumar, P. Greenside, and A. Kundaje. Learningimportant features through propagating activation diﬀer-ences. In ICML, 2017.
+[12] T. Ito, H. Sakaji, K. Tsubouchi, K. Izumi, and T. Yamashita.Text-visualizing neural network model: Understanding on-line ﬁnancial textual data. In PAKDD 2018, 2018.
+[13] Q. Zhang X. Huang Y. Zou, T. Gui. A lexicon-basedsupervised attention model for neural sentiment analysis.In COLING 2018, 2018.
+[14] Z. Quanshi, Y. N. Wu, and S. C. Zhu. Interpretable convo-lutional neural networks. In CVPR 2018, 2018.
+[15] Ruihao Gong, Yang Yong, Shiqiao Gu, Yushi Huang,Chengtao Lv, Yunchen Zhang, Dacheng Tao, and Xian-glong Liu. LLMC: Benchmarking large language modelquantization with a versatile compression toolkit. InProceedings of the 2024 Conference on EmpiricalMethods in Natural Language Processing: IndustryTrack, pp. 132–152, 2024.
+[16] Sourab Mangrulkar, Sylvain Gugger, Lysandre Debut,Younes Belkada, Sayak Paul, and Benjamin Bossan. Peft:State-of-the-art parameter-eﬃcient ﬁne-tuning methods.https://github.com/huggingface/peft, 2022.
+[17] Gabriel Ilharco, Marco Tulio Ribeiro, Mitchell Wortsman,Ludwig Schmidt, Hannaneh Hajishirzi, and Ali Farhadi.Editing models with task arithmetic. In The EleventhInternational Conference on Learning Representa-tions, 2023.
+[18] Tianyu Zhao and Kei Sawada. rinna/japanese-roberta-base.
+[19] S. Hochreiter and Jurgen Schmidhuber. Long short-termmemory. Neural computation, Vol. 9, No. 8, pp. 1735–1780, 1997.
+[20] Kei Sawada, Tianyu Zhao, Makoto Shing, Kentaro Mitsui,Akio Kaga, Yukiya Hono, Toshiaki Wakatsuki, and KohMitsuda. Release of pre-trained models for the Japaneselanguage. In Proceedings of the 2024 Joint In-ternational Conference on Computational Linguis-tics, Language Resources and Evaluation (LREC-COLING 2024), pp. 13898–13905, 5 2024.
+[21] Tianyu Zhao and Kei Sawada. rinna/japanese-gpt2-small.
+[22] Takumi Goto, Hiroyoshi Nagao, and Yuta Koreeda. Ac-quiring bidirectionality via large and small language mod-els. In Proceedings of the 31st International Confer-ence on Computational Linguistics (COLING2025),2025.
+
+
+
+
+A SINN によるレビューの解釈結果
+
+
+
+の可視化例
+
+参考として、SINN によるレビューの解釈結果の可視化例を記載する。
+例示されているように、SINNを使うとセンチメント分析の流れが理解できる。
+図 2 SINN によるポジティブコメントの解釈結果の可視化例（2）図 3 SINN によるポジティブコメントの解釈結果の可視化例（2）図 4 SINN によるポジティブコメントの解釈結果の可視化例（１）図 5 SINN によるポジティブコメントの解釈結果の可視化例（2）

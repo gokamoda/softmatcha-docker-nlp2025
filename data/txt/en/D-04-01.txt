@@ -1,0 +1,521 @@
+Improving an Assistive Robot’s Conversationsusing Large-Language Model-driven Episodic Memory
+
+Angel Fernando García Contreras
+
+1
+
+, Wen-Yu Chang
+
+2
+
+,
+
+
+
+Seiya Kawano
+
+1
+
+, Yun-Nung Chen
+
+2
+
+, Koichiro Yoshino
+
+11
+
+Guardian Robot Project (GRP), RIKEN, Kyoto, Japan
+
+2
+
+National Taiwan University, Taipei, Taiwan
+
+
+
+{angel.garciacontreras, seiya.kawano, koichiro.yoshino}@riken.jp
+
+
+
+r10946031@ntu.edu.tw, y.v.chen@ieee.org
+
+
+
+Abstract
+
+Robotic cognition is a eld that in recent times hasmade strides in developing more comprehensive and help-ful embodied agents.
+One topic in the eld that remainschallenging is that of long-term memory, particularly life-long learning in real-world environments, where a robotmust process large amounts of multimodal, potentially in-complete, frequently uncertain information in or near real-time.
+Our team has encountered such a challenge as wedevelop Indy, a companion robot that aims to interact andlearn from complex, human-centric environments.
+Our at-tempt at tackling these challenges is a tiered framework in-spired by cognitive psychology, in which relevant and use-ful knowledge is compiled and retained for progressivelylonger time spans while incidental observations are ‘‘for-gotten’’ using a decay mechanism also inspired by cogni-tive psychology studies.
+In this work, we show a proof ofconcept for a ‘‘Narrative Memory,’’ in which Indy storesepisodic memory of its conversations with users as rst-person dialog summaries and salient observations; these‘‘narrative memories’’ are ‘‘forgotten’’ through progres-sively shorter summarization.
+We use Large-LanguageModels (LLMs) to generate such memories and sum-maries, while also demonstrating their use in conversationthrough an LLM-driven dialogue demo in which Indy can‘‘recall’’ its past conversation topics.
+
+
+1 Introduction
+
+As robots become more widely used and accepted, weseek new areas in which robotics can have a positive impactin human life.
+One sub-eld that poses many challenges iscognitive robotics, or robots that can learn from their abil-ity of observing multimodal information from the environ-ment.
+The diculties in developing a so-called ‘‘roboticmind” are compounded when you add human interaction,as the robot must be able to understand and communicatewith humans.
+As an example, consider the idea of a do-mestic assistant robot that cares for an elder: such a robotneeds to be able to accomplish certain physical tasks withinan environment designed for humans, as well as interactwith the human under its care, allowing the person to feelmore comfortable in their daily life.
+One challenge faced in cognitive robotics is long-termcognition, or the ability to learn over a long period of time– in other words, lifelong learning [1].
+The robot needsto memorize and then later recall important data, obtainedfrom very dierent sensors and systems, and using it in de-cision making.
+For example, the elderly care robot needsto remember its environment and conversations with thehuman under its care, to remind them of things they mayotherwise forget or ignore.
+This learning process needs totake place over weeks, if not months or even years, of expe-rience.
+It is not obvious how the robot will store memoriesor for how long, and when to forget them.
+The Guardian Robot Project at RIKEN is developing theautonomous helper robot Indy, as an articial agent capa-ble of navigating and interacting with for-human environ-ments
+[2, 3].
+A key aim of Indy is that it should interactwith humans using natural language, and be able to recallthose experiences.
+In this work, we are showing an initialapproach to a long-term memory built from an egocentricepisodic narration, with forgetting capabilities driven bythe summarization of existing memories, partly inspired
+
+Improving an Assistive Robot’s Conversationsusing Large-Language Model-driven Episodic Memory
+
+Angel Fernando García Contreras
+
+1
+
+, Wen-Yu Chang
+
+2
+
+,
+
+
+
+Seiya Kawano
+
+1
+
+, Yun-Nung Chen
+
+2
+
+, Koichiro Yoshino
+
+11
+
+Guardian Robot Project (GRP), RIKEN, Kyoto, Japan
+
+2
+
+National Taiwan University, Taipei, Taiwan
+
+
+
+{angel.garciacontreras, seiya.kawano, koichiro.yoshino}@riken.jp
+
+
+
+r10946031@ntu.edu.tw, y.v.chen@ieee.org
+
+
+
+Abstract
+
+Robotic cognition is a eld that in recent times hasmade strides in developing more comprehensive and help-ful embodied agents.
+One topic in the eld that remainschallenging is that of long-term memory, particularly life-long learning in real-world environments, where a robotmust process large amounts of multimodal, potentially in-complete, frequently uncertain information in or near real-time.
+Our team has encountered such a challenge as wedevelop Indy, a companion robot that aims to interact andlearn from complex, human-centric environments.
+Our at-tempt at tackling these challenges is a tiered framework in-spired by cognitive psychology, in which relevant and use-ful knowledge is compiled and retained for progressivelylonger time spans while incidental observations are ‘‘for-gotten’’ using a decay mechanism also inspired by cogni-tive psychology studies.
+In this work, we show a proof ofconcept for a ‘‘Narrative Memory,’’ in which Indy storesepisodic memory of its conversations with users as rst-person dialog summaries and salient observations; these‘‘narrative memories’’ are ‘‘forgotten’’ through progres-sively shorter summarization.
+We use Large-LanguageModels (LLMs) to generate such memories and sum-maries, while also demonstrating their use in conversationthrough an LLM-driven dialogue demo in which Indy can‘‘recall’’ its past conversation topics.
+
+
+1 Introduction
+
+As robots become more widely used and accepted, weseek new areas in which robotics can have a positive impactin human life.
+One sub-eld that poses many challenges iscognitive robotics, or robots that can learn from their abil-ity of observing multimodal information from the environ-ment.
+The diculties in developing a so-called ‘‘roboticmind” are compounded when you add human interaction,as the robot must be able to understand and communicatewith humans.
+As an example, consider the idea of a do-mestic assistant robot that cares for an elder: such a robotneeds to be able to accomplish certain physical tasks withinan environment designed for humans, as well as interactwith the human under its care, allowing the person to feelmore comfortable in their daily life.
+One challenge faced in cognitive robotics is long-termcognition, or the ability to learn over a long period of time– in other words, lifelong learning [1].
+The robot needsto memorize and then later recall important data, obtainedfrom very dierent sensors and systems, and using it in de-cision making.
+For example, the elderly care robot needsto remember its environment and conversations with thehuman under its care, to remind them of things they mayotherwise forget or ignore.
+This learning process needs totake place over weeks, if not months or even years, of expe-rience.
+It is not obvious how the robot will store memoriesor for how long, and when to forget them.
+The Guardian Robot Project at RIKEN is developing theautonomous helper robot Indy, as an articial agent capa-ble of navigating and interacting with for-human environ-ments
+[2, 3].
+A key aim of Indy is that it should interactwith humans using natural language, and be able to recallthose experiences.
+In this work, we are showing an initialapproach to a long-term memory built from an egocentricepisodic narration, with forgetting capabilities driven bythe summarization of existing memories, partly inspiredby cognitive psychology.
+
+
+2 Autonomous Robot Indy
+
+Indy, shown in Figure 1, is designed as an autonomouscompanion robot capable of coexisting with humans intheir environment, able to make independent and help-ful decisions.
+Implemented and executing via the ROS2robotics suite [4, 5], Indy has the following recognition sys-tems:• Object and Person Recognition and Tracking usingstate-of-the-art models (For more details, see [3]).• Speech Recognition via a Whisper [6] model ne-tuned to transcribing Japanese, with individualspeaker audio isolated using a system combining16-channel microphone array and two LIDAR sen-sors [7].• Chit-chat Responses generated via Large-LanguageModels (LLMs).
+Speech is synthesized by a customvoice via ReadSpeaker1）.• Data storage: Indy uses primarily a MongoDBdatabase2）to store data that should persist over longerperiods of time.
+All of the observed data are recognized as symbols; theycan be expressed in the form of a text sentence.
+Theamount of data generated by these systems can be pro-hibitively large, particularly for a robot intended to be alife-long companion.
+This informs the decision to imple-ment a memory system that determines how all informa-tion relevant to Indy’s objectives and actions is stored andmaintained.
+
+
+2.1 Indy’s Memory System
+
+We are building Indy’s memory on two ideas inspiredby cognitive psychology: a multi-store memory architec-ture, and forgetting mechanisms that dynamically deter-mines which data to forget and when [8].Indy’s overall memory architecture is inspired by theAtkinson-Shirin Multi-Store model [9] from cognitivepsychology.
+This model describes three stores: a sen-sor memory storing information directly from the senses;all that information is transferred to short-term memory,1）
+Japanese-only version by https://readspeaker.jp/, with anEnglish version currently in development; Google TTS is also sup-ported.2） https://www.mongodb.com/Figure 1 Autonomous Robot Indywhere it will be forgotten if it is not strengthened by repe-tition; and a long-term memory that stores information in-denitely.
+Indy implements these same three stores, with some ad-justments.
+Sensor memory is a buer that stores the outputof recognition systems and stores them for a brief periodof time (around 5 minutes).
+Short-term memory collectsand stores information necessary for immediate use.
+Long-term memory builds and stores more complex data, such asrelational graphs and long-term narratives among others,from relevant and important short-term memory data.
+Indy’s forgetting mechanisms are also inspired by cogni-tive psychology.
+In that eld, the act of forgetting is denedby the probability of recalling a specic piece of informa-tion.
+This behavior has been modeled as a decay equation;over time, multiple studies have conrmed and providedvariations of these models, with multiple levels of detailand precision
+[10, 11].
+The details of Indy’s own imple-mentation of this model, as well as additional details onthe multi-store model, are shown in our previous study [8].Building on this framework, we currently seek to imple-ment a long-term, human-readable memory that can aid inrobot-human dialog interactions.
+For this demonstration,we are showing our rst implementation of an egocentricnarrative-based memory driven by LLM prompts, as bothshort and long-term stores.
+
+Improving an Assistive Robot’s Conversationsusing Large-Language Model-driven Episodic Memory
+
+Angel Fernando García Contreras
+
+1
+
+, Wen-Yu Chang
+
+2
+
+,
+
+
+
+Seiya Kawano
+
+1
+
+, Yun-Nung Chen
+
+2
+
+, Koichiro Yoshino
+
+11
+
+Guardian Robot Project (GRP), RIKEN, Kyoto, Japan
+
+2
+
+National Taiwan University, Taipei, Taiwan
+
+
+
+{angel.garciacontreras, seiya.kawano, koichiro.yoshino}@riken.jp
+
+
+
+r10946031@ntu.edu.tw, y.v.chen@ieee.org
+
+
+
+Abstract
+
+Robotic cognition is a eld that in recent times hasmade strides in developing more comprehensive and help-ful embodied agents.
+One topic in the eld that remainschallenging is that of long-term memory, particularly life-long learning in real-world environments, where a robotmust process large amounts of multimodal, potentially in-complete, frequently uncertain information in or near real-time.
+Our team has encountered such a challenge as wedevelop Indy, a companion robot that aims to interact andlearn from complex, human-centric environments.
+Our at-tempt at tackling these challenges is a tiered framework in-spired by cognitive psychology, in which relevant and use-ful knowledge is compiled and retained for progressivelylonger time spans while incidental observations are ‘‘for-gotten’’ using a decay mechanism also inspired by cogni-tive psychology studies.
+In this work, we show a proof ofconcept for a ‘‘Narrative Memory,’’ in which Indy storesepisodic memory of its conversations with users as rst-person dialog summaries and salient observations; these‘‘narrative memories’’ are ‘‘forgotten’’ through progres-sively shorter summarization.
+We use Large-LanguageModels (LLMs) to generate such memories and sum-maries, while also demonstrating their use in conversationthrough an LLM-driven dialogue demo in which Indy can‘‘recall’’ its past conversation topics.
+
+
+1 Introduction
+
+As robots become more widely used and accepted, weseek new areas in which robotics can have a positive impactin human life.
+One sub-eld that poses many challenges iscognitive robotics, or robots that can learn from their abil-ity of observing multimodal information from the environ-ment.
+The diculties in developing a so-called ‘‘roboticmind” are compounded when you add human interaction,as the robot must be able to understand and communicatewith humans.
+As an example, consider the idea of a do-mestic assistant robot that cares for an elder: such a robotneeds to be able to accomplish certain physical tasks withinan environment designed for humans, as well as interactwith the human under its care, allowing the person to feelmore comfortable in their daily life.
+One challenge faced in cognitive robotics is long-termcognition, or the ability to learn over a long period of time– in other words, lifelong learning [1].
+The robot needsto memorize and then later recall important data, obtainedfrom very dierent sensors and systems, and using it in de-cision making.
+For example, the elderly care robot needsto remember its environment and conversations with thehuman under its care, to remind them of things they mayotherwise forget or ignore.
+This learning process needs totake place over weeks, if not months or even years, of expe-rience.
+It is not obvious how the robot will store memoriesor for how long, and when to forget them.
+The Guardian Robot Project at RIKEN is developing theautonomous helper robot Indy, as an articial agent capa-ble of navigating and interacting with for-human environ-ments
+[2, 3].
+A key aim of Indy is that it should interactwith humans using natural language, and be able to recallthose experiences.
+In this work, we are showing an initialapproach to a long-term memory built from an egocentricepisodic narration, with forgetting capabilities driven bythe summarization of existing memories, partly inspiredby cognitive psychology.
+
+
+2 Autonomous Robot Indy
+
+Indy, shown in Figure 1, is designed as an autonomouscompanion robot capable of coexisting with humans intheir environment, able to make independent and help-ful decisions.
+Implemented and executing via the ROS2robotics suite [4, 5], Indy has the following recognition sys-tems:• Object and Person Recognition and Tracking usingstate-of-the-art models (For more details, see [3]).• Speech Recognition via a Whisper [6] model ne-tuned to transcribing Japanese, with individualspeaker audio isolated using a system combining16-channel microphone array and two LIDAR sen-sors [7].• Chit-chat Responses generated via Large-LanguageModels (LLMs).
+Speech is synthesized by a customvoice via ReadSpeaker1）.• Data storage: Indy uses primarily a MongoDBdatabase2）to store data that should persist over longerperiods of time.
+All of the observed data are recognized as symbols; theycan be expressed in the form of a text sentence.
+Theamount of data generated by these systems can be pro-hibitively large, particularly for a robot intended to be alife-long companion.
+This informs the decision to imple-ment a memory system that determines how all informa-tion relevant to Indy’s objectives and actions is stored andmaintained.
+
+
+2.1 Indy’s Memory System
+
+We are building Indy’s memory on two ideas inspiredby cognitive psychology: a multi-store memory architec-ture, and forgetting mechanisms that dynamically deter-mines which data to forget and when [8].Indy’s overall memory architecture is inspired by theAtkinson-Shirin Multi-Store model [9] from cognitivepsychology.
+This model describes three stores: a sen-sor memory storing information directly from the senses;all that information is transferred to short-term memory,1）
+Japanese-only version by https://readspeaker.jp/, with anEnglish version currently in development; Google TTS is also sup-ported.2） https://www.mongodb.com/Figure 1 Autonomous Robot Indywhere it will be forgotten if it is not strengthened by repe-tition; and a long-term memory that stores information in-denitely.
+Indy implements these same three stores, with some ad-justments.
+Sensor memory is a buer that stores the outputof recognition systems and stores them for a brief periodof time (around 5 minutes).
+Short-term memory collectsand stores information necessary for immediate use.
+Long-term memory builds and stores more complex data, such asrelational graphs and long-term narratives among others,from relevant and important short-term memory data.
+Indy’s forgetting mechanisms are also inspired by cogni-tive psychology.
+In that eld, the act of forgetting is denedby the probability of recalling a specic piece of informa-tion.
+This behavior has been modeled as a decay equation;over time, multiple studies have conrmed and providedvariations of these models, with multiple levels of detailand precision
+[10, 11].
+The details of Indy’s own imple-mentation of this model, as well as additional details onthe multi-store model, are shown in our previous study [8].Building on this framework, we currently seek to imple-ment a long-term, human-readable memory that can aid inrobot-human dialog interactions.
+For this demonstration,we are showing our rst implementation of an egocentricnarrative-based memory driven by LLM prompts, as bothshort and long-term stores.
+
+
+3 Indy’s Narrative Memory
+
+LLMs such as ChatGPT [12, 13] have had a strong im-pact in many applications.
+One work that motivates the de-velopment of such a ‘‘textual” memory store using LLM-aided processing is the episodic memory found in Genera-tive Agents [14].
+These agents exist in a simulation-drivenentirely by LLM prompts and their responses, and each onekeeps a multi-store memory of its interactions.
+Our initial approach for narrative memory parallels theGenerative Agents’ memory, in our case involving twostores: a generative short-term store, and a long-term nar-rative store.
+Our work diers in the needs of our applica-tion: unlike that work, one of the participants in our inter-action is a human, conversing with an embodied agent, arobot.
+This translates into a dierent set of prompts, us-ing LLMs to process linguistic information and generateand manipulate a textual representation of a robot’s expe-riences in a way that can be read by humans.
+One particular way to represent this is by taking the dia-logue turns and producing a summary to be stored in mem-ory.
+This can be accomplished through LLMs, which canbe used to summarize text in general [15, 16] as well asconversations
+[17, 18].For Indy’s memory, we adapt the way they store theconversations as both summaries describing observationsincluding interactions and thoughts that include informa-tion inferred from the summaries.
+Our main addition tothis idea is our own implementation of ‘‘forgetfulness’’.
+Each narrative summary is given a lifetime, determined bythe last time it was accessed, and a decay function withthe memory’s impression/strength as input; once that life-time passes, instead of just removing information from adatabase, the memory is summarized into a more com-pact form.
+We call this a ‘‘forgetfulness as summarizing’’heuristic.
+Our model utilizes LLM prompts to extract someinformation about the textual data in each memory and pro-gressively summarize the data over time.
+All prompts re-quest output written in the rst person from the perspectiveof Indy’s persona as ‘‘a helpful, curious robot that assistspeople in a casual way.
+’’
+
+3.1 Generative Memory
+
+
+In this initial approach, each narrative memory’s impres-sion/strength is determined by a LLM prompt asking torate whether the memory can leave a lasting impression onIndy.
+When a narrative memory is created or recalled, weestimate the time at which the memory should be forgottenusing its forgetting curve equation, the impression/strengthof the memory, and the memory store’s associated param-eters [8].We generate three dierent types of short-term narra-tive memory.
+We use an LLM prompt to obtain a sum-mary of Indy’s last 10 minutes of conversation with users.
+Right along, we use a dierent LLM prompt to gener-ate a thought that requests informative insights about theconversation.
+Finally, after multiple conversations, foreach recent thought we use prompts to generate high-levelquestions and statements about that thought, use those tofetch related prior memories, and then combine the ques-tions/statements and the memories that support them togenerate a reective thought.
+Every time we generate short-term memories, we alsofetch all memories that are due to be ‘‘forgotten”.
+Insteadof removing the memories altogether, we follow a ‘‘sum-marization as forgetting” heuristic, in which memories stayfor longer but lose details over time:• If it is the rst time this memory is summarized, re-quest a summary of 𝑛0characters maximum and useit to replace the original memory.•
+If the memory currently being summarized has lessthan 50 characters, we remove it from the memorystore.• Otherwise, request a summary of 𝑛𝑖+1= b𝑛𝑖/2c char-acters maximum and use it to replace the memorysummary of 𝑛𝑖characters maximum.
+After summarizing a memory, its forgetting time gets re-calculated.
+This process will maintain in memory all topicsthat remain relevant to the current conversation topic viathe recall in the reection process, while slowly degradingthe delity of memories that are not recalled, by summa-rizing more and more frequently.
+
+
+3.2 Long-Term Narrative Memory
+
+Long-term narrative memory follows a similar processby summarizing all generative memories (both conversa-tions and inner thoughts) in the recent past using a LLMquery.
+The prompt summarizes conversations and thoughtsseparately, then makes a nal summary based on these two
+
+Improving an Assistive Robot’s Conversationsusing Large-Language Model-driven Episodic Memory
+
+Angel Fernando García Contreras
+
+1
+
+, Wen-Yu Chang
+
+2
+
+,
+
+
+
+Seiya Kawano
+
+1
+
+, Yun-Nung Chen
+
+2
+
+, Koichiro Yoshino
+
+11
+
+Guardian Robot Project (GRP), RIKEN, Kyoto, Japan
+
+2
+
+National Taiwan University, Taipei, Taiwan
+
+
+
+{angel.garciacontreras, seiya.kawano, koichiro.yoshino}@riken.jp
+
+
+
+r10946031@ntu.edu.tw, y.v.chen@ieee.org
+
+
+
+Abstract
+
+Robotic cognition is a eld that in recent times hasmade strides in developing more comprehensive and help-ful embodied agents.
+One topic in the eld that remainschallenging is that of long-term memory, particularly life-long learning in real-world environments, where a robotmust process large amounts of multimodal, potentially in-complete, frequently uncertain information in or near real-time.
+Our team has encountered such a challenge as wedevelop Indy, a companion robot that aims to interact andlearn from complex, human-centric environments.
+Our at-tempt at tackling these challenges is a tiered framework in-spired by cognitive psychology, in which relevant and use-ful knowledge is compiled and retained for progressivelylonger time spans while incidental observations are ‘‘for-gotten’’ using a decay mechanism also inspired by cogni-tive psychology studies.
+In this work, we show a proof ofconcept for a ‘‘Narrative Memory,’’ in which Indy storesepisodic memory of its conversations with users as rst-person dialog summaries and salient observations; these‘‘narrative memories’’ are ‘‘forgotten’’ through progres-sively shorter summarization.
+We use Large-LanguageModels (LLMs) to generate such memories and sum-maries, while also demonstrating their use in conversationthrough an LLM-driven dialogue demo in which Indy can‘‘recall’’ its past conversation topics.
+
+
+1 Introduction
+
+As robots become more widely used and accepted, weseek new areas in which robotics can have a positive impactin human life.
+One sub-eld that poses many challenges iscognitive robotics, or robots that can learn from their abil-ity of observing multimodal information from the environ-ment.
+The diculties in developing a so-called ‘‘roboticmind” are compounded when you add human interaction,as the robot must be able to understand and communicatewith humans.
+As an example, consider the idea of a do-mestic assistant robot that cares for an elder: such a robotneeds to be able to accomplish certain physical tasks withinan environment designed for humans, as well as interactwith the human under its care, allowing the person to feelmore comfortable in their daily life.
+One challenge faced in cognitive robotics is long-termcognition, or the ability to learn over a long period of time– in other words, lifelong learning [1].
+The robot needsto memorize and then later recall important data, obtainedfrom very dierent sensors and systems, and using it in de-cision making.
+For example, the elderly care robot needsto remember its environment and conversations with thehuman under its care, to remind them of things they mayotherwise forget or ignore.
+This learning process needs totake place over weeks, if not months or even years, of expe-rience.
+It is not obvious how the robot will store memoriesor for how long, and when to forget them.
+The Guardian Robot Project at RIKEN is developing theautonomous helper robot Indy, as an articial agent capa-ble of navigating and interacting with for-human environ-ments
+[2, 3].
+A key aim of Indy is that it should interactwith humans using natural language, and be able to recallthose experiences.
+In this work, we are showing an initialapproach to a long-term memory built from an egocentricepisodic narration, with forgetting capabilities driven bythe summarization of existing memories, partly inspiredby cognitive psychology.
+
+
+2 Autonomous Robot Indy
+
+Indy, shown in Figure 1, is designed as an autonomouscompanion robot capable of coexisting with humans intheir environment, able to make independent and help-ful decisions.
+Implemented and executing via the ROS2robotics suite [4, 5], Indy has the following recognition sys-tems:• Object and Person Recognition and Tracking usingstate-of-the-art models (For more details, see [3]).• Speech Recognition via a Whisper [6] model ne-tuned to transcribing Japanese, with individualspeaker audio isolated using a system combining16-channel microphone array and two LIDAR sen-sors [7].• Chit-chat Responses generated via Large-LanguageModels (LLMs).
+Speech is synthesized by a customvoice via ReadSpeaker1）.• Data storage: Indy uses primarily a MongoDBdatabase2）to store data that should persist over longerperiods of time.
+All of the observed data are recognized as symbols; theycan be expressed in the form of a text sentence.
+Theamount of data generated by these systems can be pro-hibitively large, particularly for a robot intended to be alife-long companion.
+This informs the decision to imple-ment a memory system that determines how all informa-tion relevant to Indy’s objectives and actions is stored andmaintained.
+
+
+2.1 Indy’s Memory System
+
+We are building Indy’s memory on two ideas inspiredby cognitive psychology: a multi-store memory architec-ture, and forgetting mechanisms that dynamically deter-mines which data to forget and when [8].Indy’s overall memory architecture is inspired by theAtkinson-Shirin Multi-Store model [9] from cognitivepsychology.
+This model describes three stores: a sen-sor memory storing information directly from the senses;all that information is transferred to short-term memory,1）
+Japanese-only version by https://readspeaker.jp/, with anEnglish version currently in development; Google TTS is also sup-ported.2） https://www.mongodb.com/Figure 1 Autonomous Robot Indywhere it will be forgotten if it is not strengthened by repe-tition; and a long-term memory that stores information in-denitely.
+Indy implements these same three stores, with some ad-justments.
+Sensor memory is a buer that stores the outputof recognition systems and stores them for a brief periodof time (around 5 minutes).
+Short-term memory collectsand stores information necessary for immediate use.
+Long-term memory builds and stores more complex data, such asrelational graphs and long-term narratives among others,from relevant and important short-term memory data.
+Indy’s forgetting mechanisms are also inspired by cogni-tive psychology.
+In that eld, the act of forgetting is denedby the probability of recalling a specic piece of informa-tion.
+This behavior has been modeled as a decay equation;over time, multiple studies have conrmed and providedvariations of these models, with multiple levels of detailand precision
+[10, 11].
+The details of Indy’s own imple-mentation of this model, as well as additional details onthe multi-store model, are shown in our previous study [8].Building on this framework, we currently seek to imple-ment a long-term, human-readable memory that can aid inrobot-human dialog interactions.
+For this demonstration,we are showing our rst implementation of an egocentricnarrative-based memory driven by LLM prompts, as bothshort and long-term stores.
+
+
+3 Indy’s Narrative Memory
+
+LLMs such as ChatGPT [12, 13] have had a strong im-pact in many applications.
+One work that motivates the de-velopment of such a ‘‘textual” memory store using LLM-aided processing is the episodic memory found in Genera-tive Agents [14].
+These agents exist in a simulation-drivenentirely by LLM prompts and their responses, and each onekeeps a multi-store memory of its interactions.
+Our initial approach for narrative memory parallels theGenerative Agents’ memory, in our case involving twostores: a generative short-term store, and a long-term nar-rative store.
+Our work diers in the needs of our applica-tion: unlike that work, one of the participants in our inter-action is a human, conversing with an embodied agent, arobot.
+This translates into a dierent set of prompts, us-ing LLMs to process linguistic information and generateand manipulate a textual representation of a robot’s expe-riences in a way that can be read by humans.
+One particular way to represent this is by taking the dia-logue turns and producing a summary to be stored in mem-ory.
+This can be accomplished through LLMs, which canbe used to summarize text in general [15, 16] as well asconversations
+[17, 18].For Indy’s memory, we adapt the way they store theconversations as both summaries describing observationsincluding interactions and thoughts that include informa-tion inferred from the summaries.
+Our main addition tothis idea is our own implementation of ‘‘forgetfulness’’.
+Each narrative summary is given a lifetime, determined bythe last time it was accessed, and a decay function withthe memory’s impression/strength as input; once that life-time passes, instead of just removing information from adatabase, the memory is summarized into a more com-pact form.
+We call this a ‘‘forgetfulness as summarizing’’heuristic.
+Our model utilizes LLM prompts to extract someinformation about the textual data in each memory and pro-gressively summarize the data over time.
+All prompts re-quest output written in the rst person from the perspectiveof Indy’s persona as ‘‘a helpful, curious robot that assistspeople in a casual way.
+’’
+
+3.1 Generative Memory
+
+
+In this initial approach, each narrative memory’s impres-sion/strength is determined by a LLM prompt asking torate whether the memory can leave a lasting impression onIndy.
+When a narrative memory is created or recalled, weestimate the time at which the memory should be forgottenusing its forgetting curve equation, the impression/strengthof the memory, and the memory store’s associated param-eters [8].We generate three dierent types of short-term narra-tive memory.
+We use an LLM prompt to obtain a sum-mary of Indy’s last 10 minutes of conversation with users.
+Right along, we use a dierent LLM prompt to gener-ate a thought that requests informative insights about theconversation.
+Finally, after multiple conversations, foreach recent thought we use prompts to generate high-levelquestions and statements about that thought, use those tofetch related prior memories, and then combine the ques-tions/statements and the memories that support them togenerate a reective thought.
+Every time we generate short-term memories, we alsofetch all memories that are due to be ‘‘forgotten”.
+Insteadof removing the memories altogether, we follow a ‘‘sum-marization as forgetting” heuristic, in which memories stayfor longer but lose details over time:• If it is the rst time this memory is summarized, re-quest a summary of 𝑛0characters maximum and useit to replace the original memory.•
+If the memory currently being summarized has lessthan 50 characters, we remove it from the memorystore.• Otherwise, request a summary of 𝑛𝑖+1= b𝑛𝑖/2c char-acters maximum and use it to replace the memorysummary of 𝑛𝑖characters maximum.
+After summarizing a memory, its forgetting time gets re-calculated.
+This process will maintain in memory all topicsthat remain relevant to the current conversation topic viathe recall in the reection process, while slowly degradingthe delity of memories that are not recalled, by summa-rizing more and more frequently.
+
+
+3.2 Long-Term Narrative Memory
+
+Long-term narrative memory follows a similar processby summarizing all generative memories (both conversa-tions and inner thoughts) in the recent past using a LLMquery.
+The prompt summarizes conversations and thoughtsseparately, then makes a nal summary based on these twosummaries and the immediately prior long-term summary.
+These memories are also assigned an impression and a for-getting time estimate using a less steep forgetting curve,which leads to longer time spans.
+In this stage we also do‘‘summarization as forgetfulness” in a similar way to short-term memory, but summarized memories with a length lessthan the minimum are no longer processed and stay perma-nently in long-term memory.
+
+
+3.3 Memory Retrieval and Dialogue Gen-
+
+
+
+eration
+
+Our initial approach to memory retrieval is based onOpenAI embeddings, fetching the stored memories withthe shortest cosine distance between them and a givenquery.
+The storage and search for the closest embeddings iscarried out using Chroma3）, an embedding-based databaseoptimized for vector-based functions.
+For each of Indy’sconversation turns, we append the three memories closestto the user’s last utterance to generate a response, includ-ing in our prompt a request to only use these memories ifthey are relevant in context.
+To determine the user’s intention, we wrote an LLMprompt asking to determine, using the user’s latest utter-ance, whether the user is greeting or dismissing Indy, andwhether the user wants Indy to recall its recent memories.
+In this last case, we designed another dialog prompt thatgenerates a response describing the corresponding memo-ries retrieved from the database as a singular rst-personnarrative.
+A brief demonstration of the dialog turns generated bythis system can be seen in Table 1.
+
+4 Limitations and Future Work
+
+As the aim of this paper is to provide a ‘‘proof of con-cept’’ demonstration for the narrative memory system weare designing, we intend to provide evaluations and com-parisons with similar and alternative approaches in futurework.
+This demonstration focuses on how LLMs can be usedto incorporate and summarize the robot’s environment anddialogue interactions.
+We acknowledge the drawbacks thatcome from using generative LLMs in spoken dialogue sys-tems, such as: the latency caused by dialogue responsegeneration; verication and validation of LLM-generatedcontent; and identifying and dealing with potential halluci-3） https://www.trychroma.com/Scenario 1, talking about ice creamIndy
+Do you like ice cream?User
+I really like ice cream.
+Indy
+So you like ice cream.
+That’s nice.
+What’s your favorite avor?I recently talked about chocolate mint, and...... ...
+User I like strawberry ice cream.
+Indy Strawberry ice cream is nice.
+It’s sweet and sour, and delicious,right?... ...
+Indy DO you have any special toppings you like?Or
+do you prefer it simple, just as it is?User
+Well, I like it as it is.
+Indy
+So you prefer it simple.
+That’s often the most delicious way, isn’tit?...
+...
+Scenario 2, talking later in the day... ...
+Indy Do you have anything you’re making?Or, you can tell me if there’s anything else you’re interested in.
+User I like Mexican
+foodIndy
+Oh, you like Mexican food, right?
+What kind of dishes do youespecially like?There are various dishes like tacos and enchiladas, right?... ...
+Indy Do you ever make [Mexican Food] yourself?User
+Yes, I make it myself.
+Indy Oh, you make it yourself.... ...
+Scenario 3, talking about prior conversations... ...
+User Do you remember our earlier conversation?Indy
+The user just said ”yes.”
+After that, the user asked, ”Do you likeit?”Finally, the user said, ”It’s ne now.”The
+user said they like Mexican food and sometimes make it them-selves.
+Furthermore, they also mentioned liking tacos and enchiladas.
+User Ah, that’s interesting, isn’t it?Indy
+Hey, I’m glad you nd it interesting.... ...
+Table 1 Demonstration example.
+This demo was done inJapanese and then translated into English.nations produced by LLMs.
+We are committed to ensuringthat the LLM-generated content is used responsibly, pre-venting potential harm to our users.
+Most notably, our dialogue responses have a substan-tially perceptible delay.
+The dialogue generation systemuses simple Retrieval Augmented Generation via embed-ding distance to fetch the closest-related memories and in-corporates them into a prompt that requests the next line ofdialogue.
+This, coupled with the aforementioned inherentlatency from LLM-based dialogue responses, leads to suchconversational delays.
+However, we believe that even then,the present demonstration is an interesting ‘‘proof of con-cept’’ for an embodied agent memory system, by focusingon a process parallel to response generation that does nothave direct user interaction and thus remains unaected bydelays.
+Our team is exploring and developing other workwith this system as its base, aiming to improve the qualityof dialogue in various interaction-related tasks, includingbut not limited to multi-modal memory generation and re-trieval.
+
+
+
+Acknowledgements
+
+A part of this work is supported by JSPS Kaken GrantNumber 23K19984 and 22H04873.
+
+References
+
+
+[1] Mathilde Veron, Sahar Ghannay, Anne-Laure Ligozat, andSophie Rosset. Lifelong learning and task-oriented di-alogue system: what does it mean? In InternationalWorkshop on Spoken Dialogue Systems Technol-ogy, Siracusa, Italy, April 2019.
+[2] Akishige Yuguchi, Seiya Kawano, Koichiro Yoshino, Car-los Toshinori Ishi, Yasutomo Kawanishi, Yutaka Naka-mura, Takashi Minato, Yasuki Saito, and Michihiko Mi-noh. Butsukusa: A conversational mobile robot describ-ing its own observations and internal states. In 2022 17thACM/IEEE International Conference on Human-Robot Interaction (HRI), pp. 1114–1118, 2022.
+[3] Huthaifa Ahmad, Angel Fernando Garcia Contreras, SeiyaKawano, Chaoran Liu, Akishige Yuguchi, MotoharuSonogashira, Yasutomo Kawanishi, Carlos Toshinori Ishi,Takashi Minato, Yutaka Nakamura, Koichiro Yoshino,Heikki Ruuska, Yasuki Saito, and Michihiko Minoh. Au-tonomous interactive robot assisting the user by circlingthe living space. In Proceedings of the 41st AnnualMeeting of the Robotic Society of Japan, 2023. (InJapanese).
+[4] Morgan Quigley, Ken Conley, Brian Gerkey, Josh Faust,Tully Foote, Jeremy Leibs, Rob Wheeler, and Andrew Y.Ng. Ros: an open-source robot operating system. In Proc.of IEEE International Conference on Robotics andAutomation Workshop on Open Source Software,Vol. 3, p. 5, 2009.
+[5] Steve Macenski, Tully Foote, Brian Gerkey, ChrisLalancette, and William Woodall. Robot operating sys-tem 2: Design, architecture, and uses in the wild. ScienceRobotics, Vol. 7, No. 66, May 2022.
+[6] Alec Radford, Jong Wook Kim, Tao Xu, Greg Brockman,Christine McLeavey, and Ilya Sutskever. Robust speechrecognition via large-scale weak supervision, 2022.
+[7] Carlos T. Ishi, Chaoran Liu, Jani Even, and NorihiroHagita. Hearing support system using environment sen-sor network. In 2016 IEEE/RSJ International Con-ference on Intelligent Robots and Systems (IROS),pp. 1275–1280, 2016.
+[8] Angel Fernando Garcia Contreras, Seiya Kawano, Yasu-tomo Kawanishi, Yutaka Nakamura, Satoru Saito, andKoichiro Yoshino. Examining the impact of a forgetfulmulti-store memory system in a cognitive assistive robot,2024.
+[9] Richard C. Atkinson and Richard M. Shirin. Humanmemory: A proposed system and its control processes.In Kenneth W. Spence and Janet Taylor Spence, editors,The psychology of learning and motivation., Vol. 2 ofPsychology of Learning and Motivation, pp. 89–195.Academic Press, New York, 1968.
+[10] Hermann Ebbinghaus. Memory: A contribution toexperimental psychology. Teachers College, ColumbiaUniversity, 1913. Translated by Henry A. Ruger and ClaraE. Bussenius.
+[11] M. Meeter, J. M. J. Murre, and S. M. J. Janssen. Remem-bering the news: Modeling retention data from a studywith 14,000 participants. Memory & Cognition, Vol. 33,pp. 793–810, 2005.
+[12] Tom B. Brown, Benjamin Mann, Nick Ryder, MelanieSubbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Nee-lakantan, Pranav Shyam, Girish Sastry, Amanda Askell,Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger,Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M.Ziegler, Jerey Wu, Clemens Winter, Christopher Hesse,Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray,Benjamin Chess, Jack Clark, Christopher Berner, SamMcCandlish, Alec Radford, Ilya Sutskever, and DarioAmodei. Language models are few-shot learners. In Pro-ceedings of the 34th International Conference onNeural Information Processing Systems, NIPS ’20,Red Hook, NY, USA, 2020. Curran Associates Inc.
+[13] Long Ouyang, Jerey Wu, Xu Jiang, Diogo Almeida, Car-roll Wainwright, Pamela Mishkin, Chong Zhang, SandhiniAgarwal, Katarina Slama, Alex Ray, John Schulman, Ja-cob Hilton, Fraser Kelton, Luke Miller, Maddie Simens,Amanda Askell, Peter Welinder, Paul F. Christiano, JanLeike, and Ryan Lowe. Training language models to followinstructions with human feedback. In S. Koyejo, S. Mo-hamed, A. Agarwal, D. Belgrave, K. Cho, and A. Oh, ed-itors, Advances in Neural Information ProcessingSystems, Vol. 35, pp. 27730–27744. Curran Associates,Inc., 2022.
+[14] Joon Sung Park, Joseph C. O’Brien, Carrie J. Cai, Mered-ith Ringel Morris, Percy Liang, and Michael S. Bernstein.Generative agents: Interactive simulacra of human behav-ior, 2023.
+[15] Jason Wei, Yi Tay, Rishi Bommasani, Colin Rael, Bar-ret Zoph, Sebastian Borgeaud, Dani Yogatama, MaartenBosma, Denny Zhou, Donald Metzler, Ed H. Chi, Tat-sunori Hashimoto, Oriol Vinyals, Percy Liang, Je Dean,and William Fedus. Emergent abilities of large languagemodels. Transactions on Machine Learning Re-search, 2022. Survey Certication.
+[16] Qihuang Zhong, Liang Ding, Juhua Liu, Bo Du, andDacheng Tao. Can chatgpt understand too? a compara-tive study on chatgpt and ne-tuned bert. arXiv preprint,2023.
+[17] Adyasha Maharana, Dong-Ho Lee, Sergey Tulyakov, Mo-hit Bansal, Francesco Barbieri, and Yuwei Fang. Evaluat-ing very long-term conversational memory of LLM agents.In Lun-Wei Ku, Andre Martins, and Vivek Srikumar, edi-tors, Proceedings of the 62nd Annual Meeting of theAssociation for Computational Linguistics (Volume1: Long Papers), pp. 13851–13870, Bangkok, Thailand,August 2024. Association for Computational Linguistics.
+[18] Qingyue Wang, Liang Ding, Yanan Cao, Zhiliang Tian,Shi Wang, Dacheng Tao, and Li Guo. Recursively sum-marizing enables long-term dialogue memory in large lan-guage models, 2024.

@@ -1,0 +1,442 @@
+Shaping Personality of Large Language Models:An Approach Based on Representation Engineering
+
+Yin Jou Huang, Prakhar Saxena, Zi Cheng Zhao
+
+
+
+Kyoto University
+
+
+
+{huang,prakhar}@nlp.ist.i.kyoto-u.ac.jp  zhao.zicheng.55d@st.kyoto-u.ac.jp
+
+
+
+Abstract
+
+Personality is a fundamental psychological trait thatshapes an individual’s behavior patterns.
+This paperproposes a novel approach to personality simulation,which aims to simulate some predeﬁned personalitytraits using large language models.
+We conduct rep-resentation engineer ing and construct a set of person-ality control vectors to enable ﬁne-grained control ofthe strength of personality traits.
+Additionally, we usea linear model to capture the interdependencies amongpersonality traits.
+Evaluation based on a real-worldpersonality dataset shows that our proposed personal-ity simulation method outperforms the prompt-basedbaseline method.
+
+
+1 Introduction
+
+The vast amount of human-generated training datahas given large language models (LLMs) the ability toemulate human behaviors
+[1, 2, 3].
+This ability facil-itates the research on role-playing agents, whose goalis to simulate predeﬁned personas including person-alities, demographic traits, speciﬁc public ﬁgures orﬁctional entities, etc
+[4].In this work, we focus on one of the most fundamen-tal tasks of role-playing — personality simulation andaim to endow LLM agents with predeﬁned personalitytraits.
+Personality is a fundamental psychological traitthat inﬂuences how individuals interpret and react tothe world around them, consequently shaping their dis-tinctive behavioral, interaction, and decision-makingpatterns [ 5].
+Modeling personality is especially cru-cial for psychological and sociological research.
+Therealization of LLM personality simulation as proxiesof human behaviors opens new opportunities for an-alyzing human behavior in controlled, replicable, andscalable ways.
+Most existing works on personality simulation uti-lize in-context learning and design prompts to in-ﬂict changes in personality traits exhibited by theLLM [6, 7, 8, 9].
+For instance, Garcia et al.
+[6] uti-lize personality-describing adjectives associated withdiﬀerent Big Five personality traits to induce variouspersonalities of LLMs [10].
+However, these prompt-based approaches have several drawbacks.
+First, it isdiﬃcult to control the strength of personality traits.
+While it is possible to put modiﬁers such as ‘very’ and‘a bit’ in front of the personality-describing adjectivesfor strength control [6], the discrete nature of languagemakes it diﬃcult for more ﬁne-grained control.
+Sec-ond, the complex dependencies between personalitytraits are overlooked.
+Existing studies suggest that per-sonality traits are not mutually independent, and con-trolling one personality trait might induce changes inother personality traits as well
+[6, 11].
+However, itis diﬃcult to account for these interactions with theexisting prompt-based framework.
+To address the above drawbacks, we propose a novelpersonality simulation approach based on representa-tion engineering [12].
+Representation engineering isa technique designed to control the behavior of neuralnetwork models by introducing control vectors into thehidden states of the model during inference.
+To adaptthis method for personality simulation, we ﬁrst derive aset of personality control vectors with the personality-describing adjectives from the Big Five personality the-ory.
+These vectors enable the manipulation of modelbehavior to simulate distinct Big Five personality traits.
+From the spanning vector space of the personality con-trol vectors, we sample control vectors and observe thechange in the overall personality proﬁle exhibited bythe controlled model.
+We use a linear model to capturethe relation between the control vectors and the in-duced personality proﬁles.
+Empirical results show that
+
+Shaping Personality of Large Language Models:An Approach Based on Representation Engineering
+
+Yin Jou Huang, Prakhar Saxena, Zi Cheng Zhao
+
+
+
+Kyoto University
+
+
+
+{huang,prakhar}@nlp.ist.i.kyoto-u.ac.jp  zhao.zicheng.55d@st.kyoto-u.ac.jp
+
+
+
+Abstract
+
+Personality is a fundamental psychological trait thatshapes an individual’s behavior patterns.
+This paperproposes a novel approach to personality simulation,which aims to simulate some predeﬁned personalitytraits using large language models.
+We conduct rep-resentation engineer ing and construct a set of person-ality control vectors to enable ﬁne-grained control ofthe strength of personality traits.
+Additionally, we usea linear model to capture the interdependencies amongpersonality traits.
+Evaluation based on a real-worldpersonality dataset shows that our proposed personal-ity simulation method outperforms the prompt-basedbaseline method.
+
+
+1 Introduction
+
+The vast amount of human-generated training datahas given large language models (LLMs) the ability toemulate human behaviors
+[1, 2, 3].
+This ability facil-itates the research on role-playing agents, whose goalis to simulate predeﬁned personas including person-alities, demographic traits, speciﬁc public ﬁgures orﬁctional entities, etc
+[4].In this work, we focus on one of the most fundamen-tal tasks of role-playing — personality simulation andaim to endow LLM agents with predeﬁned personalitytraits.
+Personality is a fundamental psychological traitthat inﬂuences how individuals interpret and react tothe world around them, consequently shaping their dis-tinctive behavioral, interaction, and decision-makingpatterns [ 5].
+Modeling personality is especially cru-cial for psychological and sociological research.
+Therealization of LLM personality simulation as proxiesof human behaviors opens new opportunities for an-alyzing human behavior in controlled, replicable, andscalable ways.
+Most existing works on personality simulation uti-lize in-context learning and design prompts to in-ﬂict changes in personality traits exhibited by theLLM [6, 7, 8, 9].
+For instance, Garcia et al.
+[6] uti-lize personality-describing adjectives associated withdiﬀerent Big Five personality traits to induce variouspersonalities of LLMs [10].
+However, these prompt-based approaches have several drawbacks.
+First, it isdiﬃcult to control the strength of personality traits.
+While it is possible to put modiﬁers such as ‘very’ and‘a bit’ in front of the personality-describing adjectivesfor strength control [6], the discrete nature of languagemakes it diﬃcult for more ﬁne-grained control.
+Sec-ond, the complex dependencies between personalitytraits are overlooked.
+Existing studies suggest that per-sonality traits are not mutually independent, and con-trolling one personality trait might induce changes inother personality traits as well
+[6, 11].
+However, itis diﬃcult to account for these interactions with theexisting prompt-based framework.
+To address the above drawbacks, we propose a novelpersonality simulation approach based on representa-tion engineering [12].
+Representation engineering isa technique designed to control the behavior of neuralnetwork models by introducing control vectors into thehidden states of the model during inference.
+To adaptthis method for personality simulation, we ﬁrst derive aset of personality control vectors with the personality-describing adjectives from the Big Five personality the-ory.
+These vectors enable the manipulation of modelbehavior to simulate distinct Big Five personality traits.
+From the spanning vector space of the personality con-trol vectors, we sample control vectors and observe thechange in the overall personality proﬁle exhibited bythe controlled model.
+We use a linear model to capturethe relation between the control vectors and the in-duced personality proﬁles.
+Empirical results show thatTable 1 Examples of personality-describing adjectives ofeach Big Five personality trait.
+Personality-Describing AdjectivesOPE intelligent, aesthetic, creative, ...CON organized, responsible, reliable, ...EXT extraverted, energetic, talkative, ...AGR cooperative, kind, generous, ...NEU tense, nervous, emotional, ...our proposed method is able to simultaneously simu-late a wide range of personality traits in a ﬁne-grainedmanner.
+Evaluation based on a real-world personalitydataset shows the superiority of our proposed methodover the prompt-based baseline method.
+
+
+2 Personality Theory
+
+
+In this work, we adopt the Big Five personality the-ory
+[10]
+and consider the following ﬁve personalitytraits: openness (OPE), conscientiousness (CON), ex-traversion (EXT), agreeableness (AGR), and neuroti-cism (NEU).
+Altogether, these ﬁve personality traits en-compass a comprehensive range of human personalitypatterns.
+These ﬁve personality traits are derived basedon the lexical hypothesis
+[10, 13], with each Big Fivepersonality trait representing a cluster of personality-describing adjectives under factor analysis (Table 1).Note that the ﬁve personality traits are not binaryattributes but exist on a spectrum.
+In psychology, self-report questionnaires are widely used for assessing thestrength of personality traits of an individual.
+For in-stance, the International Personality Item Pool (IPIP)inventory is a commonly used personality test for as-sessing the strength of Big Five personality traits
+[14].The IPIP inventory consists of 50 questions, each ques-tion measures the strength of a Big Five personality traiton a scale of 1 to 5.
+For each Big Five personality trait𝑝, we take the average of the scores of all the corre-sponding questions 𝑠𝑝as the strength of 𝑝. Altogether,the strength scores of all Big Five personality traitsconstitute a 5-dimensional personality proﬁle:𝑆 = {𝑠𝑂𝑃𝐸, 𝑠𝐶𝑂𝑁, 𝑠𝐸𝑋𝑇, 𝑠𝐴𝐺 𝑅, 𝑠𝑁 𝐸𝑈} (1)
+
+3
+Proposed Method
+
+In this section, we introduce our proposed method forLLM personality simulation.
+Based on the representa-tion engineering, we ﬁrst deﬁne the personality controlvector space (Section 3.1).
+We then sample vectors 𝑣from the personality control vector space and conduct asimulation to observe the exhibited personality proﬁle𝑆 of the controlled LLM agents (Section 3.2).
+
+
+3.1 Personality Control Vector Space
+
+For each Big Five personality trait, we take the listof corresponding personality describing adjectives andtheir antonyms to construct a personality control vec-tor.
+Speciﬁcally, we construct an adjective control vec-tor for each adjective pair and take the average of themas the personality control vector.
+The process is sum-marized below:Adjective Control Vectors We consider eachadjective 𝑎𝑝𝑖and its antonym ¯𝑎𝑝𝑖(corresponding tosome personality trait 𝑝) to generate pairs of contrast-ing prompts:Contrasting Prompt Pair(positive
+prompt)Act like an extremely [𝑎𝑝𝑖] person andcomplete the sentence: [PREFIX](negative prompt)Act like an extremely [ ¯𝑎𝑝𝑖] person andcomplete the sentence: [PREFIX]We construct a set of 𝐾 contrasting prompt pairswith a set of 𝐾 preﬁxes.
+For each preﬁx 𝑗, we collectmodel hidden states ℎ𝑗and¯ℎ𝑗of the positive and thenegative prompts and compute their diﬀerence ℎ𝑗−¯ℎ𝑗.We conduct principal component analysis (PCA) on theset of 𝐾 diﬀerence vectors and take the ﬁrst principalcomponent as the control vector 𝑣𝑝𝑖related to 𝑎𝑝𝑖.During inference, the control vector 𝑣𝑝𝑖could addedto the hidden state of the model for behavior control.
+Theoretically, 𝑣𝑝𝑖has the eﬀect of modifying model be-havior along the spectrum deﬁned by the pair of adjec-tives 𝑎𝑝𝑖and ¯𝑎𝑝𝑖. Also, we can assert diﬀerent degreesof control by scaling the vector with diﬀerent scalarvalues 𝑐.
+For instance, applying the vector der ived bythe adjective ‘friendly’ with a positive value of 𝑐 leadsto increasingly friendly behavior of the model, whileusing a negative value of 𝑐 elicits unfr iendly behaviors.
+Personality Control VectorsFor each person-ality trait 𝑝, we consider the set of cor responding per-sonality describing adjectives {𝑎𝑝𝑖} and compute theircorresponding vectors {𝑣𝑝𝑖}.
+We take the average ofthese adjective control vectors as the personality con-
+
+Shaping Personality of Large Language Models:An Approach Based on Representation Engineering
+
+Yin Jou Huang, Prakhar Saxena, Zi Cheng Zhao
+
+
+
+Kyoto University
+
+
+
+{huang,prakhar}@nlp.ist.i.kyoto-u.ac.jp  zhao.zicheng.55d@st.kyoto-u.ac.jp
+
+
+
+Abstract
+
+Personality is a fundamental psychological trait thatshapes an individual’s behavior patterns.
+This paperproposes a novel approach to personality simulation,which aims to simulate some predeﬁned personalitytraits using large language models.
+We conduct rep-resentation engineer ing and construct a set of person-ality control vectors to enable ﬁne-grained control ofthe strength of personality traits.
+Additionally, we usea linear model to capture the interdependencies amongpersonality traits.
+Evaluation based on a real-worldpersonality dataset shows that our proposed personal-ity simulation method outperforms the prompt-basedbaseline method.
+
+
+1 Introduction
+
+The vast amount of human-generated training datahas given large language models (LLMs) the ability toemulate human behaviors
+[1, 2, 3].
+This ability facil-itates the research on role-playing agents, whose goalis to simulate predeﬁned personas including person-alities, demographic traits, speciﬁc public ﬁgures orﬁctional entities, etc
+[4].In this work, we focus on one of the most fundamen-tal tasks of role-playing — personality simulation andaim to endow LLM agents with predeﬁned personalitytraits.
+Personality is a fundamental psychological traitthat inﬂuences how individuals interpret and react tothe world around them, consequently shaping their dis-tinctive behavioral, interaction, and decision-makingpatterns [ 5].
+Modeling personality is especially cru-cial for psychological and sociological research.
+Therealization of LLM personality simulation as proxiesof human behaviors opens new opportunities for an-alyzing human behavior in controlled, replicable, andscalable ways.
+Most existing works on personality simulation uti-lize in-context learning and design prompts to in-ﬂict changes in personality traits exhibited by theLLM [6, 7, 8, 9].
+For instance, Garcia et al.
+[6] uti-lize personality-describing adjectives associated withdiﬀerent Big Five personality traits to induce variouspersonalities of LLMs [10].
+However, these prompt-based approaches have several drawbacks.
+First, it isdiﬃcult to control the strength of personality traits.
+While it is possible to put modiﬁers such as ‘very’ and‘a bit’ in front of the personality-describing adjectivesfor strength control [6], the discrete nature of languagemakes it diﬃcult for more ﬁne-grained control.
+Sec-ond, the complex dependencies between personalitytraits are overlooked.
+Existing studies suggest that per-sonality traits are not mutually independent, and con-trolling one personality trait might induce changes inother personality traits as well
+[6, 11].
+However, itis diﬃcult to account for these interactions with theexisting prompt-based framework.
+To address the above drawbacks, we propose a novelpersonality simulation approach based on representa-tion engineering [12].
+Representation engineering isa technique designed to control the behavior of neuralnetwork models by introducing control vectors into thehidden states of the model during inference.
+To adaptthis method for personality simulation, we ﬁrst derive aset of personality control vectors with the personality-describing adjectives from the Big Five personality the-ory.
+These vectors enable the manipulation of modelbehavior to simulate distinct Big Five personality traits.
+From the spanning vector space of the personality con-trol vectors, we sample control vectors and observe thechange in the overall personality proﬁle exhibited bythe controlled model.
+We use a linear model to capturethe relation between the control vectors and the in-duced personality proﬁles.
+Empirical results show thatTable 1 Examples of personality-describing adjectives ofeach Big Five personality trait.
+Personality-Describing AdjectivesOPE intelligent, aesthetic, creative, ...CON organized, responsible, reliable, ...EXT extraverted, energetic, talkative, ...AGR cooperative, kind, generous, ...NEU tense, nervous, emotional, ...our proposed method is able to simultaneously simu-late a wide range of personality traits in a ﬁne-grainedmanner.
+Evaluation based on a real-world personalitydataset shows the superiority of our proposed methodover the prompt-based baseline method.
+
+
+2 Personality Theory
+
+
+In this work, we adopt the Big Five personality the-ory
+[10]
+and consider the following ﬁve personalitytraits: openness (OPE), conscientiousness (CON), ex-traversion (EXT), agreeableness (AGR), and neuroti-cism (NEU).
+Altogether, these ﬁve personality traits en-compass a comprehensive range of human personalitypatterns.
+These ﬁve personality traits are derived basedon the lexical hypothesis
+[10, 13], with each Big Fivepersonality trait representing a cluster of personality-describing adjectives under factor analysis (Table 1).Note that the ﬁve personality traits are not binaryattributes but exist on a spectrum.
+In psychology, self-report questionnaires are widely used for assessing thestrength of personality traits of an individual.
+For in-stance, the International Personality Item Pool (IPIP)inventory is a commonly used personality test for as-sessing the strength of Big Five personality traits
+[14].The IPIP inventory consists of 50 questions, each ques-tion measures the strength of a Big Five personality traiton a scale of 1 to 5.
+For each Big Five personality trait𝑝, we take the average of the scores of all the corre-sponding questions 𝑠𝑝as the strength of 𝑝. Altogether,the strength scores of all Big Five personality traitsconstitute a 5-dimensional personality proﬁle:𝑆 = {𝑠𝑂𝑃𝐸, 𝑠𝐶𝑂𝑁, 𝑠𝐸𝑋𝑇, 𝑠𝐴𝐺 𝑅, 𝑠𝑁 𝐸𝑈} (1)
+
+3
+Proposed Method
+
+In this section, we introduce our proposed method forLLM personality simulation.
+Based on the representa-tion engineering, we ﬁrst deﬁne the personality controlvector space (Section 3.1).
+We then sample vectors 𝑣from the personality control vector space and conduct asimulation to observe the exhibited personality proﬁle𝑆 of the controlled LLM agents (Section 3.2).
+
+
+3.1 Personality Control Vector Space
+
+For each Big Five personality trait, we take the listof corresponding personality describing adjectives andtheir antonyms to construct a personality control vec-tor.
+Speciﬁcally, we construct an adjective control vec-tor for each adjective pair and take the average of themas the personality control vector.
+The process is sum-marized below:Adjective Control Vectors We consider eachadjective 𝑎𝑝𝑖and its antonym ¯𝑎𝑝𝑖(corresponding tosome personality trait 𝑝) to generate pairs of contrast-ing prompts:Contrasting Prompt Pair(positive
+prompt)Act like an extremely [𝑎𝑝𝑖] person andcomplete the sentence: [PREFIX](negative prompt)Act like an extremely [ ¯𝑎𝑝𝑖] person andcomplete the sentence: [PREFIX]We construct a set of 𝐾 contrasting prompt pairswith a set of 𝐾 preﬁxes.
+For each preﬁx 𝑗, we collectmodel hidden states ℎ𝑗and¯ℎ𝑗of the positive and thenegative prompts and compute their diﬀerence ℎ𝑗−¯ℎ𝑗.We conduct principal component analysis (PCA) on theset of 𝐾 diﬀerence vectors and take the ﬁrst principalcomponent as the control vector 𝑣𝑝𝑖related to 𝑎𝑝𝑖.During inference, the control vector 𝑣𝑝𝑖could addedto the hidden state of the model for behavior control.
+Theoretically, 𝑣𝑝𝑖has the eﬀect of modifying model be-havior along the spectrum deﬁned by the pair of adjec-tives 𝑎𝑝𝑖and ¯𝑎𝑝𝑖. Also, we can assert diﬀerent degreesof control by scaling the vector with diﬀerent scalarvalues 𝑐.
+For instance, applying the vector der ived bythe adjective ‘friendly’ with a positive value of 𝑐 leadsto increasingly friendly behavior of the model, whileusing a negative value of 𝑐 elicits unfr iendly behaviors.
+Personality Control VectorsFor each person-ality trait 𝑝, we consider the set of cor responding per-sonality describing adjectives {𝑎𝑝𝑖} and compute theircorresponding vectors {𝑣𝑝𝑖}.
+We take the average ofthese adjective control vectors as the personality con-trol vector:𝑣𝑝=∑𝑖𝑣𝑝𝑖(2)Since the adjectives represent diﬀerent aspects ofa personality trait, applying vector 𝑣𝑝with diﬀerentscalar values changes the strength of the personalitytrait 𝑝 exhibited by the model.
+Personality Control Vector Space We deﬁnethe personality control vector space as the spanningvector space of the set of personality control vectors:{𝑣𝑝} = {𝑣𝑂𝑃𝐸, 𝑣𝐶𝑂𝑁, 𝑣𝐸𝑋𝑇, 𝑣𝐴𝐺𝑅, 𝑣𝑁 𝐸𝑈} (3)From this vector space, we can sample a control vector𝑣, which will be a linear combination of vectors in{𝑣𝑝}, where {𝑐𝑝} are the corresponding scalars:𝑣 =∑𝑝𝑐𝑝𝑣𝑝(4)
+
+3.2 Simulation with Controlled Agents
+
+After sampling a vector 𝑣 from the personality con-trol vector space, we apply it to an LLM and observethe personality exhibited by the controlled model.
+Wemeasure the strength of personality traits of the con-trolled model with a self-report questionnaire.
+Eachitem of the questionnaire consists of a statement suchas ‘I am the life of the par ty’, ‘I sympathize with others’feelings’.
+Each statement is related to one of the BigFive personality traits.1）The controlled model is askedto rate how accurately a speciﬁc statement describes iton a scale of 1 to 5.
+We collect the responses of theLLM agents with the following prompt:Prompt for personality testEvaluate the following statement:[STATEMENT].Please rate how accurately this describesyou on a scale from 1 to 5 (where 1 = "veryinaccurate", 2 = "moderately inaccurate",3 = "neither accurate nor inaccurate", 4= "moderately accurate", and 5 = "veryaccurate").
+Please answer using EXACTLYone of the following: 1, 2, 3, 4, or 5.Based on the responses, we calculate the strength ofeach Big-Five personality trait on the scale of 1 to 5 asthe personality proﬁle 𝑆 of the controlled model.1）
+The details could be found at https://ipip.ori.org/newBigFive5broadKey.htm.We randomly sample 𝑁 control vectors and ob-serve the resulting personality proﬁles of the con-trolled model.
+In this fashion, we obtain 𝑁 pairs ofcorresponding control vectors and personality proﬁles{(𝑣𝑛, 𝑆𝑛)}.
+We represent each control vector as itscorresponding scalar values (Eq. 4) and each proﬁle asstrengths of Big-Five personality traits (Eq. 1).
+Fur-ther, we use this data to ﬁt a linear model between thescalar values {𝑐𝑝} and the resulting personality traitstrengths {𝑠𝑝}:𝑠𝑝=∑𝑥∈𝐵𝐼𝐺−5𝑐𝑥𝑤𝑥 𝑝+ 𝑏𝑖𝑎𝑠𝑝(5)The weight 𝑤𝑥𝑦captures how a personality controlvector 𝑣𝑥aﬀects the strength of personality trait 𝑠𝑦.With this model, we can model the interdependenciesbetween diﬀerent Big Five personality traits.
+Also,given a designated proﬁle 𝑆 = {𝑠𝑝}, we can use themodel to ﬁnd the optimal set of scalars {𝑐𝑝} and con-struct the control vector based on Eq. 4.
+
+4 Experimental Settings
+
+The following are the experimental settings.
+LLM Model We adopted the Mistral-7B models,which contains a total of 32 layers.
+Control Vector We obtained and applied the con-trol vectors based on the hidden states of the 15𝑡 ℎlayer.
+A general preﬁx set of size
+𝐾 = 582 provided by [12]is used.
+Since applying control vectors of large magni-tude causes performance degradation, we sampled thescalars of control vectors from the uniform distribu-tion within the range of [−3.0, 3.0].
+𝑁 = 200 controlvectors are sampled to ﬁt the linear model.
+Evaluation
+We use the real-human dataset pro-vided by the Open-Source Psychometrics Project,which contains over 1M personality proﬁles collectedanonymously through an online personality test web-site2）.
+We sampled 200 personality proﬁles from thedataset and used our proposed method to simulate eachproﬁle.
+We compared the strength of personality traitsexhibited by the model to the real value provided bythe proﬁle.
+For each Big-Five personality trait, wecalculate the mean of the absolute error between thereal personality strength and the simulated personalitystrength as an evaluation metric.
+Baseline We compared our proposed personal-ity simulation method with the previous prompt-based2）
+https://openpsychometrics.org/
+
+Shaping Personality of Large Language Models:An Approach Based on Representation Engineering
+
+Yin Jou Huang, Prakhar Saxena, Zi Cheng Zhao
+
+
+
+Kyoto University
+
+
+
+{huang,prakhar}@nlp.ist.i.kyoto-u.ac.jp  zhao.zicheng.55d@st.kyoto-u.ac.jp
+
+
+
+Abstract
+
+Personality is a fundamental psychological trait thatshapes an individual’s behavior patterns.
+This paperproposes a novel approach to personality simulation,which aims to simulate some predeﬁned personalitytraits using large language models.
+We conduct rep-resentation engineer ing and construct a set of person-ality control vectors to enable ﬁne-grained control ofthe strength of personality traits.
+Additionally, we usea linear model to capture the interdependencies amongpersonality traits.
+Evaluation based on a real-worldpersonality dataset shows that our proposed personal-ity simulation method outperforms the prompt-basedbaseline method.
+
+
+1 Introduction
+
+The vast amount of human-generated training datahas given large language models (LLMs) the ability toemulate human behaviors
+[1, 2, 3].
+This ability facil-itates the research on role-playing agents, whose goalis to simulate predeﬁned personas including person-alities, demographic traits, speciﬁc public ﬁgures orﬁctional entities, etc
+[4].In this work, we focus on one of the most fundamen-tal tasks of role-playing — personality simulation andaim to endow LLM agents with predeﬁned personalitytraits.
+Personality is a fundamental psychological traitthat inﬂuences how individuals interpret and react tothe world around them, consequently shaping their dis-tinctive behavioral, interaction, and decision-makingpatterns [ 5].
+Modeling personality is especially cru-cial for psychological and sociological research.
+Therealization of LLM personality simulation as proxiesof human behaviors opens new opportunities for an-alyzing human behavior in controlled, replicable, andscalable ways.
+Most existing works on personality simulation uti-lize in-context learning and design prompts to in-ﬂict changes in personality traits exhibited by theLLM [6, 7, 8, 9].
+For instance, Garcia et al.
+[6] uti-lize personality-describing adjectives associated withdiﬀerent Big Five personality traits to induce variouspersonalities of LLMs [10].
+However, these prompt-based approaches have several drawbacks.
+First, it isdiﬃcult to control the strength of personality traits.
+While it is possible to put modiﬁers such as ‘very’ and‘a bit’ in front of the personality-describing adjectivesfor strength control [6], the discrete nature of languagemakes it diﬃcult for more ﬁne-grained control.
+Sec-ond, the complex dependencies between personalitytraits are overlooked.
+Existing studies suggest that per-sonality traits are not mutually independent, and con-trolling one personality trait might induce changes inother personality traits as well
+[6, 11].
+However, itis diﬃcult to account for these interactions with theexisting prompt-based framework.
+To address the above drawbacks, we propose a novelpersonality simulation approach based on representa-tion engineering [12].
+Representation engineering isa technique designed to control the behavior of neuralnetwork models by introducing control vectors into thehidden states of the model during inference.
+To adaptthis method for personality simulation, we ﬁrst derive aset of personality control vectors with the personality-describing adjectives from the Big Five personality the-ory.
+These vectors enable the manipulation of modelbehavior to simulate distinct Big Five personality traits.
+From the spanning vector space of the personality con-trol vectors, we sample control vectors and observe thechange in the overall personality proﬁle exhibited bythe controlled model.
+We use a linear model to capturethe relation between the control vectors and the in-duced personality proﬁles.
+Empirical results show thatTable 1 Examples of personality-describing adjectives ofeach Big Five personality trait.
+Personality-Describing AdjectivesOPE intelligent, aesthetic, creative, ...CON organized, responsible, reliable, ...EXT extraverted, energetic, talkative, ...AGR cooperative, kind, generous, ...NEU tense, nervous, emotional, ...our proposed method is able to simultaneously simu-late a wide range of personality traits in a ﬁne-grainedmanner.
+Evaluation based on a real-world personalitydataset shows the superiority of our proposed methodover the prompt-based baseline method.
+
+
+2 Personality Theory
+
+
+In this work, we adopt the Big Five personality the-ory
+[10]
+and consider the following ﬁve personalitytraits: openness (OPE), conscientiousness (CON), ex-traversion (EXT), agreeableness (AGR), and neuroti-cism (NEU).
+Altogether, these ﬁve personality traits en-compass a comprehensive range of human personalitypatterns.
+These ﬁve personality traits are derived basedon the lexical hypothesis
+[10, 13], with each Big Fivepersonality trait representing a cluster of personality-describing adjectives under factor analysis (Table 1).Note that the ﬁve personality traits are not binaryattributes but exist on a spectrum.
+In psychology, self-report questionnaires are widely used for assessing thestrength of personality traits of an individual.
+For in-stance, the International Personality Item Pool (IPIP)inventory is a commonly used personality test for as-sessing the strength of Big Five personality traits
+[14].The IPIP inventory consists of 50 questions, each ques-tion measures the strength of a Big Five personality traiton a scale of 1 to 5.
+For each Big Five personality trait𝑝, we take the average of the scores of all the corre-sponding questions 𝑠𝑝as the strength of 𝑝. Altogether,the strength scores of all Big Five personality traitsconstitute a 5-dimensional personality proﬁle:𝑆 = {𝑠𝑂𝑃𝐸, 𝑠𝐶𝑂𝑁, 𝑠𝐸𝑋𝑇, 𝑠𝐴𝐺 𝑅, 𝑠𝑁 𝐸𝑈} (1)
+
+3
+Proposed Method
+
+In this section, we introduce our proposed method forLLM personality simulation.
+Based on the representa-tion engineering, we ﬁrst deﬁne the personality controlvector space (Section 3.1).
+We then sample vectors 𝑣from the personality control vector space and conduct asimulation to observe the exhibited personality proﬁle𝑆 of the controlled LLM agents (Section 3.2).
+
+
+3.1 Personality Control Vector Space
+
+For each Big Five personality trait, we take the listof corresponding personality describing adjectives andtheir antonyms to construct a personality control vec-tor.
+Speciﬁcally, we construct an adjective control vec-tor for each adjective pair and take the average of themas the personality control vector.
+The process is sum-marized below:Adjective Control Vectors We consider eachadjective 𝑎𝑝𝑖and its antonym ¯𝑎𝑝𝑖(corresponding tosome personality trait 𝑝) to generate pairs of contrast-ing prompts:Contrasting Prompt Pair(positive
+prompt)Act like an extremely [𝑎𝑝𝑖] person andcomplete the sentence: [PREFIX](negative prompt)Act like an extremely [ ¯𝑎𝑝𝑖] person andcomplete the sentence: [PREFIX]We construct a set of 𝐾 contrasting prompt pairswith a set of 𝐾 preﬁxes.
+For each preﬁx 𝑗, we collectmodel hidden states ℎ𝑗and¯ℎ𝑗of the positive and thenegative prompts and compute their diﬀerence ℎ𝑗−¯ℎ𝑗.We conduct principal component analysis (PCA) on theset of 𝐾 diﬀerence vectors and take the ﬁrst principalcomponent as the control vector 𝑣𝑝𝑖related to 𝑎𝑝𝑖.During inference, the control vector 𝑣𝑝𝑖could addedto the hidden state of the model for behavior control.
+Theoretically, 𝑣𝑝𝑖has the eﬀect of modifying model be-havior along the spectrum deﬁned by the pair of adjec-tives 𝑎𝑝𝑖and ¯𝑎𝑝𝑖. Also, we can assert diﬀerent degreesof control by scaling the vector with diﬀerent scalarvalues 𝑐.
+For instance, applying the vector der ived bythe adjective ‘friendly’ with a positive value of 𝑐 leadsto increasingly friendly behavior of the model, whileusing a negative value of 𝑐 elicits unfr iendly behaviors.
+Personality Control VectorsFor each person-ality trait 𝑝, we consider the set of cor responding per-sonality describing adjectives {𝑎𝑝𝑖} and compute theircorresponding vectors {𝑣𝑝𝑖}.
+We take the average ofthese adjective control vectors as the personality con-trol vector:𝑣𝑝=∑𝑖𝑣𝑝𝑖(2)Since the adjectives represent diﬀerent aspects ofa personality trait, applying vector 𝑣𝑝with diﬀerentscalar values changes the strength of the personalitytrait 𝑝 exhibited by the model.
+Personality Control Vector Space We deﬁnethe personality control vector space as the spanningvector space of the set of personality control vectors:{𝑣𝑝} = {𝑣𝑂𝑃𝐸, 𝑣𝐶𝑂𝑁, 𝑣𝐸𝑋𝑇, 𝑣𝐴𝐺𝑅, 𝑣𝑁 𝐸𝑈} (3)From this vector space, we can sample a control vector𝑣, which will be a linear combination of vectors in{𝑣𝑝}, where {𝑐𝑝} are the corresponding scalars:𝑣 =∑𝑝𝑐𝑝𝑣𝑝(4)
+
+3.2 Simulation with Controlled Agents
+
+After sampling a vector 𝑣 from the personality con-trol vector space, we apply it to an LLM and observethe personality exhibited by the controlled model.
+Wemeasure the strength of personality traits of the con-trolled model with a self-report questionnaire.
+Eachitem of the questionnaire consists of a statement suchas ‘I am the life of the par ty’, ‘I sympathize with others’feelings’.
+Each statement is related to one of the BigFive personality traits.1）The controlled model is askedto rate how accurately a speciﬁc statement describes iton a scale of 1 to 5.
+We collect the responses of theLLM agents with the following prompt:Prompt for personality testEvaluate the following statement:[STATEMENT].Please rate how accurately this describesyou on a scale from 1 to 5 (where 1 = "veryinaccurate", 2 = "moderately inaccurate",3 = "neither accurate nor inaccurate", 4= "moderately accurate", and 5 = "veryaccurate").
+Please answer using EXACTLYone of the following: 1, 2, 3, 4, or 5.Based on the responses, we calculate the strength ofeach Big-Five personality trait on the scale of 1 to 5 asthe personality proﬁle 𝑆 of the controlled model.1）
+The details could be found at https://ipip.ori.org/newBigFive5broadKey.htm.We randomly sample 𝑁 control vectors and ob-serve the resulting personality proﬁles of the con-trolled model.
+In this fashion, we obtain 𝑁 pairs ofcorresponding control vectors and personality proﬁles{(𝑣𝑛, 𝑆𝑛)}.
+We represent each control vector as itscorresponding scalar values (Eq. 4) and each proﬁle asstrengths of Big-Five personality traits (Eq. 1).
+Fur-ther, we use this data to ﬁt a linear model between thescalar values {𝑐𝑝} and the resulting personality traitstrengths {𝑠𝑝}:𝑠𝑝=∑𝑥∈𝐵𝐼𝐺−5𝑐𝑥𝑤𝑥 𝑝+ 𝑏𝑖𝑎𝑠𝑝(5)The weight 𝑤𝑥𝑦captures how a personality controlvector 𝑣𝑥aﬀects the strength of personality trait 𝑠𝑦.With this model, we can model the interdependenciesbetween diﬀerent Big Five personality traits.
+Also,given a designated proﬁle 𝑆 = {𝑠𝑝}, we can use themodel to ﬁnd the optimal set of scalars {𝑐𝑝} and con-struct the control vector based on Eq. 4.
+
+4 Experimental Settings
+
+The following are the experimental settings.
+LLM Model We adopted the Mistral-7B models,which contains a total of 32 layers.
+Control Vector We obtained and applied the con-trol vectors based on the hidden states of the 15𝑡 ℎlayer.
+A general preﬁx set of size
+𝐾 = 582 provided by [12]is used.
+Since applying control vectors of large magni-tude causes performance degradation, we sampled thescalars of control vectors from the uniform distribu-tion within the range of [−3.0, 3.0].
+𝑁 = 200 controlvectors are sampled to ﬁt the linear model.
+Evaluation
+We use the real-human dataset pro-vided by the Open-Source Psychometrics Project,which contains over 1M personality proﬁles collectedanonymously through an online personality test web-site2）.
+We sampled 200 personality proﬁles from thedataset and used our proposed method to simulate eachproﬁle.
+We compared the strength of personality traitsexhibited by the model to the real value provided bythe proﬁle.
+For each Big-Five personality trait, wecalculate the mean of the absolute error between thereal personality strength and the simulated personalitystrength as an evaluation metric.
+Baseline We compared our proposed personal-ity simulation method with the previous prompt-based2）
+https://openpsychometrics.org/Table 2 Mean Absolute Error of the personality strengthof each Big-Five personality trait.
+Personality Trait Baseline ProposedOpenness (OPE) 0.538 0.283Conscientiousness (CON) 0.915 0.284Extraversion (EXT) 0.455 0.247Agreeableness (AGR) 0.185 0.271Neuroticism (NEU) 0.462 0.289average 0.511 0.275baseline proposed by [6].
+For the baseline method,prompts are used instead of the control vectors to con-trol the LLM model.
+
+
+5 Results and Analysis
+
+We introduce the evaluation results of our proposedpersonality simulation method (Section 5.1).
+In ad-dition, we conduct an analysis of the personality traitinterdependencies based on the weights of the linearmodel (Section 5.2).
+
+
+5.1 Personality Simulation Evaluation
+
+We compare the eﬀectiveness of our proposed per-sonality simulation method with the baseline method.
+Table 2 shows the mean absolute error for each of theﬁve Big Five personality traits.
+Our proposed personality simulation method outper-forms the previous prompt-based method with a lowerabsolute error value for most personality traits exceptfor agreeableness.
+The proposed method achieved a0.275 points deviation (on a scale of 1 to 5) on aver-age, signiﬁcantly lower than the average error of 0.511points of the prompt-based baseline.
+The empirical re-sult illustrates the eﬀectiveness of our proposed methodin achieving ﬁne-grained control of personality.
+
+
+5.2 Analysis of Personality Traits In-
+
+
+
+terdependencies
+
+Further
+, we analyze the interdependencies betweenthe ﬁve personality traits.
+Figure 1 shows the heatmap of the weights of the linear model, where thepositive weights are highlighted in red and the negativeweights are in blue.
+With this visualization, we cansee how each personality vector aﬀects the strength ofpersonality traits (the IPIP scores).We ﬁrst observe the diagonal elements of the heatmap.
+Most personality vectors have a strong and pos-Figure 1 Weights of the linear model.itive eﬀect on the personality strength of the corre-sponding dimension.
+The only exception is the OPEpersonality trait, which is most strongly aﬀected bythe EXT personality vector, while the OPE personalityvector only exerts a very small positive eﬀect on it.
+For the oﬀ-diagonal elements, the weights are gen-erally smaller in magnitude, signifying a smaller in-ﬂuence of the personality vector across personalitytraits.
+Nevertheless, there exist several exceptions ofoﬀ-diagonal weights of large magnitude, signifyingstronger interdependence between personality traits:• The CON vector has a signiﬁcant positive inﬂu-ence on the AGR trait and a negative inﬂuence onthe NEU trait exhibited by the model.•
+The EXT vector has a signiﬁcant positive inﬂu-ence on both OPE and AGR personality traits.•
+The NEU vector has a signiﬁcant negative inﬂu-ence on both CON and AGR personality traits.
+The above analysis shows the importance of model-ing interdependence between personality traits.
+
+
+6 Conclusion
+
+In this work, we proposed a novel personality sim-ulation method based on representation engineering.
+We construct a set of personality control vectors to con-trol the strength of Big-Five personality traits exhibitedby the model.
+To capture the interdependence of thepersonality traits, we build a simple linear model toconsider the contribution of the personality vectors toeach personality trait.
+Evaluation based on a real-worldpersonality dataset shows that our proposed methodoutperforms the previous prompt-based method.
+
+
+
+Acknowledgment
+
+This work was supported by JST, ACT-X GrantNumber JPMJAX23CP, Japan.
+
+References
+
+
+[1] Chengxing Xie, Canyu Chen, Feiran Jia, Ziyu Ye,Kai Shu, Adel Bibi, Ziniu Hu, Philip Torr, BernardGhanem, and Guohao Li. Can large language modelagents simulate human trust behaviors? arXivpreprint arXiv:2402.04559, 2024.
+[2] Gati V Aher, Rosa I Arriaga, and Adam Tauman Kalai.Using large language models to simulate multiple hu-mans and replicate human subject studies. In Inter-national Conference on Machine Learning, pp.337–371. PMLR, 2023.
+[3] Elif Akata, Lion Schulz, Julian Coda-Forno,Seong Joon Oh, Matthias Bethge, and Eric Schulz.Playing repeated games with large language models.arXiv preprint arXiv:2305.16867, 2023.
+[4] Jiangjie Chen, Xintao Wang, Rui Xu, Siyu Yuan, YikaiZhang, Wei Shi, Jian Xie, Shuang Li, Ruihan Yang,Tinghui Zhu, et al. From persona to personaliza-tion: A survey on role-playing language agents. arXivpreprint arXiv:2404.18231, 2024.
+[5] Alan E Kazdin, Amer ican Psychological Association,et al. Encyclopedia of psychology, Vol. 8. Ameri-can Psychological Association Washington, DC, 2000.
+[6] Greg Serapio-Garc´ıa, Mustafa Safdari, Cl´ementCrepy, Luning Sun, Stephen Fitz, Peter Romero,Marwa Abdulhai, Aleksandra Faust, and MajaMatari´c. Personality traits in large language models.2023.
+[7] Yunfan Shao, Linyang Li, Junqi Dai, and Xipeng Qiu.Character-LLM: A trainable agent for role-playing. InHouda Bouamor, Juan Pino, and Kalika Bali, editors,Proceedings of the 2023 Conference on Empir-ical Methods in Natural Language Processing,pp. 13153–13187, Singapore, December 2023. Asso-ciation for Computational Linguistics.
+[8] Xintao Wang, Yunze Xiao, Jen-tse Huang, Siyu Yuan,Rui Xu, Haoran Guo, Quan Tu, Yaying Fei, ZiangLeng, Wei Wang, Jiangjie Chen, Cheng Li, andYanghua Xiao. InCharacter: Evaluating personalityﬁdelity in role-playing agents through psychologicalinterviews. In Lun-Wei Ku, Andre Martins, and VivekSrikumar, editors, Proceedings of the 62nd An-nual Meeting of the Association for Computa-tional Linguistics (Volume 1: Long Papers), pp.1840–1873, Bangkok, Thailand, August 2024. Asso-ciation for Computational Linguistics.
+[9] Guangyuan Jiang, Manjie Xu, Song-Chun Zhu, Wen-juan Han, Chi Zhang, and Yixin Zhu. Evaluating andinducing personality in pre-trained language models.Advances in Neural Information Processing Sys-tems, Vol. 36, , 2024.
+[10] Lewis R Goldberg. The development of markers for thebig-ﬁve factor structure. Psychological assessment,Vol. 4, No. 1, p. 26, 1992.
+[11] Yin Jou Huang and Raﬁk Hadﬁ. How personality traitsinﬂuence negotiation outcomes? a simulation basedon large language models. In Yaser Al-Onaizan, MohitBansal, and Yun-Nung Chen, editors, Findings ofthe Association for Computational Linguistics:EMNLP 2024, pp. 10336–10351, Miami, Florida,USA, November 2024. Association for ComputationalLinguistics.
+[12] Andy Zou, Long Phan, Sarah Chen, James Camp-bell, Phillip Guo, Richard Ren, Alexander Pan,Xuwang Yin, Mantas Mazeika, Ann-Kathrin Dom-browski, et al. Representation engineering: A top-down approach to ai transparency. arXiv preprintarXiv:2310.01405, 2023.
+[13] Oscar Garc´ıa, Anton Aluja, and Lu´ıs F Garc´ıa. Psycho-metric properties of goldberg’s 50 personality markersfor the big ﬁve model1. European Journal of Psy-chological Assessment, Vol. 20, No. 4, pp. 310–319,2004.
+[14] Lewis R Goldberg. Possible questionnaire format foradministering the 50-item set of ipip big-ﬁve factormarkers. Psychol. Assess, Vol. 4, pp. 26–42, 1992.

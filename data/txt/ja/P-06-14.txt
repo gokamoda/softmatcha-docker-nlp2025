@@ -1,0 +1,241 @@
+自己修正に基づく固有表現抽出モデルの指示学習
+
+高橋拓誠 谷口友紀 大熊智子
+
+
+
+旭化成株式会社
+
+
+
+ {takahashi.tkr, taniguchi.tcr, okuma.td}@om.asahi-kasei.co.jp
+
+
+
+概要
+
+固有表現抽出における過抽出やラベルの認識誤りは、典型的な性能低下の要因であり、大規模言語モデルにおいても頻出する課題である。
+本稿では、固有表現抽出を学習する過程で、抽出エラーを自己修正(Self-Correction)するための指示学習を提案する。
+本研究における自己修正の学習は、固有表現抽出の教師データのみ参照し、抽出エラーの検証や修正に関する追加アノテーションを必要としない。
+化学分野の特許を対象とした固有表現抽出において、自己修正に基づく指示学習を導入することで、固有表現の抽出エラーを大幅に抑制できることを示した。
+
+
+1 はじめに
+
+固有表現抽出(Named Entity Recognition; NER)は、文章中から人名や組織名などの固有表現の抽出および分類を行う自然言語処理の基礎的な下流タスクである。
+従来は抽出モデル[1]による分類問題として扱うことが多かったが、近年の大規模言語モデル(Large Language Model; LLM)の発展に伴い、いくつかの研究[2, 3, 4]では生成モデルによるアプローチが抽出モデルより高性能であると報告されている。
+しかしながら、LLM によるアプローチも万能ではなく、少量データ[5]や特定のデータセット[2, 4]においては抽出モデルの方が高性能であり、依然として抽出エラーが発生する。
+NER における抽出エラーを抑制するため、VeriﬁNER[6]ではSelf-Consistency[7]に基づく事後修正を可能とした。
+しかしながら、大量のエンティティが登録された知識ベースの利用を前提としており、こうした大規模知識ベースを常に用意することは現実的ではない。
+一方、LLM の高度な推論能力を活かした自己修正(Self-Correction; SC)に基づくアプローチが近年注目を集めている[8, 9, 10]。
+LLM が自律的に修正することから、必ずしも外部知識の類を必要としない利点はあるものの、その効果は算術推論[11]、常識推図 1 固有表現抽出と自己修正の指示学習(LLMNER+SC)。
+論[12]、コード生成[13]のようなタスクに集中しており、情報抽出で効果を示した例はない。
+本研究では、LLM が自らの誤りを検証(Self-Veriﬁcation; SV)し、検証結果に基づき自らの誤りを修正することで回答を洗練(Self-Reﬁnement; SR)する方法を提案する。
+具体的には、NER を指示学習する過程で SC を同時指示学習することで、自らの誤りを検証・修正するための知識を導入する(図 1)。
+本研究における SC の学習データは、NER の教師データと学習済みの NER モデルのみ参照し自動構築するため、誤りパターンの生成や抽出エラーの検証・修正に関する人手の追加アノテーションを必要としない。
+本研究の貢献は以下の 3 点である。
+• NER における抽出エラーを定義し、修正可能な抽出エラーを事前分析により明らかにする。
+• NER と SC を同時指示学習することで、NER の性能が向上することを示す。
+• 推論時に SC を実行することで、固有表現の抽出エラーを大幅に抑制できることを示す。
+
+
+
+2 予備分析
+
+NER における抽出エラーの定義: NER の抽出エラーは、抽出すべきではない固有表現を抽出した場合(False Positive; FP)と抽出すべき固有表現を抽出しなかった場合(False Negative; FN)に分類できる[6]。
+図 2 NER における抽出エラーの定義(上図)および予備実験における固有表現の抽出エラーの統計量(下図)。
+特に、本稿では FP の抑制に焦点を当てて 5 種類の抽出エラーのパターンを定義した(図 2)。
+具体的には、過抽出および抽出不足はエンティティのスパンの部分不一致に起因するエラー、ラベルはエンティティのラベル不一致に起因するエラーとして定義される。
+さらに、エンティティおよびラベルの不一致に起因するエラーとしてスパン+ラベルを定義した。
+一方で、抽出したエンティティが正解のエンティティと部分一致しないものを修正不可として定義した。
+このエラーに該当する場合、スパンやラベルの一部を修正しても正解の固有表現とは一致しない。
+予備実験: 化学分野の特許をもとに構築した NERのデータセット1）を用いて、公開 LLM2）の指示学習を行い評価した。
+図 2 に示す予備実験の結果から、指示学習した LLM においても FP による抽出エラーは依然として頻発することがわかった。
+観測された抽出エラーのうち、修正不可を除く 4 種類のエラーは全体の 4 割程度を占めており、これらはエンティティまたはラベルの一部を修正することで正解の固有表現と一致する。
+したがって、自己検証(SV)の結果に基づき自己洗練(SR)することで抽出エラーを抑制することが期待される。
+一方で、修正不可のエラーは SR による修正はできないものの、SV で検出して最終的な抽出結果から除外することで抽出エラーを抑制することが可能である。
+1） データセットの詳細は付録 A を参照されたい。
+2） https://huggingface.co/google/gemma-2-2b-it
+
+3 自己修正可能な固有表現抽出
+
+本研究では、固有表現抽出(NER)と自己修正(SC)を同時指示学習するモデルを提案する。
+同時指示学習モデルのアーキテクチャとして、InstructUIE[2]を採用する。
+図 1 に提案モデルの概要を示す。
+以降では、固有表現抽出モデル LLMNERの指示学習(3.1 節)と自己修正モデル LLMSCの指示学習(3.2 節)を個別に説明するが、これらを同時指示学習することで提案モデル LLMNER+SCを構築する点に注意されたい。
+
+
+
+3.1 固有表現抽出の指示学習
+
+本節では、入力文 𝑇 に含まれるラベル 𝑙𝑖のエンティティ 𝑒𝑖からなる固有表現 𝑠𝑖= (𝑒𝑖, 𝑙𝑖)のリスト𝑆={𝑠1, ..., 𝑠𝑁}を生成するため、固有表現抽出(NER)、スパン抽出(Span Extraction; SE)、エンティティ型推定(Entity Typing; ET)を同時指示学習する。
+NER: 入力 𝑋NER= [𝐼NER; 𝑇 ]から固有表現の系列𝑆 = {𝑠1, ..., 𝑠𝑁} を得るための指示学習を行う。
+なお，𝐼NER= [𝑃NER; 𝐿; 𝐷]であり、NER タスクの命令文 𝑃NER、ラベル候補 𝐿 = {𝑙1, ..., 𝑙𝑀}、各ラベルの定義文の集合 𝐷 = {𝑑1, ..., 𝑑| 𝐿 |} から構成される。
+SE: 指定したラベル¯𝑙𝑗∈ 𝐿 のエンティティの系列𝐸 = {𝑒1, ..., 𝑒𝑁′} を生成する指示学習により、入力𝑋SE= [𝐼SE; 𝑇 ]から出力系列 𝑌SE= { ˜𝑒1, ..., ˜𝑒𝑛} を得ることができる。
+ここで、𝐼SE= [𝑃SE; 𝐿; 𝐷;¯𝑙𝑖]である。
+ET: エンティティ ¯𝑒𝑖のラベル 𝑙𝑖を生成する指示学習により、入力 𝑋ET= [𝐼ET; 𝑇 ]から出力˜𝑙𝑖を得ることができる。
+ここで、𝐼ET= [𝑃ET; 𝐿; 𝐷; ¯𝑒𝑖]である。
+
+
+3.2 自己修正の指示学習
+
+本節では、入力文 𝑇 から抽出した固有表現 ˜𝑠𝑖が正しいか自ら検証し、検証結果に基づき自ら修正するために必要な知識を自己検証(SV)と自己洗練(SR)を同時指示学習することで獲得する。
+SV: 固有表現 ¯𝑠𝑖= ( ¯𝑒𝑖,¯𝑙𝑖)の正誤判定 𝑣𝑖3）およびエラー分類 𝑐𝑖4）を生成する。
+すなわち、入力𝑋SV= [𝐼SV; 𝑇 ]から出力 𝑌SV= ( ˜𝑣𝑖, ˜𝑐𝑖)を得るための指示学習を行う。
+ここで、𝐼SV= [𝑃SV; 𝐿; 𝐷; ¯𝑠𝑖]である。
+SR: 固有表現 ¯𝑠𝑖= ( ¯𝑒𝑖,¯𝑙𝑖)と自己検証¯𝑌SV= ( ¯𝑣𝑖, ¯𝑐𝑖)に基づき、修正後の固有表現 ˆ𝑠𝑖を生成する。
+すなわち、入力 𝑋SR= [𝐼SR; 𝑇 ]から出力 ˆ𝑠𝑖を得るための指示学習を行う。
+𝐼SR=[𝑃SR;𝐿;𝐷; ¯𝑠𝑖;¯𝑌SV]である。
+3） 正解(correct)または不正解(incorrect)の二値分類とした。
+4） 2 節の予備分析より、5 クラスのエラー分類を定義した。
+
+
+
+3.3 固有表現抽出の自己修正
+
+推論時は、(1) NER，(2) SV，(3) SR の順に処理することで、固有表現抽出の自己修正を実現する。
+NER の推論では、テキスト 𝑇 を含む入力 𝑋NERを学習済みモデル LLMNER+SCに与え、得られた結果を Parser により固有表現のリストに変換する。
+したがって、˜𝑆 = Parser(LLMNER+SC(𝑌NER|𝑋NER))により、固有表現の候補リスト˜𝑆 = { ˜𝑠1, ..., ˜𝑠𝑛} を生成する。
+SV の推論では、NER の推論で得られた固有表現˜𝑠𝑖に対して、LLMNER+SC(𝑌𝑆𝑉|𝑋𝑆𝑉)により正誤判定˜𝑣𝑖とエラー分類 ˜𝑐𝑖を生成する。
+ここで、正誤判定 ˜𝑣𝑖が正解(correct)である固有表現 ˜𝑠𝑖は，SR を実行せず最終回答 𝐴 に追加する。
+また、正誤判定 ˜𝑣𝑖が不正解(incorrect)かつエラー分類が修正不可(spurious)である場合は、SR を実行せず対象の固有表現 ˜𝑠𝑖を棄却する。
+その他の場合、固有表現 ˜𝑠𝑖に対して SRを実行することで、自らの誤りを修正する。
+SR の推論では、固有表現 ˜𝑠𝑖および自己検証 𝑌𝑆𝑉に基づき、モデル LLMNER+SCにより修正する。
+具体的には、LLMNER+SC( ˆ𝑠𝑖|𝑋𝑆𝑅)により、修正後の固有表現 ˆ𝑠𝑖を生成し、回答候補˜𝐴 に追加する。
+なお、回答候補˜𝐴 に追加された固有表現 ˆ𝑠𝑖を対象に SV とSR を再実行することで修正精度を高める。
+この処理は、ˆ𝑠𝑖が(a)最終回答 𝐴 に追加される、(b) SV の結果に基づき棄却される、(c)あらかじめ指定した回数に到達する、まで繰り返し実行される。
+
+
+
+3.4 自己修正データセットの自動構築
+
+本研究では、NER の学習データDNERおよび固有表現抽出モデル LLMNERのみ参照し、SC の学習データDSCを自動構築する。
+具体的には、𝐾 分割した NER の学習データDNER={𝑑1, ..., 𝑑𝐾} より、𝑑𝑖を用いてモデル LLM𝑖NERを学習する。
+その後、𝑑𝑗(𝑖 ≠ 𝑗)からサンプリングした任意のデータ𝑢 に対して、˜𝑆 = Parser(LLM𝑖NER(𝑌NER|𝑋NER))により、固有表現の候補リスト˜𝑆 = { ˜𝑠1, ..., ˜𝑠𝑛} を生成する。
+なお、多様な誤りパターンを生成するため、本過程は Top-K サンプリング[14]によるデコーディング5）を行う。
+最終的に、ここで得られた固有表現 ˜𝑠𝑘について 𝑢 の正解データ 𝑆 = {𝑠1, ..., 𝑠𝑁} を参照しながら、正誤判定 𝑣𝑘、エラー分類 𝑐𝑘、修正後の固有表現 ˆ𝑠𝑘自動付与し、自己修正の教師データ𝑧 = (𝑢, ˜𝑠𝑘, 𝑣𝑘, 𝑐𝑘, ˆ𝑠𝑘)をDSCに追加する。
+5） top-𝑘 = 40 に設定し 16 個の系列を生成した。
+
+
+
+4 評価実験
+
+本稿では、“固有表現抽出における抽出エラーをLLM が自ら検証し修正できるか？” という観点で評価を実施する。
+先行研究[15]に倣い、評価方法が公平(最も良い初期応答に対する修正可能性の評価)かつ現実的(正解データを参照しない自己修正の評価)であることに留意して評価した。
+
+
+
+4.1 実験設定
+
+データセット: 化学分野の特許を対象に人手でアノテーションした固有表現抽出(NER)のデータセットを用いて評価する。
+本データセットは、4 つのドメイン(NCR，FIB，CR1，CR2)から構成されており，In-domain および Out-of-domain の設定で評価する。
+データセットの詳細は付録 A を参照されたい。
+ベースライン: 抽出モデルのベースラインとして，BERT[1]と LUKE[16]に CRF 層[17]を追加したBERTbase+CRF と LUKElarge+CRF を用意した。
+生成モデルのベースラインとして、OpenAI の GPT-4o6）を採用した。
+なお、GPT-4o はゼロショット設定および文脈内学習(In-Context Learning; ICL)を利用した設定の 2 種類を比較した。
+提案モデルの LLM はgemma-27）を採用し、QLoRA[18]による量子化を行い指示学習した。
+詳細は付録 B を参照されたい。
+評価指標: 抽出した固有表現 ˜𝑠𝑖= ( ˜𝑒𝑖,˜𝑙𝑖)が正解の固有表現リスト 𝑆 = {𝑠1, ..., 𝑠𝑁} に含まれる場合を正解とみなし、Micro-F1 で性能評価した。
+
+
+
+4.2 評価結果
+
+In-domain の評価: 表 1 より、自己修正(SC)に基づく NER の同時指示学習を行った提案モデルLLMNER+SCがベースラインと比較して大きく性能向上していることがわかる。
+この結果から、NERの学習過程で自らの誤りの検証や修正を学習することは、NER の性能向上に大きく寄与するといえる。
+さらに、推論時に SC を実行したモデルLLMNER+SC+ Self-Correction は、平均性能をさらに向上させることを示した。
+この結果から、推論時に自己検証(SV)し、検証結果に基づき自己洗練(SR)することは、NER の抽出精度の向上に貢献するといえる。
+一方、SV の性能が 100%であると仮定した場合の NER の性能(Self-Correction w/ Oracle SV)は、6） https://platform.openai.com/docs/models/gpt-4o7） https://huggingface.co/google/gemma-2-2b-it表 1 In-domain および Out-of-domain における NER の評価結果。
+In-domain Out-of-domainModel NCR FIB CR1 CR2 mean NCR FIB CR1 CR2 meanGPT-4o (zero-shot)
+0.423 0.381 0.323 0.463 0.397 0.423 0.381 0.323 0.463 0.397GPT-4o (ICL, 5-shot)
+0.700 0.540 0.534 0.704 0.619 0.622 0.486 0.476 0.686 0.567BERTbase+CRF 0.692 0.435 0.399 0.621 0.537 0.400 0.341 0.413 0.477 0.408LUKElarge+CRF 0.761 0.519 0.516 0.740 0.634 0.606 0.477 0.569 0.680 0.583LLMNER0.769 0.569 0.558 0.726 0.655 0.622 0.509 0.544 0.680 0.589LLMNER+SC0.772 0.576 0.625 0.747 0.680 0.642 0.507 0.551 0.705 0.601LLMNER+SC+ Self-Correction 0.787 0.552 0.660 0.739 0.684 0.661 0.486 0.604 0.697 0.612Self-Correction w/ Oracle SV 0.888 0.838 0.799 0.916 0.860 0.814 0.801 0.752 0.909 0.819図 3 SV の性能と最終的な NER の性能の相関(𝑟 = 0.951)。
+In-domain および Out-of-domain の設定で評価した。
+さらに高い値を示した。
+すなわち、SR により回答を修正する効果は大きく、SC が性能向上に寄与するかどうかは、SV に大きく依存すると推察される。
+Out-of-domain の評価: 表 1 より、自己修正に基づく指示学習の効果は、Out-of-domain においても健在であることがわかる。
+さらに、推論時に SC を適用すると平均性能が向上することから、Out-of-domainにおいても SC による修正は効果的であるといえる。
+
+
+
+4.3 分析
+
+SV の性能と SC の性能の関係性: 4.2 節より、SCの効果は SR よりむしろ SV に大きく依存する可能性が示された。
+図 3 に SV の性能と SC 適用後のNER 性能の関係性を示す。
+SV と最終的な NER の性能には、非常に強い正の相関(𝑟 = 0 .951)を確認できることから、SC の効果は SV に大きく依存することがわかった。
+SC の効果がフィードバック生成(本研究における SV に対応する処理)の性能に大きく依存することは、先行研究[19, 10, 20]でも同様に指摘されていることから明らかである。
+自己修正により抽出エラーを抑制できたか？図 4に抽出エラーの発生頻度を示す。
+LLMNER+SCより、図 4 ドメイン NCR における抽出エラーの発生数。
+NER は LLMNER，NER+SC は LLMNER+SC，Self-Correctionは LLMNER+SC+ Self-Correction に対応する。
+NER と SC を同時指示学習することでラベル誤りを伴う抽出エラーが抑制されていることがわかる。
+さらに、推論時に SC を適用することで、修正不可とした抽出エラーを大幅に抑制するとともに、スパン誤りやラベル誤りを伴う修正可能なエラーの発生頻度も減少することが示された。
+したがって、本稿で提案した NER と SC の同時指示学習および推論時にSC を実行することは、NER をより精緻化することに貢献する。
+また、実際のエラー修正の事例については付録 C を参照されたい。
+
+
+
+5 おわりに
+
+本研究では、固有表現抽出における抽出エラーを抑制するため、固有表現抽出と自己修正を同時指示学習するモデルを提案した。
+自己修正に基づく指示学習は、固有表現抽出の性能を向上させるとともに、推論時に自己修正を適用することでさらに抽出エラーを抑制可能であることを示した。
+今後の課題として、4.3 節で示したように自己検証(SV)の性能を改善することが挙げられる。
+また、関係抽出などの他の情報抽出タスクにおいても同様に効果が得られるか検証する予定である。
+
+
+
+参考文献
+
+
+[1] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and KristinaToutanova. BERT: Pre-training of deep bidirectional trans-formers for language understanding. In Proceedings ofthe 2019 Conference of the North American Chap-ter of the Association for Computational Linguis-tics: Human Language Technologies, Volume 1(Long and Short Papers), pp. 4171–4186, 2019.
+[2] Xiao Wang, Weikang Zhou, Can Zu, Han Xia, TianzeChen, Yuansen Zhang, Rui Zheng, Junjie Ye, Qi Zhang,Tao Gui, Jihua Kang, Jingsheng Yang, Siyuan Li, andChunsai Du. Instructuie: Multi-task instruction tun-ing for uniﬁed information extraction. arXiv preprintarXiv:2304.08085, 2023.
+[3] Guochao Jiang, Ziqin Luo, Yuchen Shi, Dixuan Wang, Ji-aqing Liang, and Deqing Yang. ToNER: Type-orientednamed entity recognition with generative language model.In Proceedings of the 2024 Joint International Con-ference on Computational Linguistics, LanguageResources and Evaluation (LREC-COLING 2024),pp. 16251–16262, 2024.
+[4] Wenxuan Zhou, Sheng Zhang, Yu Gu, Muhao Chen, andHoifung Poon. UniversalNER: Targeted distillation fromlarge language models for open named entity recognition.InThe Twelfth International Conference on Learn-ing Representations, 2024.
+[5] Yubo Ma, Yixin Cao, Yong Hong, and Aixin Sun. Largelanguage model is not a good few-shot information extrac-tor, but a good reranker for hard samples! In Findingsof the Association for Computational Linguistics:EMNLP 2023, pp. 10572–10601, 2023.
+[6] Seoyeon Kim, Kwangwook Seo, Hyungjoo Chae, JinyoungYeo, and Dongha Lee. VeriﬁNER: Veriﬁcation-augmentedNER via knowledge-grounded reasoning with large lan-guage models. In Proceedings of the 62nd AnnualMeeting of the Association for Computational Lin-guistics (Volume 1: Long Papers), pp. 2441–2461,2024.
+[7] Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc V Le,Ed H. Chi, Sharan Narang, Aakanksha Chowdhery, andDenny Zhou. Self-consistency improves chain of thoughtreasoning in language models. In The Eleventh Inter-national Conference on Learning Representations,2023.
+[8] Aman Madaan, Niket Tandon, Prakhar Gupta, Skyler Hal-linan, Luyu Gao, Sarah Wiegreﬀe, Uri Alon, Nouha Dziri,Shrimai Prabhumoye, Yiming Yang, Shashank Gupta,Bodhisattwa Prasad Majumder, Katherine Hermann, SeanWelleck, Amir Yazdanbakhsh, and Peter Clark. Self-reﬁne: Iterative reﬁnement with self-feedback. In Thirty-seventh Conference on Neural Information Process-ing Systems, 2023.
+[9] Xinyun Chen, Maxwell Lin, Nathanael Sch¨arli, and DennyZhou. Teaching large language models to self-debug. InThe Twelfth International Conference on LearningRepresentations, 2024.
+[10] Zhibin Gou, Zhihong Shao, Yeyun Gong, yelong shen, Yu-jiu Yang, Nan Duan, and Weizhu Chen. CRITIC: Largelanguage models can self-correct with tool-interactive cri-tiquing. In The Twelfth International Conference onLearning Representations, 2024.
+[11] Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, MarkChen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert,Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christo-pher Hesse, and John Schulman. Training veriﬁers to solvemath word problems. arXiv preprint arXiv:2110.14168,2021.
+[12] Alon Talmor, Jonathan Herzig, Nicholas Lourie, andJonathan Berant. CommonsenseQA: A question answer-ing challenge targeting commonsense knowledge. In Pro-ceedings of the 2019 Conference of the NorthAmerican Chapter of the Association for Computa-tional Linguistics: Human Language Technologies,Volume 1 (Long and Short Papers), pp. 4149–4158,2019.
+[13] Jacob Austin, Augustus Odena, Maxwell Nye, Maar tenBosma, Henryk Michalewski, David Dohan, Ellen Jiang,Carrie Cai, Michael Terry, Quoc Le, and Charles Sut-ton. Program synthesis with large language models. arXivpreprint arXiv:2108.07732, 2021.
+[14] Angela Fan, Mike Lewis, and Yann Dauphin. Hierarchicalneural story generation. In Proceedings of the 56th An-nual Meeting of the Association for ComputationalLinguistics (Volume 1: Long Papers), pp. 889–898,2018.
+[15] Ryo Kamoi, Yusen Zhang, Nan Zhang, Jiawei Han, andRui Zhang. When can LLMs actually correct their ownmistakes? a critical survey of self-correction of LLMs.Transactions of the Association for ComputationalLinguistics, Vol. 12, pp. 1417–1440, 2024.
+[16] Ikuya Yamada, Akari Asai, Hiroyuki Shindo, HideakiTakeda, and Yuji Matsumoto. LUKE: Deep contextual-ized entity representations with entity-aware self-attention.In Proceedings of the 2020 Conference on Em-pirical Methods in Natural Language Processing(EMNLP), pp. 6442–6454, 2020.
+[17] John D. Laﬀer ty, Andrew McCallum, and FernandoPereira. Conditional random ﬁelds: Probabilistic modelsfor segmenting and labeling sequence data. In Interna-tional Conference on Machine Learning, 2001.
+[18] Tim Dettmers, Artidoro Pagnoni, Ari Holtzman, and LukeZettlemoyer. QLoRA: Eﬃcient ﬁnetuning of quantizedLLMs. In Thirty-seventh Conference on Neural In-formation Processing Systems, 2023.
+[19] Jie Huang, Xinyun Chen, Swaroop Mishra, Huaixiu StevenZheng, Adams Wei Yu, Xinying Song, and Denny Zhou.Large language models cannot self-correct reasoning yet.In The Twelfth International Conference on Learn-ing Representations, 2024.
+[20] Theo X. Olausson, Jeevana Priya Inala, Chenglong Wang,Jianfeng Gao, and Armando Solar-Lezama. Is self-repair asilver bullet for code generation? In The Twelfth Inter-national Conference on Learning Representations,2024.
+
+表 2 NCR および FIB の統計量。
+† はサンプルあたりの平均値を示す。
+NCR FIBtrain dev. test train dev. testサンプル数 831 193 194 676 161 126単語数†67.5 63.6 64.7 51.1 52.3 57.5固有表現数†5.0 4.7 5.0 4.5 5.0 5.0usage 845 168 189 541 120 114material 2,750 619 662 2,181 605 445property 579 118 112 304 72 77表 3 CR1 および CR2 の統計量。
+† はサンプルあたりの平均値を示す。
+CR1 CR2train dev. test train dev. testサンプル数 191 64 77 628 116 137単語数†49.1 56.8 58.9 64.0 68.4 52.3固有表現数†3.0 3.7 3.1 4.8 5.6 4.3usage 142 49 71 539 120 109material 411 178 161 2,251 474 435property 24 7 8 238 52 51
+
+A データセットの詳細
+
+本稿では、化学分野の特許を対象として人手によるラベル付けを行い構築した固有表現抽出(NER)のデータセットを用いて検証した。
+検証に使用する特許は、非結晶性樹脂(NCR)、繊維(FIB)、結晶性樹脂(CR1，CR2)のドメインを対象に収集した。
+表 2 と表 3 に検証に使用したデータセットの統計量を示す。
+なお、指示学習および文脈内学習(ICL)の事例は train、モデルの分析(2 節、4.3 節)は dev.、モデルの性能評価(4.2 節)は test を用いて実験した。
+本データセットでは、用途(usage)、材料(material)，特性(property)の 3 種類の固有表現ラベルが用意されている。
+各ラベルの定義と事例を以下に示す。
+用途(usage)材料の用途あるいは機能を示す名詞(複合名詞を含む)に付与するラベルである(例:organic photocuring，medical tube，silicon rubber)材料(material)用途を実現するための構成要素を表す固有表現であり、形容詞を含む名詞に付与する(例: separator，silicone oil，polyimide wetgel)特性(property)材料が持つ物理的な特性または用途に関係する性質を表す(例: bending property，super-hydrophobicity，melt strength)図 5 ベースラインによる抽出結果および提案モデルによる抽出結果の修正例。
+
+B モデルの設定
+
+LLM の指示学習では、QLoRA[18]による量子化を適用した。
+なお、𝛼 = 128，𝑟 = 64 に設定した。
+また、バッチサイズは 1，gradient accumulation steps は8、学習率は 2e-5 に設定し学習を進めた。
+推論時は、貪欲法によるデコーディングを実施した。
+なお、出力のサブワード数の上限は、固有表現抽出(NER)は128、自己検証(SV)は 12、自己洗練(SR)は 16 に設定した。
+推論時の自己修正(SC)における SV およびSR の繰り返し処理(3.3 節)は 8 回を上限とした。
+
+
+C 固有表現抽出の修正例
+
+図 5 にベースラインの固有表現抽出結果と提案手法における固有表現の修正例を示す。
+ベースライン LLMNERは、正解の固有表現(“dispersibility”,“property”)を正しく抽出できているものの、“sandingslurry” のラベルを “usage” と誤認識するほか、正解の固有表現に部分一致しない無関係なエンティティ“titanium dioxide” を誤抽出している。
+一方、提案手法 LLMNER+SC+ Self-Correction はベースラインが誤認識したラベルを修正することで(“sanding slurry”,“material”)を導出できた。
+さらに、自己検証(SV)により不要な固有表現8）を棄却することで、修正不可な予測結果(“titanium dioxide”, “material”)の誤抽出を避けることができた。
+8） 3.3 節より、SV の予測結果が( ˜𝑣𝑖, ˜𝑐𝑖) = (incorrect, spurious)となる固有表現 ˜𝑠𝑖を棄却する。

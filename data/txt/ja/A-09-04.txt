@@ -1,0 +1,212 @@
+ニューラル機械翻訳のモデルレベル双方向学習における単言語データの活用
+
+加藤龍兵  秋葉友良  塚田元
+
+
+
+豊橋技術科学大学
+
+
+
+ {kato.ryuhei.vb,akiba.tomoyoshi.tk,tsukada.hajime.hl}@tut.jp
+
+
+
+概要
+
+双方向学習はタスク対の入出力の対称性を利用して、各タスクのモデル性能を相互的に高める手法である。
+機械翻訳分野でも、双方向学習は翻訳性能の向上や単言語データを使ったドメイン適応など幅広く応用されている。
+一方、双方向学習を単一モデルで行うモデルレベル双方向学習では単言語データの活用例が少ない。
+そこで本研究ではモデルレベル双方向学習での単言語データの利用法を提案する。
+具体的には、単言語データを用いる補助タスクおよび主タスクである翻訳と補助タスクとを併用するための訓練フレームワークを提案しドメイン適応実験で有効性を示す。
+
+
+
+1 はじめに
+
+翻訳問題は双方向性(Duality)を有する。
+双方向性とはある２タスクが対称的な入出力を持つ性質であり、この性質を持つタスク対を双方向問題と呼ぶ。
+タスク対の双方向性を利用して各タスクのモデル性能を相互的に高める手法は双方向学習（DualLearning） [1]と呼ばれる。
+また、Xia ら[2]は双方向学習を単一モデルで行うモデルレベル双方向学習(Model-Level DualLearning)を提案している。
+この手法では、エンコーダ・デコーダモデルにおけるエンコーダとデコーダ間の構造的類似性に着目し、両者のパラメータを共有することで単一モデルでの双方向翻訳を可能にする。
+森下ら[3]や Chien ら[4]は翻訳タスクの補助として入力を再現するタスクを導入し、モデルレベル双方向学習の翻訳性能を改善している。
+しかし、モデルレベル双方向学習で単言語データを活用した例は少ない。
+単言語データは一般に対訳データよりも容易かつ大量に入手できる。
+そのため、これを活用できればさらなる翻訳性能の改善が見込める。
+実際、モデルレベルでない双方向学習では単言語データを活用し翻訳性能を改善する例が見られる。
+例えば Iterative Back-Translation [5][6]は、単言語データを用いた各方向の翻訳モデルでの疑似対訳データの作成とモデルの更新とを反復的に行い、学習データが少ない設定での性能改善[6]や訓練対訳データと異なるドメインへの適応[7][8]を達成している。
+本研究では、モデルレベル双方向学習での単言語データの利用法を提案する。
+具体的には、モデルレベル双方向学習の先行研究[3][4]で採用された、入力を再現する補助タスクを単言語データ用に拡張する。
+考案した補助タスクは２つあり、１つは単言語データを入力とする入力再現タスクBestsampling-based Reconstruction（BBR）、もう１つは BBR を発展させた、オンラインで双方向に逆翻訳を行うタスク Online Round-trip Translation である。
+また、一般に翻訳タスクに用いる対訳データと補助タスクに用いる単言語データはデータ量が異なりバッチ学習に困難が生じる。
+そのため、バッチ単位でタスクを切り替える訓練フレームワークProgressive Iterative Back-Translation も提案する。
+
+
+2 モデルレベル双方向学習
+
+モデルレベル双方向学習では、エンコーダ・デコーダモデルにおけるエンコーダとデコーダ間の構造的類似性に基づいて両者をパラメータ共有することにより、単一モデルでの双方向学習を実現する。
+本研究では、Transformer [9]に基づくモデルレベル双方向学習のモデルアーキテクチャ Dualformer1）を用いる。
+Dualformer は Transformer のデコーダ２つから構成される。
+各デコーダはエンコーダとパラメータ共有されており、デコーダとしてもエンコーダとしても動作する。
+エンコーダとして使うに1） 名称は Chien ら[4]に拠る。
+は、図 1 のように Cross Attention 層を無効化し、SelfAttention 層の注意先を入力全体とする。
+また、トークン確率分布を得るための線形層と Softmax 層は用いない。
+図 1 Transformer のエンコーダ・デコーダのパラメータ共有により構成される Dualformer のデコーダ
+
+2.1 翻訳タスク
+
+Dualformer は翻訳時、ソース言語を出力するデコーダを図 1 のようにエンコーダとして用いる。
+一方、ターゲット言語を出力するデコーダはデコーダとして使う。
+なお、以降は後述する補助タスクとの整合性のためモデル訓練時の翻訳処理を説明する。
+まず対訳コーパスから言語 𝑋 と 𝑌 の対訳文ペア(𝑥, 𝑦)を得るとき、𝑋 → 𝑌 翻訳の処理は式(1)で表せる：ˆ𝑦 = T𝑌(D𝑌(𝑦, E𝑋(𝑥))). (1)ここで D𝑌は言語 𝑌 のデコーダであり、E𝑋は言語 𝑋のデコーダをエンコーダとして用いることを表す。
+また ˆ𝑦 は 𝑥 の翻訳結果であり、D𝑌に 𝑦 を入力するForced-decoding で求める。
+T𝑌は D𝑌が出力した中間表現をトークン確率分布に変換する処理である。
+𝑌 → 𝑋 翻訳の処理も同様に式(2)と書ける：ˆ𝑥 = T𝑋(D𝑋(𝑥, E𝑌(𝑦))). (2)
+
+2.2 再現タスク
+
+再現（Reconstruction）タスクは入力を再現するタスクであり、先行研究[3][4]で翻訳の一貫性向上を狙った補助タスクとして用いられている。
+ここでは、言語 𝑋 の入力 𝑥 の再現処理を式(3)で表す：𝑥′= T𝑋(D𝑋(𝑥, D𝑌(𝑦, E𝑋(𝑥)))). (3)ここで 𝑦 は 𝑥 の正解対訳である。
+再現タスクでは、ターゲット言語のデコーダにおける中間層の出力をエンコーダ出力としてソース言語のデコーダに入力する。
+これにより、入力𝑥の再現結果𝑥′を得る。
+同様に、言語 𝑌 の再現処理も式(4)で表せる：𝑦′= T𝑌(D𝑌(𝑦, D𝑋(𝑥, E𝑌(𝑦)))). (4)
+
+2.3 目的関数
+
+Dualformer の目的関数を式(5)に示す：LTotal=LTL+LRC. (5)目的関数のLTLは翻訳ロス、LRCは再現ロスであり、それぞれ式(6)と式(7)で計算する：LTL= CE(𝑥, ˆ𝑥) + CE(𝑦, ˆ𝑦), (6)LRC= CE(𝑥, 𝑥′) + CE(𝑦, 𝑦′). (7)ここで CE は Cross-entropy 誤差を意味する。
+
+3 提案手法
+
+Dualformer で単言語データを活用すため、補助タスクとして Bestsampling-based Reconstruction（BBR）および BBR を発展させた Online Round-tripTranslation（ORT）を提案する。
+さらに、これらの補助タスクと主タスクである翻訳とを併用してモデルを訓練するために、バッチ単位でタスクを切り替える訓練フレームワーク Progressive IterativeBack-Translation（PIBT）を提案する。
+
+3.1 補助タスク
+
+3.1.1 Bestsampling-based ReconstructionBBR は単言語データで行う再現タスクである。
+前述した再現タスクでは、入力を再現するために対応する正解対訳を使った forced-decoding を行う。
+しかし単言語データには正解対訳が存在しないため，BBR では前時刻までのデコーダ出力に基づくBest-sampling で入力を再現する。
+図 2 に言語 𝑋 における BBR の処理を示す。
+BBRの処理の流れは再現タスクと同様である。
+相違点は、前半のソース言語エンコーダとターゲット言語デコーダの処理をパラメータ更新の対象外とする点である。
+更新対象外とするのは、ターゲット言語デコーダの中間層の出力を得るべく各時刻の予測トークンをサンプリングするためである。
+サンプリング方法の Best-sampling は微分不可能な処理であり、これ以前の処理はパラメータの更新が行えない。
+そのため、BBR では最後のソース言語デコーダのみを訓練の対象とする。
+図 2 言語 𝑋 の Bestsampling-based Reconstruction 処理図 3 言語 𝑋 の Online Round-trip Translation 処理言語 𝑋 の BBR 処理を定式化する。
+まず、言語 𝑋の単言語コーパスからトークン系列 𝑥 を得て、𝑥 に対するターゲット言語 𝑌 のデコーダの中間表現 s𝑌を式(8)で求める：s𝑌= D𝑌( ˜𝑦, E𝑋(𝑥)). (8)ここで ˜𝑦 は 𝑥 の翻訳結果である。
+なお、翻訳方式は前時刻までの予測トークンに基づき再帰的に現時刻のトークンを決定する方式であり、トークンのサンプリング方式は Best-sampling である。
+最終的に、𝑥の BBR 結果 𝑥′BBRは式(9)で求める：𝑥′BBR= T𝑋(D𝑋(𝑥, s𝑌)). (9)言語 𝑌 の BBR 結果 𝑦′BBRも同様に式(10)で求める：𝑦′BBR= T𝑌(D𝑌(𝑦, s𝑋)). (10)3.1.2 Online Round-trip TranslationORT は、BBR を発展させてオンラインで双方向に逆翻訳を行うタスクである。
+言語 𝑋 の ORT の処理を図 3 に示す。
+ORT では、訓練対象の処理にターゲット言語エンコーダが加わる。
+この処理の入力はターゲット言語デコーダが出力した翻訳結果である。
+この翻訳結果をソース言語に翻訳する部分を訓練するのが ORT である。
+言語 𝑋 の ORT 処理を定式化する。
+まず、言語 𝑋の単言語コーパスから得た入力 𝑥 を BBR と同じく言語 𝑌 へ再帰的に翻訳し、˜𝑦 を得る。
+その後、 ˜𝑦 を式(11)で言語 𝑋 に翻訳し、ORT 結果 𝑥′ORTを得る。
+𝑥′ORT= T𝑋(D𝑋(𝑥, E𝑌( ˜𝑦))). (11)言語 𝑌 でも同様に ORT 結果 𝑦′ORTを求める。
+3.1.3 目的関数BBR と ORT の目的関数は再現タスクと同様である。
+具体的には、BBR は式(12)，ORT は式(13)が目的関数である：LBBR= CE(𝑥, 𝑥′BBR) + CE(𝑦, 𝑦′BBR),(12)LORT= CE(𝑥, 𝑥′ORT) + CE(𝑦, 𝑦′ORT).(13)
+
+3.2 訓練フレームワーク
+
+対訳データを使う翻訳タスクと単言語データを使う補助タスクを併用する際、データ種ごとのデータ数の差が問題となる。
+本研究では、データ種ごとにバッチを分ける訓練フレームワーク PIBT でこの問題に対応する。
+図 4 に PIBT の概略を示す。
+PIBT では、バッチごとに格納しているデータの種類が決まっており、１つのバッチ内に対訳データと単言語データとが混ざることはない。
+このバッチのデータ種によってタスクを切り替え、モデルはタスクごとの目的関数で訓練される。
+バッチは、対訳コーパスと単言語コーパスとで別々に作った後、両者のバッチをランダムに並び替えて作成する。
+図 4 Progressive Iterative Back-Translation の概略図
+
+4 実験
+
+
+
+4.1 データ設定
+
+提案手法の有効性をドメイン適応実験で示す．KFTT [10]をソースドメインの対訳コーパス、ASPEC [11]をターゲットドメインの単言語コーパスとして用いる。
+各コーパスの内訳を表 2 に示す。
+なお単言語コーパスは、単言語データ対が対訳の関表 1 ドメイン適応実験の結果モデル目的関数KFTT ASPEC日英英日日英英日開発テスト開発テスト開発テスト開発テストTFLTL20.20 23.40 18.14 19.99 6.07 6.13 3.71 4.04DFLTL19.11 23.46 19.81 20.95 6.07 6.30 4.41 4.39DFPIBTLTL,LBBR18.03 22.00 17.14 17.68 6.01 6.13 5.09 4.96LTL,LORT18.98 21.52 17.79 18.65 15.74 16.65 17.60 17.47DF960000PIBT（参考：付録 A）LTL,LORT19.30 22.34 20.45 21.08 20.67 21.23 26.22 26.23係にならないように、元の ASPEC の訓練セットの上位 100 万文2）から、英語はその中の上位 50 万文を、日本語は下位 50 万文を抽出し構築する。
+データの前処理は、日英共通で NFKC 正規化を行った後、英語にのみ True-casing を行う。
+トークン化には日英ともに語彙サイズ 16,000 の設定のSentencePiece [12]を用いる。
+表 2 実験に使用するデータの構成コーパスサブセット[文数]訓練開発テストKFTT 440,288 1,166 1,160ASPEC500,000 （日本語）500,000 （英語）1,790 1,812
+
+4.2 モデル設定
+
+モデルは、Transformer と補助タスクなしのDualformer の ２ つのベースラインおよび提案した補助タスクをそれぞれ適用した Dualformer の２つの計４つ作成する。
+いずれのモデルも、エンコーダ・デコーダ 6 層、全結合層の中間層 2,048 次元、アテンション重み 512 次元の構成である。
+最適化手法は Adam を用い、学習率は Inverse Square-root スケジューラで調節する。
+ウォームアップステップは4,000、訓練ステップは最大 30,000 である。
+評価用のモデルには、ターゲットドメインの開発セットに対する式(6)の翻訳損失が最小のものを使う。
+また、評価指標は単語単位の BLEU である。
+
+4.3 結果
+
+表 1 に実験結果を示す。
+なお、表中の TF と DF はそれぞれベースラインの Transformer と Dualformer，DFPIBTは提案手法で訓練した Dualformer を表す。
+また、各列最大の BLEU 値を太字で示す。
+ORT を適用したモデルはターゲットドメインである ASPEC において性能が大きく向上した。
+具体的には、ベースラインの Dualformer と比べて、ASPEC2） 配布されている ASPEC の訓練セットはアライメントスコアに基づく翻訳品質が高い順に並んでいる。のテストセットの日英方向で 10.35、英日方向で13.19 ポイント BLEU が向上した。
+一方、BBR はASPEC の英日方向でわずかな改善は示したものの、その他ではむしろ性能低下を招いた。
+実験結果から ORT の有効性が確認できたため、ORT 損失を併用する DFPIBTを ORT の性質に適う訓練設定で 960,000 ステップ訓練した。
+実験設定の詳細は付録A に示す。
+結果は表 1 の DF960000PIBTの行にある。
+この設定の訓練で、BLEU は日英方向で 21.23，英日方向で 26.23 まで改善することを確認した。
+
+
+
+5 おわりに
+
+本研究ではモデルレベル双方向学習で単言語データを利用する手法を提案し、ドメイン適応の実験で有効性を示した。
+提案した手法は、再現タスクを単言語データで実行する Bestsampling-basedReconstruction（BBR）とオンラインで双方向に逆翻訳を行う Online Round-trip Translation（ORT）の２つの補助タスクおよびこれらを扱うための訓練フレームワーク Progressive Iterative Back-Translation である。
+ドメイン適応実験の結果、ORT はターゲットドメインに対する BLEU を大幅に改善した。
+これは先行研究[8]で報告された Iterative Back-Translation（IBT）の実験結果に迫る翻訳性能である。
+この結果が得られた理由は、ORT でパラメータを更新する処理が逆翻訳そのものであり、実質的にオンラインで IBT を行うのと同等の効果が得られたためと推測する。
+ただし、IBT と ORT は逆翻訳のタイミングが異なる。
+具体的には、IBT ではモデルの訓練後に、ORTではモデルの訓練中に単言語データを逆翻訳する。
+ORT の逆翻訳方式の利点は、疑似対訳ペアをその都度生成するため、常に最高品質のデータで訓練できることである。
+また、Dualformer はパラメータ共有により Tranformer の半分程度のパラメータサイズで双方向翻訳ができ、さらに両方向の性能を相互的に高める効果も期待できる。
+そのため、今後は IBT とORT を翻訳性能や収束性の観点で比較したい。
+
+
+
+謝辞
+
+本研究は JSPS 科研費 23K11118 の助成を受けたものです。
+
+参考文献
+
+
+[1] Di He, Yingce Xia, , Tao Qin, Liwei Wang, Nenghai Yu,Tie-Yan Liu, and Wei-Ying Ma. Dual learning for machinetranslation. In 30th Conference on Neural Informa-tion Processing System, 2016.
+[2] Yingce Xia, Xu Tan, Fei Tian, Tao Qin, Nenghai Yu,and Tie-Yan Liu. Model-level dual learning. In JenniferDy and Andreas Krause, editors, Proceedings of the35th International Conference on Machine Learn-ing, Vol. 80 of Proceedings of Machine Learning Re-search, pp. 5383–5392. PMLR, 10–15 Jul 2018.
+[3] 森下睦, 鈴木潤, 永田昌明. 双方向学習と再現学習を統合したニューラル機械翻訳. 言語処理学会年次大会発表論文集 (Web), Vol. 25th, , 2019.
+[4] Jen-Tzung Chien and Wei-Hsiang Chang. Dualformer: Auniﬁed bidirectional sequence-to-sequence learning. InICASSP 2021 - 2021 IEEE International Confer-ence on Acoustics, Speech and Signal Processing(ICASSP), pp. 7718–7722, 2021.
+[5] Zhirui Zhang, Shujie Liu, Mu Li, Ming Zhou, and EnhongChen. Joint training for neural machine translation modelswith monolingual data. In Proceedings of the Thirty-Second AAAI Conference on Artiﬁcial Intelligenceand Thirtieth Innovative Applications of ArtiﬁcialIntelligence Conference and Eighth AAAI Sympo-sium on Educational Advances in Artiﬁcial Intelli-gence, AAAI’18/IAAI’18/EAAI’18. AAAI Press, 2018.
+[6] Vu Cong Duy Hoang, Philipp Koehn, Gholamreza Haf-fari, and Trevor Cohn. Iterative back-translation for neuralmachine translation. In Alexandra Birch, Andrew Finch,Thang Luong, Graham Neubig, and Yusuke Oda, editors,Proceedings of the 2nd Workshop on Neural Ma-chine Translation and Generation, pp. 18–24, Mel-bourne, Australia, July 2018. Association for Computa-tional Linguistics.
+[7] 森田知熙, 秋葉友良, 塚田元. 双方向の逆翻訳を利用したニューラル機械翻訳の教師なし適応の検討. 第５回自然言語処理シンポジウム, pp. 1–5, 2018.
+[8] Takuma Tanigawa, Tomoyosi Akiba, and Hajime Tsukada.Analysis on unsupervised acquisition process of bilingualvocabulary through iterative back-translation. In Nico-letta Calzolari, Min-Yen Kan, Veronique Hoste, Alessan-dro Lenci, Sakriani Sakti, and Nianwen Xue, editors, Pro-ceedings of the 2024 Joint International Confer-ence on Computational Linguistics, Language Re-sources and Evaluation (LREC-COLING 2024), pp.887–892, Torino, Italia, May 2024. ELRA and ICCL.
+[9] Ashish Vaswani, Noam Shazeer, Niki Parmar, JakobUszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser,and Illia Plosukhin. Attention is all you need, 2017.https://arxiv.org/abs/1706.03762.
+[10] Graham Neubig. The Kyoto free translation task.http://www.phontron.com/kftt, 2011.
+[11] Toshiaki Nakazawa, Manabu Yaguchi, Kiyotaka Uchi-moto, Masao Utiyama, Eiichiro Sumita, Sadao Kurohashi,and Hitoshi Isahara. ASPEC: Asian scientiﬁc paper excerptcorpus. In Nicoletta Calzolari, Khalid Choukri, ThierryDeclerck, Sara Goggi, Marko Grobelnik, Bente Maegaard,Joseph Mariani, Helene Mazo, Asuncion Moreno, JanOdijk, and Stelios Piperidis, editors, Proceedings of theTenth International Conference on Language Re-sources and Evaluation (LREC’16), pp. 2204–2208,Portorož, Slovenia, May 2016. European Language Re-sources Association (ELRA).
+[12] Taku Kudo and John Richardson. SentencePiece: A sim-ple and language independent subword tokenizer and deto-kenizer for neural text processing. In Eduardo Blanco andWei Lu, editors, Proceedings of the 2018 Conferenceon Empirical Methods in Natural Language Pro-cessing: System Demonstrations, pp. 66–71, Brus-sels, Belgium, November 2018. Association for Computa-tional Linguistics.
+
+
+
+
+A ORT の追加実験の設定
+
+ORT によるさらなる性能改善を目指して、訓練ステップ数を増やし、かつモデルの訓練設定を ORTの性質に適うものに変更した ORT の追加実験を行う。
+結果は表 1 中の DF960000PIBT行にある。
+本節では、この実験を行うにあたって他の実験から変更した箇所を説明する。
+訓練ステップ数は 960,000 とし、その全区間で翻訳タスクと ORT とを併用する。
+ただし 12,000 ステップを過ぎてからは、モデル訓練における ORTの影響を強めるために各損失へ係数をかける。
+具体的には、翻訳損失（式(6)）には 0.5 を、ORT 損失（式(13)）には 1.5 をかける。
+また、学習率スケジューリングの方式も変更する。
+具体的には、ウォームアップ区間では学習率を式(14)で線形に変える：lr =init_lrwarmup_steps(14)ここで init_lr はウォームアップ区間終了直後の学習率、warmup_steps はウォームアップのステップ数を意味する。
+本稿では init_lr = 0.0015，warmup_steps = 4000 と設定する。
+ウォームアップ以降の学習率は、init_lr の値に固定する。
+これらの変更を加える理由は２つある。
+１つ目は、提案手法の有効性をドメイン適応実験で検証するからである。
+ORT の実行にはターゲットドメインの単言語データを用いるため、ドメイン適応ではモデル訓練における ORT 損失の割合を増やすことが効果的だと考えた。
+２つ目の理由は、ORT による逆翻訳結果が常に更新され続けるからである。
+他の実験で用いた Inverse Square-root 学習率スケジューラはウォームアップ区間以降、学習率を小さくしていく。
+これは学習データが訓練中に固定の場合は有効だが、新しい学習データがオンラインで生成されるORT のような手法を用いる際は、生成した学習データの品質が最高になるはずの訓練後半において学習率が小さくなってしまい、学習データの品質をモデル訓練にうまく活用できない可能性がある。
+そのため、ウォームアップ区間で最低限の翻訳性能を確保した後は学習率を固定する。

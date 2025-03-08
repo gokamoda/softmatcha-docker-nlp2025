@@ -1,0 +1,271 @@
+埋め込み表現の独立成分の言語内・言語間一貫性の分析
+
+飯森栄治
+
+1
+
+ 松田孟留
+
+1,2
+
+ 谷中瞳
+
+1,21
+
+東京大学 
+
+2
+
+理化学研究所
+
+
+
+{iimori-eiji,hyanaka}@is.s.u-tokyo.ac.jp  matsuda@mist.i.u-tokyo.ac.jp
+
+
+
+概要
+
+単語埋め込みは単語を多次元の実数ベクトルとして表現し、データとして解析しやすくする一方で、その数値の解釈が難しい。
+独立成分分析（Independent Component Analysis, ICA）を用い、埋め込みから独立した主要な特徴を抽出することで、より明確な意味軸を生成し、言語間で普遍的な意味軸が存在する可能性がある。
+しかし、言語内および言語間における独立成分の一貫性は、これまで十分に検証されてこなかった。
+そこで、本研究では、一つの言語内と複数言語間の両面から、意味軸の一貫性を調査した。
+まず、言語内の一貫性を調べるために，ICA アルゴリズムを複数回実行して得られた結果をクラスタリングし、意味軸の再現性に着目した。
+次に、統計検定を用いてこれらの軸の対応関係を検証することで、言語間の一貫性を統計的に評価した。
+この研究は統計的手法を適用し、意味軸の信頼性と普遍性を担保するための手法を確立した。
+
+
+1 はじめに
+
+単語埋め込みは、自然言語の単語を多次元の実数ベクトル空間（たとえばユークリッド空間）に表現し、データとして扱いやすくする手法である。
+このような埋め込みは、単語や文を連続的に表現するため、データの解析や処理を容易にする。
+しかし、単語埋め込みは学習データや埋め込み空間の次元数によって値が大きく変化するため、解釈が難しいという課題がある[1]。
+たとえば、「Argentina」の埋め込みベクトルが[0.0088871, −0.02218, . . . ]であると言っても、その意味が具体的に何を示すのか分かりにくい。
+この解釈可能性の問題に対処するため、主成分分析（PCA）や独立成分分析（ICA, [2]）などの手法が提案されてきた。
+ICA は、PCA よりも「意味軸」の解釈性が高い表現を提供するとされている[3]。
+ここで「意味軸」とは、単語埋め込み空間において概図 1 独立成分を言語内および言語間でクラスタリングした様子を示す図。
+Icasso によって生成されたクラスタが円で表され、各クラスタの品質指数は数字で表されている。
+品質指数が高いクラスタには単語を用いて解釈を付与した。
+また、直線で結ばれたものは、言語間一貫性があるとしてまとめられた独立成分のグループを示す。
+念や特徴を共有する単語群をひとつの軸として表す独立成分のことである。
+たとえば、ある独立成分が「apple」「banana」「peach」といった単語に対して高いスコアを示す場合、その意味軸を果物という概念として解釈し、[apple banana peach]というラベルを付与できる。
+[4]は、ICA を用いることで、多言語単語埋め込みを解釈可能な軸に分解できることを示し、特定の意味軸が言語を超えて普遍的に存在する可能性を示唆した。
+しかし、この研究には大きく二つの限界があった。
+一つは、言語間の意味軸の対応を相関係数の計算のみに基づいて評価していた点である。
+もう一つは、言語内および言語間における独立成分の一貫性について検証を行っていなかった点である。
+本研究において、一貫性とは、一つの言語内で複数回の実行にわたって出現する独立成分の安定性（言語内一貫性）と、複数の言語間で正しく対応が確認できる意味軸（言語間一貫性）を指す。
+[3]や[4]によって、単一言語内での意味軸発見は示唆されるが、これらの軸がどの程度言語を超えて共有されるのかは明らかでない。
+本研究では、多言語間にわたる意味軸の類似性を定量的に示すことで、この問題に取り組む。
+具体的には、まず各言語における独立成分の信頼性を Icasso [5]を用いて検証する。
+Icasso は ICA アルゴリズムを複数回実行し、その結果をクラスタリングすることで一貫性を担保する手法である。
+次に、クラスタ中心の独立成分に単語ラベルを付与し意味軸を得た後、統計的手法を用いて意味軸の対応関係を分析する。
+さらに、脳科学の分野で開発された[6]の手法を活用し、複数の言語に共通する独立成分を特定する。
+本研究の貢献は、単語埋め込みの解釈性と一貫性を向上させる点にある。
+言語内では Icasso を用いてロバストな独立成分を抽出し、言語間では統計的検定により対応を検証することで、多言語単語埋め込みの意味構造をより厳密に分析できるフレームワークを提案する。
+1）
+
+2 背景
+
+単語埋め込みの解釈性単語埋め込みの解釈可能性に関する問題は、これまで活発に議論されてきた。
+埋め込み空間のアライメント[7, 8, 9]や、損失関数の設計、スパースで過完備なベクトル表現[4]など、さまざまなアプローチが提案されている。
+これらの手法は一定の有効性を示しているが、単語の意味が類似している場合に埋め込み空間上で近接させることに主眼が置かれており、意味構造をより深く解釈する点では十分とはいえない場合が多い。
+こうした中、ICA は比較的新しい手法として注目を集めており、単語埋め込みに潜む意味軸を明示的に示す可能性がある。
+[10]や[3]は、単語埋め込みに ICA を適用し、単語の意味軸を示した。
+また、[4]は，PCA および ICA の両方を単語埋め込みに対して実施し、埋め込み内に内在する意味軸の存在を示した。
+その比較において、ICA は PCA よりもより際立った軸を抽出できることが報告されている。
+ICA ICA は、多変量データから統計的に独立な成分を抽出する手法である[2]。
+データ次元を𝑑、観測数を 𝑛 とすると、データ行列 X ∈ ℝ𝑑×𝑛に1） コードは次のリポジトリに公開される: https://github.com/des737/ExploreIca対し、ICA は X = AS のように仮定する。
+ここで、A ∈ ℝ𝑑×𝑑は混合行列、S ∈ ℝ𝑑×𝑛は独立成分を格納した行列である。
+すなわち、S の行は互いに統計的に独立な 𝑑 個の潜在因子を表し、A はそれらの因子が各観測変数（𝑑 次元）にどのように組み合わさっているかを示す。
+ICA は、独立成分が非ガウス性をもつという性質を利用して A と S を推定する手法であり、音声や脳神経イメージングなど、多様な分野において信号分離や特徴抽出に用いられてきた[2]。
+ただし、後述のように、ICA はアルゴリズムの非決定性により、得られる結果が再現性に乏しいことが指摘されている。
+この問題を解消するためにIcasso を用い、ICA が本来もつ非決定性の影響を統計的な枠組みで緩和し、意味軸の解釈性と一貫性を高める。
+本研究では[4]の研究を発展させ、[6]が提案するクラスタ対応づけ手法と Icasso を組み合わせることで、言語内および言語間の独立成分における一貫性を検証する。
+
+
+3 単語埋め込みの一貫性
+
+
+
+3.1 言語内一貫性
+
+PCA と異なり、ICA はアルゴリズム（例：FastICA[11]）におけるランダムな初期化や、観測数の不足、データ中のノイズなどにより、異なる実行で結果が変化することがある。
+そのため、独立成分の再現性を検証する必要がある。
+[5]は、独立成分のアルゴリズム的かつ統計的な信頼性を評価するため、Icasso という手法を開発した。
+本研究では、言語ごとに固有の意味軸の一貫性を評価するため、単語埋め込みに対して Icasso を適用する。
+以下では、Icasso の手順を簡単に説明する（定義は付録 A、詳細は[5]を参照）。
+まず、データ行列X ∈ ℝ𝑑×𝑛に対して ICA を 𝑚 回実行し、各実行で得られた 𝑑 個の独立成分を 𝑚 セット取得する。
+次に、それらのセットに含まれる独立成分同士（異なるセット間）をペアに取り、その類似度を計算する（対となるペアは合計で 𝑚 (𝑚 − 1)/2 · 𝑑2個）。
+この類似度に基づいて、独立成分を凝集法による階層的クラスタリングによってまとめる。
+具体的には、最初は 𝑚𝑑 個の独立成分をそれぞれ 1 つずつのクラスタに分け、最も類似度の高い 2 つのクラスタを順次マージしていく。
+さらに、[5]で導入された品質指数を用いて、各クラスタの信頼性を 0 から 1 の値で定量化する。
+品質指数が 1 に近いクラスタは再現性が高い独立成分を表しており、単語埋め込みの場合は、一貫した意味軸に対応すると考えられる。
+
+
+3.2 言語間一貫性
+
+ICA を用いると、各言語ごとに意味軸を抽出できるが、複数の言語で得られた意味軸同士に対応関係があるかどうかは、これまで定量的に調べられていない。
+そこで、本研究では、複数言語間にわたる意味軸の一貫性を統計的な有意性の観点から評価する。
+具体的には、[6]の手法を利用し、複数のデータから抽出された独立成分をクラスタリングする。
+ここでは、英語と日本語の間での一貫性を調べる場合を例として説明する。
+同じ意味をもつ英語と日本語の単語（例：「word」と「単語」）を対として、合計 𝑛 組用意するとする。
+これらの単語の 𝑑次元の埋め込みベクトルをそれぞれ並べた行列をXE∈ ℝ𝑑×𝑛，XJ∈ ℝ𝑑×𝑛とする。
+各行列に ICA を適用し、XE= AESE，XJ= AJSJを得る。
+SEと SJの各行は、それぞれの独立成分の活性化パターンを表している。
+次に、𝑖, 𝑗 = 1, . . . , 𝑑 について、SEの第 𝑖 行と SJの第 𝑗 行が互いに独立であるという帰無仮説に対する p 値を求め（多重比較補正を含む）、これを類似度の指標とする。
+もし p 値が小さい場合、英語の第 𝑖 番目の独立成分と日本語の第 𝑗 番目の独立成分は統計的に有意なレベルで類似していると解釈できる。
+このようにして求められた各言語ペア間の p 値をもとに、複数言語からの独立成分を凝集法による階層的クラスタリングでまとめる。
+得られるクラスタは、言語を超えて共通する意味軸の一貫性を示しているといえる。
+
+
+
+3.3 独立成分の解釈
+
+単語埋め込みから得られた独立成分を解釈するために、以下の方法で選んだ 3 つの代表単語を用いる。
+ICA では、X = AS と書けるため、𝑗 番目の単語の埋め込みベクトル（X の 𝑗 列目）は，x𝑗= 𝑠1 𝑗a1+ · · · + 𝑠𝑑 𝑗a𝑑と表せる。
+ここで、a𝑖は A の第 𝑖 列ベクトル、𝑠𝑖 𝑗は S の(𝑖, 𝑗 )成分である。
+𝑠𝑖 𝑗は，第 𝑖 番目の独立成分と第 𝑗 番目の単語との関連度を表す値であり、この値が大きいほど、その単語は第 𝑖 番目の独立成分に強く関係しているといえる。
+そこで、第 𝑖 行のエントリ 𝑠𝑖 𝑗1> 𝑠𝑖 𝑗2> 𝑠𝑖 𝑗3> . . . のように降順に並べ、上位にある 𝑗1, 𝑗2, 𝑗3番目の単語を、第 𝑖 番目の独立成分の代表単語として選ぶ。
+これらの代表単語によって、独立成分が示す意味軸を直感的に理解できるようになる。
+
+
+
+4 実験
+
+まず、各言語内における一貫性に着目した言語内分析を行い、その後、言語間における一貫性を検証する言語間分析を行った。
+[4]の設定に合わせるため、157 言語で学習された FastText [12]の埋め込みを用いた。
+英語・日本語・中国語それぞれについて，300 次元の埋め込みベクトルを 50000 語分取得し、行列 X0, X1, X2∈ ℝ300×50000とした。
+この 50000語は、多言語辞書[13]に含まれる 3 言語共通の 6903語と、Wordfreq [14]によって各言語の出現頻度順に選んだ 43097 語から構成されている。
+英語・日本語・中国語の単語埋め込みに対しては、[15]が実装した Icasso を用い、実行回数を 10 回、クラスタ数を 300 に設定して適用した。
+その後、言語間の独立成分の一貫性を検証するため、[6]の手法を用いて対応関係を評価した。
+この際、偽発見率と偽陽性率をいずれも 1%に設定した（付録 B に詳細を示す)。
+
+
+5 結果と議論
+
+
+
+5.1 結果
+
+図 2 に Icasso の結果を示す。
+品質指数が 0.8 に達した後、明らかに減少している様子が見られる。
+品質指数が 0.8 を超えるクラスタ数は、英語が 118，日本語が64、中国語が104であった。
+言語間分析の結果、全体で 47 のクラスタ（合計354（118 × 3）個のベクトルのうち 120 個）を検出した。
+これは、1 クラスタあたり平均 2.55 のベクトルが含まれる計算になる。
+言語間クラスタの組み合わせとしては、英語—日本語、日本語—中国語、中国語—英語、および 3 言語すべてを含むものがそれぞれ 7，10，4，26 であった。
+この結果からは、日本語と中国語がより多くの意味的類似性を共有しており、英語と中国語共有程度がより低いことが示唆される。
+さらに、3 言語すべてで共有されるクラスタが多いことは、普遍的な意味概念が存在する可能性を示している。
+実験設定で述べたように静的な単語埋め込みに対して Icasso を適用した結果、品質指数が 0.8 を超えるクラスタとして、各言語で最大 118 個の安定した独立成分を特定した。
+そこで、品質指数が高い順英語日本語中国語verb noun word 流暢発音方言話流利諺語(ﬂuency)(pronunciation)(dialect)(speech)(ﬂuency)(proverb)nun pope monk 教義礼拝会衆恩典基督祷告(doctrine)(worship)(congregation)(grace)(chr ist)(prayer)ﬁlm gore cinema 演技俳優演劇放映喜劇戲服(acting)(actor)(drama)(screening)(comedy)(costume)sum cosine ray 乗法整数写像方程向量切線(multiplication)(integer)(mapping)(equation)(vector)(tangent)war army navy 塹壕師団歩兵騎兵歩兵軍(trench)(division)(infantry)(cavalry)(infantry)(army)表 1 クラスタの代表的な単語に各クラスタの中心に位置する独立成分を選び出し，S0, S1, S2∈ ℝ118×50000という独立成分行列を構築した。
+表 1 は、得られた意味軸の一部を解釈した結果を示している。
+各軸は「単語」「宗教」「映画」「数学用語」「軍隊」などのテーマに関係しており、言語間で軸が明確に対応している様子が分かる。
+0 50 100 150 200 250 300ICA components0.20.40.60.81.0Quality indexStability of ICA componentsEnglishJapaneseChinese図 2 FastText 埋め込みの品質指標
+
+5.2 定量評価
+
+軸の対応関係を評価するため、人間による判断実験を行った。
+トリリンガルの被験者 5 名が参加し、2値分類によって意味軸の類似性が十分であるかどうかを判定した。
+その結果を Fleiss の 𝜅 係数（付録 Aで定義）で評価したところ、𝜅 = 0.364，¯𝑃 = 0.702，¯𝑃𝑒= 0.531 という値が得られた。
+これは、[16]が示す「𝜅 が 0.2 以上 0.4 未満」 の範囲に該当し、抽出した意味軸がおおむね人間の判断とも整合的であることを示唆している。
+
+
+5.3 議論
+
+5.1 の結果からわかるように、言語によって安定したクラスタ数が異なる。
+英語は、最も多くの安定クラスタ数（118 個）を示した。
+これは、英語が埋め込み空間の中心となり、多くの安定した意味クラスタを生み出す要因になっている可能性があると考えられる。
+一方で、日本語（64 個）より中国語（104 個）の安定クラスタ数が多い点は、特に興味深い。
+辞書データ2）によると、中国語の単語は日本語の単語に比べ、英語の単語と対応する数が平均して多い傾向がある。
+これは、中国語の単語がより広範な意味領域をカバーしていたり、多義性が高かったりする可能性を示唆している。
+より多くの英単語に対応することで、中国語の単語が広範な意味を獲得し、分析時により多くの明確で安定した意味軸が生まれたと考えられる。
+以上のように、言語ごとに安定クラスタ数は異なるものの、最大 118 個のうち約 30%に当たる 47 が他言語と共通する軸であることが示された点は、これらの言語間で普遍的な意味概念が共有されていることを示唆する。
+また、本研究では軸の代表単語として 3 語を用いたが、これは[4]による 1 語での表現を拡張したものである。
+単に 1 語だけでなく複数の語で意味軸を示すことで、人間が軸を解釈しやすくなるメリットがあり、実験結果や統計的有意性には影響しない。
+
+
+6 おわりに
+
+本研究では、ICA で抽出した意味軸に着目し、言語内および言語間における一貫性を統計的に検証した．ICA がもつ不安定性を考慮し、複数回の実行結果をクラスタリングする Icasso を用いることで、英語・日本語・中国語について高い品質指数をもつ再現性の高い意味軸を得た。
+また、[6]の手法を用いて、これらの意味軸が言語を超えて共有されるかどうかを厳密な統計検定により検証した。
+2） 付録 C を参照。
+
+
+
+謝辞
+
+本研究は JSPS 科研費 22K17865 と JST さきがけJPMJPR21C8 の助成を受けたものである。
+
+参考文献
+
+
+[1] Omer Levy and Yoav Goldberg. Dependency-based wordembeddings. In Kristina Toutanova and Hua Wu, editors,Proceedings of the 52nd Annual Meeting of theAssociation for Computational Linguistics (Volume2: Short Papers), pp. 302–308, Baltimore, Maryland,June 2014. Association for Computational Linguistics.
+[2] Aapo Hyvärinen, Juha Karhunen, and Erkki Oja. Indepen-dent component analysis, adaptive and learning systemsfor signal processing, communications, and control. JohnWiley & Sons, Inc, Vol. 1, pp. 11–14, 2001.
+[3] Tomáš Musil and David Mareček. Exploring interpretabil-ity of independent components of word embeddings withautomated word intruder test. In Nicoletta Calzolari, Min-Yen Kan, Veronique Hoste, Alessandro Lenci, SakrianiSakti, and Nianwen Xue, editors, Proceedings of the2024 Joint International Conference on Computa-tional Linguistics, Language Resources and Evalu-ation (LREC-COLING 2024), pp. 6922–6928, Torino,Italia, May 2024. ELRA and ICCL.
+[4] Hiroaki Yamagiwa, Momose Oyama, and Hidetoshi Shi-modaira. Discover ing universal geometry in embeddingswith ICA. In Houda Bouamor, Juan Pino, and Kalika Bali,editors,Proceedings of the 2023 Conference on Em-pirical Methods in Natural Language Processing,pp. 4647–4675, Singapore, December 2023. Associationfor Computational Linguistics.
+[5] Johan Himberg, Aapo Hyvärinen, and Fabrizio Esposito.Validating the independent components of neuroimagingtime series via clustering and visualization. NeuroImage,Vol. 22, No. 3, pp. 1214–1222, 2004.
+[6] Aapo Hyvärinen and Pavan Ramkumar. Testing indepen-dent component patterns by inter-subject or inter-sessionconsistency. Frontiers in Human Neuroscience, Vol. 7,p. 94, 2013.
+[7] Abhishek Panigrahi, Harsha Vardhan Simhadri, and Chi-ranjib Bhattacharyya. Word2Sense: Sparse interpretableword embeddings. In Anna Korhonen, David Traum, andLluís Màrquez, editors, Proceedings of the 57th An-nual Meeting of the Association for ComputationalLinguistics, pp. 5692–5705, Florence, Italy, July 2019.Association for Computational Linguistics.
+[8] Sungjoon Park, JinYeong Bak, and Alice Oh. Rotatedword vector representations and their interpretability. InMartha Palmer, Rebecca Hwa, and Sebastian Riedel, edi-tors, Proceedings of the 2017 Conference on Empir-ical Methods in Natural Language Processing, pp.401–411, Copenhagen, Denmark, September 2017. Asso-ciation for Computational Linguistics.
+[9] Rishi Bommasani, Kelly Davis, and Claire Cardie. In-terpreting Pretrained Contextualized Representations viaReductions to Static Embeddings. In Dan Jurafsky, JoyceChai, Natalie Schluter, and Joel Tetreault, editors, Pro-ceedings of the 58th Annual Meeting of the As-sociation for Computational Linguistics, pp. 4758–4781, Online, July 2020. Association for ComputationalLinguistics.
+[10] Tomáš Musil and David Mareček. Independent compo-nents of word embeddings represent semantic features.ArXiv, Vol. abs/2212.09580, , 2022.
+[11] Aapo Hyvärinen. Fast and robust ﬁxed-point algorithmsfor independent component analysis. IEEE transactionson Neural Networks, Vol. 10, No. 3, pp. 626–634, 1999.
+[12] Armand Joulin, Edouard Grave, Piotr Bojanowski,Matthijs Douze, Hérve Jégou, and Tomas Mikolov. Fast-text.zip: Compressing text classiﬁcation models. arXivpreprint arXiv:1612.03651, 2016.
+[13] Alexis Conneau, Guillaume Lample, Marc’Aurelio Ran-zato, Ludovic Denoyer, and Hervé Jégou. Word translationwithout parallel data. arXiv preprint arXiv:1710.04087,2017.
+[14] Robyn Speer. rspeer/wordfreq: v3.0, September 2022.
+[15] Nicolas Captier, Jane Merlevede, Askhat Molkenov, AinurAshenova, Altynbek Zhubanchaliyev, Petr V Nazarov, Em-manuel Barillot, Ulykbek Kairov, and Andrei Zinovyev.Biodica: a computational environment for independentcomponent analysis of omics data. Bioinformatics,Vol. 38, No. 10, pp. 2963–2964, 2022.
+[16] J Richard Landis and Gary G Koch. The measurementof observer agreement for categorical data. Biometrics,Vol. 33, No. 1, pp. 159–174, 1977.
+[17] Yoav Benjamini and Yosef Hochberg. Controlling the falsediscovery rate: A practical and powerful approach to mul-tiple testing. Journal of the Royal Statistical Society:Series B (Methodological), Vol. 57, No. 1, pp. 289–300, 1995.
+[18] Aapo Hyvärinen. Testing the ICA mixing matrix based oninter-subject or inter-session consistency. NeuroImage,Vol. 58, No. 1, pp. 122–136, 2011.
+
+
+
+
+A 定義
+
+
+
+A.1 類似度
+
+𝑠𝑖と 𝑠𝑗の類似度 𝜎𝑖 𝑗は、次式で定義する。
+𝜎𝑖 𝑗=1𝑑Í𝑘𝑠𝑖𝑘𝑠𝑗 𝑘q1𝑑Í𝑘𝑠2𝑖𝑘q1𝑑Í𝑘𝑠2𝑗 𝑘つまり、𝜎 は相関係数の絶対値であり、差異の程度は次式で与えられる。
+𝑑𝑖 𝑗= 1 − 𝜎𝑖 𝑗.
+
+A.2 品質指標
+
+品質指標 𝐼𝑞は次式で定義する。
+𝐼𝑞(𝐶𝑚) =1|𝐶𝑚|2Õ𝑖, 𝑗 ∈𝐶𝑚𝜎𝑖 𝑗−1|𝐶𝑚||𝐶−𝑚|Õ𝑖∈𝐶𝑚Õ𝑗 ∈𝐶−𝑚𝜎𝑖 𝑗,ここで 𝐶𝑚はクラスタ 𝑚 を、𝐶−𝑚はクラスタ 𝑚 を除いたすべての独立成分集合を指す。
+|𝐶𝑚| はクラスタ内の成分数である。
+
+
+A.3 Fleiss の 𝜅 係数
+
+Fleiss の 𝜅 係数は次式で定義する。
+𝜅 =¯𝑃 −¯𝑃𝑒1 −¯𝑃𝑒.
+
+B FDR と FPR
+
+複数の言語間テストを行う場合、テスト数が増加するにつれて、偶然に帰無仮説が棄却される可能性がある。
+たとえば、有意水準を 5%に設定すると、帰無仮説がすべて真であるとしても、1000 回のテストのうち約 50 回は偶然に帰無仮説が棄却される可能性がある。
+そのため、以下に示すように、しばしば補正を行ってこの問題に対処する。
+偽発見率（FDR: false discovery rate）は次式で定義する。
+FDR =真の帰無仮説を誤って棄却した件数棄却された帰無仮説の総数,ここで 𝐻0は帰無仮説を指す。
+全体のテストにわたって FDR をある指定値 𝛼𝐹𝐷以下に保つため、[17]が提案した手法により、各テストにおいて補正された FDR 𝛼𝑐𝑜𝑟𝑟𝐹𝐷を計算する。
+さらに、FDR に加えて偽陽性率（FPR: false positiverate）も考慮する。
+FPR は次式で定義する。
+FPR =真の帰無仮説を誤って棄却した件数帰無仮説が偽であるケースの件数.FDRを𝛼𝐹 𝑃以下に抑えるため、Bonferroni補正[18]によって補正値 𝛼𝑐𝑜𝑟𝑟𝐹 𝑃を計算する。
+本研究の実験では、複数言語間でクラスタが存在するかどうかを確認するために FPR を用い、すでに存在するクラスタにどの成分を属させるかを決定するために FDR を用いた。
+
+
+
+C 辞書統計量
+
+英日辞書に含まれる日本語の単語数は 21003、英語の単語数は 22531 であった。
+英中辞書に含まれる中国語の単語数は 13768、英語の単語数は 25969 であった。
+
+D アンケートフォーム
+
+以下のアンケートフォームは、意味軸の定量的評価を行うために使用したものである。
+アンケートフォーム以下はいくつかの言語の単語の羅列です。
+英語、日本語、中国語のそれぞれの単語がすべて同じような意味のカテゴリに属していると思った場合は、チェックを入れてください。
+例として、en:[‘eyes’ ‘see’ ‘rib’] ja:[‘視界’ ‘網膜’ ‘凝視’] zh:[‘觀看’ ‘凝視’ ‘眼’]この場合、3つの言語で目と関連する意味を持っているため、チェックを入れます。
+en:[‘deco’ ‘arts’ ‘murals’] ja:[‘礼儀’ ‘ひも’ ‘冗長’ ‘奥羽’ ‘預金’] zh:[‘民俗’ ‘漆器’ ‘壁畫’]この場合、日本語の単語の羅列は意味をなさず、他の言語とも意味が一致していないため、チェックを入れません。

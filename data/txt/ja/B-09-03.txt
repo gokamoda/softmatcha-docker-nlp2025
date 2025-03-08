@@ -1,0 +1,255 @@
+大規模言語モデルを活用した大規模医療用語辞書メンテナンスの効率化
+
+大槻優佳
+
+1
+
+ 矢田竣太郎
+
+1,2
+
+ 西山智弘
+
+1
+
+ 工藤紀子
+
+1
+
+川端京子
+
+1
+
+ 藤牧貴子
+
+1
+
+ 永井宥之
+
+1
+
+ 若宮翔子
+
+1
+
+, 荒牧英治
+
+11
+
+奈良先端科学技術大学院大学 
+
+2
+
+筑波大学
+
+
+
+{otsuki.yuka.pb0, hiro.nagai}@naist.ac.jp yada@slis.tsukuba.ac.jp
+
+
+
+{nishiyama.tomohiro.ns5, noriko.kudo, kyoko.kawabata, takako.hujimaki,
+
+
+
+wakamiya, aramaki}@is.naist.jp 
+
+
+
+概要
+
+自然言語処理において、最も早くから利用されてきたリソースが辞書である。
+辞書は多様なタスクに有用であるが、構築やメンテナンスに要するコストが課題である。
+我々は、辞書データへの人手の修正履歴を活用し、未修正の用語に対して修正を自動提案するシステムを構築することで、質を担保しつつ低コストでメンテナンスが可能になると考えた。
+本研究では、構築中の 50 万語を超える大規模医療辞書において、医療用語のメタデータを自動修正する手法を提案する。
+実験では、専門的な医学知識を必要とする遺伝子バイオマーカの表記ゆれの修正性能を検証した結果を報告する。
+本手法は、多くの辞書メンテナンス負担軽減に貢献するものである。
+
+
+1 はじめに
+
+電子カルテや病理レポートなどの医療データは、医療 AI や情報抽出ツールの開発基盤となる重要なリソースである。
+これらのデータの統一性を確保するために辞書やオントロジーの役割が重要視されている[1, 2]。
+例えば、SNOMED-CT [3]は国際的な医療概念リソースとして広く利用されているが、維持管理には年間運営費 6 億円を超える多大なコストを要する[4]。
+国内においても万病辞書（J-MeDic）などの医療辞書が存在するが、人手による修正作業のコストが課題である[5]。
+さらに、新語の発見と追加は広く行われているが、用語の定義や関連情報の修正および充実するメンテナンスは十分に行われていないのが現状である[6]。
+我々は、医療 AI の実現を目指す第 3 期戦略的イノベーション創造プログラム（SIP3）「統合型ヘルスケアシステムの構築」にて、大規模医療辞書 JMED-DICT1）を構築しているが、メンテナンスの課題は同様に当てはまる[7]。
+本研究では、辞書の代表的な応用先の１つである医療文書からの情報抽出に焦点を当て、大規模言語モデル(LLM)を用いた辞書の維持管理の効率化を検討する。
+医療文書からの情報抽出の例として、病理レポートに頻繁に出現するバイオマーカの抽出が挙げられる[8]。
+バイオマーカは、疾患の診断、進行状況の評価、治療反応性の予測、さらには予後の見通しを立てるための指標として臨床利用されている重要な患者情報である[9, 10]が、頭文字による略称や数字記号の組み合わせで表現されることが多く、表記ゆれが多い[11, 12]。
+また、この略称は、一部の有名なものを除いて医療者なら誰でも知っているという常識レベルではなく、通常は専門としている領域について必要なものを把握しているという高度な専門知識であり、LLM の医療応用の格好のベンチマークになると考えている。
+例えば、乳がん治療に関するバイオマーカ「HER2」の表記には、「HER-2」や、医学的には同義である「c-erB-2」「SK-BR-3」などが用いられる。
+表記ゆれの解消方法には様々なアプローチがあるが、その中でも、表記ゆれを修正し、正しい参照先が明示された辞書を作成して利用する方法は、最も単純かつ分かりやすい[1, 13, 14]。
+辞書を活用することで、同義語や類似表現を効率的に統一できるだけでなく、参照先が明示されているため解釈の一貫性も確保できる[15]。
+本研究では、このような辞書活用の重要性を踏まえ、自己改善型辞書管理システム SustainableDictionary Growing System (SDGs)（図 1）を提案する．SDGs は、Human-in-the-Loop のアプローチを取1） https://sip3-d2.naist.jp/図 1: SDGs サイクルの流れ（バイオマーカの例）。
+右上：高信頼データと低信頼データへの分割。
+右下：修正データ推定の生成プロセス。
+左下：推定案の人手修正インターフェース。
+左上：修正履歴の要約。
+り入れた自己改善型の辞書管理システムであり、生成モデルを活用して辞書項目を推定し、人手による確認と修正を組み合わせることで半自動的な辞書メンテナンスを目指す。
+これによりコスト削減と修正精度の向上を両立し、完全自動や完全手動のメンテナンスの課題を克服する実用的な解決策となりうる。
+完全自動のメンテナンスでは、生成モデルの誤りや不適切な推定結果がそのまま反映されるリスクがあり[16]、完全手動のメンテナンスでは、時間と労力の負担が大きい[5]。
+半自動化はこれら両方の欠点を補い、効率的かつ精度の高い辞書メンテナンスを可能にする。
+SDGs のサイクルは、図 1 に示すように、ステップ 1（データセットの分割）、ステップ 2（修正データの推定）、ステップ 3（推定結果の人手修正），ステップ 4（修正履歴の要約）で構成される。
+特に、ステップ 4 は、膨大な文脈情報を扱う必要があり、従来の言語モデルでは難しかった。
+LLM の進化により、ステップ 4 が可能となったことで、これまで実現が困難だった辞書管理のサイクルを完成させることができる。
+本研究では、構築中の JMED-DICTを対象に、バイオマーカ関連の出現形を標準的な表現である正規形へ修正することで、提案手法の有効性を検証した。
+表 1: 検査表現辞書の一部出現形出現形よみ正規形出現形 EN血圧けつあつ血圧 blood pressure心拍数しんぱくすう心拍数pulse rateＴＭＡ てぃーえむえー ＴＤＴ TMAＴＭ値てぃーえむち ＰＴ活性 TM value
+
+2 提案手法
+
+
+
+2.1 実験材料
+
+大規模医療辞書 JMED-DICT2）に含まれる検査表現辞書（表 1）を用いる。
+この辞書には、45,623 語の検査表現（出現形）が収載されており、代表的な臨床検査項目名（正規形と呼ぶ）に紐付け可能である[7]。
+辞書内の各種情報には作業状況を示すフラグが付与されている。
+
+
+
+2.2 データセットの分割
+
+推定対象を特定するためにデータセットを分割する。
+推定する項目の作業フラグ（例えば、正規形を修正する場合、正規形 ﬂag）に基づき、データセットを人手確認済の「高信頼データ」、それ以外を「低信頼データ」に分割する。
+低信頼データに修正データの推定と人手修正を適用する。
+
+
+2.3 修正データの推定
+
+本ステップでは、言語モデルを活用して効率的に低信頼データの推定案を 1 つずつ生成する。
+具体的には、OpenAI API 経由で、生成モデルの GPT-4omini3）をゼロショット設定で使用し、修正データを推定する。
+次に、生成された推定案の中から人手修正が必要となる用語を絞り込む。
+これにより、無関係または冗長な候補の提示を抑制し、後の人手修正の作業効率を向上できる。
+2） https://sip3-d2.naist.jp/data.html3） https://platform.openai.com/docs/models#gpt-4o-mini
+
+2.4 推定結果の人手修正
+
+言語モデルが生成した推定案には誤りが含まれる場合があるため、人手で確認し修正することでデータの一貫性と正確性を確保する。
+なお、適切な正規形が不明な場合は「[UNK]」とする。
+これにより、修正の質を担保するとともに、次のサイクルに向けたデータを蓄積する。
+
+2.5 修正履歴の要約
+
+人手修正履歴を分析することで、ステップ 2 のモデル改善とステップ 3 の修正作業のための知見を得るとともに、人手作業を効率化するための指針を提供する。
+OpenAI API が提供する GPT-4o4）を用いて修正履歴を要約し、誤りパターンと人手修正のポイントを抽出する。
+タスクに必要な情報 4 点（1. 出現形と正規形の定義、2. タスクの説明、3. 誤答例、4.現行プロンプトとその改善点）を含めたプロンプトを用いる。
+これにより、次のサイクルに向けたモデル改善案や修正作業時の注意点が得られる。
+
+
+3 実験と結果
+
+
+
+3.1 設定と評価指標
+
+バイオマーカとして、近年のがん患者の病理レポートや大学・製薬企業の研究者からの意見を参考にし、臨床現場や研究開発の双方にとって有用性の高いものを選定した。
+推定性能検証のため、今回は全データを低信頼データとして扱った。
+プロンプトには、タスクに必要な情報 3 点（バイオマーカ候補一覧、非該当時の対応、出力形式）を含めた（図 1）。
+この結果、45,623 語のうち対象バイオマーカと判定された 540語を以降のステップにおける対象語とした。
+正規形（バイオマーカ）の推定性能の評価では、ステップ 3 にて人手で修正された正規形を正解とし、推定された正規形と比較する。
+全体の正解率は，540 語の出現形のうち、正しい正規形を予測した割合とした。
+各バイオマーカの正解率は、修正後の正規形に対し、モデルが正しく予測した割合とした。
+理想的なモデルは、全ての出現形に対して正しい正規形を予測するとともに、不要な正規形を一切出力しないことである。
+4） https://platform.openai.com/docs/models#gpt-4o表 2: 検査値の正規形（標準的表現）推定正解率。
+Total: 全体の正解率正規形正解率 Correct/NumALK 100.0% 8/8BRAF 94.4% 17/18BRCA1, BRCA2 83.3% 10/12EGFR 100.0% 79/79ER, PgR (PR) 100.0% 71/71FGFR 100.0% 11/11FGFxx100.0%17/17HER2 100.0% 35/35KRAS 100.0% 41/41Ki-67 100.0% 37/37MET 100.0% 5/5MMR 100.0% 3/3MSI 100.0% 14/14PD-L1 100.0% 18/18RB1 100.0% 3/3RET 100.0% 3/3ROS1 100.0% 3/3TMB100.0%7/7[UNK] 0.0% 0/87Others 0.0% 0/68Total 70.7% 382/540w/o [UNK] 84.3% 382/453
+
+3.2 修正データの推定結果と人手修正
+
+修正データの推定性能の結果を表 2 に示す。
+人手修正後の正規形が実験対象外のバイオマーカや検査値である語、または複数のバイオマーカに該当する語は「Others」とした。
+人手修正後の正規形を正解として、GPT4o-mini の推定結果と一致する語をカウントした。
+各バイオマーカの正解率は多くの場合で 100%に達しており。
+高精度であることが確認された。
+しかし、[UNK]と修正されたものは 87 語あり、その出現形には「Ｋｉ‐」「ｅＧＦＲ＜」など、出現形の語として適さないものを誤判定するケースが多いことがわかる。
+ただし、過剰に抽出された誤りの確認は容易であるため、人手作業との連携が進めやすいと言える。
+このような過検出を除くと、バイオマーカの正規化タスクにおいて、GPT-4o mini は実用に耐えうる性能を示した。
+この結果は LLM が一定の医学知識を内包していることを示唆しており、今後、バイオマーカ以外の医療用語についても検証を予定している。
+
+
+
+3.3 修正履歴の要約
+
+3.2 節の結果をもとに、540 の対象出現形のうち不正解だった 158 用語を対象として修正履歴を要約した。
+誤答パターンの整理や現在の GPT-4o mini のモデルプロンプトの改善点、作業者が修正時に留意すべき点を挙げるプロンプト(A.1)を設計した。
+要約結果の例を A.2 に示す。
+応答の一貫性と比較可能性を確保するために、temperature を 0.5 に設定し，5 回試行した。
+その結果、フォーマットに若干の差異が見られたが、内容的な整合性が確認された。
+以下、医学的妥当性・技術的妥当性・人手作業フィードバックの有用性の観点で質的に評価する。
+医学的妥当性 6 つの誤答パターン【類似表記の誤認識】【関連性のある用語の混同】【部分一致による誤認識】【略語の誤解釈】【複数候補の不適切な選択】【未知の用語の誤認識】に適切に整理されている。
+このうちの 3 つのパターンの例を検証する。
+【類似表記の誤認識】TM が TMB と誤認識されているケースが挙げられた。
+JMED-DICT において、TM は、内皮細胞の細胞膜に存在しトロンビンと結合する糖タンパク質の Thrombomodulin を意味する．TMB は、Tumor Mutation Burden（腫瘍遺伝子変異量）の略で、バイオマーカの一つである。
+似た略語や表記が誤認識されているというモデルの分析結果は適切といえる。
+【関連性のある用語の混同】プロゲステロンをPgR と誤認識しているケースが挙げられた。
+PgRは，Progesterone Receptor（プロゲステロン受容体）の略であり、関連用語間の誤りのため、関連性のある用語の混同というモデルの指摘は適切である。
+【略語の誤解釈】METs を MET と誤認識しているケースが挙げられた。
+METs は、代謝当量（Metabolicequivalents）の略であり、運動強度を表す指標である．MET は、バイオマーカの他に Medical emergencyteam の略としても使用される。
+よって、MET が複数の意味を持つ場合に誤認識しているというモデルの指摘は正しいことが確認された。
+技術的妥当性要約技術の観点で述べると、モデルによる誤答パターンの分類が適切なのか懸念がある。
+前述の TM を TMB と誤認識するケースと、METs を MET と誤認識するケースはどちらも略語に関する誤答パターンだが、異なる誤認識の背景（類似する略語と複数の意味を持つ略語の誤解釈）と分類していた。
+誤答パターンの分類の粒度として基準が曖昧である。
+改善されたプロンプト例には、類似する出現形の区別や文脈を考慮した解析、略語の誤認識防止、複数正規形への対応、[UNK]の適切な出力などの改善点が反映されている点は評価できる。
+人手作業フィードバックの有用性人手による修正作業を効率化するための注目点として挙げている内容は、作業者による確認の結果、妥当であると判断された。
+しかし、「出現形が略語の場合、文脈に基づいて正規形を判断する」など作業者がすでに心がけていることを指摘していることが多く、実例に即した新たな知見がなかったことが懸念される。
+
+
+
+4 おわりに
+
+医療辞書の効率的な維持管理を目的として、Human-in-the-Loop を取り入れた自己改善型辞書管理システム Sustainable Dictionary Growing System(SDGs)を提案し、バイオマーカ関連の表記ゆれを正規化する実験を通じてその有効性を検証した。
+バイオマーカはアルファベットなどの記号表現で、専門の医療者でしか理解できないものも多く含まれるため、この正規化は高度な医学知識を必要とする。
+提案システムに採用した GPT-4o mini は高い正解率を達成し、修正履歴の要約・分析によりモデルの誤り傾向や人手修正のポイントに関する知見を得た。
+2 サイクル以降では、前サイクルのステップ 3 にて確認されたデータが高信頼データとして扱われ、さらにステップ 4 で生成された改善プロンプトを活用することで、前サイクルで検出できなかったバイオマーカの検出が可能となる。
+このように、本システムを繰り返し運用することで言語モデルの性能向上と修正作業の負担軽減が期待される。
+今後の課題として、出現形よみや検査分類など他の辞書項目への適用可能性の検証が挙げられる。
+さらに、医療知識をモデルに組み込むことで、誤りの減少や修正精度の向上が期待される。
+また、手作業による修正作業時間の計測や、モデル性能向上のための評価指標の検討を行い、より実用的で高精度なシステムの実現に向けた取り組みが必要である。
+本研究の成果は、医療分野における辞書メンテナンスの効率化と品質向上に貢献するだけでなく、他分野での辞書管理にも応用可能な汎用性を有している。
+今後もシステムの改良と応用範囲の拡大に努め、医療 AI のさらなる発展を支援していきたい。
+
+
+
+謝辞
+
+本研究は、「戦略的イノベーション創造プログラム（SIP）」「統合型ヘルスケアシステムの構築」JPJ012425，JST CREST「リアルワールドテキスト処理の深化によるデータ駆動型探薬」JPMJCR22N1 の補助を受けて行った。
+
+参考文献
+
+
+[1] E G Brown, L Wood, and S Wood. The medical dictionaryfor regulatory activities (MedDRA). Drug Saf., Vol. 20,No. 2, pp. 109–117, February 1999.
+[2] Mirjana Ivanovi´c and Zoran Budimac. An overview ofontologies and data resources in medical domains. ExpertSyst. Appl., Vol. 41, No. 11, pp. 5158–5166, September2014.
+[3] Kevin P Donnelly. SNOMED-CT: The advanced termi-nology and coding system for eHealth. Stud. HealthTechnol. Inform., Vol. 121, pp. 279–290, 2006.
+[4] Kimikazu Kashiwagi. Introduction of SNOMED-CT: His-tory and future vision. J. Inf. Process. Manag., Vol. 51,No. 4, pp. 243–250, 2008.
+[5] Kaoru Ito, Hiroyuki Nagai, Taro Okahisa, ShokoWakamiya, Tomohide Iwao, and Eiji Aramaki. J-MeDic:A japanese disease name dictionar y based on real clinicalusage. LREC, May 2018.
+[6] Marcin P Joachimiak, Mark A Miller, J Harr y Cauﬁeld,Ryan Ly, Nomi L Harris, Andrew Tritt, Christopher JMungall, and Kristofer E Bouchard. The artiﬁcial intelli-gence ontology: LLM-assisted construction of AI concepthierarchies. arXiv [cs.LG], April 2024.
+[7] 永井宥之, 西山智弘, 大槻優佳, 藤牧貴子, 川端京子,工藤紀子, 山崎由佳, 白石暖哉, 梶原智之, 進藤裕之,河添悦昌, 今井健, 矢田竣太郎, 若宮翔子, 荒牧英治.Jmed-dict: 大規模医療用語辞書の構築. 言語処理学会第 31 回年次大会 (NLP2025), 2025.
+[8] Jeongeun Lee, Hyun-Je Song, Eunsil Yoon, Seong-BaePark, Sung-Hye Park, Jeong-Wook Seo, Peom Park, andJinwook Choi. Automated extraction of biomarker infor-mation from pathology reports. BMC Med. Inform.Decis. Mak., Vol. 18, No. 1, p. 29, May 2018.
+[9] Kyle Strimbu and Jorge A Tavel. What are biomarkers?Curr. Opin. HIV AIDS, Vol. 5, No. 6, pp. 463–466,November 2010.
+[10] Robert M Caliﬀ. Biomarker deﬁnitions and their applica-tions. Exp. Biol. Med. (Maywood), Vol. 243, No. 3,pp. 213–221, February 2018.
+[11]`A Bravo, M Cases, N Queralt-Rosinach, F Sanz, and L IFurlong. A knowledge-driven approach to extract disease-related biomarkers from the literature. Biomed Res. Int.,Vol. 2014, No. 1, p. 253128, April 2014.
+[12] Erfan Younesi, Luca Toldo, Bernd M¨uller, Christoph MFriedrich, Natalia Novac, Alexander Scheer, MartinHofmann-Apitius, and Juliane Fluck. Mining biomarkerinformation in biomedical literature. BMC Med. Inform.Decis. Mak., Vol. 12, No. 1, p. 148, December 2012.
+[13] Olivier Bodenreider. The uniﬁed medical language system(UMLS): integrating biomedical terminology. NucleicAcids Res., Vol. 32, No. Database issue, pp. D267–70,January 2004.
+[14] Aldo Gangemi, Domenico M Pisanelli, and Geri Steve. Anoverview of the ONIONS project: Applying ontologies tothe integration of medical terminologies. Data Knowl.Eng., Vol. 31, No. 2, pp. 183–220, September 1999.
+[15] C Duclos, A Burgun, J B Lamy, P Landais, J M Rodrigues,L Soualmia, and P Zweigenbaum. Medical vocabulary,terminological resources and information coding in thehealth domain. In Medical Informatics, e-Health, pp.11–41. Springer Paris, Paris, 2014.
+[16] Zhaopeng Feng, Yan Zhang, Hao Li, Bei Wu, Jiayu Liao,Wenqiang Liu, Jun Lang, Yang Feng, Jian Wu, and ZuozhuLiu. TEaR: Improving LLM-based machine translationwith systematic self-reﬁnement. arXiv [cs.CL], February2024.
+[17] H Weiler and BH Isermann. Thrombomodulin. Journalof thrombosis and haemostasis, Vol. 1, No. 7, pp.1515–1524, 2003.
+[18] Dan Sha, Zhaohui Jin, Jan Budczies, Klaus Kluck, Al-brecht Stenzinger, and Frank A Sinicrope. Tumor mu-tational burden as a predictive biomarker in solid tumors.Cancer discovery, Vol. 10, No. 12, pp. 1808–1825, 2020.
+[19] Caroline H Diep, Hannah Ahrendt, and Carol A Lange.Progesterone induces progesterone receptor gene (pgr) ex-pression via rapid activation of protein kinase pathwaysrequired for cooperative estrogen receptor alpha (er) andprogesterone receptor (pr) genomic action at er/pr targetgenes. Steroids, Vol. 114, pp. 48–58, 2016.
+[20] Maurice Jett´e, Ken Sidney, and G Bl¨umchen. Metabolicequivalents (mets) in exercise testing, exercise prescrip-tion, and evaluation of functional capacity. Clinical car-diology, Vol. 13, No. 8, pp. 555–565, 1990.
+[21] MERIT Study Investigators, et al. Introduction of the med-ical emergency team (met) system: a cluster-randomisedcontrolled trial. The Lancet, Vol. 365, No. 9477, pp.2091–2097, 2005.
+
+
+
+
+A 付録
+
+
+
+A.1 修正履歴の要約プロンプト
+
+図 2: 要約プロンプト図 3: 誤答パターンの整理や推定プロンプトの改善点、人手修正時の留意点を挙げるプロンプト
+
+A.2 修正履歴の要約結果
+
+図 4: GPT-4o による要約結果の例：誤答パターンの整理、現在のプロンプトの改善点と例、人手修正の注意点

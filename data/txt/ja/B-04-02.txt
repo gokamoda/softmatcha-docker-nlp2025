@@ -1,0 +1,191 @@
+大規模マルチモーダル言語モデルによる認知症の言語症状の再現
+
+山越貴耀
+
+1∗
+
+ 青山龍平
+
+1∗
+
+ 荒牧英治
+
+2†
+
+ 大関洋平
+
+1†1
+
+東京大学 
+
+2
+
+奈良先端科学技術大学院大学
+
+
+
+{tyamakoshi0616,ryuhei-aoyama888,oseki}@g.ecc.u-tokyo.ac.jp
+
+
+
+aramaki@is.naist.jp
+
+
+
+*, †: equal contributions
+
+
+
+概要
+
+認知症の言語症状は患者の予後や QOL を規定するが、 その発症メカニズムは未解明である。
+近年の言語モデルを用いた研究は、 主に言語表出の分類に重点を置き、 病因を直接的に検討するものは少ない。
+そこで本研究は言語モデルを生成モデルとして捉え、 単語の出現確率を変化させるパラメータを操作することで、 認知症特有の単語選択や言語構造の再現を試みた。
+結果として、 係り受け距離や一部の品詞の頻度においては再現ができた一方、 意味情報量の点においては認知症患者の言語表出とは逆の傾向が得られた。
+本研究は言語モデルを用いて認知症患者の言語表出そのものを再現することで、 認知症の言語症状の発症メカニズムの解明につながると期待される。
+
+
+1 はじめに
+
+認知症は記憶障害をはじめとする多様な症状を引き起こすが、 中でも言語症状は日常のコミュニケーションを阻害し,患者自身の生活の質(QOL)を低下させるだけでなくその介助者にも大きな負担となる[1, 2]. また言語症状は認知症の初期段階から存在し、予後予測因子として着目されている[3]. 認知症の言語症状を特徴づけ、 その発症メカニズムを解明することは、 認知症患者およびその介助者の QOL の向上につながるとともに、 認知症自体の発症メカニズムの理解にも貢献すると考えられる。
+これまでの研究から認知症患者の言語表出は様々な側面において健常者の言語表出と異なることが示されてきた[4, 5, 6]. 例えば、 品詞の使用頻度の変化[7], 統語構造の単純化[8], 意味情報量の減少[9]などが報告されてきた。
+しかし、 これらの違いが生じるメ図 1 実験概要(画像は[5]より抜粋). temperature を下げると反復が多くなるなど言語特徴量に変化が生じる(緑背景内太字).カニズムは未解明である。
+また近年では言語モデルの内部表現を用いた認知症の予測モデルが盛んに開発されている。
+2020/2021年には、ADReSS/ADReSSo Challenge が行われ、 複数のモデルが 90%以上の精度で認知症患者の言語表出を弁別した[10]. 一方で、 これらのモデルが言語出力のどのような特徴を元に分類しているのかは解釈が困難であり、 発症メカニズムの理解とは隔たりがある。
+そこで、 本研究では言語モデルを分類モデルではなく生成モデルとして捉え,認知症の言語症状を言語モデルで再現することで、 症状の記述だけでなくその背景にあるメカニズムの解明を目指す。
+具体的には、 言語モデルによる文の生成(サンプリング)に用いられる temperature,top-p,top-k を変更し、 生成されたテキストの言語特徴量を計算することで、 認知症患者の言語表出と同じ傾向を示すかどうか検証する。
+上述のパラメータは、 認知症患者の言語表出には高頻度語[11, 12]や反復[13, 6]が多いという観察事実と、 文のサンプリング方法を変えることで出力されるテキストの尤度や反復の数が変化するという自然言語処理における結果[14, 15]の類似性を鑑みて、選択されたものである。
+また、 これらのパラメータを小さくすると出力されうる単語の候補が限定されることから、 認知症における語彙量やワーキングメモリの減少の影響を模擬した状態であるとも解釈できる。
+計算モデルを用いた疾患の再現はこれまで統合失調症の形式的思考障害[16, 17]や、 近年では認知症の言語症状に対しても行われてきた[18]. ただし、Li ら[18]が疾患再現モデルの評価として認知症の分類精度を用いているのに対し、 本研究は言語特徴量そのものを比較する。
+言語特徴量を用いることで実験結果との直接的な比較が可能になり、 より質の高い再現性を目指すことができると期待される。
+本研究は認知症の多様な言語症状が、 モデルのパラメータ操作に伴う単語の出現確率の変更によって、 どの程度説明できるかを検証し、 これらの症状の発症メカニズムについての仮説を提供する。
+
+
+2 方法
+
+
+
+2.1 実験設定
+
+言語機能の評価手法として画像記述タスク(Cookie Theft Picture Description Task (CTP Task)[19])を用いた。
+これは、 少年がクッキーをつまみ食いしようとしている絵を被験者に見せ、 絵の中で起こっていることを記述してもらうタスクである。
+このタスク設定を模倣し、 大規模マルチモーダルモデルである LLaVA-OneVision[20]に対して、CTP Task で用いられる画像と Appendix に示すプロンプトを与えた。
+実装には Hugging Face transformers[21]を用いた。
+temperature=1.0,top-p=1.0,top-k=1,000,0001）をデフォルトとし、 ３つのうち１つの変数のみを変化させて実験を行った。
+は
+0.1-0.9 を 0.1 間隔、top-k は8-2048 を対数スケールで 1 間隔で変えて実験を行った。
+それぞれの条件において 100 個の異なる出力を1） モデルの語彙数よりも十分大きな数として設定用意した。
+
+
+
+2.2 言語出力の定量化
+
+Fraser らは認知症患者および健常者の言語表出からさまざまな特徴量を計算し因子分析を行った結果、 認知症患者の言語表出を特徴づける因子として、品詞分布、 音声、 統語構造、 情報量の４項目を同定した[4]. 本研究ではこの分類に基づき、 モデルが出力したテキストから計算できる、 音声以外の３項目と、[4]では計算されていなかった反復回数の計 4 項目での評価を行った。
+品詞(POS),dependency tag のアノテーションには spaCy[22]を用いた。
+2.2.1 品詞頻度出力された単語のうち特定の品詞が占める割合を計算した。
+認知症患者の言語表出では名詞・動詞の割合が減少し、 代名詞・助動詞の割合が増加することが報告されている[7].2.2.2 係り受け距離統語構造の複雑さの指標として係り受け距離(dependency distance)[23]を用いた。
+係り受け距離を文ごとに計算し、 その平均を取った。
+認知症患者の言語表出では係り受け距離が短くなることが報告されている[24, 25].2.2.3 意味情報量発話に含まれる意味情報量（semantic feature）の指標として Information Units(IUs)を用いた。
+これは、 画像内に登場する人物や物体などの主要なトピックの登場回数を数えたものである。
+この際、 同一トピックを指すと考えられる類義語(例えば cookie と biscuits)についても登場回数に含める。
+本研究では、Lindsay ら[26]が用いた 16 個の IU について計算を行った[付録 B]. 認知症患者の言語表出において、IUs の総数が減少することが報告されている。
+2.2.4 反復回数語彙の多様性の喪失や文章の冗長さと関連する指標として反復回数を用いた。
+具体的には、Eyigoz ら[6]の手法を基に、 同じ品詞が 0 語、1 語、2 語おきに反復される回数を計算した。
+認知症患者の言語表出において、1 語おきの反復回数が有意に増加することが報告されている[6].図 2 A: 品詞頻度(PRON: 代名詞、ADJ: 形容詞),B: 係り受け距離、C: 意味情報量、D: 反復回数。
+リボンは Bootstrap 法による95%信頼区間を示す。
+四角は健常者、 三角は患者データを示す。
+
+3 結果
+
+評価指標とパラメータ値との関係を図 2 に示す。
+各指標でのパラメータ値の変化との関係を、 デフォルト値との対応のない t 検定で検討した。
+
+
+3.1 品詞頻度
+
+temperature を小さくすると、 動詞の頻度(p<0.01)が増加し、 形容詞の頻度(p<0.01), 代名詞の頻度(p<0.01)が減少したが、 名詞の頻度には有意な変化は見られなかった。
+top-p を小さくすると、 名詞の頻度(p<0.01)が増加し、 形容詞の頻度(p<0.01), 代名詞の頻度が減少した(p<0.01)が、 動詞の頻度には有意な変化は見られなかった。
+top-k については、 品詞頻度に有意な変化はなかった。
+
+
+3.2 係り受け距離
+
+temperature を小さくすると、 係り受け距離が減少し(p<0.01),top-p においても同様の傾向が見られた(p<0.01). top-k については、 有意な変化は見られなかった。
+
+3.3 意味情報量
+
+temperature を小さくすると、 意味情報量が増加し(p<0.01),top-p においても同様の傾向が見られた(p<0.01). top-k については、 有意な変化は見られなかった。
+
+3.4 反復回数
+
+top-p を小さくすると、1 語おきの反復回数が減少した(
+p<0.01)一方、0 語、2 語おきの反復回数の有意な変化は見られなかった。
+temperature と top-k については、 有意な変化は見られなかった。
+
+
+
+4 考察および今後の課題
+
+本研究は言語モデルを生成モデルとして捉え、 単語の出現確率を変化させるパラメータを操作することで認知症特有の単語選択や言語構造の再現を行った。
+temperature や top-p を小さくすることで係り受け距離が短くなるという結果は、 認知症患者の言語症状（複雑な構文を避ける、 あるいは簡単な動詞表現で済ませる）を再現している可能性があり、 認知症患者における先行研究の知見と合致する。
+一方で、 患者における知見と反して、temperature やtop-p を減少させると名詞や動詞の頻度が増加する結果も得られた。
+この背景として、 本研究に用いたマルチモーダルモデル（LLaVa-OneVision）は事前学習として汎用コーパスを用いており、 今回の CTP Taskのような画像記述タスクでは、 名詞（物体名や人称）と動詞（行為）の一定量の使用が求められるため、一定水準以上の名詞・動詞の生成が見られたと考えられる。
+また、 意味情報量が却って増加するという結果は、 出力テキスト原文においても確認された[付録A 表 1]. temperature や top-p が小さい条件では、 反復が多いものの発話の冒頭で簡潔に画像のトピックを説明する傾向が見られた。
+それに対し、 デフォルトに近い値を設定した際には、 一文が長く画像とは関係ない叙述的な記述が目立っており、 プロンプトによる出力の制限が不十分だった可能性が考えられる。
+また、top-k の操作ではどの指標にも有意な変化が見られなかったが、 これは高い確率のトークン群が上位数語で構成されているために、k の数十以上の変化がサンプリングにほとんど影響を与えなかったためだと考えられる。
+サンプリング時には、 単語の確率分布の変化により強く左右される top-p の操作が、 より介入的に機能する可能性がある。
+単語の出現確率の変更によって、 認知症患者の多様な言語症状の一部を再現できた一方で,先行知見と反する結果も存在し、 本稿の手法に限界があることが示された。
+認知症には、 アルツハイマー型・レビー小体型・前頭側頭型など多数の病型が存在し、 異なる症状を呈する。
+特に最多の病型であるアルツハイマー型認知症（AD）では、 大脳変性領域の拡大と共に言語症状が変化することが報告されている。
+典型的には、 側頭葉後下部の障害に起因する喚語困難（呼称障害）から始まり、 次第に情報量の少ない発話や迂言が目立ち、 意味的側面の障害が強く見られるようになる。
+また、 中心回やシルビウス裂領域が比較的保たれることから、 復唱や音韻的側面は保存される傾向がある。
+一方、 言語障害を主症状とする AD の亜型たる失語症では、 復唱障害が認められる[27, 28, 29]. 本稿では、 認知症で見られうる全ての症状を対象とした解析を行ったが、 今後特定の病型に絞った病因解明を行うためには、 特徴量を絞った評価をする必要があるだろう。
+本研究では、 描画説明課題での再現性を言語特徴量を用いて検討したが、 自由会話データにおける認知症の言語症状について検討し、 タスク特化でない普遍的な特徴の再現が今後望まれる。
+また、 パラメータ操作による再現性に一定の限界を認めたことから、 言語モデルの隠れ層の分析を行い、 解釈可能性を高めていくことが今後の課題として挙げられるだろう。
+
+
+
+謝辞
+
+本研究は、JST さきがけ JPMJPR21C2 および JSPS科研費 24H00087 の支援を受けたものです。
+
+参考文献
+
+
+[1] Dawn Potkins, Pat Myint, Carol Bannister, George Tadros, Ramil-gan Chithramohan, Alan Swann, John O’Brien, Jane Fossey, Euge-nie George, Clive Ballard, et al. Language impairment in dementia:impact on symptoms and care needs in residential homes. Inter-national journal of geriatric psychiatry, Vol. 18, No. 11, pp.1002–1006, 2003.
+[2] Marie Y Savundranayagam, Mary Lee Hummert, and Rhonda JVMontgomery. Investigating the eﬀects of communication problemson caregiver burden. The Journals of Gerontology Series B:Psychological Sciences and Social Sciences, Vol. 60, No. 1,pp. S48–S55, 2005.
+[3] David A Snowdon, Susan J Kemper, James A Mortimer, Lydia HGreiner, David R Wekstein, and William R Markesbery. Linguisticability in early life and cognitive function and alzheimer’s diseasein late life: Findings from the nun study. Jama, Vol. 275, No. 7,pp. 528–532, 1996.
+[4] Kathleen C Fraser, Jed A Meltzer, and Frank Rudzicz. Linguisticfeatures identify alzheimers disease in narrative speech. Journalof Alzheimers disease, Vol. 49, No. 2, pp. 407–422, 2015.
+[5] Kimberly D Mueller, Bruce Hermann, Jonilda Mecollari, and Lyn STurkstra. Connected speech and language in mild cognitive impair-ment and alzheimers disease: A review of picture descriptiontasks. Journal of clinical and experimental neuropsychology,Vol. 40, No. 9, pp. 917–939, 2018.
+[6] Elif Eyigoz, Sachin Mathur, Mar Santamaria, Guillermo Cecchi,and Melissa Naylor. Linguistic markers predict onset of alzheimer’sdisease. EClinicalMedicine, Vol. 28, , 2020.
+[7] Romola S Bucks, Sameer Singh, Joanne M Cuerden, and Gor-don K Wilcock. Analysis of spontaneous, conversational speech indementia of alzheimer type: Evaluation of an objective techniquefor analysing lexical performance. Aphasiology, Vol. 14, No. 1,pp. 71–91, 2000.
+[8] Kelly Lyons, Susan Kemper, Emily LaBarge, F Richard Ferraro,David Balota, and Martha Storandt. Oral language and alzheimer’sdisease: A reduction in syntactic complexity. Aging, Neuropsy-chology, and Cognition, Vol. 1, No. 4, pp. 271–281, 1994.
+[9] Daniel B Hier, Karen Hagenlocker, and Andrea Gellin Shindler.Language disintegration in dementia: Eﬀects of etiology and sever-ity. Brain and language, Vol. 25, No. 1, pp. 117–133, 1985.
+[10] Saturnino Luz, Fasih Haider, Soﬁa de la Fuente Garcia, DavidaFromm, and Brian MacWhinney. Alzheimer’s dementia recogni-tion through spontaneous speech, 2021.
+[11] Kathleen C Fraser, Jed A Meltzer, Naida L Graham, Carol Leonard,Graeme Hirst, Sandra E Black, and Elizabeth Rochon. Automatedclassiﬁcation of primary progressive aphasia subtypes from narra-tive speech transcripts. cortex, Vol. 55, pp. 43–60, 2014.
+[12] Vitor C Zimmerer, Mark Wibrow, and Rosemary A Varley. For-mulaic language in people with probable alzheimers disease: Afrequency-based approach. Journal of Alzheimer’s Disease,Vol. 53, No. 3, pp. 1145–1160, 2016.
+[13] Juliana Onofre De Lira, Karin Zazo Ortiz, Aline Carvalho Cam-panha, Paulo Henrique Ferreira Bertolucci, and Thaís Soares Cian-ciarullo Minett. Microlinguistic aspects of the oral narrative in pa-tients with alzheimer’s disease. International Psychogeriatrics,Vol. 23, No. 3, pp. 404–412, 2011.
+[14] Ari Holtzman, Jan Buys, Li Du, Maxwell Forbes, and Yejin Choi.The curious case of neural text degeneration. In 8th InternationalConference on Learning Representations, ICLR 2020, Ad-dis Ababa, Ethiopia, April 26-30, 2020. OpenReview.net,2020.
+[15] Maor Ivgi, Ori Yoran, Jonathan Berant, and Mor Geva. From loopsto oops: Fallback behaviors of language models under uncertainty.arXiv preprint arXiv:2407.06071, 2024.
+[16] Ralph E Hoﬀman and Thomas H McGlashan. Synaptic elim-ination, neurodevelopment, and the mechanism of hallucinatedvoices in schizophrenia. American Journal of Psychiatry,Vol. 154, No. 12, pp. 1683–1689, 1997.
+[17] 直江大河, 原田宥都, 前田ありさ, 森田早織, 中村啓信, 大関洋平, 沖村宰. 大規模言語モデルへの刈り込みによる精神疾患の思考障害シミュレーション. 言語処理学会第 30 回年次大会 (NLP2024), 2024.
+[18] Changye Li, David Knopman, Weizhe Xu, Trevor Cohen, andSerguei Pakhomov. Gpt-d: Inducing dementia-related linguisticanomalies by deliberate degradation of artiﬁcial neural languagemodels. arXiv preprint arXiv:2203.13397, 2022.
+[19] Harold Goodglass, Edith Kaplan, and Sandra Weintraub. BDAE:The Boston diagnostic aphasia examination. LippincottWilliams & Wilkins Philadelphia, PA, 2001.
+[20] Bo Li, Yuanhan Zhang, Dong Guo, Renrui Zhang, Feng Li, HaoZhang, Kaichen Zhang, Peiyuan Zhang, Yanwei Li, Ziwei Liu,et al. Llava-onevision: Easy visual task transfer. arXiv preprintarXiv:2408.03326, 2024.
+[21] Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond,Clement Delangue, Anthony Moi, Pierric Cistac, Tim Rault, RémiLouf, Morgan Funtowicz, Joe Davison, Sam Shleifer, Patrick vonPlaten, Clara Ma, Yacine Jernite, Julien Plu, Canwen Xu, Teven LeScao, Sylvain Gugger, Mariama Drame, Quentin Lhoest, andAlexander M. Rush. Transformers: State-of-the-art natural lan-guage processing. In Proceedings of the 2020 Conferenceon Empirical Methods in Natural Language Processing:System Demonstrations, pp. 38–45, Online, October 2020. As-sociation for Computational Linguistics.
+[22] Matthew Honnibal, Ines Montani, Soﬁe Van Landeghem, and Adri-ane Boyd. spacy: Industrial-strength natural language processingin python. 2020.
+[23] Haitao Liu. Dependency distance as a metric of language compre-hension diﬃculty. Journal of Cognitive Science, Vol. 9, No. 2,pp. 159–191, 2008.
+[24] Neguine Rezaii, Kyle Mahowald, Rachel Ryskin, Bradford Dicker-son, and Edward Gibson. A syntax–lexicon trade-oﬀ in languageproduction. Proceedings of the National Academy of Sci-ences, Vol. 119, No. 25, p. e2120203119, 2022.
+[25] Nan Gao and Qingshun He. A dependency distance approachto the syntactic complexity variation in the connected speech ofalzheimers disease. Humanities and Social Sciences Com-munications, Vol. 11, No. 1, pp. 1–12, 2024.
+[26] Hali Lindsay, Johannes Tröger, and Alexandra König. Lan-guage impairment in alzheimers disease― robust and explain-able evidence for ad-related deterioration of spontaneous speechthrough multilingual machine learning. Frontiers in aging neu-roscience, Vol. 13, p. 642033, 2021.
+[27] Julian Appell, Andrew Kertesz, and Michael Fisman. A study oflanguage functioning in alzheimer patients. Brain and Language,Vol. 17, No. 1, pp. 73–91, 1982.
+[28] Richard F. Zec. Neuropsychological functioning in Alzheimer’sdisease. In R. W. Parks, R. F. Zec, and R. S. Wilson, editors, Neu-ropsychology of Alzheimer’s disease and other dementias,pp. 3–80. Oxford University Press, 1993.
+[29] 松田実. アルツハイマー型認知症の言語症状の多様性. 高次脳機能研究 （旧 失語症研究）, Vol. 35, No. 3, pp. 312–324,2015.
+
+
+
+
+A 出力の例
+
+T=0.1 In this black and white illustration, we see a domestic scene set in a kitchen. A woman is standing by thesink, holding a dish towel. She is wearing a dress and appears to be washing dishes. A young girl is standingon a stool, reaching up towards the open cabinet. She is wearing a dress and holding a cookie jar. Thecookie jar is ﬁlled with cookies. The girl is reaching up towards the cabinet, possibly to grab a cookie. Thewoman is holding a dish towel and is standing by the sink. The kitchen has a window with curtains, andthere is a window above the sink. The ﬂoor is
+tiled, and there is a rug in front of the sink. The woman iswearing a dress and a skirt. The girl is wearing a dress and a skirt.…（以下、 繰り返し）T=0.9 In the black and white illustration, we see a family in decorum going about their business.On the far left, a teenage boy is right on his hands and feet, his feet echoed over his reliance on his oldwooden step stool, which is being held by a woman.…（中略）The room is illuminated by a window that lets in natural light, and a sink with water dripping into the drain,creating a lively dynamic in the otherwise mundane setting.表 1 T=0.1 と T=0.9 の比較

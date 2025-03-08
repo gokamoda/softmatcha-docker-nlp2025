@@ -1,0 +1,504 @@
+テキスト生成における最小ベイズリスク復号の理論的な理解に向けて
+
+市原有生希
+
+1
+
+ 陣内佑
+
+2
+
+ 蟻生開人
+
+2
+
+ 森村哲郎
+
+2
+
+ 内部英治
+
+31
+
+奈良先端科学技術大学院大学 
+
+2
+
+サイバーエージェント
+
+3
+
+国際電気通信基礎技術研究所
+
+
+
+ichihara.yuki.iu1@is.naist.jp
+
+
+
+ {jinnai yu,kaito ariu,morimura tetsuro}@cyberagent.co.jp
+
+
+
+ uchibe@atr.jp
+
+
+
+概要
+
+最小ベイズリスク復号(Minimum Bayes Riskdecoding)は、 自然言語処理のテキスト生成において効果的であることが知られている手法である。
+この手法は基盤となる人間の嗜好確率分布に基づく期待効用を最大化することを目的とし、 出力選択を行う。
+先行研究における実験的評価ではこのアプローチが顕著な成功を収めていることが示されているが、 これらの手法が有効に機能する原因については未だ解明されていない。
+本研究では最小ベイズリスク復号が何故高い性能が得られるかを明らかにすることを目的として、 その理論的な性能を分析する。
+分析の結果として、 いくつかの仮定の下、 最小ベイズリスク復号の誤差が計算に用いる参照仮説集合の大きさ 𝑛 に対して高い確率で 𝑂(1√𝑛)に収まることが示された。
+
+
+1 はじめに
+
+最小ベイズリスク(Minimum Bayes Risk)復号[1, 2]は、 自己回帰型確率モデル(例: 大規模言語モデル)から系列を生成するための決定則である。
+最小ベイズリスク復号は、 機械翻訳[3, 4], 画像キャプション生成[5], および指示追従型タスク[6]など、 さまざまなテキスト生成タスクにおいて高品質なテキストを生成できることが示されている。
+また、 多くの実験で、 最小ベイズリスク復号が MAP 復号(例: ビームサーチ)[7, 8]に比べて優位性を持つことが報告されている。
+最小ベイズリスク復号の有効性は、 多くの実験的評価によって示されているが、 その根本的な理由については十分に解明されていない。
+Kamigaito ら[9]は最小ベイズリスク復号の人間とモデルの嗜好分布間の不一致はバイアスと多様性の項に分解できることを示唆した。
+Bertsch ら[10]は最小ベイズリスク復号の性能の成功に寄与する 4 つの要因を実験的に分析した。
+さらに、 Ohashi ら[11]は異常検知を用いた解析によって、 モデルの嗜好分布が人間の嗜好分布に近い場合、 最小ベイズリスク復号が優れた性能を引き起こすことを確認した。
+本研究では、 最小ベイズリスク復号による出力の理論的な性能の解析を行う。
+本研究の結果は略式に述べると以下になる。
+定理 1 (最小ベイズリスク復号の収束レート;略式). 後述する仮定の下、 最小ベイズリスク復号の誤差は高い確率で参照仮説集合の大きさ 𝑛に対して 𝑂1√𝑛である。
+この理論的な知見は、 先行研究において最小ベイズリスク復号の性能が参照仮説集合の大きさ 𝑛 に対して向上するという実験的評価と整合している[8, 12].最小ベイズリスク復号によって生成されるテキストの品質に関する実験的評価は多く先行研究があるが、 理論的な誤差の上界を解析した研究はこれまで存在していない。
+本結果はテキスト生成アルゴリズムにおける未解決の課題の一つに対する解答につながるものである。
+
+
+2 最小ベイズリスク復号
+
+テキスト生成は、 入力列 𝑥 に対して出力列 𝑦 を生成するタスクである。
+テキスト生成モデルは、 仮説の出力空間 Y 上に確率分布 𝑃model(𝑦 | 𝑥)を定義する。
+完全な仮説の集合 Y は次のように定義される:Y := {BOS ◦ v ◦ EOS | v ∈ V∗}.
+
+テキスト生成における最小ベイズリスク復号の理論的な理解に向けて
+
+市原有生希
+
+1
+
+ 陣内佑
+
+2
+
+ 蟻生開人
+
+2
+
+ 森村哲郎
+
+2
+
+ 内部英治
+
+31
+
+奈良先端科学技術大学院大学 
+
+2
+
+サイバーエージェント
+
+3
+
+国際電気通信基礎技術研究所
+
+
+
+ichihara.yuki.iu1@is.naist.jp
+
+
+
+ {jinnai yu,kaito ariu,morimura tetsuro}@cyberagent.co.jp
+
+
+
+ uchibe@atr.jp
+
+
+
+概要
+
+最小ベイズリスク復号(Minimum Bayes Riskdecoding)は、 自然言語処理のテキスト生成において効果的であることが知られている手法である。
+この手法は基盤となる人間の嗜好確率分布に基づく期待効用を最大化することを目的とし、 出力選択を行う。
+先行研究における実験的評価ではこのアプローチが顕著な成功を収めていることが示されているが、 これらの手法が有効に機能する原因については未だ解明されていない。
+本研究では最小ベイズリスク復号が何故高い性能が得られるかを明らかにすることを目的として、 その理論的な性能を分析する。
+分析の結果として、 いくつかの仮定の下、 最小ベイズリスク復号の誤差が計算に用いる参照仮説集合の大きさ 𝑛 に対して高い確率で 𝑂(1√𝑛)に収まることが示された。
+
+
+1 はじめに
+
+最小ベイズリスク(Minimum Bayes Risk)復号[1, 2]は、 自己回帰型確率モデル(例: 大規模言語モデル)から系列を生成するための決定則である。
+最小ベイズリスク復号は、 機械翻訳[3, 4], 画像キャプション生成[5], および指示追従型タスク[6]など、 さまざまなテキスト生成タスクにおいて高品質なテキストを生成できることが示されている。
+また、 多くの実験で、 最小ベイズリスク復号が MAP 復号(例: ビームサーチ)[7, 8]に比べて優位性を持つことが報告されている。
+最小ベイズリスク復号の有効性は、 多くの実験的評価によって示されているが、 その根本的な理由については十分に解明されていない。
+Kamigaito ら[9]は最小ベイズリスク復号の人間とモデルの嗜好分布間の不一致はバイアスと多様性の項に分解できることを示唆した。
+Bertsch ら[10]は最小ベイズリスク復号の性能の成功に寄与する 4 つの要因を実験的に分析した。
+さらに、 Ohashi ら[11]は異常検知を用いた解析によって、 モデルの嗜好分布が人間の嗜好分布に近い場合、 最小ベイズリスク復号が優れた性能を引き起こすことを確認した。
+本研究では、 最小ベイズリスク復号による出力の理論的な性能の解析を行う。
+本研究の結果は略式に述べると以下になる。
+定理 1 (最小ベイズリスク復号の収束レート;略式). 後述する仮定の下、 最小ベイズリスク復号の誤差は高い確率で参照仮説集合の大きさ 𝑛に対して 𝑂1√𝑛である。
+この理論的な知見は、 先行研究において最小ベイズリスク復号の性能が参照仮説集合の大きさ 𝑛 に対して向上するという実験的評価と整合している[8, 12].最小ベイズリスク復号によって生成されるテキストの品質に関する実験的評価は多く先行研究があるが、 理論的な誤差の上界を解析した研究はこれまで存在していない。
+本結果はテキスト生成アルゴリズムにおける未解決の課題の一つに対する解答につながるものである。
+
+
+2 最小ベイズリスク復号
+
+テキスト生成は、 入力列 𝑥 に対して出力列 𝑦 を生成するタスクである。
+テキスト生成モデルは、 仮説の出力空間 Y 上に確率分布 𝑃model(𝑦 | 𝑥)を定義する。
+完全な仮説の集合 Y は次のように定義される:Y := {BOS ◦ v ◦ EOS | v ∈ V∗}.ここで、 ◦ は文字列の連結を表し、 V∗は語彙集合 Vの Kleene 閉包である。
+復号は、 与えられた入力に対して最もスコアの高い仮説を見つけることを目的とする。
+最小ベイズリスク復号は、 期待効用を最大化する出力列を求める枠組みであり[1, 2], テキスト生成モデル 𝑃modelと効用関数 𝑢(ℎ, 𝑦)の 2 つの要素から構成される。
+ここで、 𝑢(ℎ, 𝑦)は候補出力 ℎ の品質を、 参照出力 𝑦 をもとに定量化する指標である。
+記号の簡略化として、 条件付き分布 𝑃(ℎ | 𝑥)を 𝑃(ℎ)と略記する。
+理想的な状況では、 モデルではなく人間の嗜好分布 𝑃humanに基づく期待効用最大化問題を考えたい。
+すなわち、 参照仮説集合 Y を用いて、 以下のような最適な出力 ℎhumanを定義する:𝑢ℎ(ℎ):=Õ𝑦∈Y𝑢(ℎ, 𝑦) · 𝑃human(𝑦). (1)ℎhuman:= arg maxℎ∈H𝑢ℎ(ℎ). (2)ここで、 𝑃humanは人間の嗜好分布、 H は候補仮説集合、𝑢 : H × Y → [0, 𝑈]は効用関数である。
+加えて、 本研究は H = Y が成り立つことを仮定する。
+実際には、𝑃humanを直接利用することは不可能であるため、 最小ベイズリスク復号では、 モデルの嗜好分布 𝑃modelを人間の嗜好分布 𝑃humanの近似として用いる。
+その結果、 以下のような最適な出力 ℎmodelを求める問題が得られる。
+𝑢𝑚(ℎ):=Õ𝑦∈Y𝑢(ℎ, 𝑦) · 𝑃model(𝑦).(3)ℎmodel:= arg maxℎ∈H𝑢𝑚(ℎ). (4)しかし、 Y 全体にわたる期待値の計算は、 実行困難であるため、 実用上はモデル 𝑃modelからサンプリングした参照仮説集合 Ynref= {𝑦1, . . . , 𝑦𝑛} を用いて、 この期待値をモンテカルロ法で近似する[8, 13]. これにより、 有限個のサンプルを参照とした問題となる:b𝑢(ℎ):=1𝑛Õ𝑦∈Ynref𝑢(ℎ, 𝑦)(5)ℎmc:= arg maxℎ∈Hrefb𝑢(ℎ). (6)ここで、 Hrefは Ynrefを用いて構成される候補仮説集合とし、𝑛 をその大きさ 𝑛 = |Ynref| とする。
+𝑛 → ∞ のとき、 Ynrefが全集合 Y と一致することが期待でき、 この近似は、 理論的に完全な最小ベイズリスク復号の目的へと帰着する。
+以上のように、 実用上では、 最小ベイズリスク復号は、 モデルの嗜好分布を用いて、 間接的に人間の嗜好分布を近似し、 効用最大化の視点から、 最も良いと評価される候補を選択する枠組みである。
+
+
+3 理論解析
+
+本研究では、 𝑢ℎ(ℎhuman)を目標として議論を進めていくが、 その理由を以下に述べる。
+直感的には、 以下の式のように、 効用関数を用いずにモデルの嗜好分布のみを基にして、 最頻値を選択する手法(MAP 復号)が最適であると考えられる。
+MAP 復号の目的式:= arg maxℎ∈H𝑃model(ℎ). (7)しかし、 出力確率の最頻値を考慮する場合(式 7), 人間らしくない出力を引き起こす問題が指摘されている[14]. このような課題にも対処可能であり、 実験評価においても MAP 復号と比較して高性能を示し、 さらに Workshop on Statistical Machine Translation(WMT)ではタスク評価でも使用されていることが多いことから、 より優れた評価指標と考えられる。
+モデルの嗜好分布が人間の嗜好分布に近い場合に性能が良くなる結果[11]から、 最小ベイズリスク復号の目的 ℎhumanを私たちが求めるべき真の値であると仮定して、 解析を進めていく。
+
+
+3.1 事前知識
+
+本実験の解析で、 用いた 2 つの集中不等式を以下に示す。
+定理 2. 一様集中不等式(Theorem 4.10 [15])Fを関数の集合、 𝑓 ∈F: 𝑋𝑖→ [0, 𝑏]とする。
+Pr(∥ℙ𝑛− ℙ∥F≤ 2R𝑛(F) + 𝜖)≤ 1 − exp−𝑛𝜖22𝑏2.ここで、∥ℙ𝑛− ℙ∥F= sup𝑓 ∈F|ℙ𝑛𝑓 − ℙ 𝑓|, ℙ𝑛𝑓 =1𝑛Í𝑛𝑖=1𝑓 (𝑋𝑖), ℙ 𝑓 = 𝔼[𝑓 (𝑋)]であり、 𝑋 および {𝑋𝑖}𝑛𝑖=1は ℙ から独立同分布でサンプリングされたものとする。
+また、R𝑛:F,{𝑋𝑖}𝑛𝑖=1→ ℝ をラデマッハ複雑度(関数がどれだけ複雑かを示す指標)とする。
+次に、 Hoeﬀding の不等式を以下に示す。
+定理 3. Hoeﬀding の不等式(Corollary 1.1 [16]){𝑋𝑖}𝑛𝑖=1∈ [0, 𝑏]とし、 独立同分布でサンプリングされたものとする。
+Pr 𝔼[𝑋]−1𝑛𝑛Õ𝑖=1𝑋𝑖≤ 𝜖!≤ 1 − 2 exp−2𝑛𝜖2𝑏2.
+
+3.2 問題設定
+
+ここで、 人間の嗜好分布 𝑃humanと効用関数 𝑢 は、 人間の好みを反映した分布および関数であると仮定す
+
+テキスト生成における最小ベイズリスク復号の理論的な理解に向けて
+
+市原有生希
+
+1
+
+ 陣内佑
+
+2
+
+ 蟻生開人
+
+2
+
+ 森村哲郎
+
+2
+
+ 内部英治
+
+31
+
+奈良先端科学技術大学院大学 
+
+2
+
+サイバーエージェント
+
+3
+
+国際電気通信基礎技術研究所
+
+
+
+ichihara.yuki.iu1@is.naist.jp
+
+
+
+ {jinnai yu,kaito ariu,morimura tetsuro}@cyberagent.co.jp
+
+
+
+ uchibe@atr.jp
+
+
+
+概要
+
+最小ベイズリスク復号(Minimum Bayes Riskdecoding)は、 自然言語処理のテキスト生成において効果的であることが知られている手法である。
+この手法は基盤となる人間の嗜好確率分布に基づく期待効用を最大化することを目的とし、 出力選択を行う。
+先行研究における実験的評価ではこのアプローチが顕著な成功を収めていることが示されているが、 これらの手法が有効に機能する原因については未だ解明されていない。
+本研究では最小ベイズリスク復号が何故高い性能が得られるかを明らかにすることを目的として、 その理論的な性能を分析する。
+分析の結果として、 いくつかの仮定の下、 最小ベイズリスク復号の誤差が計算に用いる参照仮説集合の大きさ 𝑛 に対して高い確率で 𝑂(1√𝑛)に収まることが示された。
+
+
+1 はじめに
+
+最小ベイズリスク(Minimum Bayes Risk)復号[1, 2]は、 自己回帰型確率モデル(例: 大規模言語モデル)から系列を生成するための決定則である。
+最小ベイズリスク復号は、 機械翻訳[3, 4], 画像キャプション生成[5], および指示追従型タスク[6]など、 さまざまなテキスト生成タスクにおいて高品質なテキストを生成できることが示されている。
+また、 多くの実験で、 最小ベイズリスク復号が MAP 復号(例: ビームサーチ)[7, 8]に比べて優位性を持つことが報告されている。
+最小ベイズリスク復号の有効性は、 多くの実験的評価によって示されているが、 その根本的な理由については十分に解明されていない。
+Kamigaito ら[9]は最小ベイズリスク復号の人間とモデルの嗜好分布間の不一致はバイアスと多様性の項に分解できることを示唆した。
+Bertsch ら[10]は最小ベイズリスク復号の性能の成功に寄与する 4 つの要因を実験的に分析した。
+さらに、 Ohashi ら[11]は異常検知を用いた解析によって、 モデルの嗜好分布が人間の嗜好分布に近い場合、 最小ベイズリスク復号が優れた性能を引き起こすことを確認した。
+本研究では、 最小ベイズリスク復号による出力の理論的な性能の解析を行う。
+本研究の結果は略式に述べると以下になる。
+定理 1 (最小ベイズリスク復号の収束レート;略式). 後述する仮定の下、 最小ベイズリスク復号の誤差は高い確率で参照仮説集合の大きさ 𝑛に対して 𝑂1√𝑛である。
+この理論的な知見は、 先行研究において最小ベイズリスク復号の性能が参照仮説集合の大きさ 𝑛 に対して向上するという実験的評価と整合している[8, 12].最小ベイズリスク復号によって生成されるテキストの品質に関する実験的評価は多く先行研究があるが、 理論的な誤差の上界を解析した研究はこれまで存在していない。
+本結果はテキスト生成アルゴリズムにおける未解決の課題の一つに対する解答につながるものである。
+
+
+2 最小ベイズリスク復号
+
+テキスト生成は、 入力列 𝑥 に対して出力列 𝑦 を生成するタスクである。
+テキスト生成モデルは、 仮説の出力空間 Y 上に確率分布 𝑃model(𝑦 | 𝑥)を定義する。
+完全な仮説の集合 Y は次のように定義される:Y := {BOS ◦ v ◦ EOS | v ∈ V∗}.ここで、 ◦ は文字列の連結を表し、 V∗は語彙集合 Vの Kleene 閉包である。
+復号は、 与えられた入力に対して最もスコアの高い仮説を見つけることを目的とする。
+最小ベイズリスク復号は、 期待効用を最大化する出力列を求める枠組みであり[1, 2], テキスト生成モデル 𝑃modelと効用関数 𝑢(ℎ, 𝑦)の 2 つの要素から構成される。
+ここで、 𝑢(ℎ, 𝑦)は候補出力 ℎ の品質を、 参照出力 𝑦 をもとに定量化する指標である。
+記号の簡略化として、 条件付き分布 𝑃(ℎ | 𝑥)を 𝑃(ℎ)と略記する。
+理想的な状況では、 モデルではなく人間の嗜好分布 𝑃humanに基づく期待効用最大化問題を考えたい。
+すなわち、 参照仮説集合 Y を用いて、 以下のような最適な出力 ℎhumanを定義する:𝑢ℎ(ℎ):=Õ𝑦∈Y𝑢(ℎ, 𝑦) · 𝑃human(𝑦). (1)ℎhuman:= arg maxℎ∈H𝑢ℎ(ℎ). (2)ここで、 𝑃humanは人間の嗜好分布、 H は候補仮説集合、𝑢 : H × Y → [0, 𝑈]は効用関数である。
+加えて、 本研究は H = Y が成り立つことを仮定する。
+実際には、𝑃humanを直接利用することは不可能であるため、 最小ベイズリスク復号では、 モデルの嗜好分布 𝑃modelを人間の嗜好分布 𝑃humanの近似として用いる。
+その結果、 以下のような最適な出力 ℎmodelを求める問題が得られる。
+𝑢𝑚(ℎ):=Õ𝑦∈Y𝑢(ℎ, 𝑦) · 𝑃model(𝑦).(3)ℎmodel:= arg maxℎ∈H𝑢𝑚(ℎ). (4)しかし、 Y 全体にわたる期待値の計算は、 実行困難であるため、 実用上はモデル 𝑃modelからサンプリングした参照仮説集合 Ynref= {𝑦1, . . . , 𝑦𝑛} を用いて、 この期待値をモンテカルロ法で近似する[8, 13]. これにより、 有限個のサンプルを参照とした問題となる:b𝑢(ℎ):=1𝑛Õ𝑦∈Ynref𝑢(ℎ, 𝑦)(5)ℎmc:= arg maxℎ∈Hrefb𝑢(ℎ). (6)ここで、 Hrefは Ynrefを用いて構成される候補仮説集合とし、𝑛 をその大きさ 𝑛 = |Ynref| とする。
+𝑛 → ∞ のとき、 Ynrefが全集合 Y と一致することが期待でき、 この近似は、 理論的に完全な最小ベイズリスク復号の目的へと帰着する。
+以上のように、 実用上では、 最小ベイズリスク復号は、 モデルの嗜好分布を用いて、 間接的に人間の嗜好分布を近似し、 効用最大化の視点から、 最も良いと評価される候補を選択する枠組みである。
+
+
+3 理論解析
+
+本研究では、 𝑢ℎ(ℎhuman)を目標として議論を進めていくが、 その理由を以下に述べる。
+直感的には、 以下の式のように、 効用関数を用いずにモデルの嗜好分布のみを基にして、 最頻値を選択する手法(MAP 復号)が最適であると考えられる。
+MAP 復号の目的式:= arg maxℎ∈H𝑃model(ℎ). (7)しかし、 出力確率の最頻値を考慮する場合(式 7), 人間らしくない出力を引き起こす問題が指摘されている[14]. このような課題にも対処可能であり、 実験評価においても MAP 復号と比較して高性能を示し、 さらに Workshop on Statistical Machine Translation(WMT)ではタスク評価でも使用されていることが多いことから、 より優れた評価指標と考えられる。
+モデルの嗜好分布が人間の嗜好分布に近い場合に性能が良くなる結果[11]から、 最小ベイズリスク復号の目的 ℎhumanを私たちが求めるべき真の値であると仮定して、 解析を進めていく。
+
+
+3.1 事前知識
+
+本実験の解析で、 用いた 2 つの集中不等式を以下に示す。
+定理 2. 一様集中不等式(Theorem 4.10 [15])Fを関数の集合、 𝑓 ∈F: 𝑋𝑖→ [0, 𝑏]とする。
+Pr(∥ℙ𝑛− ℙ∥F≤ 2R𝑛(F) + 𝜖)≤ 1 − exp−𝑛𝜖22𝑏2.ここで、∥ℙ𝑛− ℙ∥F= sup𝑓 ∈F|ℙ𝑛𝑓 − ℙ 𝑓|, ℙ𝑛𝑓 =1𝑛Í𝑛𝑖=1𝑓 (𝑋𝑖), ℙ 𝑓 = 𝔼[𝑓 (𝑋)]であり、 𝑋 および {𝑋𝑖}𝑛𝑖=1は ℙ から独立同分布でサンプリングされたものとする。
+また、R𝑛:F,{𝑋𝑖}𝑛𝑖=1→ ℝ をラデマッハ複雑度(関数がどれだけ複雑かを示す指標)とする。
+次に、 Hoeﬀding の不等式を以下に示す。
+定理 3. Hoeﬀding の不等式(Corollary 1.1 [16]){𝑋𝑖}𝑛𝑖=1∈ [0, 𝑏]とし、 独立同分布でサンプリングされたものとする。
+Pr 𝔼[𝑋]−1𝑛𝑛Õ𝑖=1𝑋𝑖≤ 𝜖!≤ 1 − 2 exp−2𝑛𝜖2𝑏2.
+
+3.2 問題設定
+
+ここで、 人間の嗜好分布 𝑃humanと効用関数 𝑢 は、 人間の好みを反映した分布および関数であると仮定する。
+このとき、 𝑃human下での最適な出力は ℎhumanである。
+しかしながら、 実用上の制約から、 実際にはモンテカルロ法による擬似最適解 ℎmcしか得られない。
+一方で、 この ℎmcは最終的に人間の嗜好分布 𝑃human下で評価されるため、 以下のような性能差が生じる。
+実用的に使われている最小ベイズリスク復号と、真の最小ベイズリスク復号の最適解を、 人間の嗜好分布下で評価した場合の誤差を以下に示す。
+Regret(ℎhuman, ℎmc):= 𝑢ℎ(ℎhuman) − 𝑢ℎ(ℎmc). (8)本研究の目標は、 この性能差の上界(式(8))を理論的に求めることにある。
+もし、 この上界をサンプル数に関するオーダーで示すことができれば、 モンテカルロ法を用いた最小ベイズリスク復号の性能に対して、 理論的な保証を提供できることになる。
+ここで、 本研究では、 以下の仮定が成り立つものとし、 解析を進める。
+仮定 1. 𝑃modelは、 𝑃humanから得られた |𝐷 | 個のサンプルによる経験分布とする。
+このとき、 𝑃model, 𝑢𝑚(ℎ)は以下のように表される。
+𝑃model(𝑦) =1|𝐷|Õ𝑦′∈𝐷𝐼 (𝑦 = 𝑦′). 𝐷 ∼ 𝑃human(· | 𝑥)ここで、 𝐼 は指示関数とする。
+𝑢𝑚(ℎ) =1|𝐷|Õ𝑦∈𝐷𝑢(ℎ, 𝑦).仮定 1 の解釈の例として、 一般に、𝑃modelは大規模言語モデルが想定されるが、本研究では理論解析のため，𝑃modelに対してこのようなサンプルベースの分布を仮定している。
+大規模言語モデルが大量の学習データから構築されることを考慮すると、|𝐷| ≫ 𝑛という条件が自然に成立すると考えられる仮定 2. 本研究の設定に基づき、 全ての 𝑦 および ℎ に対して、 効用関数 𝑢 が線形関数として表現できるような埋め込み関数 𝛼(ℎ) ∈ ℝ𝑑および v(𝑦) ∈ ℝ𝑑が存在すると仮定する。
+さらに、 v(𝑦)の各要素は部分空間の正規直交基底であると想定する。
+𝑢(ℎ, 𝑦) = 𝛼(ℎ)⊤v(𝑦).このような性質を満たす埋め込み関数としては、 文の類似度を評価するための Sentence Bert や SentenceTransformer などの例が存在する[17, 18, 19].
+
+3.3 理論解析
+
+式(8)に基づき、 モンテカルロ法によって得られたℎmcの性能が、 真の最小ベイズリスク復号の値から、どの程度乖離しているかを解析する。
+3.3.1 Regret(ℎhuman, ℎmc)の上界Regret(ℎhuman, ℎmc)の上界について以下の定理が成り立つ。
+定理 1. 仮定 1, 仮定 2 の元で、 次の上界が、 少なくとも確率 1 − 𝛿 で成立する:Regret(ℎhuman, ℎmc) ≤ 2𝑈r12𝑛log8𝛿+12𝑈𝑛q𝑑 log(2√𝑑) + 2√𝑑+ 2𝑈s12|𝐷 |log8𝛿.この上界は、 𝑂max1√𝑛,1√|𝐷 |の速さで減衰していくことがわかる。
+この定理は、 有限サンプルから推定した最小ベイズリスク復号に対して、 真の最小ベイズリスク復号との性能差がどの程度まで抑えられるかを定量的に示す重要な結果である。
+本結果は、 参照仮説集合の大きさ 𝑛 および |𝐷 | の増大に伴って性能差が縮小することを保証する。
+ここから、 定理 1 の証明を行う。
+式(8)は分解すると、 以下の 3 つの式に分けることができる。
+Regret(ℎhuman, ℎmc) = 𝑢ℎ(ℎhuman) − 𝑢𝑚(ℎhuman)|  {z  }♣+ 𝑢𝑚(ℎhuman) − 𝑢𝑚(ℎmc)|  {z  }♡+𝑢𝑚(ℎmc) − 𝑢ℎ(ℎmc)|  {z  }♠.クローバーおよびスペード項の上界まず、 クローバー ♣ およびスペード ♠ 項を解析する。
+ここで、♣ 項は人間の嗜好分布 𝑃humanとモデルの嗜好分布𝑃modelにおける真の最適出力 ℎhumanの性能差を表し、 ♠ 項は近似最適出力 ℎmcに対し、 人間の嗜好分布とモデルの嗜好分布間での性能差を示している。
+仮定 1 に基づき、 𝑃modelは 𝑃humanのサンプルを用いて構成されているため、 Hoeﬀding の不等式(定理 3)を適用可能であり、 以下の補題が成り立つ。
+補題 1. 仮定 1 の元で、 次の上界が、 少なくとも確率1 −𝛿2で成立する:♣ + ♠ ≤ 2𝑈s12|𝐷 |log8𝛿.証明仮定 1 の元で、 定理 3 を適用すると、♣ 項は以下のように表される:Pr(|♣|≤ 𝜖)≤ 1 − 2 exp−2|𝐷 |𝜖2𝑈2= 1 −𝛿4.ここで 𝛿 は任意の正の値とする。
+ここで、 𝜖 について
+
+テキスト生成における最小ベイズリスク復号の理論的な理解に向けて
+
+市原有生希
+
+1
+
+ 陣内佑
+
+2
+
+ 蟻生開人
+
+2
+
+ 森村哲郎
+
+2
+
+ 内部英治
+
+31
+
+奈良先端科学技術大学院大学 
+
+2
+
+サイバーエージェント
+
+3
+
+国際電気通信基礎技術研究所
+
+
+
+ichihara.yuki.iu1@is.naist.jp
+
+
+
+ {jinnai yu,kaito ariu,morimura tetsuro}@cyberagent.co.jp
+
+
+
+ uchibe@atr.jp
+
+
+
+概要
+
+最小ベイズリスク復号(Minimum Bayes Riskdecoding)は、 自然言語処理のテキスト生成において効果的であることが知られている手法である。
+この手法は基盤となる人間の嗜好確率分布に基づく期待効用を最大化することを目的とし、 出力選択を行う。
+先行研究における実験的評価ではこのアプローチが顕著な成功を収めていることが示されているが、 これらの手法が有効に機能する原因については未だ解明されていない。
+本研究では最小ベイズリスク復号が何故高い性能が得られるかを明らかにすることを目的として、 その理論的な性能を分析する。
+分析の結果として、 いくつかの仮定の下、 最小ベイズリスク復号の誤差が計算に用いる参照仮説集合の大きさ 𝑛 に対して高い確率で 𝑂(1√𝑛)に収まることが示された。
+
+
+1 はじめに
+
+最小ベイズリスク(Minimum Bayes Risk)復号[1, 2]は、 自己回帰型確率モデル(例: 大規模言語モデル)から系列を生成するための決定則である。
+最小ベイズリスク復号は、 機械翻訳[3, 4], 画像キャプション生成[5], および指示追従型タスク[6]など、 さまざまなテキスト生成タスクにおいて高品質なテキストを生成できることが示されている。
+また、 多くの実験で、 最小ベイズリスク復号が MAP 復号(例: ビームサーチ)[7, 8]に比べて優位性を持つことが報告されている。
+最小ベイズリスク復号の有効性は、 多くの実験的評価によって示されているが、 その根本的な理由については十分に解明されていない。
+Kamigaito ら[9]は最小ベイズリスク復号の人間とモデルの嗜好分布間の不一致はバイアスと多様性の項に分解できることを示唆した。
+Bertsch ら[10]は最小ベイズリスク復号の性能の成功に寄与する 4 つの要因を実験的に分析した。
+さらに、 Ohashi ら[11]は異常検知を用いた解析によって、 モデルの嗜好分布が人間の嗜好分布に近い場合、 最小ベイズリスク復号が優れた性能を引き起こすことを確認した。
+本研究では、 最小ベイズリスク復号による出力の理論的な性能の解析を行う。
+本研究の結果は略式に述べると以下になる。
+定理 1 (最小ベイズリスク復号の収束レート;略式). 後述する仮定の下、 最小ベイズリスク復号の誤差は高い確率で参照仮説集合の大きさ 𝑛に対して 𝑂1√𝑛である。
+この理論的な知見は、 先行研究において最小ベイズリスク復号の性能が参照仮説集合の大きさ 𝑛 に対して向上するという実験的評価と整合している[8, 12].最小ベイズリスク復号によって生成されるテキストの品質に関する実験的評価は多く先行研究があるが、 理論的な誤差の上界を解析した研究はこれまで存在していない。
+本結果はテキスト生成アルゴリズムにおける未解決の課題の一つに対する解答につながるものである。
+
+
+2 最小ベイズリスク復号
+
+テキスト生成は、 入力列 𝑥 に対して出力列 𝑦 を生成するタスクである。
+テキスト生成モデルは、 仮説の出力空間 Y 上に確率分布 𝑃model(𝑦 | 𝑥)を定義する。
+完全な仮説の集合 Y は次のように定義される:Y := {BOS ◦ v ◦ EOS | v ∈ V∗}.ここで、 ◦ は文字列の連結を表し、 V∗は語彙集合 Vの Kleene 閉包である。
+復号は、 与えられた入力に対して最もスコアの高い仮説を見つけることを目的とする。
+最小ベイズリスク復号は、 期待効用を最大化する出力列を求める枠組みであり[1, 2], テキスト生成モデル 𝑃modelと効用関数 𝑢(ℎ, 𝑦)の 2 つの要素から構成される。
+ここで、 𝑢(ℎ, 𝑦)は候補出力 ℎ の品質を、 参照出力 𝑦 をもとに定量化する指標である。
+記号の簡略化として、 条件付き分布 𝑃(ℎ | 𝑥)を 𝑃(ℎ)と略記する。
+理想的な状況では、 モデルではなく人間の嗜好分布 𝑃humanに基づく期待効用最大化問題を考えたい。
+すなわち、 参照仮説集合 Y を用いて、 以下のような最適な出力 ℎhumanを定義する:𝑢ℎ(ℎ):=Õ𝑦∈Y𝑢(ℎ, 𝑦) · 𝑃human(𝑦). (1)ℎhuman:= arg maxℎ∈H𝑢ℎ(ℎ). (2)ここで、 𝑃humanは人間の嗜好分布、 H は候補仮説集合、𝑢 : H × Y → [0, 𝑈]は効用関数である。
+加えて、 本研究は H = Y が成り立つことを仮定する。
+実際には、𝑃humanを直接利用することは不可能であるため、 最小ベイズリスク復号では、 モデルの嗜好分布 𝑃modelを人間の嗜好分布 𝑃humanの近似として用いる。
+その結果、 以下のような最適な出力 ℎmodelを求める問題が得られる。
+𝑢𝑚(ℎ):=Õ𝑦∈Y𝑢(ℎ, 𝑦) · 𝑃model(𝑦).(3)ℎmodel:= arg maxℎ∈H𝑢𝑚(ℎ). (4)しかし、 Y 全体にわたる期待値の計算は、 実行困難であるため、 実用上はモデル 𝑃modelからサンプリングした参照仮説集合 Ynref= {𝑦1, . . . , 𝑦𝑛} を用いて、 この期待値をモンテカルロ法で近似する[8, 13]. これにより、 有限個のサンプルを参照とした問題となる:b𝑢(ℎ):=1𝑛Õ𝑦∈Ynref𝑢(ℎ, 𝑦)(5)ℎmc:= arg maxℎ∈Hrefb𝑢(ℎ). (6)ここで、 Hrefは Ynrefを用いて構成される候補仮説集合とし、𝑛 をその大きさ 𝑛 = |Ynref| とする。
+𝑛 → ∞ のとき、 Ynrefが全集合 Y と一致することが期待でき、 この近似は、 理論的に完全な最小ベイズリスク復号の目的へと帰着する。
+以上のように、 実用上では、 最小ベイズリスク復号は、 モデルの嗜好分布を用いて、 間接的に人間の嗜好分布を近似し、 効用最大化の視点から、 最も良いと評価される候補を選択する枠組みである。
+
+
+3 理論解析
+
+本研究では、 𝑢ℎ(ℎhuman)を目標として議論を進めていくが、 その理由を以下に述べる。
+直感的には、 以下の式のように、 効用関数を用いずにモデルの嗜好分布のみを基にして、 最頻値を選択する手法(MAP 復号)が最適であると考えられる。
+MAP 復号の目的式:= arg maxℎ∈H𝑃model(ℎ). (7)しかし、 出力確率の最頻値を考慮する場合(式 7), 人間らしくない出力を引き起こす問題が指摘されている[14]. このような課題にも対処可能であり、 実験評価においても MAP 復号と比較して高性能を示し、 さらに Workshop on Statistical Machine Translation(WMT)ではタスク評価でも使用されていることが多いことから、 より優れた評価指標と考えられる。
+モデルの嗜好分布が人間の嗜好分布に近い場合に性能が良くなる結果[11]から、 最小ベイズリスク復号の目的 ℎhumanを私たちが求めるべき真の値であると仮定して、 解析を進めていく。
+
+
+3.1 事前知識
+
+本実験の解析で、 用いた 2 つの集中不等式を以下に示す。
+定理 2. 一様集中不等式(Theorem 4.10 [15])Fを関数の集合、 𝑓 ∈F: 𝑋𝑖→ [0, 𝑏]とする。
+Pr(∥ℙ𝑛− ℙ∥F≤ 2R𝑛(F) + 𝜖)≤ 1 − exp−𝑛𝜖22𝑏2.ここで、∥ℙ𝑛− ℙ∥F= sup𝑓 ∈F|ℙ𝑛𝑓 − ℙ 𝑓|, ℙ𝑛𝑓 =1𝑛Í𝑛𝑖=1𝑓 (𝑋𝑖), ℙ 𝑓 = 𝔼[𝑓 (𝑋)]であり、 𝑋 および {𝑋𝑖}𝑛𝑖=1は ℙ から独立同分布でサンプリングされたものとする。
+また、R𝑛:F,{𝑋𝑖}𝑛𝑖=1→ ℝ をラデマッハ複雑度(関数がどれだけ複雑かを示す指標)とする。
+次に、 Hoeﬀding の不等式を以下に示す。
+定理 3. Hoeﬀding の不等式(Corollary 1.1 [16]){𝑋𝑖}𝑛𝑖=1∈ [0, 𝑏]とし、 独立同分布でサンプリングされたものとする。
+Pr 𝔼[𝑋]−1𝑛𝑛Õ𝑖=1𝑋𝑖≤ 𝜖!≤ 1 − 2 exp−2𝑛𝜖2𝑏2.
+
+3.2 問題設定
+
+ここで、 人間の嗜好分布 𝑃humanと効用関数 𝑢 は、 人間の好みを反映した分布および関数であると仮定する。
+このとき、 𝑃human下での最適な出力は ℎhumanである。
+しかしながら、 実用上の制約から、 実際にはモンテカルロ法による擬似最適解 ℎmcしか得られない。
+一方で、 この ℎmcは最終的に人間の嗜好分布 𝑃human下で評価されるため、 以下のような性能差が生じる。
+実用的に使われている最小ベイズリスク復号と、真の最小ベイズリスク復号の最適解を、 人間の嗜好分布下で評価した場合の誤差を以下に示す。
+Regret(ℎhuman, ℎmc):= 𝑢ℎ(ℎhuman) − 𝑢ℎ(ℎmc). (8)本研究の目標は、 この性能差の上界(式(8))を理論的に求めることにある。
+もし、 この上界をサンプル数に関するオーダーで示すことができれば、 モンテカルロ法を用いた最小ベイズリスク復号の性能に対して、 理論的な保証を提供できることになる。
+ここで、 本研究では、 以下の仮定が成り立つものとし、 解析を進める。
+仮定 1. 𝑃modelは、 𝑃humanから得られた |𝐷 | 個のサンプルによる経験分布とする。
+このとき、 𝑃model, 𝑢𝑚(ℎ)は以下のように表される。
+𝑃model(𝑦) =1|𝐷|Õ𝑦′∈𝐷𝐼 (𝑦 = 𝑦′). 𝐷 ∼ 𝑃human(· | 𝑥)ここで、 𝐼 は指示関数とする。
+𝑢𝑚(ℎ) =1|𝐷|Õ𝑦∈𝐷𝑢(ℎ, 𝑦).仮定 1 の解釈の例として、 一般に、𝑃modelは大規模言語モデルが想定されるが、本研究では理論解析のため，𝑃modelに対してこのようなサンプルベースの分布を仮定している。
+大規模言語モデルが大量の学習データから構築されることを考慮すると、|𝐷| ≫ 𝑛という条件が自然に成立すると考えられる仮定 2. 本研究の設定に基づき、 全ての 𝑦 および ℎ に対して、 効用関数 𝑢 が線形関数として表現できるような埋め込み関数 𝛼(ℎ) ∈ ℝ𝑑および v(𝑦) ∈ ℝ𝑑が存在すると仮定する。
+さらに、 v(𝑦)の各要素は部分空間の正規直交基底であると想定する。
+𝑢(ℎ, 𝑦) = 𝛼(ℎ)⊤v(𝑦).このような性質を満たす埋め込み関数としては、 文の類似度を評価するための Sentence Bert や SentenceTransformer などの例が存在する[17, 18, 19].
+
+3.3 理論解析
+
+式(8)に基づき、 モンテカルロ法によって得られたℎmcの性能が、 真の最小ベイズリスク復号の値から、どの程度乖離しているかを解析する。
+3.3.1 Regret(ℎhuman, ℎmc)の上界Regret(ℎhuman, ℎmc)の上界について以下の定理が成り立つ。
+定理 1. 仮定 1, 仮定 2 の元で、 次の上界が、 少なくとも確率 1 − 𝛿 で成立する:Regret(ℎhuman, ℎmc) ≤ 2𝑈r12𝑛log8𝛿+12𝑈𝑛q𝑑 log(2√𝑑) + 2√𝑑+ 2𝑈s12|𝐷 |log8𝛿.この上界は、 𝑂max1√𝑛,1√|𝐷 |の速さで減衰していくことがわかる。
+この定理は、 有限サンプルから推定した最小ベイズリスク復号に対して、 真の最小ベイズリスク復号との性能差がどの程度まで抑えられるかを定量的に示す重要な結果である。
+本結果は、 参照仮説集合の大きさ 𝑛 および |𝐷 | の増大に伴って性能差が縮小することを保証する。
+ここから、 定理 1 の証明を行う。
+式(8)は分解すると、 以下の 3 つの式に分けることができる。
+Regret(ℎhuman, ℎmc) = 𝑢ℎ(ℎhuman) − 𝑢𝑚(ℎhuman)|  {z  }♣+ 𝑢𝑚(ℎhuman) − 𝑢𝑚(ℎmc)|  {z  }♡+𝑢𝑚(ℎmc) − 𝑢ℎ(ℎmc)|  {z  }♠.クローバーおよびスペード項の上界まず、 クローバー ♣ およびスペード ♠ 項を解析する。
+ここで、♣ 項は人間の嗜好分布 𝑃humanとモデルの嗜好分布𝑃modelにおける真の最適出力 ℎhumanの性能差を表し、 ♠ 項は近似最適出力 ℎmcに対し、 人間の嗜好分布とモデルの嗜好分布間での性能差を示している。
+仮定 1 に基づき、 𝑃modelは 𝑃humanのサンプルを用いて構成されているため、 Hoeﬀding の不等式(定理 3)を適用可能であり、 以下の補題が成り立つ。
+補題 1. 仮定 1 の元で、 次の上界が、 少なくとも確率1 −𝛿2で成立する:♣ + ♠ ≤ 2𝑈s12|𝐷 |log8𝛿.証明仮定 1 の元で、 定理 3 を適用すると、♣ 項は以下のように表される:Pr(|♣|≤ 𝜖)≤ 1 − 2 exp−2|𝐷 |𝜖2𝑈2= 1 −𝛿4.ここで 𝛿 は任意の正の値とする。
+ここで、 𝜖 について整理すると、 次のように表すことができる。
+𝜖 = 𝑈s12|𝐷 |log8𝛿.この 𝜖 は、 サンプル数 |𝐷| が分母に含まれる形で記述されており、 |𝐷| を増やせば、 0 に収束することは直感的に理解できる。
+今回の場合において、Hoeﬃding の不等式が意味していることは、 ♣ 項が 𝜖よりも小さくなる確率が、 少なくとも 1 −𝛿4であることを示唆している。
+すなわち、 以下のような ♣ の上界は少なくとも確率 1 −𝛿4で成立する:♣ ≤ 𝑈s12𝑛log8𝛿.♠ 項に関しても、 同様の操作によって上界を求めることができ、 補題 1 が証明される。
+これらのことから、 ♣ 項と ♠ 項の上界は、 サンプル数 |𝐷| のみが変化し、 それの大きさに応じて、 上界が1√|𝐷 |の速度で減衰していくことを示唆している。
+ハート項の上界次に、 ハート ♡ 項の解析から始める。
+♡ 項はモデルの嗜好分布下における最適出力ℎhumanと近似最適出力 ℎmcの性能差を示唆している。
+♡ を次のように分解する。
+𝑢𝑚(ℎhuman) − 𝑢𝑚(ℎmc) = 𝑢𝑚(ℎhuman) − b𝑢(ℎhuman)+ b𝑢(ℎmc) − 𝑢𝑚(ℎmc) + b𝑢(ℎhuman) − b𝑢(ℎmc)|  {z  }≤0≤ 𝑢𝑚(ℎhuman) − b𝑢(ℎhuman)|  {z  }♡1+b𝑢(ℎmc) − 𝑢𝑚(ℎmc)|  {z  }♡2.これらの定理 2 , 定理 3 および仮定 2 を用いて、 ♡1と ♡2の上界を順に示していく。
+補題 2. 仮定 2 の元で、 次の上界が、 少なくとも確率1 −𝛿2で成立する:♡ ≤ 2𝑈r12𝑛log8𝛿+12𝑈𝑛q𝑑 log(2√𝑑) + 2√𝑑.証明 ♡1項は、 補題 1 の証明と同様の操作によって求めることができ、 以下のような上界が少なくとも確率 1 −𝛿4で成立する:♡1≤ 𝑈s12𝑛log8𝛿.次に ♡2項を解析する。
+ここで、 ♡1項の解析と同様に、 Hoeﬀding の不等式を適用することはできない。
+これは、 ℎmcを選択する際に b𝑢 に依存しているためである。
+この理由から、 定理 2 を適用して解析を行う。
+♡2項の上界は少なくとも確率 1 −𝛿4で成立する:♡2≤ 𝑈s12𝑛log4𝛿+ 2R𝑛(F).[20]の 27.2 章より、 ラデマッハ複雑度R𝑛(F)に関する次の上界が得られる:2R𝑛(F) ≤12𝑈𝑛q𝑑 log(2√𝑑) + 2√𝑑.これらの結果から、 ♡1と ♡2項の上界は、 サンプル数 𝑛 のみが変化し、 それの大きさに応じて、 上界が1√𝑛の速度で減衰していくことを示唆している。
+これらの補題 1, 補題 2 を用いることで、 最終的にRegret(ℎhuman, ℎmc)の上界(定理 1)が導出される。
+
+
+
+4 おわりに
+
+本研究では、 最小ベイズリスク復号に関する理論的性能保証を初めて示し、 最小ベイズリスク復号が、高品質な出力を得るための有効な手法であることを数理的観点から示唆した。
+具体的には、 モデルの嗜好分布に基づくモンテカルロ法を用いた最小ベイズリスク復号において、 真の解との性能差の上界を導出し、 その性能差が参照仮説集合の大きさ 𝑛 の増大とともに 𝑂 (1√𝑛)オーダーで収束することを示した。
+総じて、 本研究は最小ベイズリスク復号の数理的理解を深化させた。
+
+
+謝辞
+
+本研究は JSPS 科研費 23K19986 の助成を受けたものです。
+
+
+参考文献
+
+[1] Shankar Kumar and William Byrne. Minimum Bayes-Risk WordAlignments of Bilingual Texts. In Proceedings of the 2002Conference on Empirical Methods in Natural LanguageProcessing (EMNLP 2002), pp. 140–147. Association for Com-putational Linguistics, July 2002.[2] Shankar Kumar and William Byrne. Minimum Bayes-risk decod-ing for statistical machine translation. In Proceedings of theHuman Language Technology Conference of the NorthAmerican Chapter of the Association for ComputationalLinguistics: HLT-NAACL 2004, pp. 169–176, Boston, Mas-sachusetts, USA, May 2 - May 7 2004. Association for Computa-tional Linguistics.[3] Adri`a de Gispert, Sami Virpioja, Mikko Kurimo, and WilliamByrne. Minimum Bayes Risk Combination of Translation Hy-potheses from Alternative Morphological Decompositions. InMari Ostendorf, Michael Collins, Shri Narayanan, Douglas W.
+
+Oard, and Lucy Vanderwende, editors, Proceedings of HumanLanguage Technologies: The 2009 Annual Conference ofthe North American Chapter of the Association for Com-putational Linguistics, Companion Volume: Short Papers,pp. 73–76, Boulder, Colorado, June 2009. Association for Compu-tational Linguistics.[4] Felix Stahlberg, Adr i`a de Gispert, Eva Hasler, and Bill Byrne.Neural Machine Translation by Minimising the Bayes-risk withRespect to Syntactic Translation Lattices. In Mirella Lapata, PhilBlunsom, and Alexander Koller, editors, Proceedings of the15th Conference of the European Chapter of the Asso-ciation for Computational Linguistics: Volume 2, ShortPapers, pp. 362–368, Valencia, Spain, April 2017. Associationfor Computational Linguistics.[5] Sebastian Borgeaud and Guy Emerson. Leveraging Sentence Sim-ilarity in Natural Language Generation: Improving Beam Searchusing Range Voting. In Alexandra Birch, Andrew Finch, HiroakiHayashi, Kenneth Heaﬁeld, Marcin Junczys-Dowmunt, IoannisKonstas, Xian Li, Graham Neubig, and Yusuke Oda, editors, Pro-ceedings of the Fourth Workshop on Neural Generationand Translation, pp. 97–109, Online, July 2020. Association forComputational Linguistics.[6] Ian Wu, Patrick Fernandes, Amanda Bertsch, Seungone Kim,Sina Pakazad, and Graham Neubig. Better instruction-followingthrough minimum bayes risk. arXiv preprint arXiv:2410.02902,2024.[7] Mathias M¨uller and Rico Sennrich. Understanding the propertiesof minimum Bayes risk decoding in neural machine translation. InProceedings of the 59th Annual Meeting of the Associa-tion for Computational Linguistics and the 11th Interna-tional Joint Conference on Natural Language Processing(Volume 1: Long Papers), pp. 259–272, Online, August 2021.Association for Computational Linguistics.[8] Bryan Eikema and Wilker Aziz. Sampling-Based Approximationsto Minimum Bayes Risk Decoding for Neural Machine Trans-lation. In Yoav Goldberg, Zornitsa Kozareva, and Yue Zhang,editors, Proceedings of the 2022 Conference on EmpiricalMethods in Natural Language Processing, pp. 10978–10993,Abu Dhabi, United Arab Emirates, December 2022. Associationfor Computational Linguistics.[9] Hidetaka Kamigaito, Hiroyuki Deguchi, Yusuke Sakai, KatsuhikoHayashi, and Taro Watanabe. Theoretical Aspects of Bias andDiversity in Minimum Bayes Risk Decoding. arXiv preprintarXiv:2410.15021, 2024.[10] Amanda Bertsch, Alex Xie, Graham Neubig, and Matthew Gorm-ley. It’s MBR all the way down: Modern generation techniquesthrough the lens of minimum Bayes risk. In Yanai Elazar, AllysonEttinger, Nora Kassner, Sebastian Ruder, and Noah A. Smith, ed-itors, Proceedings of the Big Picture Workshop, pp. 108–122, Singapore, December 2023. Association for ComputationalLinguistics.[11] Atsumoto Ohashi, Ukyo Honda, Tetsuro Morimura, and Yuu Jin-nai. On the True Distribution Approximation of Minimum Bayes-Risk Decoding. In Kevin Duh, Helena Gomez, and Steven Bethard,editors, Proceedings of the 2024 Conference of the NorthAmerican Chapter of the Association for ComputationalLinguistics: Human Language Technologies (Volume 2:Short Papers), pp. 459–468, Mexico City, Mexico, June 2024.Association for Computational Linguistics.[12] Markus Freitag, David Grangier, Qijun Tan, and Bowen Liang.High quality rather than high model probability: Minimum Bayesrisk decoding with neural metrics. Transactions of the Asso-ciation for Computational Linguistics, Vol. 10, pp. 811–825,2022.[13] Ant´onio Farinhas, Jos´e de Souza, and Andre Martins. An EmpiricalStudy of Translation Hypothesis Ensembling with Large LanguageModels. In Houda Bouamor, Juan Pino, and Kalika Bali, editors,Proceedings of the 2023 Conference on Empirical Methodsin Natural Language Processing, pp. 11956–11970, Singapore,December 2023. Association for Computational Linguistics.[14] Clara Meister, Gian Wiher, Tiago Pimentel, and Ryan Cotterell.On the probability–quality paradox in language generation. InSmaranda Muresan, Preslav Nakov, and Aline Villavicencio, edi-tors, Proceedings of the 60th Annual Meeting of the As-sociation for Computational Linguistics (Volume 2: ShortPapers), pp. 36–45, Dublin, Ireland, May 2022. Association forComputational Linguistics.[15] Martin J Wainwright. High-dimensional statistics: A non-asymptotic viewpoint, Vol. 48. Cambridge university press,2019.[16] Francis Bach. Learning Theory from First Principles. AdaptiveComputation and Machine Learning series. MIT Press, 2024.[17] Nils Reimers and Iryna Gurevych. Sentence-BERT: Sentence em-beddings using Siamese BERT-networks. In Proceedings of the2019 Conference on Empirical Methods in Natural Lan-guage Processing and the 9th International Joint Confer-ence on Natural Language Processing (EMNLP-IJCNLP),pp. 3982–3992, Hong Kong, China, November 2019. Associationfor Computational Linguistics.[18] Nils Reimers and Iryna Gurevych. Making monolingual sentenceembeddings multilingual using knowledge distillation. In Pro-ceedings of the 2020 Conference on Empirical Methodsin Natural Language Processing (EMNLP), pp. 4512–4525,Online, November 2020. Association for Computational Linguis-tics.[19] Shaﬁq Rayhan Joty Caiming Xiong Yingbo Zhou Semih YavuzRui Meng*, Ye Liu*. Sfr-embedding-2: Advanced text embeddingwith multi-stage training, 2024.[20] Shai Shalev-Shwartz and Shai Ben-David. Understanding ma-chine learning: From theory to algorithms. Cambridge uni-versity press, 2014.

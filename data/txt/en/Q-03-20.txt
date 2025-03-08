@@ -1,0 +1,701 @@
+Open-source Human Evaluation Framework forVideo-to-Text and Video-to-Audio Systems
+
+Goran Topi
+
+
+
+´
+
+
+
+c
+
+1
+
+, Graham Neubig
+
+2
+
+, Katsuhito Sudoh
+
+5
+
+, Yuki Saito
+
+3
+
+, Shinnosuke Takamichi
+
+4
+
+,
+
+
+
+Ryosuke Matsushita
+
+4
+
+, Kota Iura
+
+3
+
+, Hiroya Takamura
+
+1
+
+, Tatsuya Ishigaki
+
+11
+
+AIST,
+
+2
+
+CMU,
+
+3
+
+The University of Tokyo,
+
+4
+
+Keio University,
+
+5
+
+Nara Women’s University
+
+
+
+Abstract
+
+We present a framework that streamlines the preparationof human evaluation process for text or audio automaticallygenerated from video.
+In such evaluation tasks evaluatorsoften assess the generated text or audio while watching avideo.
+Consequently, preparing for these evaluations canbe highly resource-intensive because the process typicallyinvolves several steps cutting a video and audio segments,synthesizing speech with text-to-speech tools, merging au-dio and video, and developing a user interface for crowd-sourcing annotation collection.
+Our framework automatesthese steps, reducing the researchers’ workload.
+
+
+1 Introduction
+
+Video-to-text systems, such as dense video caption-ing
+[1] and commentary generation
+[2, 3, 4], have maderemarkable progress.
+Recently, there has been growinginterest in combining these systems with text-to-speech(TTS) technologies to also produce audio outputs, enablinga more immersive evaluation of video content [5, 6].
+Eval-uating these models is a key area of research.
+While auto-matic evaluation metrics, which are mainly based on wordoverlap or embedding similarities, are commonly used, itis common practice to combine human evaluation withautomatic evaluation for assessing these models.
+Preparing an evaluation process is resource-intensive forresearchers.
+It typically involves several labor-intensivesteps, including: 1) video preparation, 2) deﬁning cuts forvideo segments, 3) generating text using language models,4) creating subtitles, 5) synthesizing speech with text-to-speech technology, 6) merging audio and video, and 7)developing a user interface for crowdsourcing annotationcollection.
+Currently, these tasks are often car ried out inde-pendently by each research institution, leading to redundanteﬀorts and ineﬃciencies.
+The lack of a standardized frame-work not only increases costs but also hinders progress inevaluating video-to-text systems eﬀectively.
+Evaluating video-to-text and video-to-audio tasks usingexisting annotation tools is challenging.
+While tools likebrat [7] and commercial platforms such as VoTT1）and La-belBox2）may be suitable for annotation tasks involvingsingle-modal data, such as text or video alone, they areoften not well-suited for multimodal tasks.
+These tools areprimarily designed for annotations involving one modal-ity― either text or visual content― and typically requiresigniﬁcant preprocessing to handle multimodal inputs.
+Forexample, they may need additional steps like adding audioor subtitles to videos before annotation, which increases theoverall workload and makes them less eﬃcient for evalu-ating video-to-text and video-to-audio systems.
+In contrast, this paper presents an open source frame-work that streamlines the human evaluation workﬂow.
+Ourframework automates key steps in the preparation, such asmuxing, cutting, and UI development, which are essentialfor creating evaluation tasks presented to evaluators.
+
+
+2 Related Work
+
+Various video-to-text and video-to-audio tasks anddatasets have been proposed including dense video caption-ing
+[1], commentary generation [2, 3, 4, 5], speech corpusof commentary [8].
+For video-to-text generation tasks, ex-isting studies employ three main strategies for evaluation:1) using only text outputs, 2) using both video and textoutputs, and 3) using both video and audio outputs.
+For the ﬁrst strategy, common in dense video captioningtasks, generated texts are often aligned with gold standardtexts using IoU [1] or by solving an optimization prob-lem
+[9].
+Metrics such as BLEU [10], METEOR
+[11],1）
+https://github.com/microsoft/VoTT2） https://labelbox.com
+
+Open-source Human Evaluation Framework forVideo-to-Text and Video-to-Audio Systems
+
+Goran Topi
+
+
+
+´
+
+
+
+c
+
+1
+
+, Graham Neubig
+
+2
+
+, Katsuhito Sudoh
+
+5
+
+, Yuki Saito
+
+3
+
+, Shinnosuke Takamichi
+
+4
+
+,
+
+
+
+Ryosuke Matsushita
+
+4
+
+, Kota Iura
+
+3
+
+, Hiroya Takamura
+
+1
+
+, Tatsuya Ishigaki
+
+11
+
+AIST,
+
+2
+
+CMU,
+
+3
+
+The University of Tokyo,
+
+4
+
+Keio University,
+
+5
+
+Nara Women’s University
+
+
+
+Abstract
+
+We present a framework that streamlines the preparationof human evaluation process for text or audio automaticallygenerated from video.
+In such evaluation tasks evaluatorsoften assess the generated text or audio while watching avideo.
+Consequently, preparing for these evaluations canbe highly resource-intensive because the process typicallyinvolves several steps cutting a video and audio segments,synthesizing speech with text-to-speech tools, merging au-dio and video, and developing a user interface for crowd-sourcing annotation collection.
+Our framework automatesthese steps, reducing the researchers’ workload.
+
+
+1 Introduction
+
+Video-to-text systems, such as dense video caption-ing
+[1] and commentary generation
+[2, 3, 4], have maderemarkable progress.
+Recently, there has been growinginterest in combining these systems with text-to-speech(TTS) technologies to also produce audio outputs, enablinga more immersive evaluation of video content [5, 6].
+Eval-uating these models is a key area of research.
+While auto-matic evaluation metrics, which are mainly based on wordoverlap or embedding similarities, are commonly used, itis common practice to combine human evaluation withautomatic evaluation for assessing these models.
+Preparing an evaluation process is resource-intensive forresearchers.
+It typically involves several labor-intensivesteps, including: 1) video preparation, 2) deﬁning cuts forvideo segments, 3) generating text using language models,4) creating subtitles, 5) synthesizing speech with text-to-speech technology, 6) merging audio and video, and 7)developing a user interface for crowdsourcing annotationcollection.
+Currently, these tasks are often car ried out inde-pendently by each research institution, leading to redundanteﬀorts and ineﬃciencies.
+The lack of a standardized frame-work not only increases costs but also hinders progress inevaluating video-to-text systems eﬀectively.
+Evaluating video-to-text and video-to-audio tasks usingexisting annotation tools is challenging.
+While tools likebrat [7] and commercial platforms such as VoTT1）and La-belBox2）may be suitable for annotation tasks involvingsingle-modal data, such as text or video alone, they areoften not well-suited for multimodal tasks.
+These tools areprimarily designed for annotations involving one modal-ity― either text or visual content― and typically requiresigniﬁcant preprocessing to handle multimodal inputs.
+Forexample, they may need additional steps like adding audioor subtitles to videos before annotation, which increases theoverall workload and makes them less eﬃcient for evalu-ating video-to-text and video-to-audio systems.
+In contrast, this paper presents an open source frame-work that streamlines the human evaluation workﬂow.
+Ourframework automates key steps in the preparation, such asmuxing, cutting, and UI development, which are essentialfor creating evaluation tasks presented to evaluators.
+
+
+2 Related Work
+
+Various video-to-text and video-to-audio tasks anddatasets have been proposed including dense video caption-ing
+[1], commentary generation [2, 3, 4, 5], speech corpusof commentary [8].
+For video-to-text generation tasks, ex-isting studies employ three main strategies for evaluation:1) using only text outputs, 2) using both video and textoutputs, and 3) using both video and audio outputs.
+For the ﬁrst strategy, common in dense video captioningtasks, generated texts are often aligned with gold standardtexts using IoU [1] or by solving an optimization prob-lem
+[9].
+Metrics such as BLEU [10], METEOR
+[11],1）
+https://github.com/microsoft/VoTT2） https://labelbox.comand
+CIDEr
+[12] are then used for scoring.
+Preparation ofevaluation process in this strategy is easier, however, thesemetrics have limitations in capturing nuanced aspects oflanguage generation, so many studies supplement themwith human evaluations.
+Recent studies have adopted the second or third strate-gies, where evaluators assess outputs by viewing the videoalongside subtitles/audio.
+While these approaches oﬀermore comprehensive evaluations, they also require moreeﬀort and resources to prepare the evaluation process.
+Sometimes, existing annotation tools are used for humanannotation process, but most of them are aimed at eithertextual [7] or visual annotation, not multimodal.
+
+
+3 Framework
+
+
+
+3.1 Overview
+
+Conventional Evaluation Flow: As shown in Figure 1,the conventional evaluation process involves several steps.
+First, a video is prepared, assuming it to be a full-lengthvideo for evaluation.
+Then, is generated using a modeltailored for a speciﬁc task, such as dense video captioningor commentary generation.
+Since evaluating a long full-length video is often impractical for human evaluators,the video is divided into shorter segments.
+To do this, thelength of each segment is deﬁned, and the full-length videois manually cut using video editing software or by writingscripts using libraries such as MoviePy3）or FFmpeg4）.
+Ifsubtitles should be shown, the subtitles will also need to besplit accordingly.
+If audio commentary is to be includedfor the evaluators, it might be synthesized by text-to-speechsystems and merged with the video.
+Finally, a user interfaceneeds to be created for the annotation platform for localevaluators or crowdworkers in e.g., Amazon MechanicalTurk5）or Lancers6）.
+Evaluation Flow in Our System: Our framework is aDjango-based web application that simpliﬁes these steps.
+We ask the user, i.e., the person requesting the evaluationtasks (not the evaluators), to upload several types of ﬁles:1.
+A video ﬁle, which may include an audio track e.g.,sound eﬀects and background music for a game.2.
+Automatically generated commentary or captions in3）
+https://github.com/Zulko/moviepy4） https://ffmpeg.org5） https://www.mturk.com6）
+https://www.lancers.jpthe format of subtitles and/or audio, which are syn-chronized with the video.
+We can upload both subti-tles and audio.3.
+A JSON ﬁle deﬁning the start and end timestamps foreach segment of the video to be evaluated.
+Our framework then automates cutting the full-lengthvideo, merging each segment with audio or subtitles, andcreating a web-based interface, as shown in Figure 2 forcrowdsourcing services.
+This automation signiﬁcantly re-duces the workload for researchers.
+The proposed system serves two types of users: 1) eval-uators and 2) administrators.
+Evaluators perform evalu-ation tasks by annotating video segments with scores orcomments based on the audio and/or subtitles.
+Admin-istrators, on the other hand, design the evaluation tasks,assign evaluators, and oversee task management.
+We de-scribe our framework from these two perspectives in thefollowing subsections.
+We also present other functionali-ties including a ﬂexible user management and connectingother services e.g., crowdsourcing services and AWS S3storage.
+
+
+3.2 The Admin Page:
+
+On this page, admin users can create and manage eval-uation tasks.
+Creating evaluation tasks involves two mainsteps: 1) uploading the full-length videos and a JSON ﬁlethat deﬁnes the segments to be evaluated, and 2) specifyingthe evaluation criteria.
+Uploading contents to be evaluated: As shown in Figure3, an administrator uploads a full-length video and a JSONﬁle specifying the start and end timestamps (in seconds) ofeach cut segment.
+An example of the JSON format is as[[0, 7.4], [10, 16], [16]].
+This JSON represents acut deﬁnition where the ﬁrst segment starts at a timestampof 0s and ends at 10s, followed by two additional segments.
+If no end is speciﬁed, the rest of the video is used.
+Admins can optionally upload a subtitle ﬁle and/or anaudio ﬁle, which are assumed to contain synchronized cap-tions or audio commentary for the video.
+The subtitle ﬁleshould be in one of WebVTT, SRT, SBV and CSV/TSVformats, and the audio ﬁle should be MP3, AAC, or WAV.Deﬁning Evaluation Criteria: The next step for the ad-min user is to deﬁne the evaluation questions that will bepresented to the evaluators.
+For example, when evaluat-ing a video and its associated audio commentary for delay,
+
+Open-source Human Evaluation Framework forVideo-to-Text and Video-to-Audio Systems
+
+Goran Topi
+
+
+
+´
+
+
+
+c
+
+1
+
+, Graham Neubig
+
+2
+
+, Katsuhito Sudoh
+
+5
+
+, Yuki Saito
+
+3
+
+, Shinnosuke Takamichi
+
+4
+
+,
+
+
+
+Ryosuke Matsushita
+
+4
+
+, Kota Iura
+
+3
+
+, Hiroya Takamura
+
+1
+
+, Tatsuya Ishigaki
+
+11
+
+AIST,
+
+2
+
+CMU,
+
+3
+
+The University of Tokyo,
+
+4
+
+Keio University,
+
+5
+
+Nara Women’s University
+
+
+
+Abstract
+
+We present a framework that streamlines the preparationof human evaluation process for text or audio automaticallygenerated from video.
+In such evaluation tasks evaluatorsoften assess the generated text or audio while watching avideo.
+Consequently, preparing for these evaluations canbe highly resource-intensive because the process typicallyinvolves several steps cutting a video and audio segments,synthesizing speech with text-to-speech tools, merging au-dio and video, and developing a user interface for crowd-sourcing annotation collection.
+Our framework automatesthese steps, reducing the researchers’ workload.
+
+
+1 Introduction
+
+Video-to-text systems, such as dense video caption-ing
+[1] and commentary generation
+[2, 3, 4], have maderemarkable progress.
+Recently, there has been growinginterest in combining these systems with text-to-speech(TTS) technologies to also produce audio outputs, enablinga more immersive evaluation of video content [5, 6].
+Eval-uating these models is a key area of research.
+While auto-matic evaluation metrics, which are mainly based on wordoverlap or embedding similarities, are commonly used, itis common practice to combine human evaluation withautomatic evaluation for assessing these models.
+Preparing an evaluation process is resource-intensive forresearchers.
+It typically involves several labor-intensivesteps, including: 1) video preparation, 2) deﬁning cuts forvideo segments, 3) generating text using language models,4) creating subtitles, 5) synthesizing speech with text-to-speech technology, 6) merging audio and video, and 7)developing a user interface for crowdsourcing annotationcollection.
+Currently, these tasks are often car ried out inde-pendently by each research institution, leading to redundanteﬀorts and ineﬃciencies.
+The lack of a standardized frame-work not only increases costs but also hinders progress inevaluating video-to-text systems eﬀectively.
+Evaluating video-to-text and video-to-audio tasks usingexisting annotation tools is challenging.
+While tools likebrat [7] and commercial platforms such as VoTT1）and La-belBox2）may be suitable for annotation tasks involvingsingle-modal data, such as text or video alone, they areoften not well-suited for multimodal tasks.
+These tools areprimarily designed for annotations involving one modal-ity― either text or visual content― and typically requiresigniﬁcant preprocessing to handle multimodal inputs.
+Forexample, they may need additional steps like adding audioor subtitles to videos before annotation, which increases theoverall workload and makes them less eﬃcient for evalu-ating video-to-text and video-to-audio systems.
+In contrast, this paper presents an open source frame-work that streamlines the human evaluation workﬂow.
+Ourframework automates key steps in the preparation, such asmuxing, cutting, and UI development, which are essentialfor creating evaluation tasks presented to evaluators.
+
+
+2 Related Work
+
+Various video-to-text and video-to-audio tasks anddatasets have been proposed including dense video caption-ing
+[1], commentary generation [2, 3, 4, 5], speech corpusof commentary [8].
+For video-to-text generation tasks, ex-isting studies employ three main strategies for evaluation:1) using only text outputs, 2) using both video and textoutputs, and 3) using both video and audio outputs.
+For the ﬁrst strategy, common in dense video captioningtasks, generated texts are often aligned with gold standardtexts using IoU [1] or by solving an optimization prob-lem
+[9].
+Metrics such as BLEU [10], METEOR
+[11],1）
+https://github.com/microsoft/VoTT2） https://labelbox.comand
+CIDEr
+[12] are then used for scoring.
+Preparation ofevaluation process in this strategy is easier, however, thesemetrics have limitations in capturing nuanced aspects oflanguage generation, so many studies supplement themwith human evaluations.
+Recent studies have adopted the second or third strate-gies, where evaluators assess outputs by viewing the videoalongside subtitles/audio.
+While these approaches oﬀermore comprehensive evaluations, they also require moreeﬀort and resources to prepare the evaluation process.
+Sometimes, existing annotation tools are used for humanannotation process, but most of them are aimed at eithertextual [7] or visual annotation, not multimodal.
+
+
+3 Framework
+
+
+
+3.1 Overview
+
+Conventional Evaluation Flow: As shown in Figure 1,the conventional evaluation process involves several steps.
+First, a video is prepared, assuming it to be a full-lengthvideo for evaluation.
+Then, is generated using a modeltailored for a speciﬁc task, such as dense video captioningor commentary generation.
+Since evaluating a long full-length video is often impractical for human evaluators,the video is divided into shorter segments.
+To do this, thelength of each segment is deﬁned, and the full-length videois manually cut using video editing software or by writingscripts using libraries such as MoviePy3）or FFmpeg4）.
+Ifsubtitles should be shown, the subtitles will also need to besplit accordingly.
+If audio commentary is to be includedfor the evaluators, it might be synthesized by text-to-speechsystems and merged with the video.
+Finally, a user interfaceneeds to be created for the annotation platform for localevaluators or crowdworkers in e.g., Amazon MechanicalTurk5）or Lancers6）.
+Evaluation Flow in Our System: Our framework is aDjango-based web application that simpliﬁes these steps.
+We ask the user, i.e., the person requesting the evaluationtasks (not the evaluators), to upload several types of ﬁles:1.
+A video ﬁle, which may include an audio track e.g.,sound eﬀects and background music for a game.2.
+Automatically generated commentary or captions in3）
+https://github.com/Zulko/moviepy4） https://ffmpeg.org5） https://www.mturk.com6）
+https://www.lancers.jpthe format of subtitles and/or audio, which are syn-chronized with the video.
+We can upload both subti-tles and audio.3.
+A JSON ﬁle deﬁning the start and end timestamps foreach segment of the video to be evaluated.
+Our framework then automates cutting the full-lengthvideo, merging each segment with audio or subtitles, andcreating a web-based interface, as shown in Figure 2 forcrowdsourcing services.
+This automation signiﬁcantly re-duces the workload for researchers.
+The proposed system serves two types of users: 1) eval-uators and 2) administrators.
+Evaluators perform evalu-ation tasks by annotating video segments with scores orcomments based on the audio and/or subtitles.
+Admin-istrators, on the other hand, design the evaluation tasks,assign evaluators, and oversee task management.
+We de-scribe our framework from these two perspectives in thefollowing subsections.
+We also present other functionali-ties including a ﬂexible user management and connectingother services e.g., crowdsourcing services and AWS S3storage.
+
+
+3.2 The Admin Page:
+
+On this page, admin users can create and manage eval-uation tasks.
+Creating evaluation tasks involves two mainsteps: 1) uploading the full-length videos and a JSON ﬁlethat deﬁnes the segments to be evaluated, and 2) specifyingthe evaluation criteria.
+Uploading contents to be evaluated: As shown in Figure3, an administrator uploads a full-length video and a JSONﬁle specifying the start and end timestamps (in seconds) ofeach cut segment.
+An example of the JSON format is as[[0, 7.4], [10, 16], [16]].
+This JSON represents acut deﬁnition where the ﬁrst segment starts at a timestampof 0s and ends at 10s, followed by two additional segments.
+If no end is speciﬁed, the rest of the video is used.
+Admins can optionally upload a subtitle ﬁle and/or anaudio ﬁle, which are assumed to contain synchronized cap-tions or audio commentary for the video.
+The subtitle ﬁleshould be in one of WebVTT, SRT, SBV and CSV/TSVformats, and the audio ﬁle should be MP3, AAC, or WAV.Deﬁning Evaluation Criteria: The next step for the ad-min user is to deﬁne the evaluation questions that will bepresented to the evaluators.
+For example, when evaluat-ing a video and its associated audio commentary for delay,Figure 1: Conventional evaluation ﬂow and the parts that our frame work can automate.
+Figure 2: The evaluation page automatically generated by our system7）.Figure 3: The page for uploading video, the cut deﬁnition,subtitles, and audio commentary.the system might present a question such as, “Determineif the audio is delayed or acceptable,” along with multiplechoice options like “audio is slightly delayed” or “audio isslightly ahead of the video.”.
+To deﬁne these criteria, theadministrator prepares a JSON ﬁle containing the questiondeﬁnitions:1
+[2 {3 " id " : " delay " ,4 " i nstru ction ": "<p >
+Please wa tchthe video wh ile
+l
+i s t e
+n i ng to7）
+The sample is CC-BY video ”The Cutest Octopus” by vlogbrothersat https://www.youtube.com/watch?v=xHYTSJWzpnsthe audio .
+De t ermine if theau dio is delayed or ac ceptab l e. </p
+>",5 " typ e ": " radio " ,6 " o p t
+i o n s ": [7 { " value " : 0 , " text ": "
+w
+i
+t
+h
+o u tany problems in t e rms ofde lay " },8 { " value " : 1 , " text ": " a udio isslightly delayed " },9 { " value " : - 1 , " text " : " audiois ob viously d e l a y ed " },10 { " value " : 2 , " text ": " a udio isslightly ahea d of video " },11 { " value " : - 2 , " text " : " audiois ob viously ahead of video."
+}12 ]13 },14 {15 " id " : " p r o b l e m ",16 " i nstru c
+t i on ": "<p >
+If youencou n t e red a p r o b l e m , pleas edescribe it
+h ere .
+</p >" ,17 " typ e ": " text "18 }19 ]After uploading the dataset ﬁles and deﬁning the evalu-ation criteria as described in this section, our system auto-matically cuts the full-length video into smaller segmentsand combines them with audio and/or subtitles.
+Finally, thesystem creates web-based annotation user interface withthe video, questions, and choices.
+
+Open-source Human Evaluation Framework forVideo-to-Text and Video-to-Audio Systems
+
+Goran Topi
+
+
+
+´
+
+
+
+c
+
+1
+
+, Graham Neubig
+
+2
+
+, Katsuhito Sudoh
+
+5
+
+, Yuki Saito
+
+3
+
+, Shinnosuke Takamichi
+
+4
+
+,
+
+
+
+Ryosuke Matsushita
+
+4
+
+, Kota Iura
+
+3
+
+, Hiroya Takamura
+
+1
+
+, Tatsuya Ishigaki
+
+11
+
+AIST,
+
+2
+
+CMU,
+
+3
+
+The University of Tokyo,
+
+4
+
+Keio University,
+
+5
+
+Nara Women’s University
+
+
+
+Abstract
+
+We present a framework that streamlines the preparationof human evaluation process for text or audio automaticallygenerated from video.
+In such evaluation tasks evaluatorsoften assess the generated text or audio while watching avideo.
+Consequently, preparing for these evaluations canbe highly resource-intensive because the process typicallyinvolves several steps cutting a video and audio segments,synthesizing speech with text-to-speech tools, merging au-dio and video, and developing a user interface for crowd-sourcing annotation collection.
+Our framework automatesthese steps, reducing the researchers’ workload.
+
+
+1 Introduction
+
+Video-to-text systems, such as dense video caption-ing
+[1] and commentary generation
+[2, 3, 4], have maderemarkable progress.
+Recently, there has been growinginterest in combining these systems with text-to-speech(TTS) technologies to also produce audio outputs, enablinga more immersive evaluation of video content [5, 6].
+Eval-uating these models is a key area of research.
+While auto-matic evaluation metrics, which are mainly based on wordoverlap or embedding similarities, are commonly used, itis common practice to combine human evaluation withautomatic evaluation for assessing these models.
+Preparing an evaluation process is resource-intensive forresearchers.
+It typically involves several labor-intensivesteps, including: 1) video preparation, 2) deﬁning cuts forvideo segments, 3) generating text using language models,4) creating subtitles, 5) synthesizing speech with text-to-speech technology, 6) merging audio and video, and 7)developing a user interface for crowdsourcing annotationcollection.
+Currently, these tasks are often car ried out inde-pendently by each research institution, leading to redundanteﬀorts and ineﬃciencies.
+The lack of a standardized frame-work not only increases costs but also hinders progress inevaluating video-to-text systems eﬀectively.
+Evaluating video-to-text and video-to-audio tasks usingexisting annotation tools is challenging.
+While tools likebrat [7] and commercial platforms such as VoTT1）and La-belBox2）may be suitable for annotation tasks involvingsingle-modal data, such as text or video alone, they areoften not well-suited for multimodal tasks.
+These tools areprimarily designed for annotations involving one modal-ity― either text or visual content― and typically requiresigniﬁcant preprocessing to handle multimodal inputs.
+Forexample, they may need additional steps like adding audioor subtitles to videos before annotation, which increases theoverall workload and makes them less eﬃcient for evalu-ating video-to-text and video-to-audio systems.
+In contrast, this paper presents an open source frame-work that streamlines the human evaluation workﬂow.
+Ourframework automates key steps in the preparation, such asmuxing, cutting, and UI development, which are essentialfor creating evaluation tasks presented to evaluators.
+
+
+2 Related Work
+
+Various video-to-text and video-to-audio tasks anddatasets have been proposed including dense video caption-ing
+[1], commentary generation [2, 3, 4, 5], speech corpusof commentary [8].
+For video-to-text generation tasks, ex-isting studies employ three main strategies for evaluation:1) using only text outputs, 2) using both video and textoutputs, and 3) using both video and audio outputs.
+For the ﬁrst strategy, common in dense video captioningtasks, generated texts are often aligned with gold standardtexts using IoU [1] or by solving an optimization prob-lem
+[9].
+Metrics such as BLEU [10], METEOR
+[11],1）
+https://github.com/microsoft/VoTT2） https://labelbox.comand
+CIDEr
+[12] are then used for scoring.
+Preparation ofevaluation process in this strategy is easier, however, thesemetrics have limitations in capturing nuanced aspects oflanguage generation, so many studies supplement themwith human evaluations.
+Recent studies have adopted the second or third strate-gies, where evaluators assess outputs by viewing the videoalongside subtitles/audio.
+While these approaches oﬀermore comprehensive evaluations, they also require moreeﬀort and resources to prepare the evaluation process.
+Sometimes, existing annotation tools are used for humanannotation process, but most of them are aimed at eithertextual [7] or visual annotation, not multimodal.
+
+
+3 Framework
+
+
+
+3.1 Overview
+
+Conventional Evaluation Flow: As shown in Figure 1,the conventional evaluation process involves several steps.
+First, a video is prepared, assuming it to be a full-lengthvideo for evaluation.
+Then, is generated using a modeltailored for a speciﬁc task, such as dense video captioningor commentary generation.
+Since evaluating a long full-length video is often impractical for human evaluators,the video is divided into shorter segments.
+To do this, thelength of each segment is deﬁned, and the full-length videois manually cut using video editing software or by writingscripts using libraries such as MoviePy3）or FFmpeg4）.
+Ifsubtitles should be shown, the subtitles will also need to besplit accordingly.
+If audio commentary is to be includedfor the evaluators, it might be synthesized by text-to-speechsystems and merged with the video.
+Finally, a user interfaceneeds to be created for the annotation platform for localevaluators or crowdworkers in e.g., Amazon MechanicalTurk5）or Lancers6）.
+Evaluation Flow in Our System: Our framework is aDjango-based web application that simpliﬁes these steps.
+We ask the user, i.e., the person requesting the evaluationtasks (not the evaluators), to upload several types of ﬁles:1.
+A video ﬁle, which may include an audio track e.g.,sound eﬀects and background music for a game.2.
+Automatically generated commentary or captions in3）
+https://github.com/Zulko/moviepy4） https://ffmpeg.org5） https://www.mturk.com6）
+https://www.lancers.jpthe format of subtitles and/or audio, which are syn-chronized with the video.
+We can upload both subti-tles and audio.3.
+A JSON ﬁle deﬁning the start and end timestamps foreach segment of the video to be evaluated.
+Our framework then automates cutting the full-lengthvideo, merging each segment with audio or subtitles, andcreating a web-based interface, as shown in Figure 2 forcrowdsourcing services.
+This automation signiﬁcantly re-duces the workload for researchers.
+The proposed system serves two types of users: 1) eval-uators and 2) administrators.
+Evaluators perform evalu-ation tasks by annotating video segments with scores orcomments based on the audio and/or subtitles.
+Admin-istrators, on the other hand, design the evaluation tasks,assign evaluators, and oversee task management.
+We de-scribe our framework from these two perspectives in thefollowing subsections.
+We also present other functionali-ties including a ﬂexible user management and connectingother services e.g., crowdsourcing services and AWS S3storage.
+
+
+3.2 The Admin Page:
+
+On this page, admin users can create and manage eval-uation tasks.
+Creating evaluation tasks involves two mainsteps: 1) uploading the full-length videos and a JSON ﬁlethat deﬁnes the segments to be evaluated, and 2) specifyingthe evaluation criteria.
+Uploading contents to be evaluated: As shown in Figure3, an administrator uploads a full-length video and a JSONﬁle specifying the start and end timestamps (in seconds) ofeach cut segment.
+An example of the JSON format is as[[0, 7.4], [10, 16], [16]].
+This JSON represents acut deﬁnition where the ﬁrst segment starts at a timestampof 0s and ends at 10s, followed by two additional segments.
+If no end is speciﬁed, the rest of the video is used.
+Admins can optionally upload a subtitle ﬁle and/or anaudio ﬁle, which are assumed to contain synchronized cap-tions or audio commentary for the video.
+The subtitle ﬁleshould be in one of WebVTT, SRT, SBV and CSV/TSVformats, and the audio ﬁle should be MP3, AAC, or WAV.Deﬁning Evaluation Criteria: The next step for the ad-min user is to deﬁne the evaluation questions that will bepresented to the evaluators.
+For example, when evaluat-ing a video and its associated audio commentary for delay,Figure 1: Conventional evaluation ﬂow and the parts that our frame work can automate.
+Figure 2: The evaluation page automatically generated by our system7）.Figure 3: The page for uploading video, the cut deﬁnition,subtitles, and audio commentary.the system might present a question such as, “Determineif the audio is delayed or acceptable,” along with multiplechoice options like “audio is slightly delayed” or “audio isslightly ahead of the video.”.
+To deﬁne these criteria, theadministrator prepares a JSON ﬁle containing the questiondeﬁnitions:1
+[2 {3 " id " : " delay " ,4 " i nstru ction ": "<p >
+Please wa tchthe video wh ile
+l
+i s t e
+n i ng to7）
+The sample is CC-BY video ”The Cutest Octopus” by vlogbrothersat https://www.youtube.com/watch?v=xHYTSJWzpnsthe audio .
+De t ermine if theau dio is delayed or ac ceptab l e. </p
+>",5 " typ e ": " radio " ,6 " o p t
+i o n s ": [7 { " value " : 0 , " text ": "
+w
+i
+t
+h
+o u tany problems in t e rms ofde lay " },8 { " value " : 1 , " text ": " a udio isslightly delayed " },9 { " value " : - 1 , " text " : " audiois ob viously d e l a y ed " },10 { " value " : 2 , " text ": " a udio isslightly ahea d of video " },11 { " value " : - 2 , " text " : " audiois ob viously ahead of video."
+}12 ]13 },14 {15 " id " : " p r o b l e m ",16 " i nstru c
+t i on ": "<p >
+If youencou n t e red a p r o b l e m , pleas edescribe it
+h ere .
+</p >" ,17 " typ e ": " text "18 }19 ]After uploading the dataset ﬁles and deﬁning the evalu-ation criteria as described in this section, our system auto-matically cuts the full-length video into smaller segmentsand combines them with audio and/or subtitles.
+Finally, thesystem creates web-based annotation user interface withthe video, questions, and choices.
+
+
+3.3 The Evaluator Page
+
+Figure 2 shows the page displayed to evaluators.
+Thetarget video segment deﬁned by the administrator is shownon the left, while the questions and choices are displayed onthe right.
+The video is shown with the commentary audio,and subtitles are overlaid if available.
+Once the evaluatorsubmits their answers, the evaluation is saved.
+The pagefor the next video segment is displayed next.
+
+
+3.4 Filtering and Downloading Results
+
+When the evaluation work is done, the administratorsinspect the submitted evaluations, and either approve orreject them, to ﬁlter out the cases where e.g. the workermisunderstood the task or the form was submitted empty.
+For convenience, an administrator can approve all non-rejected assignments at once.
+The results of evaluation canbe downloaded as a JSON ﬁle:1 {2 " project " : " Ev a luatio n in terms ofde lay ",3 " t asks " : [4 {5 " name ": " Demo Video " ,6 " s tart " : 0 .
+0
+,7 " end ": 5 . 0 ,8 " ev a l u ation s ": [9 {" d elay " : -1 , " problem ": " N /A"}10 {" d elay " : 2 , " p r o b l e m ": " Noau dio "}11 ]12 }13 ]14 }
+
+3.5 Support for Large-scale Evaluations
+
+We provide two functions to support large scale evalu-ations; and ﬂexible user management.
+In real-world sce-narios, crowdsourcing ser vices like Amazon MechanicalTurk are often utilized.
+Additionally, large-scale cloudstorage solutions, such as AWS S3, are frequently requiredto stream videos to these crowdsourcing platforms.
+Man-aging such extensive evaluation tasks typically requirestwo or more administrators to oversee the project.
+To ad-dress these needs, our system includes the functionalitiesdescribed in this subsection.
+Connecting to Crowdsourcing: Crowdsourcing serviceslike Amazon Mechanical Turk (MTurk) and Lancers allowresearchers to recruit and compensate workers beyond theirimmediate environment.
+MTurk, as one of the most widelyknown platforms, enables administrators to create tasks,approve or reject assignments, and retr ieve results.
+Oursystem directly supports MTurk, simplifying the processthrough integration with the AWS API.
+By entering theirAWS credentials and conﬁguring MTurk settings in theproject properties, administrators can seamlessly managecrowdsourcing tasks.
+Cloud Storage Support: Eﬀective use of crowdsourcingservices often requires providing workers with access tomedia ﬁles, such as videos and subtitles.
+This requireshosting the ﬁles on publicly accessible URLs, which canbe challenging if the application is not deployed on a pub-lic server.
+Additionally, video ﬁles can be large, makingstorage a signiﬁcant concern.
+To address these challenges,our system integrates with Amazon S3 (Simple StorageService).
+If AWS credentials and an S3 bucket location arespeciﬁed, the system automatically uploads segment ﬁles(e.g., muxed video and optional subtitle ﬁles) to S3.
+Thisensures that ﬁles are accessible to workers and alleviatesstorage limitations on local servers.
+Scriptable data upload:
+Uploading videos one-by-onethrough a web interface could be not suitable when thedataset is large.
+To this end, we provide an endpoint wherevideos can be uploaded via the ‘curl‘ command.
+Thisshould make it simple to upload videos in bulk.
+Flexible User management: A large evaluation projectsoften require collaborations by several administrators.
+Therefore, this administrator can create further admin userswho can upload videos and create evaluation projects.
+
+
+4 Conclusion
+
+In this paper, we introduced an open-source frame-work aimed at simplifying and standardizing the prepa-ration process for human evaluations in video-to-text andvideo-to-audio tasks.
+By addressing the complexity andresource-intensive nature of current evaluation workﬂows,our framework integrates subtitle creation, TTS synthesis,audio-video merging, and crowdsourcing interface devel-opment into a uniﬁed process.
+This approach helps reduceboth the cost and eﬀort required for preparation.
+In the fu-ture, we plan to evaluate the system from the perspectivesof user experience.
+
+
+
+Acknowledgments
+
+This study is based on results obtained from a project,Programs for Bridging the gap between R&D and the IDealsociety (society 5.0) and Generating Economic and so-cial value (BRIDGE)/Practical Global Research in the AI× Robotics Services, implemented by the Cabinet Oﬃce,Government of Japan.
+
+References
+
+
+[1] Ranjay Krishna, Kenji Hata, Frederic Ren, Li Fei-Fei, andJuan Carlos Niebles. Dense-captioning events in videos.In Proceedings of the IEEE international conferenceon computer vision, pp. 706–715, 2017.
+[2] Zihan Wang and Naoki Yoshinaga. Commentary gener-ation from data records of multiplayer strategy esportsgame. In Yang (Trista) Cao, Isabel Papadimitriou, AnaeliaOvalle, Marcos Zampieri, Francis Ferraro, and SwabhaSwayamdipta, editors, Proceedings of the 2024 Con-ference of the North American Chapter of the Asso-ciation for Computational Linguistics: Human Lan-guage Technologies (Volume 4: Student ResearchWorkshop), pp. 263–271, Mexico City, Mexico, June2024. Association for Computational Linguistics.
+[3] Edison Marrese-Taylor, Yumi Hamazono, Tatsuya Ishi-gaki, Goran Topi´c, Yusuke Miyao, Ichiro Kobayashi, andHiroya Takamura. Open-domain video commentary gen-eration. In Yoav Goldberg, Zornitsa Kozareva, and YueZhang, editors, Proceedings of the 2022 Conferenceon Empirical Methods in Natural Language Pro-cessing, pp. 7326–7339, Abu Dhabi, United Arab Emi-rates, December 2022. Association for Computational Lin-guistics.
+[4] Tatsuya Ishigaki, Goran Topic, Yumi Hamazono, HiroshiNoji, Ichiro Kobayashi, Yusuke Miyao, and Hiroya Taka-mura. Generating racing game commentary from vision,language, and structured data. In Anya Belz, Angela Fan,Ehud Reiter, and Yaji Sripada, editors, Proceedings ofthe 14th International Conference on Natural Lan-guage Generation, pp. 103–113, Aberdeen, Scotland,UK, August 2021. Association for Computational Linguis-tics.
+[5] Tatsuya Ishigaki, Goran Topi´c, Yumi Hamazono, IchiroKobayashi, Yusuke Miyao, and Hiroya Takamura. Au-dio commentary system for real-time racing game play.In C. Maria Keet, Hung-Yi Lee, and Sina Zarrieß, edi-tors, Proceedings of the 16th International NaturalLanguage Generation Conference: System Demon-strations, pp. 9–10, Prague, Czechia, September 2023.Association for Computational Linguistics.
+[6] Erica Kido Shimomoto, Edison Marrese-Taylor, IchiroKobayashi, Hiroya Takamura, and Yusuke Miyao. Intro-ducing spatial information and a novel evaluation schemefor open-domain live commentary generation. In YaserAl-Onaizan, Mohit Bansal, and Yun-Nung Chen, edi-tors, Findings of the Association for ComputationalLinguistics: EMNLP 2024, pp. 10352–10370, Miami,Florida, USA, November 2024. Association for Computa-tional Linguistics.
+[7] Pontus Stenetorp, Sampo Pyysalo, Goran Topi´c, TomokoOhta, Sophia Ananiadou, and Jun’ichi Tsujii. brat: a web-based tool for NLP-assisted text annotation. In Fr´ed´eriqueSegond, editor, Proceedings of the Demonstrationsat the 13th Conference of the European Chapterof the Association for Computational Linguistics,pp. 102–107, Avignon, France, April 2012. Associationfor Computational Linguistics.
+[8] Yuki Saito, Shinnosuke Takamichi, and HiroshiSaruwatari. SMASH corpus: A spontaneous speech cor-pus recording third-person audio commentaries on game-play. In Nicoletta Calzolari, Fr´ed´eric B´echet, PhilippeBlache, Khalid Choukri, Christopher Cieri, Thierry De-clerck, Sara Goggi, Hitoshi Isahara, Bente Maegaard,Joseph Mariani, H´el`ene Mazo, Asuncion Moreno, JanOdijk, and Stelios Piperidis, editors, Proceedings of theTwelfth Language Resources and Evaluation Con-ference, pp. 6571–6577, Marseille, France, May 2020.European Language Resources Association.
+[9] Soichiro Fujita, Tsutomu Hirao, Hidetaka Kamigaito,Manabu Okumura, and Masaaki Nagata. Soda: Storyoriented dense video captioning evaluation framework.In Andrea Vedaldi, Horst Bischof, Thomas Brox, andJan-Michael Frahm, editors, ECCV (6), Vol. 12351 ofLecture Notes in Computer Science, pp. 517–531.Springer, 2020.
+[10] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu. Bleu: a method for automatic evaluation of ma-chine translation. In Pierre Isabelle, Eugene Charniak, andDekang Lin, editors, Proceedings of the 40th AnnualMeeting of the Association for Computational Lin-guistics, pp. 311–318, Philadelphia, Pennsylvania, USA,July 2002. Association for Computational Linguistics.
+[11] Satanjeev Banerjee and Alon Lavie. METEOR: An auto-matic metric for MT evaluation with improved correlationwith human judgments. In Jade Goldstein, Alon Lavie,Chin-Yew Lin, and Clare Voss, editors, Proceedings ofthe ACL Workshop on Intrinsic and Extrinsic Eval-uation Measures for Machine Translation and/orSummarization, pp. 65–72, Ann Arbor, Michigan, June2005. Association for Computational Linguistics.
+[12] Ramakrishna Vedantam, C. Lawrence Zitnick, and DeviParikh. Cider: Consensus-based image description evalu-ation. In CVPR, pp. 4566–4575. IEEE Computer Society,2015.

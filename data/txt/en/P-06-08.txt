@@ -1,0 +1,604 @@
+From NLI to Classiﬁcation: Entailment Learning forLow-Resource Text Classiﬁcation
+
+Rumana Ferdous Munne
+
+1
+
+　Noriki Nishida
+
+1
+
+　Shanshan Liu
+
+1
+
+　Narumi Tokunaga
+
+1
+
+　Yuki Yamagata
+
+2,3
+
+　Kouji Kozaki
+
+4
+
+　Yuji Matsumoto
+
+11
+
+RIKEN Center for Advanced Intelligence Project (AIP)
+
+2
+
+RIKEN R-IH,
+
+3
+
+RIKEN BRC
+
+1
+
+Osaka Electro-Communication University
+
+
+
+  
+
+
+
+
+ 
+
+
+
+
+
+
+
+Abstract
+
+In real-world scenarios, text classiﬁcation often facesthe challenge of limited labeled data, especially for rare oremerging classes.
+Traditional methods struggle in thesesituations, requiring new approaches that can generalizeto unseen or sparsely annotated classes.
+This challenge isparticularly common in the biomedical ﬁeld, where datais expensive to annotate, and new diseases and treatmentsfrequently emerge.
+This paper proposes an entailment-based framework for zero and few-shot text classiﬁcationby reframing the task as a natural language inference (NLI)problem.
+Leveraging pre-trained language models, the ap-proach infers labels for unseen classes without additionalﬁne-tuning.
+For few-shot scenarios, minimal task-speciﬁcﬁne-tuning signiﬁcantly enhances performance.
+Our ﬁnd-ings highlight the potential of entailment-based learning asa versatile and eﬀective paradigm for text classiﬁcation inlow-resource environments.
+
+
+1 Introduction
+
+Text classiﬁcation is a fundamental task in natural lan-guage processing (NLP), with applications in areas likesentiment analysis and document categor ization.
+However,in real-world settings, a major challenge is the scarcity oflabeled data, especially for rare or emerging classes.
+Thisis particularly problematic in domains like biomedicine,where data is expensive to annotate and often sparse forspeciﬁc conditions.
+Traditional supervised methods strug-gle to generalize to unseen classes, making zero-shot andfew-shot learning approaches increasingly important foraddressing these challenges.
+In the biomedical ﬁeld, accurate text classiﬁcation is es-sential for tasks such as annotating electronic health records(EHRs), extracting information from scientiﬁc literature,and validating biomedical ontologies.
+The complexity ofmedical terminology and the constant emergence of newdiseases fur ther complicate the creation of comprehensivelabeled datasets.
+This makes biomedical text classiﬁcationan ideal application for zero-shot and few-shot learning,where minimal or no labeled data is required to classifynew, unseen categories.
+In this paper, we propose an entailment-based learningframework that leverages pre-trained language models forzero- and few-shot text classiﬁcation.
+By reframing textclassiﬁcation as a natural language inference (NLI) prob-lem, our approach evaluates the relationship between inputtext and class-speciﬁc hypothesis templates.
+This allowsthe model to determine whether a given text entails a spe-ciﬁc class label without requiring task-speciﬁc ﬁne-tuning.
+By using large-scale pre-trained models, we avoid the needfor extensive labeled data while still achieving eﬀectiveclassiﬁcation for previously unseen classes.
+To enhance perfor mance in few-shot settings, we fur-ther explore the integration of task-speciﬁc ﬁne-tuning on aminimal amount of labeled data.
+This enables our model toadapt to speciﬁc domains and improve classiﬁcation accu-racy in scenarios where only a small set of labeled examplesis available.
+Through extensive experiments across multi-ple benchmark datasets, we demonstrate that our method
+
+From NLI to Classiﬁcation: Entailment Learning forLow-Resource Text Classiﬁcation
+
+Rumana Ferdous Munne
+
+1
+
+　Noriki Nishida
+
+1
+
+　Shanshan Liu
+
+1
+
+　Narumi Tokunaga
+
+1
+
+　Yuki Yamagata
+
+2,3
+
+　Kouji Kozaki
+
+4
+
+　Yuji Matsumoto
+
+11
+
+RIKEN Center for Advanced Intelligence Project (AIP)
+
+2
+
+RIKEN R-IH,
+
+3
+
+RIKEN BRC
+
+1
+
+Osaka Electro-Communication University
+
+
+
+  
+
+
+
+
+ 
+
+
+
+
+
+
+
+Abstract
+
+In real-world scenarios, text classiﬁcation often facesthe challenge of limited labeled data, especially for rare oremerging classes.
+Traditional methods struggle in thesesituations, requiring new approaches that can generalizeto unseen or sparsely annotated classes.
+This challenge isparticularly common in the biomedical ﬁeld, where datais expensive to annotate, and new diseases and treatmentsfrequently emerge.
+This paper proposes an entailment-based framework for zero and few-shot text classiﬁcationby reframing the task as a natural language inference (NLI)problem.
+Leveraging pre-trained language models, the ap-proach infers labels for unseen classes without additionalﬁne-tuning.
+For few-shot scenarios, minimal task-speciﬁcﬁne-tuning signiﬁcantly enhances performance.
+Our ﬁnd-ings highlight the potential of entailment-based learning asa versatile and eﬀective paradigm for text classiﬁcation inlow-resource environments.
+
+
+1 Introduction
+
+Text classiﬁcation is a fundamental task in natural lan-guage processing (NLP), with applications in areas likesentiment analysis and document categor ization.
+However,in real-world settings, a major challenge is the scarcity oflabeled data, especially for rare or emerging classes.
+Thisis particularly problematic in domains like biomedicine,where data is expensive to annotate and often sparse forspeciﬁc conditions.
+Traditional supervised methods strug-gle to generalize to unseen classes, making zero-shot andfew-shot learning approaches increasingly important foraddressing these challenges.
+In the biomedical ﬁeld, accurate text classiﬁcation is es-sential for tasks such as annotating electronic health records(EHRs), extracting information from scientiﬁc literature,and validating biomedical ontologies.
+The complexity ofmedical terminology and the constant emergence of newdiseases fur ther complicate the creation of comprehensivelabeled datasets.
+This makes biomedical text classiﬁcationan ideal application for zero-shot and few-shot learning,where minimal or no labeled data is required to classifynew, unseen categories.
+In this paper, we propose an entailment-based learningframework that leverages pre-trained language models forzero- and few-shot text classiﬁcation.
+By reframing textclassiﬁcation as a natural language inference (NLI) prob-lem, our approach evaluates the relationship between inputtext and class-speciﬁc hypothesis templates.
+This allowsthe model to determine whether a given text entails a spe-ciﬁc class label without requiring task-speciﬁc ﬁne-tuning.
+By using large-scale pre-trained models, we avoid the needfor extensive labeled data while still achieving eﬀectiveclassiﬁcation for previously unseen classes.
+To enhance perfor mance in few-shot settings, we fur-ther explore the integration of task-speciﬁc ﬁne-tuning on aminimal amount of labeled data.
+This enables our model toadapt to speciﬁc domains and improve classiﬁcation accu-racy in scenarios where only a small set of labeled examplesis available.
+Through extensive experiments across multi-ple benchmark datasets, we demonstrate that our methodachieves competitive results in zero-shot settings and con-sistently outperforms existing baselines when ﬁne-tunedwith limited annotations.
+Our ﬁndings underscore the potential of entailment-based learning as a ﬂexible and powerful approach to textclassiﬁcation in low-resource environments, particularlyin the biomedical domain.
+By combining the strengths ofpre-trained models with the power of textual entailmentreasoning, our framework provides a scalable solution tothe challenges posed by sparse labeled data, enabling ac-curate classiﬁcation across a broad range of medical andscientiﬁc texts.
+Experimental results shows that our method achievescompetitive results in zero-shot settings and consistentlyoutperforms existing baselines when ﬁne-tuned with lim-ited annotations.
+
+
+2 Related Works
+
+Natural Language Inference (NLI) has become pivotalfor text classiﬁcation tasks, especially in zero-shot and few-shot settings.
+Early datasets like SNLI
+[1] and MNLI
+[2]laid the foundation for NLI models, which treat text clas-siﬁcation as an entailment problem—predicting whethera text input entails a target class hypothesis.
+Yin et al.(2019) proposed zero-shot text classiﬁcation as a textualentailment problem
+[3], while Gera (2022)[4] introduceda self-training approach for this task.
+Other studies, such asKoutsomitropoulos (2021)[6] , applied zero-shot learningto validate biomedical ontology annotations, and Pamies(2023) enhanced zero-shot classiﬁcation using weak su-pervision and entailment
+[8].
+Additionally, GPT models,including ChatGPT, have been applied to zero-shot taskslike clinical NER
+[9].
+These developments highlight NLI’spotential as a versatile tool for tackling classiﬁcation chal-lenges across various domains.
+
+
+3 Method
+
+By leveraging pre-trained NLI models, classiﬁcationtasks can be reframed as entailment problems, where theobjective is to determine whether a given hypothesis (e.g.,a process label) is entailed by an input text (the premise).This approach provides a systematic and ﬂexible way toaddress classiﬁcation challenges involving limited labeleddata and complex semantic relationships.
+In this work, weintroduce an Entailment-Based Text Classiﬁcation modeldesigned to overcome the challenges of classifying biomed-ical text.
+In this framework, input text passages are treatedas premises, predeﬁned class labels are reformulated as hy-potheses, and the model predicts which labels are logicallyentailed by the text.
+Figure 1 illustrates the functionalityof our model.
+By leveraging the strengths of NLI, our ap-proach eﬀectively bridges the gap between textual data andsemantic classiﬁcation tasks in the biomedical domain.
+
+
+3.1 Converting Labels into Hypotheses
+
+The ﬁrst step in our approach is to convert the target classlabels into hypotheses suitable for an NLI-based classiﬁca-tion task.
+This involves transforming class label names intoa format compatible with textual entailment.
+We experi-mented with two hypothesis templates: one using the exactclass label as it is, and another rephrased into a descriptiveformat, such as "This text is about <class label>."
+Thesetemplates enable the model to establish the relationshipbetween the input text passage (the premise) and each po-tential class label (the hypothesis).
+Our experiments foundthat the direct label template yielded the best results.
+
+
+3.2 Converting Classiﬁcation Data into
+
+
+
+Entailment Data
+
+To adapt classiﬁcation tasks to the NLI framework, wereformulated the dataset into an entailment-compatible for-mat.
+For each data split (train, dev, and test), each input textpassage (the premise) was paired with a positive hypothesiscorresponding to its true label, while the remaining labelswere paired as negative hypotheses.
+In the zero-shot setup,unseen labels were excluded from training and evaluatedonly during testing to ensure a true zero-shot scenario.
+Inthe few-shot setup, a limited number of labeled exampleswere introduced for ﬁne-tuning, enabling the model to bet-ter learn the mapping between text and hypotheses whilestill maintaining generalization to unseen labels.
+
+
+3.3 Entailment Model Learning
+
+We utilized widely recognized state-of-the-art pretrainedmodels BART-Large-MNLI [7] for text classiﬁcation basedon natural language inference (NLI).
+Our proposed ap-proach explores two pr imary setups: Zero-Shot Learningand Few-Shot Learning.
+
+From NLI to Classiﬁcation: Entailment Learning forLow-Resource Text Classiﬁcation
+
+Rumana Ferdous Munne
+
+1
+
+　Noriki Nishida
+
+1
+
+　Shanshan Liu
+
+1
+
+　Narumi Tokunaga
+
+1
+
+　Yuki Yamagata
+
+2,3
+
+　Kouji Kozaki
+
+4
+
+　Yuji Matsumoto
+
+11
+
+RIKEN Center for Advanced Intelligence Project (AIP)
+
+2
+
+RIKEN R-IH,
+
+3
+
+RIKEN BRC
+
+1
+
+Osaka Electro-Communication University
+
+
+
+  
+
+
+
+
+ 
+
+
+
+
+
+
+
+Abstract
+
+In real-world scenarios, text classiﬁcation often facesthe challenge of limited labeled data, especially for rare oremerging classes.
+Traditional methods struggle in thesesituations, requiring new approaches that can generalizeto unseen or sparsely annotated classes.
+This challenge isparticularly common in the biomedical ﬁeld, where datais expensive to annotate, and new diseases and treatmentsfrequently emerge.
+This paper proposes an entailment-based framework for zero and few-shot text classiﬁcationby reframing the task as a natural language inference (NLI)problem.
+Leveraging pre-trained language models, the ap-proach infers labels for unseen classes without additionalﬁne-tuning.
+For few-shot scenarios, minimal task-speciﬁcﬁne-tuning signiﬁcantly enhances performance.
+Our ﬁnd-ings highlight the potential of entailment-based learning asa versatile and eﬀective paradigm for text classiﬁcation inlow-resource environments.
+
+
+1 Introduction
+
+Text classiﬁcation is a fundamental task in natural lan-guage processing (NLP), with applications in areas likesentiment analysis and document categor ization.
+However,in real-world settings, a major challenge is the scarcity oflabeled data, especially for rare or emerging classes.
+Thisis particularly problematic in domains like biomedicine,where data is expensive to annotate and often sparse forspeciﬁc conditions.
+Traditional supervised methods strug-gle to generalize to unseen classes, making zero-shot andfew-shot learning approaches increasingly important foraddressing these challenges.
+In the biomedical ﬁeld, accurate text classiﬁcation is es-sential for tasks such as annotating electronic health records(EHRs), extracting information from scientiﬁc literature,and validating biomedical ontologies.
+The complexity ofmedical terminology and the constant emergence of newdiseases fur ther complicate the creation of comprehensivelabeled datasets.
+This makes biomedical text classiﬁcationan ideal application for zero-shot and few-shot learning,where minimal or no labeled data is required to classifynew, unseen categories.
+In this paper, we propose an entailment-based learningframework that leverages pre-trained language models forzero- and few-shot text classiﬁcation.
+By reframing textclassiﬁcation as a natural language inference (NLI) prob-lem, our approach evaluates the relationship between inputtext and class-speciﬁc hypothesis templates.
+This allowsthe model to determine whether a given text entails a spe-ciﬁc class label without requiring task-speciﬁc ﬁne-tuning.
+By using large-scale pre-trained models, we avoid the needfor extensive labeled data while still achieving eﬀectiveclassiﬁcation for previously unseen classes.
+To enhance perfor mance in few-shot settings, we fur-ther explore the integration of task-speciﬁc ﬁne-tuning on aminimal amount of labeled data.
+This enables our model toadapt to speciﬁc domains and improve classiﬁcation accu-racy in scenarios where only a small set of labeled examplesis available.
+Through extensive experiments across multi-ple benchmark datasets, we demonstrate that our methodachieves competitive results in zero-shot settings and con-sistently outperforms existing baselines when ﬁne-tunedwith limited annotations.
+Our ﬁndings underscore the potential of entailment-based learning as a ﬂexible and powerful approach to textclassiﬁcation in low-resource environments, particularlyin the biomedical domain.
+By combining the strengths ofpre-trained models with the power of textual entailmentreasoning, our framework provides a scalable solution tothe challenges posed by sparse labeled data, enabling ac-curate classiﬁcation across a broad range of medical andscientiﬁc texts.
+Experimental results shows that our method achievescompetitive results in zero-shot settings and consistentlyoutperforms existing baselines when ﬁne-tuned with lim-ited annotations.
+
+
+2 Related Works
+
+Natural Language Inference (NLI) has become pivotalfor text classiﬁcation tasks, especially in zero-shot and few-shot settings.
+Early datasets like SNLI
+[1] and MNLI
+[2]laid the foundation for NLI models, which treat text clas-siﬁcation as an entailment problem—predicting whethera text input entails a target class hypothesis.
+Yin et al.(2019) proposed zero-shot text classiﬁcation as a textualentailment problem
+[3], while Gera (2022)[4] introduceda self-training approach for this task.
+Other studies, such asKoutsomitropoulos (2021)[6] , applied zero-shot learningto validate biomedical ontology annotations, and Pamies(2023) enhanced zero-shot classiﬁcation using weak su-pervision and entailment
+[8].
+Additionally, GPT models,including ChatGPT, have been applied to zero-shot taskslike clinical NER
+[9].
+These developments highlight NLI’spotential as a versatile tool for tackling classiﬁcation chal-lenges across various domains.
+
+
+3 Method
+
+By leveraging pre-trained NLI models, classiﬁcationtasks can be reframed as entailment problems, where theobjective is to determine whether a given hypothesis (e.g.,a process label) is entailed by an input text (the premise).This approach provides a systematic and ﬂexible way toaddress classiﬁcation challenges involving limited labeleddata and complex semantic relationships.
+In this work, weintroduce an Entailment-Based Text Classiﬁcation modeldesigned to overcome the challenges of classifying biomed-ical text.
+In this framework, input text passages are treatedas premises, predeﬁned class labels are reformulated as hy-potheses, and the model predicts which labels are logicallyentailed by the text.
+Figure 1 illustrates the functionalityof our model.
+By leveraging the strengths of NLI, our ap-proach eﬀectively bridges the gap between textual data andsemantic classiﬁcation tasks in the biomedical domain.
+
+
+3.1 Converting Labels into Hypotheses
+
+The ﬁrst step in our approach is to convert the target classlabels into hypotheses suitable for an NLI-based classiﬁca-tion task.
+This involves transforming class label names intoa format compatible with textual entailment.
+We experi-mented with two hypothesis templates: one using the exactclass label as it is, and another rephrased into a descriptiveformat, such as "This text is about <class label>."
+Thesetemplates enable the model to establish the relationshipbetween the input text passage (the premise) and each po-tential class label (the hypothesis).
+Our experiments foundthat the direct label template yielded the best results.
+
+
+3.2 Converting Classiﬁcation Data into
+
+
+
+Entailment Data
+
+To adapt classiﬁcation tasks to the NLI framework, wereformulated the dataset into an entailment-compatible for-mat.
+For each data split (train, dev, and test), each input textpassage (the premise) was paired with a positive hypothesiscorresponding to its true label, while the remaining labelswere paired as negative hypotheses.
+In the zero-shot setup,unseen labels were excluded from training and evaluatedonly during testing to ensure a true zero-shot scenario.
+Inthe few-shot setup, a limited number of labeled exampleswere introduced for ﬁne-tuning, enabling the model to bet-ter learn the mapping between text and hypotheses whilestill maintaining generalization to unseen labels.
+
+
+3.3 Entailment Model Learning
+
+We utilized widely recognized state-of-the-art pretrainedmodels BART-Large-MNLI [7] for text classiﬁcation basedon natural language inference (NLI).
+Our proposed ap-proach explores two pr imary setups: Zero-Shot Learningand Few-Shot Learning.
+Figure 1 Entailment Based Classiﬁcation3.3.1 Zero-Shot LearningIn the zero-shot setup, we directly applied the pretrainedentailment models to the test sets without any task-speciﬁcﬁne-tuning.
+This invloves no training phase and the modelsolely leverages its pretrained knowledge to classify en-tirely unseen labels based solely on the input text and hy-potheses.3.3.2 Few-Shot LearningIn the few-shot setup, we ﬁne-tuned the pretrained NLImodels using our small-scale dataset.
+This ﬁne-tuning pro-cess allowed the model to learn domain-speciﬁc patternsfrom a limited set of labeled examples, improving its abilityto generalize to both seen and unseen labels.
+By leverag-ing this small-scale dataset, we signiﬁcantly enhanced themodel’s performance on classiﬁcation tasks.
+Since theoriginal dataset was not designed for a Natural LanguageInference (NLI) task, we created a custom NLI dataset toadapt it for this purpose.
+We converted the positive exam-ples into a pairwise format, where each example consistsof a text input passage and a corresponding hypothesis,labeled with "entailment."
+In cases where the dataset con-tained multiple related classes, we generated several posi-tive pairwise examples, each corresponding to a diﬀerentclass.
+Additionally, for each positive example, we gener-ated a random negative example by pairing the premisewith an unrelated hypothesis, labeled as "not-entailment.
+"This balanced approach provided the model with an equaldistribution of entailed and non-entailed pairs, ensur ingClass Name #training #test TotalNeoplasms 2530 633 3163Digestive system diseases 1195 299 1494Nervous system diseases 1540 385 1925Cardiovascular diseases 2441 610 3051General pathological conditions 3844 961 4805Total 11550 2888 14438Table 1 Class distributions within the Medical Abstractsdataset.eﬀective training.
+
+
+4 Dataset
+
+We utilized the Medical Abstracts dataset for our exper-iments.
+The raw Medical Abstracts dataset was sourcedfrom Kaggle.
+This dataset originally compr ises 28,880medical abstracts categorized into ﬁve distinct classes ofpatient conditions, though only about half of the data is an-notated.
+The original annotations consisted of numericallabels only.
+To create a usable medical text classiﬁcationdataset, we processed the corpus by selecting only the la-beled medical abstracts, assigning descriptive labels to thecorresponding classes, and dividing the data into trainingand test sets.
+Table 1 provides a summary of the processed Medi-cal Abstracts dataset.
+Additionally, Table 2 outlines theinferred label keywords for each class.
+The processedcorpus is made publicly available under the Creative Com-mons CC BY-SA 3.0 license at .
+
+From NLI to Classiﬁcation: Entailment Learning forLow-Resource Text Classiﬁcation
+
+Rumana Ferdous Munne
+
+1
+
+　Noriki Nishida
+
+1
+
+　Shanshan Liu
+
+1
+
+　Narumi Tokunaga
+
+1
+
+　Yuki Yamagata
+
+2,3
+
+　Kouji Kozaki
+
+4
+
+　Yuji Matsumoto
+
+11
+
+RIKEN Center for Advanced Intelligence Project (AIP)
+
+2
+
+RIKEN R-IH,
+
+3
+
+RIKEN BRC
+
+1
+
+Osaka Electro-Communication University
+
+
+
+  
+
+
+
+
+ 
+
+
+
+
+
+
+
+Abstract
+
+In real-world scenarios, text classiﬁcation often facesthe challenge of limited labeled data, especially for rare oremerging classes.
+Traditional methods struggle in thesesituations, requiring new approaches that can generalizeto unseen or sparsely annotated classes.
+This challenge isparticularly common in the biomedical ﬁeld, where datais expensive to annotate, and new diseases and treatmentsfrequently emerge.
+This paper proposes an entailment-based framework for zero and few-shot text classiﬁcationby reframing the task as a natural language inference (NLI)problem.
+Leveraging pre-trained language models, the ap-proach infers labels for unseen classes without additionalﬁne-tuning.
+For few-shot scenarios, minimal task-speciﬁcﬁne-tuning signiﬁcantly enhances performance.
+Our ﬁnd-ings highlight the potential of entailment-based learning asa versatile and eﬀective paradigm for text classiﬁcation inlow-resource environments.
+
+
+1 Introduction
+
+Text classiﬁcation is a fundamental task in natural lan-guage processing (NLP), with applications in areas likesentiment analysis and document categor ization.
+However,in real-world settings, a major challenge is the scarcity oflabeled data, especially for rare or emerging classes.
+Thisis particularly problematic in domains like biomedicine,where data is expensive to annotate and often sparse forspeciﬁc conditions.
+Traditional supervised methods strug-gle to generalize to unseen classes, making zero-shot andfew-shot learning approaches increasingly important foraddressing these challenges.
+In the biomedical ﬁeld, accurate text classiﬁcation is es-sential for tasks such as annotating electronic health records(EHRs), extracting information from scientiﬁc literature,and validating biomedical ontologies.
+The complexity ofmedical terminology and the constant emergence of newdiseases fur ther complicate the creation of comprehensivelabeled datasets.
+This makes biomedical text classiﬁcationan ideal application for zero-shot and few-shot learning,where minimal or no labeled data is required to classifynew, unseen categories.
+In this paper, we propose an entailment-based learningframework that leverages pre-trained language models forzero- and few-shot text classiﬁcation.
+By reframing textclassiﬁcation as a natural language inference (NLI) prob-lem, our approach evaluates the relationship between inputtext and class-speciﬁc hypothesis templates.
+This allowsthe model to determine whether a given text entails a spe-ciﬁc class label without requiring task-speciﬁc ﬁne-tuning.
+By using large-scale pre-trained models, we avoid the needfor extensive labeled data while still achieving eﬀectiveclassiﬁcation for previously unseen classes.
+To enhance perfor mance in few-shot settings, we fur-ther explore the integration of task-speciﬁc ﬁne-tuning on aminimal amount of labeled data.
+This enables our model toadapt to speciﬁc domains and improve classiﬁcation accu-racy in scenarios where only a small set of labeled examplesis available.
+Through extensive experiments across multi-ple benchmark datasets, we demonstrate that our methodachieves competitive results in zero-shot settings and con-sistently outperforms existing baselines when ﬁne-tunedwith limited annotations.
+Our ﬁndings underscore the potential of entailment-based learning as a ﬂexible and powerful approach to textclassiﬁcation in low-resource environments, particularlyin the biomedical domain.
+By combining the strengths ofpre-trained models with the power of textual entailmentreasoning, our framework provides a scalable solution tothe challenges posed by sparse labeled data, enabling ac-curate classiﬁcation across a broad range of medical andscientiﬁc texts.
+Experimental results shows that our method achievescompetitive results in zero-shot settings and consistentlyoutperforms existing baselines when ﬁne-tuned with lim-ited annotations.
+
+
+2 Related Works
+
+Natural Language Inference (NLI) has become pivotalfor text classiﬁcation tasks, especially in zero-shot and few-shot settings.
+Early datasets like SNLI
+[1] and MNLI
+[2]laid the foundation for NLI models, which treat text clas-siﬁcation as an entailment problem—predicting whethera text input entails a target class hypothesis.
+Yin et al.(2019) proposed zero-shot text classiﬁcation as a textualentailment problem
+[3], while Gera (2022)[4] introduceda self-training approach for this task.
+Other studies, such asKoutsomitropoulos (2021)[6] , applied zero-shot learningto validate biomedical ontology annotations, and Pamies(2023) enhanced zero-shot classiﬁcation using weak su-pervision and entailment
+[8].
+Additionally, GPT models,including ChatGPT, have been applied to zero-shot taskslike clinical NER
+[9].
+These developments highlight NLI’spotential as a versatile tool for tackling classiﬁcation chal-lenges across various domains.
+
+
+3 Method
+
+By leveraging pre-trained NLI models, classiﬁcationtasks can be reframed as entailment problems, where theobjective is to determine whether a given hypothesis (e.g.,a process label) is entailed by an input text (the premise).This approach provides a systematic and ﬂexible way toaddress classiﬁcation challenges involving limited labeleddata and complex semantic relationships.
+In this work, weintroduce an Entailment-Based Text Classiﬁcation modeldesigned to overcome the challenges of classifying biomed-ical text.
+In this framework, input text passages are treatedas premises, predeﬁned class labels are reformulated as hy-potheses, and the model predicts which labels are logicallyentailed by the text.
+Figure 1 illustrates the functionalityof our model.
+By leveraging the strengths of NLI, our ap-proach eﬀectively bridges the gap between textual data andsemantic classiﬁcation tasks in the biomedical domain.
+
+
+3.1 Converting Labels into Hypotheses
+
+The ﬁrst step in our approach is to convert the target classlabels into hypotheses suitable for an NLI-based classiﬁca-tion task.
+This involves transforming class label names intoa format compatible with textual entailment.
+We experi-mented with two hypothesis templates: one using the exactclass label as it is, and another rephrased into a descriptiveformat, such as "This text is about <class label>."
+Thesetemplates enable the model to establish the relationshipbetween the input text passage (the premise) and each po-tential class label (the hypothesis).
+Our experiments foundthat the direct label template yielded the best results.
+
+
+3.2 Converting Classiﬁcation Data into
+
+
+
+Entailment Data
+
+To adapt classiﬁcation tasks to the NLI framework, wereformulated the dataset into an entailment-compatible for-mat.
+For each data split (train, dev, and test), each input textpassage (the premise) was paired with a positive hypothesiscorresponding to its true label, while the remaining labelswere paired as negative hypotheses.
+In the zero-shot setup,unseen labels were excluded from training and evaluatedonly during testing to ensure a true zero-shot scenario.
+Inthe few-shot setup, a limited number of labeled exampleswere introduced for ﬁne-tuning, enabling the model to bet-ter learn the mapping between text and hypotheses whilestill maintaining generalization to unseen labels.
+
+
+3.3 Entailment Model Learning
+
+We utilized widely recognized state-of-the-art pretrainedmodels BART-Large-MNLI [7] for text classiﬁcation basedon natural language inference (NLI).
+Our proposed ap-proach explores two pr imary setups: Zero-Shot Learningand Few-Shot Learning.
+Figure 1 Entailment Based Classiﬁcation3.3.1 Zero-Shot LearningIn the zero-shot setup, we directly applied the pretrainedentailment models to the test sets without any task-speciﬁcﬁne-tuning.
+This invloves no training phase and the modelsolely leverages its pretrained knowledge to classify en-tirely unseen labels based solely on the input text and hy-potheses.3.3.2 Few-Shot LearningIn the few-shot setup, we ﬁne-tuned the pretrained NLImodels using our small-scale dataset.
+This ﬁne-tuning pro-cess allowed the model to learn domain-speciﬁc patternsfrom a limited set of labeled examples, improving its abilityto generalize to both seen and unseen labels.
+By leverag-ing this small-scale dataset, we signiﬁcantly enhanced themodel’s performance on classiﬁcation tasks.
+Since theoriginal dataset was not designed for a Natural LanguageInference (NLI) task, we created a custom NLI dataset toadapt it for this purpose.
+We converted the positive exam-ples into a pairwise format, where each example consistsof a text input passage and a corresponding hypothesis,labeled with "entailment."
+In cases where the dataset con-tained multiple related classes, we generated several posi-tive pairwise examples, each corresponding to a diﬀerentclass.
+Additionally, for each positive example, we gener-ated a random negative example by pairing the premisewith an unrelated hypothesis, labeled as "not-entailment.
+"This balanced approach provided the model with an equaldistribution of entailed and non-entailed pairs, ensur ingClass Name #training #test TotalNeoplasms 2530 633 3163Digestive system diseases 1195 299 1494Nervous system diseases 1540 385 1925Cardiovascular diseases 2441 610 3051General pathological conditions 3844 961 4805Total 11550 2888 14438Table 1 Class distributions within the Medical Abstractsdataset.eﬀective training.
+
+
+4 Dataset
+
+We utilized the Medical Abstracts dataset for our exper-iments.
+The raw Medical Abstracts dataset was sourcedfrom Kaggle.
+This dataset originally compr ises 28,880medical abstracts categorized into ﬁve distinct classes ofpatient conditions, though only about half of the data is an-notated.
+The original annotations consisted of numericallabels only.
+To create a usable medical text classiﬁcationdataset, we processed the corpus by selecting only the la-beled medical abstracts, assigning descriptive labels to thecorresponding classes, and dividing the data into trainingand test sets.
+Table 1 provides a summary of the processed Medi-cal Abstracts dataset.
+Additionally, Table 2 outlines theinferred label keywords for each class.
+The processedcorpus is made publicly available under the Creative Com-mons CC BY-SA 3.0 license at .Class Name Label KeywordsNeoplasms neoplasmsDigestive system diseases intestine, system, diseasesNervous system diseases nervous, system, diseasesCardiovascular diseases cardiovascular, diseasesGeneral pathological condi-tionsgeneral, pathological, con-ditionsTable 2 Class names and their corresponding label keywords.
+
+
+5 Experiment
+
+
+
+5.1 Implementation
+
+We evaluate our zero-shot model using BART-Large-MNLI for its expertise in textual entailment task.
+For thefew-shot model, we ﬁne-tune the pretrained BART-Large-MNLI model using our limited NLI training data, which isconstructed from the training dataset through the processdescribed in 3.2.
+All training sessions utilized the Adamoptimizer with a learning rate of 2 × 10−5and a weightdecay of 0.01.
+The ﬁne-tuning process was executed usingPyTorch and the Hugging Face Transformers library.
+
+
+5.2 Result and Discussion
+
+The primary objective of this task is to classify medi-cal abstracts into ﬁve condition classes using a processeddataset.
+Our model demonstrates competitive performancecompared to existing state-of-the-art methods.
+Specif-ically, we compare our approach with the Lbl2Trans-formerVec and Zero-shot Entailment models, as reportedby Schopf et al.
+(2022)[5] in Table 5.2.
+The Lbl2Trans-formerVec model utilizes label embeddings combined withtransformer-based architectures for similar ity-based clas-siﬁcation, while the Zero-shot Entailment model applies azero-shot learning approach using a pre-trained DeBartaarchitecture.
+While this Entailment model is conceptuallysimilar, it features distinct task formulations, as well asdesign and implementation adaptations.
+In the zero-shot setting, our proposed model achievesan F1-score of 57.18, which is highly comparable to theZero-shot Entailment model’s score of 57.88.
+This re-sult demonstrates that our model eﬀectively handles clas-siﬁcation tasks without requiring task-speciﬁc ﬁne-tuning.
+However, the true strength of our approach lies in the few-shot setting, where our model achieves a signiﬁcant im-Settings Model F1-scoreSimilarity Based Lbl2TransformerVec*56.46Zero-shotZero-shot Entailment*57.28Proposed zero shot model 57.19Few-shot Proposed few shot model 67.34Table 3 Comparison of F1-scores across diﬀerent models andsettings.*Results from Schopf et al.
+[5]provement with an F1-score of 67.34.
+This represents anearly 10 increase in performance compared to the zero-shot setting, underscoring the beneﬁts of ﬁne-tuning ona small, task-speciﬁc NLI (Natural Language Inference)dataset derived from the training split of the Medical Ab-stracts dataset.
+The ﬁne-tuning process enables our model to address thechallenges of classifying instances with previously unseenor partially seen labels more eﬀectively.
+By allowing themodel to generalize in these scenarios, we address a criticalneed in medical text classiﬁcation, where labeled data isoften sparse, and emerging conditions frequently lead tonew, unseen categories.
+Overall, this result underscores the value of integrat-ing ﬁne-tuning on task-speciﬁc datasets with a robust pre-trained model, paving the way for more eﬀective handlingof challenging classiﬁcation scenarios in biomedical con-texts.
+
+
+6 Conclusion
+
+This paper presented an entailment-based learningframework for zero- and few-shot text classiﬁcation, witha particular focus on addressing challenges in the biomed-ical domain.
+By leveraging pre-trained language modelsand reformulating classiﬁcation as a natural language in-ference (NLI) problem, our approach eﬀectively handlesunseen classes without requiring extensive labeled data.
+The integration of ﬁne-tuning with minimal labeled datafurther demonstrated signiﬁcant improvements in classiﬁ-cation accuracy, highlighting the adaptability of the frame-work to low-resource settings.
+These results underscore thepotential of NLI-based entailment learning as a powerfuland scalable solution for text classiﬁcation, par ticularly indomains like biomedicine, where annotated data is scarceand new categor ies continuously emerge.
+
+
+
+References
+
+
+[1] Samuel R. Bowman, Gabor Angeli, Christopher Potts, andChristopher D. Manning. A large annotated corpus forlearning natural language inference. In Proceedings ofthe 2015 Conference on Empirical Methods in Nat-ural Language Processing, pages 632–642, 2015.
+[2] Adina Williams, Nikita Nangia, and Samuel Bowman. ABroad-Coverage Challenge Corpus for Sentence Under-standing through Inference. In Proceedings of the 2018Conference of the North American Chapter of theAssociation for Computational Linguistics: HumanLanguage Technologies,pages 1112–1122, 2018.
+[3] Wenpeng Yin, Jamaal Hay, and Dan Roth. Bench-marking Zero-shot Text Classiﬁcation: Datasets, Evalu-ation and Entailment Approach. In Proceedings of the2019 Conference on Empirical Methods in Natu-ral Language Processing and the 9th InternationalJoint Conference on Natural Language Processing(EMNLP-IJCNLP), pages 3914–3923, 2019.
+[4] Ariel Gera, Alon Halfon, Eyal Shnarch, Yotam Perlitz,Liat Ein-Dor, and Noam Slonim. Zero-shot text classiﬁ-cation with self-training. In Conference on EmpiricalMethods in Natural Language Processing, 2022.
+[5] Tim Schopf, Daniel Braun, and Florian Matthes. Eval-uating unsuper vised text classiﬁcation: Zero-shot andsimilarity-based approaches. In Pro ceedings of the2022 6th International Conference on Natural Lan-guage Processing and Information Retrieval, pages6–15, 2022.
+[6] Dimitrios Koutsomitropoulos. Validating ontology-basedannotations of biomedical resources using zero-shot learn-ing. In The 12th International Conference onComputational Systems-Biology and Bioinformat-ics, pages 37–43, 2021.
+[7] Mike Lewis, Yinhan Liu, Naman Goyal, MarjanGhazvininejad, Abdelrahman Mohamed, Omer Levy,Veselin Stoyanov, and Luke Zettlemoyer. BART: Denois-ing sequence-to-sequence pre-training for natural languagegeneration, translation, and comprehension. In Proceed-ings of the 58th Annual Meeting of the Associationfor Computational Linguistics, pages 7871–7880, July2020.
+[8] Marc Pàmies, Joan Llop, Francesco Multari, NicolauDuran-Silva, César Parra-Rojas, Aitor González-Agirre,Francesco Alessandro Massucci, and Marta Villegas. Aweakly supervised textual entailment approach to zero-shottext classiﬁcation. In Proceedings of the 17th Confer-ence of the European Chapter of the Associationfor Computational Linguistics, pages 286–296, 2023.
+[9] Yan Hu, Qingyu Chen, Jingcheng Du, Xueqing Peng, Vip-ina Kuttichi Keloth, Xu Zuo, Yujia Zhou, Zehan Li, Xi-aoqian Jiang, Zhiyong Lu, and others. Improving largelanguage models for clinical named entity recognition viaprompt engineer ing. In Journal of the American Med-ical Informatics Association, page ocaad259, 2024.

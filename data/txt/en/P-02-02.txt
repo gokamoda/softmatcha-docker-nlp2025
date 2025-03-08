@@ -1,0 +1,212 @@
+Representational Analysis of Binding in Language Models
+
+Qin Dai
+
+1
+
+ 
+
+
+
+Benjamin Heinzerling
+
+2,1
+
+ 
+
+
+
+Kentaro Inui
+
+3,1,21
+
+Tohoku University  
+
+2
+
+RIKEN AIP  
+
+3
+
+MBZUAI
+
+
+
+qin.dai.b8@tohoku.ac.jp  benjamin.heinzerling@riken.jp
+
+
+
+ kentaro.inui@mbzuai.ac.ae
+
+
+
+Abstract
+
+Entity tracking is essential for complex reasoning.
+To per-form in-context entity tracking, language models (LMs)must bind an entity to its attribute (e.g., bind a container toits content) to recall attribute for a given entity.
+For exam-ple, given a context mentioning “The coﬀee is in Box Z,the stone is in Box M, the map is in Box H”, to infer “BoxZ contains the coﬀee” from the context, LMs must bind“Box Z” to “coﬀee”.
+To explain the binding behaviour ofLMs, Feng and Steinhardt (2023) introduce a Binding IDmechanism and state that LMs use a abstract concept calledBinding ID (BI) to internally mark entity-attribute pairs.
+However, they have not captured Ordering ID (OI), namelyordering index of entity, from entity activations that directlydetermines the binding behaviour.
+In this work, we pro-vide a novel view of the BI mechanism by localizing OI andproving the causality between OI and binding behaviour.
+Speciﬁcally, we discover the OI subspace and reveal causaleﬀect of OI on binding that when editing activations alongthe OI encoding direction, LMs tend to bind a given entityto other attributes (e.g., “stone” for “Box Z”) accordingly.
+The code and datasets used in this paper are available athttps://github.com/cl-tohoku/OI-Subspace.
+
+
+1 Introduction
+
+The ability of a model to track and maintain informa-tion associated with an entity in a context is essential forcomplex reasoning (1; 2; 3; 4; 5).
+To recall attribute infor-mation for a given entity in a context, a model must bindentities to their attributes (6).
+For example, given a Sample1, a model must bind the entities (e.g., “Box Z”, “Box M”and “Box H”) to their corresponding attributes (e.g., “cof-fee”, “stone” and “map”) so as to recall (or answer) suchas what is in “Box Z”.
+Binding has also been studied as afundamental problem in Psychology (7).“The  coffee is   in   Box   Z ,   the   stone is   in   Box   M ,   the   map is   in   Box   H, … Box   Z   contains   the”The coffee Z the………………Box……………“The coffee  … Box  Z  contains  the”“The coffee  … Box  Z  contains  the”Z the……………Z the……………PC1PC2+=PC1PC2+=PatchingPatchingContextiContextiContexti“coffee”“map”“stone”AnswerAnswerAnswerOriginal LMLM with OI PatchLM with OI PatchQueryiQueryiQueryi…PCAMrOI Subsapce Extractionxixixi*xi*………Figure 1: Our main ﬁnding on Ordering ID (OI) subspaceintervention.
+Patching entity (e.g., "Z") representationsalong OI direction (i.e., PC1) in activation space yieldscorresponding changes in model output.
+To uncover how Language Models (LMs) realize bindingin term of internal representation, an existing research (6)introduces the Binding ID mechanism that LMs apply anabstract concept called Binding ID (BI) to bind and markEntity-Attribute (EA) pairs (e.g., “Box Z” and “coﬀee” inSample 1, where BI is denoted as a numbered square).However, they have not captured the Ordering ID (OI)information from the entity (or attribute) activations thatcausally aﬀects binding behaviour and thus BI informa-tion as well.
+Here, OI is deﬁned as the input order (orordering index) of entities and attr ibutes, no matter theyare bound by a relation (e.g., “is_in” in Sample 1) or not,such as the indexing number in Sample 1 and Sample 2.We can observe that in a 1E-to-1A bound context, such asin Sample 1, BI and OI are interchangeable.(1) Context: The coﬀeeÜ0is in Box ZÜ0, the stoneÜ1is in Box MÜ1, the mapÜ2is in Box HÜ2.Query: Box ZÜ0contains the(2) Non-related Context: The coﬀeeÜ0and Box ZÜ0are scattered around, the stoneÜ1is here and BoxMÜ1is there, the mapÜ2and Box HÜ2are in diﬀer-ent place.
+Query:
+Box ZÜ0contains theSince binding is the foundational skill that underlies en-tity tracking (6), in this work, we take the entity trackingtask (8; 9) as a benchmark to analyze the LM’s bindingbehaviour.
+Based on the analysis of internal representa-tion on this task, we localize the OI information from theactiviations and provide a novel view of the BI mecha-nism.
+Speciﬁcally, we apply Principle Component Anal-ysis (PCA) as well as other dimension reduction methodssuch as Partial Least Squares to analyze the activations ofLMs, and which are empirically proven to be eﬀective.
+Wediscover that LMs encode (or store) the OI informationinto a low-rank subspace (called OI subspace hereafter),and the discovered OI subspace can causally aﬀect bindingbehaviour and thus BI information as well.
+That is, we ﬁndthat by causally intervening along the OI encoding Prin-ciple Component (PC), LMs swap the binding and infer anew attribute for a given entity accordingly.
+For example,as shown in Figure 1, by patching activations along thedirection (i.e., PC1), we can make the LMs to infer “Box Zcontains the stone” and “Box Z contains the map” insteadof “Box Z contains the coﬀee”.
+Therefore, our ﬁndingsextend the previous BI based understanding of binding inLMs (6) by revealing the causality between OI and binding.
+In addition, we ﬁnd that such OI subspace that deter-mines binding is prevalent across multiple LM familiessuch as Llama2 (10)(and Llama3 (11)), Qwen1.5 (12)and Pythia (13), and the code ﬁne-tuned LM Float-7B (9).Please see our paper (14) for more details.
+
+
+2 Finding OI Subspace
+
+In this section we describe our Principle ComponentAnalysis (PCA) based method to localize the OI subspacein activations of LMs.
+As shown in Figure 1, given a LM(e.g., Llama2), and a collection of texts which describesa set of EA pairs related by a relation such as “is_in” inSample 1, we extract the activation of entity token (e.g.,“Z”) in query (denoted as x𝑖) from a certain layer1）.
+Wethen construct a activation matrix 𝑀𝑟P 𝑅𝑛ˆ𝑑for a relation𝑟, where 𝑛 denotes the number of entities and 𝑑 denotesthe dimension of the activation.
+The row 𝑖 of 𝑀𝑟is theactivation of an entity token (i.e., x𝑖).PCA has been applied for identifying various subspace(or direction) such as the subspace encoding languagebias (15), truth value of assertions (16) and sentiment (17).1）
+The layer is determined by a development setBI_1 BI_2 BI_3 BI_4 BI_5 BI_6
+BI_7layer0 layer1 layer2 layer3layer4 layer5 layer6 layer7layer8 layer9 layer10 layer11layer12 layer13 layer14 layer15layer16 layer17 layer18 layer19layer20 layer21 layer22 layer23layer24 layer25 layer26 layer27layer28 layer29 layer30 layer31Figure 2: Layer-wise OI subspace visualization on Llama2-7B, where “BI” primarily denotes OI.Inspired by these studies, we choose PCA as our ﬁrst at-tempt to localize OI subspace.
+Speciﬁcally, the PCA of aactivation matrix is 𝑀𝑟“ 𝑈𝑟Σ𝑟𝑉𝑇𝑟, where the columns of𝑉𝑟P 𝑅𝑑ˆ𝑑are principle directions of 𝑀𝑟.
+We takes ﬁrst 𝑐columns of 𝑉𝑟as the OI direction, denoted as 𝐵𝑟P 𝑅𝑑ˆ𝑐.We adopt a subset of the entity tracking dataset (8; 9),which contains 𝑛 “ 1000 samples, to create layer (𝑙) wiseactivation matrix 𝑀𝑙𝑟.
+We then use the 𝑀𝑙𝑟to extract thelayer-wise OI subspace projection matrix 𝐵𝑙𝑟P 𝑅𝑑ˆ2tovisualize the activations.
+Figure 2 shows the embeddingvisualization on Llama2-7B, where each point representsthe activation of an entity projected via the 𝐵𝑙𝑟, and thecolors represent OIs.
+From which, we can observe thatmiddle layers, such as layer 8, have a clearly visible di-rection along which OI increases, while the others havetangled distribution.
+We also observe similar pattern of distribution onLlama3-8B, Float-7B and other LM families such asQwen1.5 and Pythia.
+This indicates that LMs use themiddle layers to encode OI information, and the ﬁnding isprevalent across multiple LM families.
+This ﬁnding is alsoconsistent with the “stages of inference hypothesis” (18)stating that the function of early layers is to perform deto-kenization, middle layers do feature engineering, and lateAnswer for # StepContext Query 1
+2 3 4 5 6The coﬀee is in Box Z, the stone is in Box M,the map is in Box H, the coat is in Box L,the string is in Box T, the watch is in Box E,the meat is in Box F.Box Zcontainsthestone map map string watch meatThe letter is in Box Q, the boot is in Box C,the fan is in Box N, the crown is in Box R,the guitar is in Box E, the bag is in Box D,the watch is in Box K.Box Qcontainstheboot fan crown guitar watch watchThe cross is in Box Z, the ice is in Box D,the ring is in Box F, the plane is in Box Q,the clock is in Box X, the paper is in Box I,the engine is in Box K.Box Zcontainstheice ring ring clock paper engineTable 1: Attributes inferred by Llama2-7B as a result of di-rected activation patching along OI-PC in the OI subspaceon the dataset of “r: is_in”, where color denotes the BI.layers map the representations from the middle layers intothe output embedding space for next-token prediction.
+Ac-cording to the hypothesis, we would expect to ﬁnd theordering feature most prominently represented in middlelayers, which is exactly what the visualization shows.
+Wecall this dimension that represents OI as OI Principle Com-ponent (OI-PC).
+In the following section, we apply causalintervention on the OI-PC to analyze how OI-PC aﬀect themodel output.
+
+
+3 Causal Interventions on OI-PC
+
+
+In order to test if OIs are not only encoded in the OIsubspace, but that these representations can be steered soas to swap the binding and change LM’s output, in thissection, we perform interventions to analyze the causality.
+That is, we want to ﬁnd out if making interventions alongOI-PC leads to a change in LM’s binding computation.
+Activation Patching (AP)(19) has been recently pro-posed to causally intervene computational graph of a LMso as to inter pret the function of a target computationalnode (or edge).
+Diﬀerent with the common AP setup, werealize AP by directly editing activations along a particu-lar direction (i.e., along OI-PC), similar to the activationediting method of (20; 21; 22).
+
+
+3.1 Setting
+
+Dataset To explore the internal representation that en-ables binding, we adopt the entity tracking dataset (8; 9).The dataset consists of English sentence describing a setof objects (here called attributes) located in a set of boxeswith diﬀerence labels (here called entities), and the task isto infer what is contained by a given box.
+For instance,when a LM is presented with “The coﬀee is in Box Z, the0 2 4 6−500 2 4 6−500 2 4 6−500 2 4 6−500 2 4 6−5050 2 4 6−505Intervention Step Intervention Step Intervention StepAverage Logit DifferenceAverage Logit DifferenceBI_1 BI_2
+BI_3BI_4 BI_5
+BI_6Figure 3: Logit Diﬀerence (LD) for OI-PC based interven-tion across datasets on Llama2-7B, where x axis denotesthe number of intervention steps on 𝑒0, y axis does the LD,BI_i represents each target attribute and the light yellowbottom line indicates the LD of original attribute (i.e., 𝑎0).Here, 𝑙 “ 8, 𝑣 “ 2.5, and 𝛼 “ 3.0.0 1 2 3 4 5 600.20.40.60.81BI_6 BI_5 BI_4 BI_3 BI_2
+BI_1 BI_0Intervention StepLabel ProportionFigure 4: Logit ﬂip for OI-PC based intervention acrossdatasets on Llama2-7B, where x axis denotes the numberof intervention steps on 𝑒0, y axis does the proportion ofeach inferred attribute in model output.stone is in Box M, the map is in Box H, ...
+Box Z containsthe”, the LM should infer the next token as “coﬀee”.
+Eachsample involves 7 EA pairs.
+Metrics We apply two evaluation metrics: logit diﬀer-ence (23) and logit ﬂip (24).
+The logit diﬀerence metriccalculates diﬀerence in logits of a target token betweenoriginal and intervened setting.
+The "logit ﬂip" accuracymetric represents the proportion of candidate tokens inmodel output after a causal intervention.
+
+
+3.2 Results: Direct Editing OI Subspace
+
+We intervene via the Equation 1, where x0,𝑙is the origi-nal activation of 𝑒0(i.e., the leftmost entity) in layer 𝑙, x˚0,𝑙isthe intervened activation, 𝐵𝑟is the OI subspace projectionmatrix mentioned in Section (§2), 𝛼 is a hyper-parameter toscale the eﬀect of intervention and 𝛽 (0 ď 𝛽 ď 6) denotesthe number of steps.x˚0,𝑙“ x0,𝑙` 𝛼𝐵𝑇𝑟p𝐵𝑟x0,𝑙` 𝛽𝑣q (1)Table 1 lists several examples under the OI subspaceintervention on the entity tracking dataset (8; 9).
+We cansee that when adding 1 step along OI-PC, the model se-lects “stone” for entity “Z” instead of its original attribute“coﬀee”.
+Similarly, when the step is doubled, the modelwill select attribute “map” for the entity, and so on.
+Thisindicates that changing the value along OI-PC can inducethe swap of attribute.
+Besides the qualitative analysis, we also conduct quan-titative analysis for the causality between the OI subspacebased AP and the binding behaviour of LMs.
+We plotmean-aggregated eﬀect of the OI-PC based AP in Figure 3.Figure 3 indicates how the Logit Diﬀerence (LD) of eachattribute changes as the step increases.
+We can observethat as the number of steps increases, LD of the origi-nal attribute decreases.
+In contrast, LD of other attributesgradually increase until a certain point and then graduallydecrease.
+Given a candidate attribute, its LD peak roughlycorresponds to the number of steps that is equal to its BI.For instance, when adding 3 steps, the points of BI_3 (i.e.,attributes of BI“ 3) achieve the highest LD score.
+Thisindicates that by adjusting the value along the OI-PC, wecan adjust BI information and thus increase the logit scoreof the corresponding attribute.
+Similarly, Figure 4 illustrates the relation between thenumber of steps and the logit ﬂip, which gauges the per-centage of the predicted attributes under an intervention.
+Figure 4 shows that as the step increases, the proportionbar becomes darker, it means that the model promotes theproportion of the corresponding attribute in its inference.
+For instance, when adding 3 step on the subspace, the 𝑎3(i.e., BI_3) becomes the major of the answers.
+This provesthat the OI-PC based interventions can causally aﬀect BIinformation as well as the computation of Binding in a LM.OI Subspace and Other Information: the indepen-dence of OI subspace from positional information (i.e.,𝑝𝑜𝑠𝑡𝑖𝑜𝑛_𝑖𝑑𝑠) is studied in Appendix (§A.1), and its rela-tionship with the existence of a binding relation (e.g., “isin”) is analyzed in Appendix (§A.2).Figure 5: PLS components and R2 scoreInput (1-to-1)“A0is in E0, A1is in E1, A2is in E2, A3is in E3,A4is in E4, A5is in E5, A6is in E6.”Input (n-to-1)“A0is in E0, A1is in E1, A2is in E0, A3is in E2,A4is in E3, A5is in E0, A6is in E4.”Table 2: A n-to-1 sample where entity “E0” has 3 attributes
+
+3.3 OI Subspace for n-to-1 Setting
+
+Section (§2) reveals that LMs encode OI into OI-PCunder 1-to-1 setting, that is, one entity only has one at-tribute.
+In this session, we analyze how a LM encodes OIunder n-to-1 setting, where one entity possesses multipleattributes.
+To do so, we create an alternative dataset asshown in Table 2, and analyze it via Partial Least Squares(PLS)( 25).
+PLS aims to learn low-dimensional represen-tation of the activation of an entity (e.g., E0) that keeps (orpredicts) the OIs of its corresponding multiple attributes(e.g., OI“ 0, OI“ 2 and OI“ 5).
+Figure 5 (left) showsthat compared to 1-to-1, in the n-to-1 setting, the LM hasa high R2 score when PLS components are more than 20,indicating that a LM encodes OI via relatively high-ranksubspace while dealing with multiple attributes.
+In addi-tion, Figure5 (right) shows the R2 score for each attribute,indicating that the encoding capacity of OI varies with theorder of each bound attribute in the n-to-1 setting.
+
+
+4 Conclusion and Future Work
+
+In this work, we study the in-context binding, a fun-damental skill underlying many complex reasoning andnatural language understanding tasks.
+We provide a novelview of the Binding ID mechanism (6) that there exists asubspace in the activation of LMs that primarily encodesthe ordering information and which is used as the proto-type of BIs to causally determine binding.
+Our future workincludes: 1.
+the analysis of OI subspace in a more realisticsetting; 2. OI subspace based mechanistic analysis.
+
+
+
+Acknowledgements
+
+This work was supported by JST CREST Grant Num-ber JPMJCR20D2 and JSPS KAKENHI Grant Number21K17814.
+
+References
+
+
+[1]Lauri Karttunen. Discourse referents. In Notes fromthe linguistic underground, pp. 363–385. Brill, 1976.
+[2]Irene Heim. File change semantics and the familiaritytheory of deﬁniteness. Semantics Critical Concepts inLinguistics, pp. 108–135, 1983.
+[3]Mante S Nieuwland and Jos JA Van Berkum. Whenpeanuts fall in love: N400 evidence for the power ofdiscourse.Journal of cognitive neuroscience, Vol. 18,No. 7, pp. 1098–1111, 2006.
+[4]Regina Barzilay and Mirella Lapata. Modeling localcoherence: An entity-based approach. ComputationalLinguistics, Vol. 34, No. 1, pp. 1–34, 2008.
+[5]Hans Kamp, Josef Van Genabith, and Uwe Reyle.Discourse representation theory. In Handbook ofPhilosophical Logic: Volume 15, pp. 125–394.Springer, 2010.
+[6]Jiahai Feng and Jacob Steinhardt. How do languagemodels bind entities in context? arXiv preprintarXiv:2310.17191, 2023.
+[7]Anne Treisman. The binding problem. Current opinionin neurobiology, Vol. 6, No. 2, pp. 171–178, 1996.
+[8]Najoung Kim and Sebastian Schuster. Entity trackingin language models. arXiv preprint arXiv:2305.02363,2023.
+[9]Nikhil Prakash, Tamar Rott Shaham, Tal Haklay,Yonatan Belinkov, and David Bau. Fine-tuning en-hances existing mechanisms: A case study on entitytracking. arXiv preprint arXiv:2402.14811, 2024.
+[10]Hugo Touvron et al. Llama 2: Open foundation andﬁne-tuned chat models, 2023.
+[11]AI@Meta. Llama 3 model card. 2024.
+[12]Jinze Bai, Bai, et al. Qwen technical report. arXivpreprint arXiv:2309.16609, 2023.
+[13]Biderman et al. Pythia: A suite for analyzing largelanguage models across training and scaling. InInternational Conference on Machine Learning, pp.2397–2430. PMLR, 2023.
+[14]Qin Dai, Benjamin Heinzerling, and Kentaro Inui.Representational analysis of binding in language mod-els. arXiv preprint arXiv:2409.05448, 2024.
+[15]Ziyi Yang, Yinfei Yang, Daniel Cer, and Eric Darve.A simple and eﬀective method to eliminate the selflanguage bias in multilingual representations. arXivpreprint arXiv:2109.04727, 2021.
+[16]Samuel Marks and Max Tegmark. The geometry oftruth: Emergent linear structure in large languagemodel representations of true/false datasets. arXivpreprint arXiv:2310.06824, 2023.
+[17]Curt Tigges, Oskar John Hollinsworth, Atticus Geiger,and Neel Nanda. Linear representations of sen-timent in large language models. arXiv preprintarXiv:2310.15154, 2023.
+[18]Vedang Lad, Wes Gurnee, and Max Tegmark. Theremarkable robustness of llms: Stages of inference?arXiv preprint arXiv:2406.19384, 2024.
+[19]Jesse Vig, Sebastian Gehrmann, Yonatan Belinkov,Sharon Qian, Daniel Nevo, Yaron Singer, and StuartShieber. Investigating gender bias in language modelsusing causal mediation analysis. Advances in neuralinformation processing systems, Vol. 33, pp. 12388–12401, 2020.
+[20]Yuta Matsumoto, Benjamin Heinzerling, MasashiYoshikawa, and Kentaro Inui. Tracing and manip-ulating intermediate values in neural math problemsolvers. arXiv preprint arXiv:2301.06758, 2023.
+[21]Benjamin Heinzerling and Kentaro Inui. Monotonicrepresentation of numeric properties in language mod-els. arXiv preprint arXiv:2403.10381, 2024.
+[22]Joshua Engels, Isaac Liao, Eric J. Michaud, WesGurnee, and Max Tegmark. Not all language modelfeatures are linear, 2024.
+[23]Kevin Wang, Alexandre Variengien, Arthur Conmy,Buck Shlegeris, and Jacob Steinhardt. Interpretabilityin the wild: a circuit for indirect object identiﬁcation ingpt-2 small. arXiv preprint arXiv:2211.00593, 2022.
+[24]Atticus Geiger, Wu, et al. Inducing causal structurefor interpretable neural networks. In InternationalConference on Machine Learning, pp. 7324–7338.PMLR, 2022.
+[25]Paul Geladi and Bruce R Kowalski. Partial least-squares regression: a tutorial. Analytica chimica acta,Vol. 185, pp. 1–17, 1986.
+
+
+
+A Appendix
+
+
+
+A.1 OI Subspace and Position
+
+To prove the independence between OI subspace and Po-sitional Information (PI), which is namely the 𝑝𝑜𝑠𝑡𝑖𝑜𝑛_𝑖𝑑𝑠of input tokens, we create the following alternative dataset.
+The dataset is created by adding Filler Words (FW) withvarious length, such as “OK”, “I see that” and “Thereis no particular reason”, in front of the entity trackingdataset (8; 9), as shown in Table 3.
+Since the length (i.e.,PC1 PC2 PC3−0.200.20.40.60.81OIPICorrelationFigure 6: Spearman’s rank correlation between OI-PC andPI (or OI), where “PC𝑖” denotes the 𝑖-th PC of the OIsubspace and “PI” is the length of FW.the number of tokens) of FW directly changes the PI ofits following entities and attributes without aﬀecting theirOIs, we take the length as the measure of intervention onPI and apply Spearman’s rank correlation 𝜌 to calculatethe correlation between the length (denoted as PI) and theOI-PC value.
+Figure 6 shows 𝜌 between PI and OI-PC aswell as between OI and OI-PC.
+We can observe that OI-PChas high 𝜌 with OI but almost zero 𝜌 with PI, indicatingthat the discovered OI-PC is highly correlated with OI in-formation but independent with PI.
+Therefore, the OI-PCdoes not simply encode absolute token position.
+Input (original)“The apple is in Box E, the bell is in Box F, ...”Input (with ﬁller words)“I will ﬁnd out that the apple is in Box E, the bell isin Box F, ...“Table 3: An example of the dataset with ﬁller words “I willﬁnd out that”.
+Input (original)“The apple is in Box E, the bell is in Box F, ...”Input (Non-related)“I see apple, somewhere else there is Box E,the bell and Box F are scattered around, ...”Table 4: An example of the dataset with non-related ex-pression.
+PC1 PC2 PC300.20.40.60.81RelatedYesNoCorrelationFigure 7: OI-PC based correlation between attributes andtheir corresponding entities, where “PC𝑖” denotes the 𝑖-th PC of the OI subspace, “Yes” and “No” represent therelated (i.e., original) and non-related dataset respectively.
+
+
+A.2 OI Subspace and Relatedness
+
+
+In order to uncover the relationship between OI-PC andthe relatedness, which namely means the existence of abinding relation, we create an alternative dataset by con-verting relational expression into non-related one, as shownin Table 4.
+We can observe that non-related expressioncould make a target EA pair (e.g., “Box E and “ap-ple”) semantically unrelated but retain their OI (e.g., theOI of “apple and “bell” are still 0 and 1 respectively).We select Spearman’s rank correlation 𝜌 as the correlationmetric and compare the 𝜌 of the non-related dataset withthe related one in the Figure 7.We can observe that 𝜌 of non-related dataset is slightlylower than the related (i.e., original) one, indicating thatthe OI-PC might contain limited relational information sothat removing it can marginally decrease the 𝜌. However,there is still strong correlation between the non-related (ornon-bound) entity attribute pair, indicating that the OI-PCprimarily encodes the OI information but not the related-ness.

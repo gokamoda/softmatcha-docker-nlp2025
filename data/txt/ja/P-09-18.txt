@@ -1,0 +1,218 @@
+バックトラッキングを活用したマルチエージェントシステムによる複数制約充足プランニング
+
+守屋 彰二
+
+1,2
+
+ 大萩 雅也
+
+11
+
+SB Intuitions 株式会社 
+
+2
+
+東北大学
+
+
+
+{shoji.moriya, masaya.ohagi}@sbintuitions.co.jp
+
+
+
+概要
+
+大規模言語モデル(LLM)の発展に伴い、旅行計画や経路探索などの実世界の応用タスクを自律的に解決する LLM エージェントの実現が期待されている。
+しかし、単一の LLM エージェントが複数の制約を同時に満たすプランニングを行うことは依然として困難である。
+この課題に対し、タスクを細分化して負荷を分散させるマルチエージェントシステムの協調アプローチが有効であると考えられる。
+本研究では、実世界旅行計画ベンチマーク『TravelPlanner』を対象とし、複数制約充足プランニングにおけるマルチエージェントシステムの有効性を検証した。
+実験の結果、制約充足率の向上が確認された一方で、エージェント間の情報伝達の欠落など、マルチエージェントシステム特有の課題も確認された。
+
+
+1 はじめに
+
+大規模言語モデル(LLM)の発展により、従来の技術では困難であった自然言語処理タスクにおいて、人間に匹敵する精度が達成されている[1, 2]。
+近年、LLM を活用し、旅行計画[3]や経路探索[4]、ロボットの動作制御[5]など、実世界の広範な応用タスクに対し、解法を自律的に導きそれを実行する LLMエージェント1）の実現が期待されている。
+特に注目されているのは、プランニングタスクへの応用である。
+プランニングタスクとは、与えられた目標を達成するための一連の計画を策定するものである[7]。
+先行研究では、CoT（Chain-of-Thought）[8]や ReAct（Reasoning and Acting）[9]といった手法を組み込み、LLM エージェントのプランニング能力を強化する試みが行われている。
+しかし、単一の LLM エージェントが複数の制約を同時に満たすプランニングを行うことは依然として難しいと1） 本稿では Zhiheng [6]らに倣い、エージェントを「環境内で自律的に意思決定し、行動する人工的な存在」と定義する。
+されている。
+例えば、複数制約充足プランニングタスクの一つである実世界旅行計画ベンチマーク『TravelPlanner』では、全ての制約を満たすプラン生成の成功率が GPT-4 で 4.4%，OpenAI o1 で 15.6%と、人間レベルには大きく劣る結果が報告されている[3, 10]。
+主な原因の一つには、単一の LLM エージェントが相互に依存する制約を同時に最適化することの難しさが挙げられる。
+この課題に対し、複数のエージェントが相互に連携しタスクを遂行する協調的なマルチエージェントシステム[11]が有効だと考えられる。
+分割された各サブタスクを異なるエージェントが担当することで負荷を分散し、互いに協働することで相互に依存する複数の制約を満たすプランニングが期待される。
+本研究では、『TravelPlanner』[3]を対象に、マルチエージェントシステムが複数制約充足プランニングタスクにおいて有効であるかを検証した。
+実際に構築したシステムの概要を図 1 に示す。
+『TravelPlanner』では、予算や観光地などに関する複数の制約を同時に満たす旅程の作成が求められる。
+そこで、エージェントごとに独立した制約を割り当て部分的にプランニングを行い、制約を満たす候補がなくなった段階でバックトラッキングすることで、最終的に全ての制約を厳密に満たすプランの生成を試みた。
+実験の結果、シングルエージェントによるプランニング戦略と比較して、制約の充足率が向上しており、有効性が確認された。
+一方で、エージェント間で受け渡す情報の一部が欠落するなど、マルチエージェントシステムに起因する課題も確認された。
+
+
+2 関連研究
+
+
+
+2.1 プランニングタスク
+
+プランニングタスクとは、特定の目標を達成するための一連の計画を策定するタスクであり、エー図 1 提案手法の概要図。
+本研究では『TravelPlanner』を対象として構築したシステムを示す。
+ジェントがこれを達成することは人間と同等の知能を獲得する上で極めて重要であると考えられている[7]。
+このような背景から、プランニングはロボット工学[12]や輸送スケジューリング[13]など、幅広い分野で研究の対象となっている。
+近年、LLM を活用したエージェントの登場に伴い、これらのエージェントのプランニング能力について議論が進展している[7]。
+先行研究では、CoT(Chain-of-Thought)に基づく中間推論段階の生成[14]や、環境からのフィードバックを活用したプランニング戦略[15, 9]が、BlocksWorld [16]のように静的環境における単一目的の最適化が求められる古典的プランニングタスクに適用できることが示されている。
+しかし、実世界のような複雑な環境下において存在する様々な制約を同時に満たすプランニングは、依然として困難だとされている[3, 10]。
+本研究では、このような複数制約充足プランニングとして『TravelPlanner』 [3]を対象とし、有効なプランニング戦略を検討する。
+実世界旅行計画ベンチマーク『TravelPlanner』『TravelPlanner』は、ユーザのクエリと実世界の参照情報をもとに旅行計画を立案するタスクである。
+エージェントは、制約を考慮しながら、訪問都市、移動手段、観光地、食事(朝食・昼食・夕食)、および宿泊施設を日程ごとに決定する。
+この際、これらの項目がクエリに含まれない常識的な制約(Commonsense)と、クエリ内で指定された制約(HardConstraint)を違反してはならない。
+それぞれの制約の詳細を A 節に示す。
+各事例はクエリ内で指定されている制約の個数に基づき、easy, medium, hard に分類される。
+エージェントは、それぞれの制約を充足した事例の割合(Commonsense Pass Rate, HardConstraint Pass Rate)、そして全ての制約を充足した事例の割合(Final Pass Rate)で評価される。
+
+2.2 マルチエージェントシステム
+
+マルチエージェントシステムとは、複数のエージェントが相互に作用し合いながらタスクを遂行する仕組み[11]である。
+先行研究では、シングルエージェントシステムと比較して質問応答タスクの回答品質や評価の精度が向上する[17, 18]ことが報告されており、また、社会における集団行動のシミュレーションなどにも活用されている[19]。
+マルチエージェントシステムにおけるエージェント間の関係性は、協力的なものから敵対的なものまで多岐に渡り、またその構造も様々である[11, 20]。
+本研究では、全てのエージェントが協力し一つのプランを生成する協調型のシステムを構築する。
+
+3 提案手法
+
+本研究では、マルチエージェントシステムの協働アプローチにバックトラッキングを組み合わせ、相互依存する制約を厳密に満たしつつ段階的なプランニングを行うシステムの構築手法を提案する。
+バックトラッキングとは、制約充足問題における解探索手法の一種である[21]。
+この手法では、部分解を順に割り当てる過程で制約を満たさない場合に、前のステップに戻り、別の解を再帰的に割り当てる。
+これにより、全ての制約を満たす解を効率的に全探索することが可能となる。
+代表的な適用例として、N クイーン問題や迷路探索が挙げられる。
+提案手法の概要図を図 1 に示す。
+なお、本研究で表 1 実験結果。
+Direct CoT ReAct 提案手法CommonsensePass RateMicro 92.1 92.9 77.3 95.2Macro 45.0 50.0 31.7 68.3Hard ConstraintPass RateMicro 52.1 47.1 52.9 63.6Macro 28.3 26.7 48.3 41.7Final Pass Rate 13.3 16.7 25.0 36.7表 2 各制約別の充足率。
+Direct 提案手法easy medium hard easy medium hardCommonsense ConstraintWithin Sandbox 95.0 95.0 90.0 85.0 85.0 90.0Complete Information 100.0 100.0 100.0 90.0 95.0 100.0Within Current City 100.0 95.0 100.0 95.0 100.0 95.0Reasonable City Route100.0 100.0 95.0 95.0 100.0 100.0Diverse Restaurants 100.0 100.0 95.0 90.0 95.0 100.0Diverse Attractions 100.0 100.0 100.0 100.0 100.0 100.0Non-conf. Transport. 95.0 100.0 95.0 100.0 100.0 100.0Minimum Nights Stay 65.0 60.0 45.0 100.0 85.0 85.0Hard ConstraintBudget 60.0 25.0 15.0 55.0 45.0 50.0Room Rule - 60.0 36.8 - 60.0 73.7Cuisine - 83.3 36.4 - 83.3 36.4Room Type - 77.8 84.6 - 77.8 84.6Transportation - - 94.1 - - 88.2Final Pass Rate35.0 5.0 0.0 40.0 35.0 25.0は、対象とするタスクの制約依存性に基づきエージェント構造を人手で設計している2）．本手法は以下の三つのステップで構成される。
+まず、 1 前処理として、ユーザが提供したクエリや参照情報から必要な制約や関連情報を抽出し、プランナーエージェントに渡す。
+次に、 2 複数のプランナーエージェントがそれぞれ受け渡された制約や情報に基づいて割り当てられたサブタスクを実行し、その結果を後続のエージェントに引き継ぐ。
+ここで、 3 プランニングエージェントが制約を満たすことが難しいと判断した場合、バックトラッキングにより問題が発生した段階から一つ前のエージェントに戻り、プランを修正する。
+この時、どの制約が満たせなかったか、どのような調整が必要かといったフィードバックが提供される。
+このフィードバックをもとに、エージェントは制約を満たす別の候補を選択し直し、満たす候補が存在しない場合はさらにバックトラックを行う。
+2 、 3 のステップを繰り返し、全てのエージェントにより制約を満たした2） 本研究ではエージェント構造の自動設計も試みたが、その詳細は 5.2 節にて述べる。
+と
+判断された場合に、最終的な結果を出力する。
+このような再帰的なアルゴリズムにより、解が存在し、かつエージェントが理想的に動くことを仮定すれば、全ての制約を同時に満たす解を確実に生成できることが保証される。
+
+
+
+4 実験
+
+
+
+4.1 実験設定
+
+本研究では、『TravelPlanner』の検証データのうち、“3 days” の計 60 件(うち easy, medium, hard それぞれ20 件)を対象として実験を行った3）。
+ベースラインシステムとして、シングルエージェントによるプランニング戦略の Direct4）, CoT (Chain of Thought)[8],ReAct (Reasoning and Acting)[9]の 3 つの手法を採用した。
+各エージェントの基盤となる LLM には、GPT-4-1109-preview5）を使用した。
+
+
+
+4.2 実験結果
+
+実験結果を表 1 に示す。
+提案手法は、最終評価値である Final Pass Rate において全てのベースラインシステムを上回る精度を示した。
+特に、Commonsense と Hard Constraint の両方で Pass Rate が顕著に向上していることが確認できた。
+各制約別の充足率を表 2 に示す。
+提案手法は、特に Medium や Hard 設定において、 Final Pass Rate が上昇する傾向が見られ、提案手法が制約数の多いタスクにおいて特に有効であることが確認できた。
+また、宿泊施設に関連する Room Rule や MinimumNights Stay など、各項目に依存する制約の充足率が向上しており、タスク細分化による負荷の分散が効3） このベンチマークには、事前に提供された参照情報を用いて計画を立案する Sole-Planning モードと、ツール介して必要な情報を収集することも求められる Two-Stage モードがある。
+本研究では、エージェントの純粋なプランニング能力を評価するため、前者を対象とした。
+4） Direct は、エージェントにクエリと参照情報を与え、プランのみを直接出力させる手法である。
+5） https://openai.com/index/gpt-4/表 3 実際に観察された事例。
+ステップ数プランナー生成文伝達先budget_for_transportation: $311 移動手段budget_for_meals: $270 食事1 予算budget_for_accommodation: $146 宿泊施設2 宿泊施設The budget is $146, but the current options cost at least $184,leaving us $38 short.予算budget_for_transportation: $126 移動手段budget_for_meals: $315 食事3 予算budget_for_accommodation: $184 宿泊施設4 宿泊施設The budget is $184, but the current options cost at least $184,leaving us with $0 to spare.予算果的であることが示された。
+さらに、Budget などの相互依存する横断的な制約においても充足率が向上しており、バックトラッキングに基づくエージェント間の協働が有効である可能性が示唆された。
+しかし、向上したとはいえ、充足率は 55%と十分であるとは言えず、これが Final Pass Rate のさらなる向上を妨げている。
+また、参照情報内の候補から選択できているかを評価する Within Sandbox において充足率が低下しており、Hallucination の増加も見られた。
+
+
+
+5 考察
+
+
+
+5.1 定性分析
+
+提案システムの生成例を表 3 に示す。
+この例では、宿泊施設エージェントが予算エージェントに割り当てられた費用では不足していると判断したため、その不足額についてフィードバックを返している。
+このフィードバックを受け、予算エージェントは配分を再調整することで、予算の制約を満たすプランニングを実現している。
+このように、制約を満たせなかった場合にフィードバックに基づいて適切な再調整が行われており、バックトラッキングが効果的に機能していることが確認された。
+一方で、制約を満たさない場合に、参照情報には存在しない「都合の良い」データを生成し、あたかも制約を満たしているかのように扱ってしまう事例が確認された。
+このような現象はベースラインシステムでも指摘されているが、提案手法ではタスクを細分化することで推論回数が増え、その影響がより顕著に現れたと考えられる。
+また、エージェント間で情報を受け渡す際に一部が欠落し、後続のエージェントが正確な推論を行えなくなる事例も確認された。
+これらの課題への対策として、現在は一つのエージェントが担当している項目を複数のエージェントが重複して担当することで相互に整合性を確認することや、各エージェントの生成結果だけでなく推論過程も後続のエージェントに与えることなどが挙げられる。
+これにより、エージェントの誤りを早期に検出でき、その伝播を防ぐことが期待される。
+
+
+
+5.2 提案手法の限界
+
+本研究では、タスクを解く順序をあらかじめ与えており、人手による設計の介入が生じている。
+一方、エージェントが完全に自律的にプランニングタスクを解くためには、マルチエージェント構造を自動で設計することが求められる。
+先行研究では、メタエージェントを設けエージェントの自動設計を行う試み[22]や、タスクの依存関係を部分的に生成する試み[23]が行われている。
+本研究においても、エージェント構造の自動設計を試みた。
+その結果、タスクの大まかな細分化やサブタスク間の依存関係の生成は可能であったものの、各サブタスクの具体的な入出力やエージェント間で受け渡す情報を制御させることは困難であり、完全な自動化には依然として課題が残ることがわかった。
+
+
+6 おわりに
+
+複数制約充足プランニングタスクに対し、バックトラッキングを活用したマルチエージェントシステムを構築し、その有効性を検証した。
+実験結果より、シングルエージェントによるベースラインと比較して、制約充足率の向上が確認された一方、マルチエージェント化に伴う課題も明らかになった。
+今後の方針として、エージェント間の連携を工夫し、システムの信頼性と自律性の強化を図る。
+また、最終的にはエージェント構造の完全な自動設計手法を組み込み、異なるタスク領域へ応用することで本手法の汎用性を検証することを目指す。
+
+
+
+謝辞
+
+本研究を進めるにあたり、SB Intuitions 株式会社R&D 本部 Dialog Team の皆さまに有益なご助言をいただきました。ここに深く感謝申し上げます。
+
+参考文献
+
+
+[1] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Sub-biah, Jared D Kaplan, Prafulla Dhariwal, Arvind Nee-lakantan, Pranav Shyam, Girish Sastry, Amanda Askell,et al. Language models are few-shot lear ners. Advancesin neural information processing systems, Vol. 33, pp.1877–1901, 2020.
+[2] OpenAI. Gpt-4 technical report. In arxiv:2023.08774,2023.
+[3] Jian Xie, Kai Zhang, Jiangjie Chen, Tinghui Zhu, RenzeLou, Yuandong Tian, Yanghua Xiao, and Yu Su. Trav-elplanner: A benchmark for real-world planning with lan-guage agents. arXiv preprint arXiv:2402.01622, 2024.
+[4] Ko-Hsin Cindy Wang, Adi Botea, et al. Tractable multi-agent path planning on grid maps. In IJCAI, Vol. 9, pp.1870–1875. Pasadena, California, 2009.
+[5] Tianhe Yu, Deirdre Quillen, Zhanpeng He, Ryan Julian,Karol Hausman, Chelsea Finn, and Sergey Levine. Meta-world: A benchmark and evaluation for multi-task andmeta reinforcement learning. In Conference on robotlearning, pp. 1094–1100. PMLR, 2020.
+[6] Zhiheng Xi, Wenxiang Chen, Xin Guo, Wei He, YiwenDing, Boyang Hong, Ming Zhang, Junzhe Wang, SenjieJin, Enyu Zhou, Rui Zheng, Xiaoran Fan, Xiao Wang, Li-mao Xiong, Qin Liu, Yuhao Zhou, Weiran Wang, Chang-hao Jiang, Yicheng Zou, Xiangyang Liu, Zhangyue Yin,Shihan Dou, Rongxiang Weng, Wensen Cheng, Qi Zhang,Wenjuan Qin, Yongyan Zheng, Xipeng Qiu, XuanjingHuan, and Tao Gui. The rise and potential of largelanguage model based agents: A survey. ArXiv, Vol.abs/2309.07864, , 2023.
+[7] Xu Huang, Weiwen Liu, Xiaolong Chen, Xingmei Wang,Hao Wang, Defu Lian, Yasheng Wang, Ruiming Tang, andEnhong Chen. Understanding the planning of llm agents:A survey, 2024.
+[8] Jason Wei, Xuezhi Wang, Dale Schuurmans, MaartenBosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al.Chain-of-thought prompting elicits reasoning in large lan-guage models. Advances in neural information pro-cessing systems, Vol. 35, pp. 24824–24837, 2022.
+[9] Shunyu Yao, Jeﬀrey Zhao, Dian Yu, Nan Du, IzhakShafran, Karthik Narasimhan, and Yuan Cao. React: Syn-ergizing reasoning and acting in language models. arXivpreprint arXiv:2210.03629, 2022.
+[10] Jian Xie, Kexun Zhang, Jiangjie Chen, Siyu Yuan, KaiZhang, Yikai Zhang, Lei Li, and Yanghua Xiao. Revealingthe barriers of language agents in planning. ArXiv, Vol.abs/2410.12409, , 2024.
+[11] Taicheng Guo, Xiuying Chen, Yaqi Wang, Ruidi Chang,Shichao Pei, Nitesh V Chawla, Olaf Wiest, and Xian-gliang Zhang. Large language model based multi-agents:A survey of progress and challenges. arXiv preprintarXiv:2402.01680, 2024.
+[12] Leslie Pack Kaelbling, Michael L Littman, and Anthony RCassandra. Planning and acting in partially obser vablestochastic domains. Artiﬁcial intelligence, Vol. 101, No.1-2, pp. 99–134, 1998.
+[13] Marius M Solomon. Algorithms for the vehicle routingand scheduling problems with time window constraints.Operations research, Vol. 35, No. 2, pp. 254–265, 1987.
+[14] Kaya Stechly, Karthik Valmeekam, and Subbarao Kamb-hampati. Chain of thoughtlessness? an analysis of cot inplanning, 2024.
+[15] Michael Ahn, Anthony Brohan, Noah Brown, YevgenChebotar, Omar Cortes, Byron David, Chelsea Finn,Chuyuan Fu, Keerthana Gopalakrishnan, Karol Hausman,et al. Do as i can, not as i say: Grounding language inrobotic aﬀordances. arXiv preprint arXiv:2204.01691,2022.
+[16] Karthik Valmeekam, Matthew Marquez, Alberto Olmo,Sarath Sreedharan, and Subbarao Kambhampati. Plan-bench: An extensible benchmark for evaluating large lan-guage models on planning and reasoning about change.Advances in Neural Information Processing Sys-tems, Vol. 36, , 2024.
+[17] Andries Petrus Smit, Nathan Grinsztajn, Paul Duckworth,Thomas D Barrett, and Arnu Pretorius. Should we be goingMAD? a look at multi-agent debate strategies for LLMs.In Forty-ﬁrst International Conference on MachineLearning, 2024.
+[18] Chi-Min Chan, Weize Chen, Yusheng Su, Jianxuan Yu,Wei Xue, Shanghang Zhang, Jie Fu, and Zhiyuan Liu.Chateval: Towards better llm-based evaluators throughmulti-agent debate. arXiv preprint arXiv:2308.07201,2023.
+[19] Joon Sung Park, Joseph O’Brien, Carrie Jun Cai, Mered-ith Ringel Morris, Percy Liang, and Michael S Bernstein.Generative agents: Interactive simulacra of human behav-ior. In Proceedings of the 36th annual acm sympo-sium on user interface software and technology, pp.1–22, 2023.
+[20] Chen Qian, Zihao Xie, Yifei Wang, Wei Liu, Yufan Dang,Zhuoyun Du, Weize Chen, Cheng Yang, Zhiyuan Liu, andMaosong Sun. Scaling large-language-model-based multi-agent collaboration. arXiv preprint arXiv:2406.07155,2024.
+[21] Jeﬀ Erickson. Algorithms. 2023.
+[22] Shengran Hu, Cong Lu, and Jeﬀ Clune. Automated designof agentic systems. arXiv preprint arXiv:2408.08435,2024.
+[23] Cong Zhang, Derrick Goh Xin Deik, Dexun Li, HaoZhang, and Yong Liu. Meta-task planning for languageagents. arXiv preprint arXiv:2405.16510, 2024.
+
+
+
+
+A 『TravelPlanner』制約一覧
+
+表 4 『TravelPlanner』制約一覧。
+制約名内容Commonsense ConstraintWithin Sandbox 参照情報内から選択しているかComplete Information 計画に必要な情報が欠けていないかWithin Current City 食事や観光地などが滞在都市内から選ばれているかReasonable City Route 都市間の移動ルートが合理的であるかDiverse Restaurants 同一プラン内でレストランが重複していないかDiverse Attractions 同一プラン内で観光地が重複していないかNon-conf. Transportation 選択した移動手段が矛盾していないかMinimum Nights Stay 宿泊施設ごとの最低滞在日数を満たしているかHard ConstraintBudget 予算を超過していないかRoom Rule選択した宿泊施設が指定された部屋のルールを満たしているかCuisine 選択した宿泊施設が指定された部屋のタイプを満たしているかRoom Type 選択したレストランが指定された料理を提供しているかTransportation 選択した移動手段が指定された移動手段の制限を満たしているか
+
+B 各エージェントに与えられたプロンプト例
+
+ベースラインシステムにおいては、『TravelPlanner』で提供されているプロンプトを使用した。
+提案手法で使用した各エージェントのプロンプトを以下に示す。
+これらのプロンプトは、基本的にベースラインシステムのプロンプトの一部を切り出したものであり、必要以上の情報を与えないよう留意した。
+前処理エージェント用プロンプト。
+ # Task DescriptionYou are a Travel Planner Manager Agent. You have several subordinate planner agents who manage city routes, budgets,transportation, meals, attractions, and places to stay. For a given query, extract the information to be passed to all subordinateagents and the information to be passed to each subordinate agent. You must adhere to the format given in the example. 各プランナーエージェント用プロンプト。
+ここでは移動手段のプランナーエージェントを紹介する。
+ # Task DescriptionYou are a transportation planner agent. Select the transportation from the information that meets the requirements. You mustadhere to the format given in the example. First output the inference process, then output the results in JSON format. Output theresult under the string — JSON OUTPUT —. 後処理エージェント用プロンプト。
+ # Task DescriptionYou are the plan aggregator. The following information will be provided: - Current plan - Plans for transportation, meals,attractions, and accommodations Please update the current plan by reﬂecting each of these elements into it. Fill in “-” if thereis an empty value. You must adhere to the format given in the example. Speciﬁcally, output “Current City”, “Transportation”,“Breakfast”, “Attraction”, “Lunch”, “Dinner”, and “Accommodation” for each day. For meals, attractions, and accommodations,please output the name of the city as well as the name of the restaurant as the example shows. Output in a plain text as below (nota JSON format). 

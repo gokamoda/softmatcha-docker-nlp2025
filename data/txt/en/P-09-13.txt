@@ -1,0 +1,231 @@
+Sentiment Analysis of YouTube Videosin the 2024 Indonesian Presidential Election
+
+Zaidan Yahya
+
+1
+
+, Tomoyosi Akiba
+
+1
+
+, Yasutomo Kimura
+
+2
+
+Yuki Mikiya
+
+3
+
+, Kota Mori
+
+4
+
+, Mitsuo Yoshida
+
+5
+
+, Yuko Kasuya
+
+31
+
+Toyohashi University of Technology,
+
+2
+
+Otaru University of Commerce
+
+3
+
+Keio University,
+
+4
+
+Japan Data Science Consortium Co. Ltd.,
+
+5
+
+University of Tsukuba
+
+
+
+{zaidan.yahya.io,akiba.tomoyoshi.tk}@tut.jp
+
+
+
+Abstract
+
+Social media platforms like YouTube have become pow-erful tools for shaping public opinion during elections inrecent years.
+This study examines the sentiments in theYouTube videos concerning three presidential candidatesin the 2024 Indonesian election.
+We ﬁrst classify the videosinto three categories: candidate’s oﬃcial channel, publicnews, and third-party-created sources.
+Next, we performsentiment analysis on each video and calculate a metric, theSentiment Impact Score (SIS), to quantify the overall sen-timent dynamics.
+Our ﬁndings reveal a signiﬁcant shift inpublic sentiment, ultimately favoring the elected candidate,especially among the third-party created videos.
+
+
+1 Introduction
+
+Social media platforms like YouTube, Facebook, andTikTok have become powerful tools for shaping public per-ceptions of candidates during election campaigns.
+The In-donesian presidential election, held on February 14, 2024,serves as a poignant example of the power of social mediaplatforms.
+This study focuses on YouTube videos aboutpresidential candidates during the campaign period.
+Several studies have analyzed YouTube videos in thecontext of the 2024 Indonesian elections.
+Armayudi etal.
+[1] focus on analyzing public sentiment on YouTuberegarding the presidential candidates’ debate.
+Ma’aly etal.
+[2] conducted a comprehensive analysis of sentimentsurrounding the 2024 Indonesian presidential election.
+While above studies primarily focus on the commentssection of the videos, this study takes a novel approachby analyzing the videos themselves, focusing on contentrelated to the three presidential candidates, namely, AniesBaswedan, Prabowo Subianto, and Ganjar Pranowo, overseveral months leading up to polling day.
+An important consideration when studying such plat-forms is that some channels may disseminate videos tomanipulate voter perception, including the use of misinfor-mation.
+To address this, we categorized video sources intothree distinct groups: candidate’s oﬃcial channel (oﬃcial),public news (news), and third-party-created sources (third-party).
+This categorization enables us to examine dif-ferences across these sources.
+Further more, third-partyvideos are subdivided into two categories: news-likevideos and other types of videos.
+We utilized the sec-ond phase of IndoBERTBASEas our base model for videoclassiﬁer.
+IndoBERT [3] is a language model for Indone-sian based on BERT [4].
+It was trained on a dataset calledIndo4B, which contains approximately 4 billion words [3].Indonesia’s election campaign spans several months, andcandidate information evolves over time [5].
+To track thesechanges, we employ a large language model to determinethe sentiment of each video and calculate the SentimentImpact Score (SIS)[5] to understand the overall sentimentfor each candidate throughout the election period.
+
+
+2 Sentiment Impact Score (SIS)
+
+Sentiment Impact Score (SIS)[5] is a quantiﬁcation in-dex that considers the sentiment and article frequency asso-ciated with each candidate in an election.
+After classifyingarticle sentiment as positive, negative, or neutral, SIS iscalculated as follows:𝑆𝐼𝑆 =(𝜔 − 𝜓𝜙)× log(𝜙)(1)where 𝜔, 𝜓, and 𝜙 are the number of positive articles, neg-ative articles, and all articles excluding neutrals, respec-tively.
+More positive articles lead to positive sentimentFigure 1 Video Classiﬁcation Flowscores, and more negative articles will lead to more neg-ative sentiment scores.
+Neutral articles are excluded fromthe calculation because they are considered to have littleinﬂuence on shaping public opinion.
+Lastly, greater mediacoverage will have a more signiﬁcant eﬀect on the score.
+
+
+3 Data
+
+YouTube videos were searched using the names of thethree presidential candidates, along with the Indonesianterms for presidential election and election.
+The videoswere collected between late November 2023 and earlyJune 2024.
+We conducted the classiﬁcation and sentimentanalysis of the video transcript generated using a general-purpose speech recognition model Whisper
+[6].
+A totalof 72,844 videos were initially collected; however, due toconstraints in Whisper API usage transcripts are availablefor 36,365 videos.
+Among these, 102 videos have blanktranscripts.
+This study targets these 36,365 videos.
+
+
+4 Analysis Method
+
+
+
+4.1 Video Classiﬁcation Method
+
+We aim to clarify the information sources by classify-ing videos into three main categories: oﬃcial, news, andthird-party.
+Furthermore, we categorized third-partyvideos into news-like and other categories.
+Figure 1 showsthese general ﬂows.
+Our classiﬁcation approach uses channel names to cre-ate a whitelist of oﬃcial and news channels.
+Videos fromthese channels are not included in the whitelist and are clas-siﬁed as third-party.
+The oﬃcial category includes videosfrom presidential and vice-presidential candidates’ oﬃcialcampaign channels.
+The news category consists of videosfrom authorized news media.
+The third-party categoryconsists of those uploaded by individuals or organizationsnot classiﬁed as oﬃcial or news.
+We further categorized third-party videos into two sub-categories: news-like and other types.
+A news-like videois deﬁned as a news clip from third-party channels or aTable 1 Video Classiﬁer Training DataLabel Videos ChannelsNews 2153 76Third-party 6847 3982Total 10,000 4,058Table 2 Video Classiﬁer Validation DataLabel Videos ChannelsNews 244 53Third-party 756638Total 1,000 691partial recording of a news broadcast.
+To achieve this, weare developing a video classiﬁer model that uses transcriptsto identify news-like videos rather than relying on channelnames.
+However, the model was trained by categorizing allvideos into news or third-party channels, a binary classiﬁ-cation.
+This dual-task approach may impact performance,as distinguishing between the news or third-party channelsand further splitting third-party videos into news-like andother type are two diﬀerent tasks which present distinctchallenges.
+To initiate classiﬁcation process, we randomly selected1,000 videos and used this data to create a whitelist ofoﬃcial and news channels.
+Our whitelist consists of 7oﬃcial channels and 80 news channels.
+
+
+4.2 Experiment Setup
+
+The second phase of IndoBERTBASEis used as our basemodel with the following steps.
+First, we initialized apseudo-label for each video based on the whitelist we cre-ated previously.
+We then used these data to create thetraining, validation, and evaluation datasets.
+For trainingand validation, we randomly selected 10,000 video tran-scripts, dividing the dataset into a 9:1 ratio.
+This resultedin 9,000 transcripts for training and 1,000 transcripts forvalidation.
+Tables 1 and 2 show the detailed compositionof the training and validation datasets, respectively.
+We randomly selected an additional set of 1,000 videosas evaluation data, distinct from those used to create thewhitelist.
+This dataset was used to evaluate the model’sperformance in categorizing videos into news and third-party categor ies, referred to as Test A. Subsequently, werandomly selected 220 videos categorized as third-partyTable 3 Classiﬁcation Evaluation Dataset (Test A)Label Videos ChannelsNews 220 56Third-party 774 656Total 994 712Table 4 Classiﬁcation Evaluation Dataset (Test B)Label Videos ChannelsNews-like 18 16Others 202 185Total 220 201in Test A to identify any news-like videos.
+This extendedevaluation dataset was labeled as Test B. Tables 3 and 4show Test A and Test B composition in detail, respectively.
+Test A allows us to evaluate the video classiﬁer model’sperformance in categorizing videos into news or third-partyvideos.
+At the same time, Test B helps us evaluate themodel’s ability to detect news-like videos by third parties.
+
+
+4.3 Sentiment Analysis Method
+
+We selected the Indonesian RoBERTa base sentimentclassiﬁer [7] as our model for sentiment classiﬁcation dueto its strong performance in the SmSA dataset [3].
+Toensure the model’s suitability for our current dataset, weevaluated its accuracy and eﬀectiveness using a manuallylabeled evaluation dataset.
+For the evaluation, we randomly selected 100 YouTubevideo transcripts classiﬁed as third-party.
+These weremanually labeled into ﬁve categories: positive, negative,negative/positive, neutral, and undetermined.
+The nega-tive/positive category indicates a shift in sentiment withinthe same video.
+Table5 provides a detailed breakdownof the evaluation dataset.
+During the evaluation process,video transcripts labeled negative/positive were evaluatedwith two conditions.
+It is evaluated as positive or nega-tive one at a time.
+After excluding undetermined data, 88labeled transcripts were used for the ﬁnal evaluation.
+After the evaluation, we applied the sentiment model toanalyze the sentiment of all video transcripts and calculatedthe SIS over time, based on the cumulative number ofvideos published weekly.
+This approach enabled us to trackchanges in sentiment trends during the campaign period.
+Table 5 Sentiment Evaluation DatasetLabel Videospositive 34negative
+33negative/positive 12neutral 9undetermined 12Table 6 Video Classiﬁcation Evaluation ResultsDataset Accuracy Precision Recall F1 ScoreTest
+A 0.85 0.67 0.62 0.64Test B 0.91 0.4 0.22 0.29
+
+5 Analysis Results
+
+
+
+5.1 Video Classiﬁcation Evaluation
+
+Video classiﬁcation model evaluation result is shown inTable 6.For Test A, which closely aligns with the whitelist re-sults, the model achieved an accuracy of 0.85, indicatingstrong overall performance in correctly classifying videos.
+Based on precision and recall, the model demonstrated areasonable ability to diﬀerentiate between news videos andthird-party videos using transcripts in our current dataset.
+However, the model showed lower performance on Test B,particularly on precision and recall.
+While the accuracyremained high, the low precision and recall indicate thatthe model struggles to accurately classify news-like videoswithin the third-party category.
+While we trained our model to ﬁnd news-like videoswithin third-party category by training the model to clas-sify videos as either news or third-party, the model str ug-gled to ﬁnd news-like videos.
+As news-like videos arean underrepresented class, we might consider using videometadata such as descriptions or tags as features to im-prove the model performance to ﬁnd news-like videos inthe future.
+
+
+5.2 Sentiment Analysis
+
+5.2.1 Model EvaluationTable 7 presents the sentiment evaluation results un-der two diﬀerent conditions: when negative/positive sen-timents are considered positive and when they are consid-Table 7 Sentiment Evaluation Results for Each ConditionCondition Accuracy F1 Scorenegative/positive as positive 0.7614 0.7612negative/positive as negative 0.8295 0.8084Table 8 Sentiment Analysis ResultLabel Videos Percentage (%)positive 13409 36.87negative 15635 42.99neutral 7219 19.85blank 102 0.28Total 36365 100%ered negative.
+The table compares the accuracy and F1scores for each condition.
+The evaluation results high-light the models varying performance under these diﬀer-ent approaches to classifying sentiment.
+Notably, Table 7demonstrates that the model performs well in identifyingsentiments for both scenarios.
+Evaluating negative/positive sentiments as negative mayincrease the model’s evaluation performance as shown inTable 7.
+However, when considering the overall senti-ment of the labeled video transcripts, the sentiment nega-tive/positive labeled videos tend to lean more toward posi-tive than negative.5.2.2 Sentiments for All VideosThe sentiment analysis results, presented in Table 8, il-lustrate the distribution of sentiment across a total of 36,365videos.
+The majority of the videos are classiﬁed as nega-tive (42.99%), followed by positive (36.87%) and neutral(19.85%) videos.
+While there is a small portion (0.28%)of transcripts which are blank as mentioned previously.5.2.3 Sentiment Impact Score ResultIn this analysis, we focused on third-party videos forthe SIS.
+Figure 2 illustrates the SIS based on the cumula-tive number of published videos over time for third-partyvideos.
+Additional results are available in the Appendix A.The top graph in Figure 2 displays the SIS for eachcandidate, while the bottom graph shows the cumulativenumber of published videos related to each candidate.
+Thevertical dashed red line represents the election day, and thevertical dotted black line indicates the day when the resultsFigure 2 SIS Based on The Cumulative Number of PublishedVideos (Third-Party)were announced oﬃcially.
+As shown in Figure 2, changes in cumulative SIS overtime reveal distinct trend.
+Approximately three weeksbefore election day, favorable sentiment towards AniesBaswedan and Prabowo Subianto increased.
+After theelection, favorable sentiment towards Prabowo Subiantocontinued to r ise, while negative sentiment towards theother candidates intensiﬁed or stagnated overall.
+TheseSIS results highlight the shift in public sentiment favor-ing the elected presidential candidate, Prabowo Subianto,around the time of the polling date.
+
+
+6 Conclusion
+
+This study explored the sentiments embedded in theYouTube videos regarding three presidential candidates inthe 2024 Indonesian election.
+Among the three video cat-egories, we focused on the third-party videos’ sentimenttrends.
+From the SIS results, we revealed a shift in senti-ment favor ing the winning presidential candidate, PrabowoSubianto, around the time of the polling date and thereafter.
+These ﬁndings provide a foundation to interpret pub-lic sentiment during the election and enable more detailedanalyses.
+However, this method is sensitive to several fac-tors, including whitelist coverage, video classiﬁer perfor-mance, and sentiment analysis accuracy.
+Future researchshould address these issues.
+
+
+
+Acknowledgements
+
+This work was supported by JSPS Topic-Setting Pro-gram to Advance Cutting-Edge Humanities and Social Sci-ences Research Grant Number JPJS00123811919.
+
+References
+
+
+[1] Andi Armayudi Syam and Andi Ahmad Malikul Afdal. Ex-amining social media public sentiment: Youtube responseto 2024 indonesian presidential debate. KYBERNOLOGY: Journal of Government Studies, Vol. 4, No. 1, pp. 15–28, 2024.
+[2] Ahmad Nahid Ma’aly, Dita Pramesti, Ariadani Dwi Fathu-rahman, and Hanif Fakhrurroja. Exploring sentiment anal-ysis for the indonesian presidential election through onlinereviews using multi-label classiﬁcation with a deep learningalgorithm. Information, Vol. 15, No. 11, November 2024.
+[3] Bryan Wilie, Karissa Vincentio, Genta Indra Winata,Samuel Cahyawijaya, X. Li, Zhi Yuan Lim, S. Soleman,R. Mahendra, Pascale Fung, Syafri Bahar, and A. Purwari-anti. Indonlu: Benchmark and resources for evaluating in-donesian natural language understanding. In Proceedingsof the 1st Conference of the Asia-Paciﬁc Chapter ofthe Association for Computational Linguistics andthe 10th International Joint Conference on NaturalLanguage Processing, 2020.
+[4] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and KristinaToutanova. Bert: Pre-training of deep bidirectional trans-formers for language understanding, 2019.
+[5] Missie Chercheur and Malkenzie Bovaﬁz. Leveraging aiand sentiment analysis for forecasting election outcomes inmauritius, 2024.
+[6] Alec Radford, Jong Wook Kim, Tao Xu, Greg Brockman,Christine McLeavey, and Ilya Sutskever. Robust speechrecognition via large-scale weak supervision, 2022.
+[7] Wilson Wongso. indonesian-roberta-base-sentiment-classiﬁer, 2023.
+
+
+
+A Appendix
+
+
+
+A.1 SIS for All Videos
+
+Figure 3 SIS Based on The Cumulative Number of PublishedVideos
+
+A.2 Temporal SIS
+
+Figure 4 SIS Based on Temporal Number of Published VideosFigure 5 SIS Based on Temporal Number of Published Videos(Third-Party)

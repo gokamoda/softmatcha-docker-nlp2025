@@ -1,0 +1,253 @@
+Investigating Implicit Reasoning inCounter-Argument Logical Structure Analysis
+
+Wenzhi Wang
+
+1,2
+
+Paul Reisert
+
+3
+
+Shoichi Naito
+
+1,2,4
+
+Naoya Inoue
+
+5,2
+
+Machi Shimmei
+
+1
+
+Surawat Pothong
+
+5
+
+Jungmin Choi
+
+2
+
+Kentaro Inui
+
+6,1,21
+
+Tohoku University
+
+2
+
+RIKEN
+
+3
+
+Beyond Reason
+
+4
+
+Ricoh Company, Ltd.
+
+5
+
+JAIST
+
+6
+
+MBZUAI
+
+{wang.wenzhi.r7, naito.shoichi.t1}@dc.tohoku.ac.jp, beyond.reason.sp@gmail.com{naoya-i, spothong}@jaist.ac.jp, machi.shimmei.e6@tohoku.ac.jp, jungmin.choi@riken.jp, kentaro.inui@mbzuai.ac.ae
+
+Abstract
+
+Counter-Argument Logical Structure Analysis(CALSA) is a task that analyzes logic patterns of acounter-argument in relation to an initial argument.
+Itholds substantial educational value, as informative feed-back for improving counter-arguments can be providedbased on the analyzed logic pattern.
+However, due tothe complex nature of the task, the implicit reasoningskills required to identify these underlying logic patternspresent signiﬁcant challenges for current LLMs.
+Toaddress this, we explore decomposing the logic patternsinto ﬁne-grained logic components and tackling themindividually.
+Our experimental results demonstrateimprovements compared to identifying coarse-grainedlogic patterns.
+More impor tantly, we ﬁnd that whetherpredicted logic patterns can be considered plausibledeeply depends on the degree of implicitness involved ininterpreting an argument.
+
+
+1 Introduction
+
+CALSA is a task for analyzing the logic patterns ofcounter-arguments (CA) in relation to initial-arguments(IA)[1] in the setting of debates.
+Figure 1(a) shows anexample of a logic pattern annotated on top of a CA fromCALSA.
+The task is beneﬁcial as capturing the underly-ing logic patterns of CAs can be potentially leveraged forproviding constructive feedback to a learner’s CA, whichwould help foster their critical thinking skills.
+Previous work on CALSA has only explored a simpleend-to-end approach where they utilize Large LanguageModels (LLMs) to directly generate the logic patterns of agiven CA
+[1].
+(Figure 1(b))
+They conclude that the task ischallenging for current LLMs due to the implicit reasoningabilities required to identify the underlying logic patterns.
+Furthermore, while they claim that multiple logic patternsmay exist due to multiple possible interpretations of a CA,they did not collect an exhaustive list of logic patterns forCAs, which hinders the reliability of evaluating LLMsabilities in solving the task.
+Divide and conquer is a common strategy of decom-posing a challenging task into simpler subtasks, which hasbeen widely applied in computer science
+[2, 3].
+In the ﬁeldof NLP, many works have exhibited the eﬀectiveness ofproblem decomposition for various tasks [4, 5, 6, 7, 8, 9,10, 11].
+Upon further investigation on the logic patternsproposed in the CALSA task, we found that most logicpatterns can be considered as consisting of multiple ﬁnerlogic components, such as causal relations (i.e., Promote(X,Y)/Suppress(X, Y))
+deﬁned in the previous work [12, 13].Therefore, it begs the question: If the implicit reasoningrequired to identify a combination of logic components allat once causes LLMs to struggle with the task, would iden-tifying each logic component one by one (i.e., divide andconquer) reduce the complexity of the implicit reasoningand consequently make the overall task easier?To answer the question, in this work, we explore evalu-ating LLMs on identifying each logic component individ-ually.
+Given that the CALSA dataset does not provide anexhaustive list of logic patterns, we do not have a com-plete set of labels for all logic components for a givenCA.
+Therefore, we ﬁrst conduct an annotation study forcollecting labels for all the logic components for a givenCA.
+We consider identifying each logic component as a― 3651 ― (https://creativecommons.org/licenses/by/4.0/).Initial Argument (IA)Counter Argument (CA)Death penalty (DP) should be abolished because death penalty promotes executioners’ suffering (ES)The way death penalty is set up, where multiple executioners press the button all at once, makes sure that individual executioner doesn’t suffer, instead, executioners’ suffering comes from their own emotions that they feel like they killed someone by themselves.
+IA : P: ( DP ) PROMOTE ( ES )xyC: ( DP ) SHOULD BE ABOLISHEDxCA :  ( ...emotions )
+PROMOTE ( ES )z yATTACKAnother True Cause (ATC): (a) CALSA Task (Naito+ 2024)Template set(b) Simple end2end approach explored in Naito et al,2024.
+(c) Identifying logic component one by one explored in this workInputDeath penalty should be abolished because……IAThe way death penalty is set up,
+where ….CATemplate setLLMOutputC: ( x ) SHOULD BE ABOLISHEDP: ( x ) PROMOTE ( y )Template ATCtheir own emotions that……Slotfiller( z ) PROMOTE ( y )IA : C: ( x ) SHOULD BE ABOLISHEDCA :  ( z ) PROMOTE ( y )ATTACKAnother True Cause (ATC): P: ( x ) PROMOTE ( y )Decompose into logic componentsLogic component:  Not Pro(X, Y)( x ) PROMOTE ( y )Logic component:  Pro(Z, Y) ( z ) PROMOTE ( y )Convert to binary questionsLogic component:  Not Pro(X, Y)Does the CA argue that X does not promote Y?Logic component:  
+Pro(Z, Y)Does the CA argue that something besides X promotes Y?promote Y?2)
+Does the CA argue that something besides X promotes Y?1) Yes2)
+Yesbe abolished because……The way death penalty is set up, where ….IACAQuestions(c’)
+Utilize the binary questions for annotating logic components and prompting the modelInputLLM1)
+Yes, the reason is that ……2)
+Yes, the reason is that…….1) Yes2)
+NoFigure 1 (a): The overview of CALSA task.
+The task is composed of two parts: 1) selecting a logic pattern template from apredeﬁned template set and 2) extracting slotﬁllers from the CA that ﬁll into the placeholders (Z) in the template.
+ATC refers to theoriginal label for a logic pattern proposed in the CALSA paper.
+(b): The input/output structure of the simple end2end approach explorein the original CALSA paper.
+The input contains an IA passage, a CA passage, and a list of all proposed CA logic pattern templatesdescribed in natural language, while the output contains the identiﬁers of the corresponding logic pattern templates and the slotﬁllersthat ﬁll into the placeholder of the templates.
+(c): An example showing how we decompose a logic pattern into its constituent logiccomponents, and the binary question created for each component.
+(c’): An example showing how the binary questions associated withlogic components are utilized for annotations and prompting LLMs.
+Question-Answering (QA) task where we create a binaryquestion asking for the existence of a corresponding logiccomponent for a given CA for both annotation study andmodeling experiments (Figure 1(c) and Figure 1(c’)).
+It isworth noting that an exhaustive list of logic patterns can beobtained by aggregating the labels for logic components,which can be subsequently utilized for comprehensivelyevaluating LLMs’ performance at a logic pattern level.
+As a result, we collect 250 annotations for diﬀerent logiccomponents.
+Our key insight from the annotation study isthat: It is possible to consider that a CA contains and doesnot contain a given logic component simultaneously, de-pending on the degree of implicit reasoning involved inthe annotators’ decision process.
+Furthermore, the model-ing experiments using the collected annotations show that:The LLM is able to conduct implicit reasoning requiredto identify each logic component individually to some ex-tent , and the overall performance also improved comparedto identifying logic patterns directly.
+However, LLM’sreasoning process may or may not align with human anno-tators, depending on the degree of implicit reasoning beingconsidered.
+Overall, we claim that the real challenge of CALSA tasklies in how to determine the desirable degree of implicitreasoning to be considered when identifying a logic com-ponent, and how to align model’s reasoning process withthe desirable implicit reasoning.
+We provide further detailsand discussion in the subsequent sections.
+
+
+2 Constituent logic components for
+
+
+
+CA logic patterns
+
+We observe that the CA logic patterns proposed in theoriginal CALSA paper can be considered as composed ofmultiple ﬁner logic components.
+Most of the logic com-ponents are related to the causal relations between two― 3652 ― (https://creativecommons.org/licenses/by/4.0/).They said that executers’ stress is extremely overwhelming.
+However, the point that Executers’ stress is extremely overwhelming is there because he thinks that even though executing the death penalty is his duty that he is authorized to but he feels that he feels like he murdered someone, which must be pricking his inner mind.
+But he should not think or feel guilty about it.
+Instead he must think that he has killed a person who is doing harm to the society and must think that he is protecting the society and the next generation from such person.
+And sentencing him to death make wrong doers think twice before they do the crimes.
+Death penalty should be abolished because death penalty promotes executioners’ suffering.
+Initial Argument (IA)Counter Argument (CA)Question: Does CA argue that something besides 'death penalty' promotes 'executioner's suffering'?Yes, “feels that he feels like he murdered someone” promotes “executioners’ suffering”No, “feels that he feels like he murdered someone” is “executioners’ suffering” itself.
+They are the same thing!Annotator1Annotator2Figure 2
+An example of annotation for Sup(Z, Y) where both annotators’ interpretations are plausible.concepts (i.e., Promote(X, Y) or Suppress(X, Y)), deﬁnedin previous work [12, 13].
+Other types of logic componentsare fairly self-explanatory.
+For instance, one of the orig-inal logic patterns named Mitigation is deﬁned as WhileCA acknowledges IA’s logic, it argues that the causal re-lationship stated in the IA can be mitigated by somethingZ.
+It is obvious that this logic pattern can be considered asa combination of two logic components: Acknowledge(IA)and Mitigation(IA, Z).
+We show the mapping between logicpatterns and logic components in Table 3.
+
+3 Annotation Study
+
+
+
+3.1 CALSA Dataset
+
+We utilize Naito et al.
+[1]’s CALSA dataset where eachCA is annotated with underlying logic patterns in relationto an IA.
+The dataset was annotated by crowdworkers,where workers were only able to select one pattern persentence for a given CA.
+The results were aggregated toallow one pattern per sentence, and a follow-up annotationby one expert indicated that multiple patterns could beconsidered per one sentence.
+Although multiple patternswere considered, they were not exhaustively annotated asa result of the follow-up annotation.
+
+
+3.2 Annotating Logic Components
+
+We consider the identiﬁcation of a logic component as aQA task.
+Each logic component is associated with a binaryquestion, e.g., Sup(Z, Y) → ”Does CA argue that somethingsuppresses Y?”, Y is ﬁlled with a concept depending onIA’s logic (e.g., misjudgment), while Z is supposed to beextracted from the given CA.
+A list of binary questionsassociated with all logic components is shown in Table 4.As a start, we select 25 IA and CA pairs spanned across3 varying topics from the CALSA devset for annotation.
+Two authors of this paper (expert annotators) annotate thebinary questions associated with 10Logic Componentsforall 25 CAs (in total 250 annotations per annotator).
+
+
+3.3 Annotation Results and Analysis
+
+We calculate the Cohen’s Kappa for 250 binary labels.
+We achieve a score of 0.49, indicating moderate agree-ment between the annotators.
+The observed agreement is189/250 annotations.
+In order to better understand the dis-agreements, both annotators had a discussion and providedreasoning for each of their disagreed annotations.
+Analyzing disagreements, for 17 instances, either oneannotator agreed to the other’s choice after discussing andconsidering the reasoning provided by the other annotator.
+However, we discover that for 44 disagreements, bothannotators’ reasoning can be considered plausible de-pending on how implicit we interpret the target CA.Moreover, the degree of implicit interpretation depends onthe annotator’s background knowledge.
+Figure 2 shows anexample of a disagreeing instance in which both annota-tors’ interpretations are plausible.
+The key disagreementlies in whether to consider Z and Y as the same concept,and whether to think so depends on how much implicitknowledge utilized to interpret the CA’s target expression.
+We aggregate the labels for all logic components to ob-tain an exhaustive list of labels for logic patterns for eachCA.
+A logic pattern is labeled only if the answers to thebinary questions associated with all its constituent logiccomponents are ”Yes”.
+For CAs where both annotators’interpretations are plausible, we consider both annotators’labeling correct and consider the union of their annota-― 3653 ― (https://creativecommons.org/licenses/by/4.0/).Table 1 Precision (P), Recall (R), F1 scores of logic patternidentiﬁcation.
+G4o-mini: GPT-40-miniBaseline DecompModel P R F1 P R F1G4o-mini .50 .29 .35
+.52 .51 .50tions
+as the ﬁnal set of labels for those CAs.
+As a result, onaverage, each CA ends up with 3.2 labeled logic patterns.
+
+
+4 Model Experiment
+
+To evaluate the eﬃcacy of the identifying logic compo-nentone by one, we conduct experiments around GPT-4o-mini with the collected 250 instances.
+Given the compa-rably small size of our collected dataset, we only considerzero-shot setting as a start in this paper.
+We comparethe results of identifying logic components one by one andthen aggregate (Decomp) with that of prompting the modelto identify all logic patterns at once (Baseline).
+To avoidbrittle hand-crafted prompts for Baseline setting, we utilizeDSPy
+[14] to programmatically perform chain-of-thoughtprompting, where we set the output signature to be a list ofidentiﬁed logic patterns and their corresponding slotﬁllers.
+For Decomp setting, we simply prompt the model to an-swer the given binary question as shown in Figure 1(c’)without using DSPy as the objective is fairly simple.
+
+
+4.1 Results
+
+Given that both annotators’ interpretations are plausiblefor a comparably large portion of instances, we divide themodel results (for logic component identiﬁcation) into twoparts for further evaluation and analysis.
+For the portionwhere both annotators ﬁnally agree with each other (agreeportion, 206 instances), one annotator manually checkedthe results, including the model’s answer to the questionand the reasoning, for 83 instances where the model’s gen-erated answer to the binary question is not consistent withthe annotators’.
+For the portion where both annotatorsreasoning can be considered plausible (plausible portion),one annotator manually checked the results for all 44 in-stances.
+The accuracy of logic component identiﬁcationis shown in Table 2.
+The results of logic pattern iden-tiﬁcation are obtained by aggregating the results of logiccomponent identiﬁcation (i.e., a logic pattern is identiﬁedonly if all of its constituent logic components are success-fully identiﬁed).
+We show that Decomp is more eﬀectivethan Baseline in Table 1.
+
+4.2 Analysis
+
+For agree portion, we found that for 18/83 instances,model’s generated reasoning is plausible despite its answerbeing diﬀerent than the labels, and that whether the reason-ing can be considered as correct depends on how implicitwe interpret the CA.
+Furthermore, for plausible portion,for 43/44 instances, model’s generated reasoning alignswith either one of the annotators’ reasoning.
+In total, apartfrom the 123 instances where the model’s answer agreeswith both annotators’, model’s predictions for 61/127 in-stances can be considered plausible depending on theway we interpret the CA as well as the degree of implicitknowledge we incorporate into the decision process.
+
+
+5 Discussion
+
+The plausible reasoning problem found in both anno-tation phase (Section 3.3) and model experiment phase(Section 4.2) poses a huge challenge for CALSA task re-garding both obtaining a reliable dataset and subsequentlytraining/evaluating the computational models.
+It is an ex-tremely diﬃcult problem as it is almost impossible to de-terministically deﬁne the degree of implicitness requiredto inter pret an argument.
+We argue that one potential wayto alleviate the problem could be to hire a large number ofpeople for annotations, similarly to [15], and subsequentlyconsider the majority answer as the ﬁnal answer.
+How-ever, given the complexity of the CALSA task, this optionwould be time-consuming, require sophisticated trainingfor annotators, and be ﬁnancially costly.
+Therefore, how toeﬀectively address the plausible reasoning problem couldbe a challenging yet interesting future work.
+
+
+6 Conclusion
+
+In this work, we explore addressing the CALSA taskby decomposing the logic patter ns into their constituentlogic components and identifying each component one byone.
+We collect 250 annotations for logic components anduse them for subsequent model experiments.
+Our ﬁndingsin both annotation phase and modeling phase reveal thatit is the various degrees of implicit reasoning involvedin the identiﬁcation process that renders the overall taskchallenging.
+We plan to address that in our future
+work.― 3654 ― (https://creativecommons.org/licenses/by/4.0/).
+
+
+
+Acknowledgements
+
+This work was supported by JSPS KAKENHI GrantNumber 22H00524.
+
+References
+
+
+[1] Shoichi Naito, Wenzhi Wang, Paul Reisert, Naoya Inoue,Cam´elia Guer raoui, Kenshi Yamaguchi, Jungmin Choi, Ir-fan Robbani, Surawat Pothong, and Kentaro Inui. Design-ing logic pattern templates for counter-argument logicalstructure analysis. In Yaser Al-Onaizan, Mohit Bansal,and Yun-Nung Chen, editors, Findings of the Associa-tion for Computational Linguistics: EMNLP 2024,pp. 11313–11331, Miami, Florida, USA, November 2024.Association for Computational Linguistics.
+[2] Douglas R. Smith. The design of divide and conquer algo-rithms. Science of Computer Programming, Vol. 5,pp. 37–58, 1985.
+[3] Zepu Yi. Research on division and conquer algorithm. AIPConference Proceedings, Vol. 2073, No. 1, p. 020086,02 2019.
+[4] Alon Talmor and Jonathan Berant. The Web as aKnowledge-Base for Answering Complex Questions. InMarilyn Walker, Heng Ji, and Amanda Stent, editors, Pro-ceedings of the 2018 NAACL Linguistics: HumanLanguage Technologies, Volume 1 (Long Papers),pp. 641–651, New Orleans, Louisiana, June 2018. Associ-ation for Computational Linguistics.
+[5] Sewon Min, Victor Zhong, Luke Zettlemoyer, and Han-naneh Hajishirzi. Multi-hop Reading Comprehensionthrough Question Decomposition and Rescoring. In AnnaKorhonen, David Traum, and Llu´ıs M`arquez, editors, Pro-ceedings of the 57th ACL, pp. 6097–6109, Florence,Italy, July 2019. Association for Computational Linguis-tics.
+[6] Ethan Perez, Patrick Lewis, Wen-tau Yih, Kyunghyun Cho,and Douwe Kiela. Unsupervised Question Decompositionfor Question Answering. In Bonnie Webber, Trevor Cohn,Yulan He, and Yang Liu, editors, Proceedings of the2020 EMNLP, pp. 8864–8880, Online, November 2020.Association for Computational Linguistics.
+[7] Denny Zhou, Nathanael Sch¨arli, Le Hou, Jason Wei,Nathan Scales, Xuezhi Wang, Dale Schuurmans, ClaireCui, Olivier Bousquet, Quoc Le, and Ed Chi. Least-to-Most Prompting Enables Complex Reasoning in LargeLanguage Models, April 2023. arXiv:2205.10625 [cs].
+[8] Andrew Drozdov, Nathanael Sch¨arli, Ekin Aky¨urek,Nathan Scales, Xinying Song, Xinyun Chen, OlivierBousquet, and Denny Zhou. Compositional SemanticParsing with Large Language Models, September 2022.arXiv:2209.15003 [cs].
+[9] Tushar Khot, Harsh Trivedi, Matthew Finlayson, Yao Fu,Kyle Richardson, Peter Clark, and Ashish Sabharwal. De-composed Prompting: A Modular Approach for SolvingComplex Tasks, April 2023. arXiv:2210.02406 [cs].
+[10] Shunyu Yao, Dian Yu, Jeﬀrey Zhao, Izhak Shafran,Thomas L. Griﬃths, Yuan Cao, and Karthik Narasimhan.Tree of thoughts: Deliberate problem solving with largelanguage models, 2023.
+[11] Jieyi Long. Large language model guided tree-of-thought,2023.
+[12] Chikara Hashimoto, Kentaro Torisawa, Stijn De Saeger,Jong-Hoon Oh, and Jun’ichi Kazama. Excitatory or in-hibitory: A new semantic orientation extracts contradic-tion and causality from the web. In Jun’ichi Tsujii, JamesHenderson, and Marius Pas¸ca, editors, Proceedings ofthe 2012 Joint Conference on Empirical Methodsin Natural Language Processing and ComputationalNatural Language Learning, pp. 619–630, Jeju Island,Korea, July 2012. Association for Computational Linguis-tics.
+[13] Paul Reisert, Naoya Inoue, Tatsuki Kuribayashi, and Ken-taro Inui. Feasible annotation scheme for capturing policyargument reasoning using argument templates. In NoamSlonim and Ranit Aharonov, editors, Proceedings of the5th Workshop on Argument Mining, pp. 79–89, Brus-sels, Belgium, November 2018. Association for Computa-tional Linguistics.
+[14] Omar Khattab, Arnav Singhvi, Paridhi Maheshwari,Zhiyuan Zhang, Keshav Santhanam, Sri Vardhamanan,Saiful Haq, Ashutosh Sharma, Thomas T. Joshi, HannaMoazam, Heather Miller, Matei Zaharia, and ChristopherPotts. Dspy: Compiling declarative language model callsinto self-improving pipelines, 2023.
+[15] Yixin Nie, Xiang Zhou, and Mohit Bansal. What can welearn from collective human opinions on natural languageinference data? In Bonnie Webber, Trevor Cohn, YulanHe, and Yang Liu, editors, Proceedings of the 2020Conference on Empirical Methods in Natural Lan-guage Processing (EMNLP), pp. 9131–9143, Online,November 2020. Association for Computational Linguis-tics.― 3655 ― (https://creativecommons.org/licenses/by/4.0/).
+
+Table 2 Accuracy of the identiﬁcation of each logic component.
+G4o-mini: GPT-4o-mini.
+Model Ack Miti
+No evi Not Pro(X, Y) Pro(X, Z) Pro(Y, Z) Pro(Z, Y) Suﬃ Sup(X, Z) Sup(Z, Y) AvgG4o-mini .92 .84 .44
+.72
+.96 .96
+.88 .68 .52 .44 .736Table
+3
+The mapping between the original CA logic patterns deﬁned in the CALSA paper and the logic components explored in thispaper.logic patterns logic componentsMitigation Acknowledge(IA), Mitigate(IA, Z)Alternative Acknowledge(IA), Sup(Z, Y)No evidence No evi(IA)Another true cause Not Pro(X, Y), Pro(Z, Y)Missing mechanism #1 Pro(X, Z), Sup(Z, Y)Missing mechanism #2 Pro(Z, Y), Sup(X, Z)No need to address SuﬃcientNegative eﬀect due to y Pro(Y, Z), Good(Z)Positive eﬀects of a diﬀerent perspective from y #1 Pro(X, Z), Good(Z)Positive eﬀects of a diﬀerent perspective from y #2 Sup(X, Z), Bad(Z)Table 4 The mapping between the logic components and the template for their corresponding binary questions.
+Contents within curlybrackets will be ﬁlled in based on the actual IAs.logic components binary questions templateAcknowledge(IA) Does CA acknowledge that {IA’s logic}?Mitigate(IA, Z) Does CA {causal relation stated in IA} can be mitigated by something?No
+evi(IA)Does CA argue that there is no evidencein the initial-argument to support {IA’s logic}?Not Pro(X, Y) Does CA argue that {X} does not promote {Y}?Pro(X, Z) Does CA argue that {X} promotes something besides {Y}?Pro(Y, Z) Does CA argue that {Y} promotes something?Pro(Z, Y) Does CA argue that something besides {X} promotes {Y}?Suﬃcient Does CA argue that {Y} is not a problem that requires any action?Sup(X, Z) Does CA argue that {X} suppresses something?Sup(Z, Y) Does CA argue that something suppresses {Y}?― 3656 ― (https://creativecommons.org/licenses/by/4.0/).

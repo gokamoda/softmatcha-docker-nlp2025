@@ -1,0 +1,277 @@
+定数精度浮動小数点 Transformer Decoder が認識する言語の有限性・余有限性
+
+根岸直生
+
+1
+
+谷口雅弥
+
+2
+
+坂口慶祐
+
+1,2
+
+乾健太郎
+
+3,1,21
+
+東北大学
+
+2
+
+理化学研究所
+
+3
+
+MBZUAI
+
+
+
+naoki.negishi.s5@tohoku.ac.jp
+
+
+
+概要
+
+Transformer decoder の認識する言語を所属性問題として定義し、softmax 関数および定数精度浮動小数点数を採用した場合、認識する言語は有限言語および余有限言語クラスと一致することを示した。
+
+
+1 はじめに
+
+Transformer モデル[1]の表現力、すなわち本質的に解決可能な問題に関する近年の理論的解析によって、様々な仮定の下での表現力の上限・下限が明らかになりつつある[2]。
+例えば 1 回のデコードに限定した場合、Transformer の表現力は回路複雑性クラス TC0程度である[3]。
+しかし思考の連鎖[4]のような手法で多項式回のデコードを許容すると、その表現力が P にまで拡張されることが示されている。
+一方で、これらの先行研究では理論的解析を容易にするため、行列計算に使用する浮動小数点数の精度について、無限精度(ℚ や ℝ)や入力系列長に対して対数的に増加する精度（O(log 𝑛)精度）を仮定している。
+実際のモデルは定数精度(fp32 や bf16 等)で実装されており、十分に長い入力文字列の全情報を単一のベクトルに圧縮して保持できない。
+そのため、先行研究における枠組みでは実際のモデルの表現力を厳密に評価することは困難である。
+更に、先行研究では Attention 機構において softmax 関数の代わりにしばしば hardmax 関数という理想化を行うが、両者は入力に対する出力の応答が大きく異なるため互いを完全に置換できない。
+本研究では、浮動小数点演算における定数精度の制約およびsoftmax 関数の利用を前提に、現実的な設定における Transformer decoder モデルの表現力を分析する。
+本研究の結果として query と key の積に関する自然な仮定（仮定 9）の下で Transformer が認識可能な言語が有限言語または余有限言語（3.1 節）の対応表 1 Transformer モデルの表現力の上限。
+(1),(3)は下限と等しい。
+(2)が先行研究[3]による結果、(3)は本研究で証明した結果（定理 10）。
+(2), (4)はデコード回数をO(1),O(log 𝑛),O(𝑛)とした場合の上限をカンマで区切っている。
+また灰色で塗りつぶされている(1), (4)は本研究の定理を拡張することで証明可能と予想される結果。
+浮動小数点数精度O(1), 仮定 9O(log 𝑛)hardmax(1) Finite ∪ Co-nite?
+(定理 10 の応用)(2) TC0, L, NC1[3]softmax(3) Finite ∪ Co-nite(定理 10)(4) TC0, L, NC1(定理 10 の応用)が得られた（定理 10、表 1 左下）。
+さらに表 1 (1),(4)の灰色の場合については、本研究では直接扱わないが、定理 10 を拡張することで証明可能であると考える。
+
+
+2 関連研究
+
+ニューラルネットワークの表現力は、関数近似や計算複雑性によって特徴づけられてきた。
+前者では、任意の連続関数を近似的に模倣できることを主張する万能近似定理が代表的な成果として挙げられる[5, 6]。
+一方、後者では形式言語や論理回路等との対応を通じて表現力が評価され、整理されたサーベイ論文[2]や講義ノート[7]が公開されている。
+Transformer モデルの表現力については、理論的な制約がほぼ存在しない場合においてチューリング完全性が示されている[8]。
+さらに入力系列長に対して、モデル次元や出力系列長等を決定する関数のオーダーによる表現力の階層づけもされている[9, 3]。
+しかし現実の実装ではこのような仮定はしばしば破られることを考慮する必要がある。
+
+
+3 準備
+
+4 節に先立ち、分析で重要な役割を果たす諸概念の定義を行う。
+なおアルファベット Σ 上の文字列𝑤, 𝑤0∈ Σ∗について |𝑤| は文字列の長さを、𝑤𝑡は 𝑡番目の文字、また 𝑤𝑤0は文字列の連接を表す。
+
+3.1 有限言語・余有限言語
+
+まず有限言語とその双対である余有限言語を定義し、これらの言語を認識する決定性有限オートマトン(DFA)を構築するためのアルゴリズムを示す。
+定義 1 (有限言語). アルファベット Σ 上の言語 𝐿 が有限言語であるとは、∃𝑘 ∈ ℕ.∀𝑤 ∈ 𝐿.|𝑤| ≤ 𝑘 が成立する場合、またその場合に限る。
+定義 2 (余有限言語). アルファベット Σ 上の言語 𝐿が余有限言語であるとは、𝐿 の補集合 Σ∗\ 𝐿 が有限言語である場合、またその場合に限る。
+例 3. 以下の Σ = {𝑎, 𝑏} 上の言語 𝐿1, 𝐿2は余有限言語である。
+𝐿1= Σ∗\ {𝑎, 𝑏, 𝑎𝑏, 𝑎𝑎𝑏}𝐿2= {𝑤 ∈ Σ∗| |𝑤| ≥ 3}Prex Tree Automaton 有限言語は正規言語のサブクラスであることが知られており、DFA により認識可能である。
+そのような DFA を構成する方法の一つに、Prex Tree Automaton (PTA)と呼ばれるアルゴリズムが存在する[10]。
+PTA ではまず、有限言語の prex 集合(例えば言語 𝐿 = {𝑎𝑏, 𝑏𝑎𝑎} に対してPref(𝐿) = {𝜀, 𝑎, 𝑎𝑏, 𝑏, 𝑏𝑎, 𝑏𝑎𝑎} である)を状態とし、根が空文字列、葉が有限言語に含まれる文字列である木構造のような DFA を構成する。
+状態遷移関数 𝛿は 𝛿(𝑞𝑤, 𝜎) = 𝑞𝑤 𝜎で定義される。
+アルゴリズム 1 に示すのは、DFA の遷移関数が全域関数となるように捨て状態 𝑞trashおよびその周りの遷移(8 行目)を加えたアルゴリズム PTA+ である。
+また、ある DFA 𝑀 の受理状態集合と非受理状態集合を入れ替えることで構成される DFA 𝑀0の認識する言語は、もとの言語の補集合であること、すなわち 𝐿 (𝑀0) = Σ∗\ 𝐿(𝑀)であることが知られている。
+この性質を用いることで、任意の余有限言語に対してそれを認識する DFA も同様に構成することが可能である。
+PTA+ の存在により、有限言語や余有限言語は正規言語の部分集合であることが確認できる。
+1）
+
+3.2 𝑝 精度浮動小数点数
+
+本節では今後の全ての数値計算に用いられる 𝑝-精度浮動小数点数を定義する。
+1） 実際には、これら(特に余有限言語)は正規言語クラスの真部分集合である。
+それは Σ = {𝑎, 𝑏} 上の言語 𝐿 = 𝑎∗を考えれば明らかである。
+Algorithm 1 Prex Tree Automaton+Input: Finite language 𝐿 : set[string],Alphabet Σ : set[char]Output: DFA 𝑀 such that 𝐿 (𝑀) = 𝐿1: 𝑄 : set[state] ← {𝑞𝑤| 𝑤 ∈ Pref(𝐿)} ∪ {𝑞trash}2: 𝑄𝐹: set[state] ← {𝑞𝑤| 𝑤 ∈ 𝐿}3: 𝛿 : Callable[[state, char], state] ← {}4: for all (𝑞𝑤, 𝜎) : tuple[state, char] ∈ 𝑄 × Σ do5: if 𝑞𝑤 𝜎∈ 𝑄 then6: 𝛿(𝑞𝑤, 𝜎) ← 𝑞𝑤 𝜎7: else8: 𝛿(𝑞𝑤, 𝜎) ← 𝑞trash9: end if10: end for11: 𝑀 ← (𝑄, Σ, 𝛿, 𝑞𝜀, 𝑄𝐹)定義 4 (𝑝-精度浮動小数点数[11]). 𝑝-精度浮動小数点数の集合 𝔻𝑝は 𝑝-bit の数の集まりであり、𝔻𝑝= {0, 1}𝑝で表現される。
+なお、特殊な値として+inf, −inf, nan ∈ 𝔻𝑝が存在する。
+また 𝔻𝑝は自然にベクトル 𝔻𝑝∗に拡張される。
+定義 5 (𝑝-精度浮動小数点演算[11]). 関数 𝑓 : 𝔻𝑝𝑚→𝔻𝑝𝑛: 𝑥1, . . . , 𝑥𝑚↦→ 𝑦1, . . . , 𝑦𝑛が 𝑝-精度浮動小数点上の関数であるとは、 𝑓 が 𝑝-空間チューリングマシンによって計算可能である場合である。
+ここで +inf, −inf, nan に関する演算を含めた基本的な演算は IEEE754 形式[12]に従う。
+𝑝 の値が入力系列長 𝑛 を受け取り、精度を返す関数であり、定数関数(𝑝(𝑛) ∈O(1))であるときは定数精度、𝑝 が対数関数(𝑝 (𝑛) ∈O(log 𝑛))であるときは対数精度と呼ぶことにする。
+また、定数関数であるとき、定数 𝑝 ∈ ℕ と同一視する。
+
+
+3.3 Transformer Decoder
+
+本節では Transformer decoder を関数として定式化する。
+定義 6 (Transformer decoder). 有限のアルファベットを Σ、特殊トークン集合を 𝕍 としたとき、Transformerdecoder はパラメータ付き関数TDec𝑝𝑡(; 𝜃) : Σ∗→ (Σ ∪ 𝕍 )∗(1)である。
+関数を単に TDec(𝑤)と書くこともある。
+ここで下付き添字 𝑝 は全ての数値計算が 𝑝-精度浮動小数点代数上で行われることを意味し、𝜃 は 𝑝-精度浮動小数点数のパラメータ集合である。
+また、出力系列の長さは上付き添字の時間関数 𝑡 : ℕ → ℕによって制限され、入力系列 𝑤 ∈ Σ∗に対して、|TDec(𝑤)| = 𝑡 (|𝑤|)である。
+なお、入力から出力までの計算の流れは基本的に GPT モデル[13, 14]に従うが、本研究では位置エンコーディングは不採用であり、 2 層のTransformer Block, Single-head, pre-norm, Attention機構内の softmax, Greedy Search, Causal maskingを採用する。
+定義 6 は系列変換という Transformer decoder モデルの使用に基づく。
+定義域および終域について、系列変換モデルは一般に文脈を入力として受け取り、heosi ∈ 𝕍 等の特殊トークンを含む系列へ変換する。
+更に定義 6 は浮動小数点数の精度およびデコード回数上限の制約を反映している。
+言語モデルは計算機上に実装されており、計算の精度は一般にfp32 や bf16 といった定数精度の浮動小数点代数が用いられ、先行研究[3]のように入力系列長に応じた精度の増減は原則として行われない。
+また出力系列長は、入力系列長 𝑛 に対して何らかの時間関数𝑡 : ℕ → ℕ により制限を行う。
+例えば定数 𝑐 に対して、時間関数が 𝑡(𝑛) = 𝑛2の場合は多項式回のデコードを許容されるが、𝑡(𝑛) = 𝑐 の場合は入力の長さに関わらず定数回のデコードに制限される。
+
+3.4 Transformer Decoder が認識する言語
+
+Transformer decoder の関数としての定義 6 を踏まえ、同モデルを言語認識装置として定義する。
+定義 7 (Transformer decoder が認識する言語). ある停止状態トークン集合 𝐹 ⊆ 𝕍 について、Transformerdecoder が文字列 𝑤 ∈ Σ∗を受理するのは、hsepi ∈ 𝕍を用いた出力系列 TDec𝑝𝑡(𝑤hsepi; 𝜃) ∈ (Σ ∪ 𝕍 )∗中に𝑣 ∈ 𝐹 を満たすトークン 𝑣 が存在する場合、またその場合に限る。
+終了状態トークン集合 𝐹 に対して Transformerdecoder が認識する言語 𝐿(TDec𝑝𝑡(; 𝜃), 𝐹)を、受理する文字列の集合で定義する。
+本定義においては、デコード系列を明示的に区別するために入力系列の直後に hsepi を挿入することに注意したい。
+例 8. 時間関数が定数関数 𝑡(𝑛) = 4、停止状態トークン集合 𝐹 = {heosi} であり、入力系列 𝑎𝑎𝑏𝑏, 𝑎𝑎 に対する TDec の出力系列がTDec(𝑎𝑎𝑏𝑏hsepi) = 𝑎𝑏𝑎heosiTDec(𝑎𝑎hsepi) = 𝑎𝑎𝑎𝑎であるとき、Transformer decoder は 𝑎𝑎𝑏𝑏 を受理し𝑎𝑎 は拒否する。
+
+4 結果
+
+本節では、3 節の定義をもとに Trasnformer decoderが認識する言語が有限言語および余有限言語と一致することを示す。
+まず自然な仮定を導入する。
+仮定 9 (innity-free パラメータ). すべての Attention層における query, key 積は任意の入力に対して常に負の無限大より大きな値を取る。
+すなわち下式が成立する。
+∀𝑦, 𝑦0∈ 𝔻𝑝𝑑.𝑄(𝑦)𝐾 (𝑦0)T> −inf (2)ここで 𝑑 はモデル次元、𝑄, 𝐾 : 𝔻𝑝𝑑→ 𝔻𝑝𝑑はそれぞれ query, key 変換である。
+式 2 の真偽は Transformer のパラメータのみに依存し、本研究では成立するようなパラメータのみを考慮する。
+この仮定は一般的な学習済みTransformer モデルにおいて基本的に成立する。
+(付録 A を参照)定理 10 (Transformer decoder が認識する言語の有限・余有限性). 式 2 が成立することを仮定する。
+このとき、有限言語全体の集合と余有限言語全体の集合の和と Transformer decoder が認識する言語の集合が一致する。
+すなわち、以下の 2 つの主張が成立する。
+1. 任意の 𝑝 ∈ ℕ, 𝑡 (𝑛) ∈ Ω(𝑛), 𝜃, 𝐹 ⊆ 𝕍 について、ある有限言語または余有限言語 𝐿𝑓が存在して𝐿(TDec, 𝐹) ⊆ 𝐿𝑓2. 任意の有限言語または余有限言語 𝐿0𝑓について、ある 𝑝0∈ ℕ, 𝑡0(𝑛) ∈ Ω(𝑛), 𝜃0, 𝐹0⊆ 𝕍 が存在して𝐿0𝑓⊆ 𝐿(TDec, 𝐹0)定理 10 は本研究における主要な結果であり、いかなるパラメータや 𝑛 回以上の任意回数のデコード、停止状態集合についても、仮定 9 が成立し定数精度 𝑝 であるならば、Transformer decoder が認識する言語クラスがちょうど有限言語または余有限言語の言語クラスと一致することを述べている。
+証明定理 10 の 2 つの主張について、それぞれ4.1 節と 4.2 節で証明を行う。
+
+
+
+4.1 𝐿(TDec, 𝐹) ⊆ 𝐿
+
+f
+
+証明
+
+以下の補題を考える。
+補題 11. ある長さ 𝑙 ∈ ℕ が存在して、|𝑤|, |𝑤0| ≥ 𝑙 であるような任意の 𝑤, 𝑤0∈ Σ∗について TDec(𝑤) =TDec(𝑤0)が成立する。
+証明付録 B.1 を参照。
+補題より 𝑙 以上の長さを持つ入力に対して、TDecは必ず同じ値を返す。
+Transformer が |𝑤| ≥ 𝑙 である文字列を受理する場合には余有限言語を認識し、拒否する場合には有限言語を認識する。
+
+4.2 𝐿
+
+0𝑓
+
+⊆ 𝐿(TDec, 𝐹
+
+0
+
+) 証明
+
+証明は先行研究[8, 3]と同様に、DFA の動作の模倣という素朴な方法による。
+Attention 機構による入力文字 𝑤𝑡の読み取り(補題 12)および FFN による遷移関数 𝛿 : (𝑞𝑡 −1, 𝑤𝑡) ↦→ 𝑞𝑡の模倣(補題 13)が可能であることを示し、帰納的に DFA の動作が模倣可能であることで証明を行う。
+4.2.1 入力文字の読み取り補題 12 (2 層 Attention による入力文字の取得). 入力系列を 𝑤1𝑤2· · · 𝑤𝑛hsepi𝑞0· · · 𝑞𝑡 −1、埋め込み層をemb : Σ → 𝔻𝑝𝑑とする。
+このとき、𝑞𝑡 −1に対する第 2 層目 Attention 層出力h(2)𝑛+𝑡+1および、任意の 𝜀 > 0 (∈ 𝔻𝑝)について、h(2)𝑛+𝑡+1− emb(𝑤𝑡)< 𝜀 (3)を満たすパラメータが存在する。
+本補題は 2 層の Attention 層を通じて、DFA が状態 𝑞𝑡 −1にて読み取る文字 𝑤𝑡の埋め込みベクトルをを近似的に取り出せることを表す。
+証明詳細は付録 B.2 を参照。
+4.2.2 遷移関数の模倣およびトークン出力補題 13 (遷移関数の模倣およびトークン出力). 𝑞𝑡 −1に対する第 2 層の Attention 出力 ℎ(2)𝑛+𝑡+1と、 residualconnection 経由で保持される前状態 𝑞𝑡 −1の埋め込みemb(𝑞𝑡 −1)および、任意の 𝜀 > 0 (∈ 𝔻𝑝)について、FFN(h(2)𝑛+𝑡+1, emb(𝑞𝑡 −1))
+− emb(𝑞𝑡)< 𝜀 (4)を満たすパラメータが存在する。
+さらに、出力層により 𝑞𝑡トークンがデコードされる。
+本補題は単層の FFN により DFA の遷移関数を近似的に模倣でき、出力層においてそのノイズを除去できることを表す。
+証明詳細は付録 B.3 を参照。
+以上の補題により、𝐿𝑓⊆ 𝐿(TDec, 𝐹)方向も示され、求める定理 10 を示すことができた。
+
+
+
+5 議論
+
+結果の拡張の見通し表 1 (1)は、補題 11 および補題 12 の softmax 関数を hardmax 関数に置き換えることで示すことができる。
+後者の補題 12 より強い補題が多くの先行研究[8, 3]により示されており、前者の補題 11 に関しても 𝑙 を適切に設計することで容易に示すことができると考えられる。
+また表 1 (4)も同様にして示すことができる。
+この場合は補題 12 および補題 13 で行った議論を、対数精度の場合[3]に適応させることで示すことができると考えるが、証明は自明ではないため今後の研究に期待したい。
+本節で述べた予想が正しい場合、表現力の議論において softmax 関数と hardmax 関数に本質的な影響力がないことが、逆に精度を対数から定数へ制限することで、大幅に表現力が低下することが示される。
+そして表現力の低下は、𝑡 ∈O(𝑛𝑐)のときに Pである[3]ことに注意すると、デコード回数のオーダーを増やした場合に特に顕著となる。
+言語モデリングとの乖離本研究では Transformerのトークン集合をアルファベットと特殊トークン集合の和 Σ ∪ 𝕍 とし、また Transformer decoder を言語認識装置として所属性問題、すなわちある言語に所属するかという問題を念頭に置いていた。
+しかし、実際のトークン集合は DFA の状態集合 𝑄 を含まない少数のトークンで構成されており、またTransformer decoder の本来の用途で文字列に確率を与える言語モデリングとしての使用からかけ離れたものである。
+
+
+6 結論
+
+本研究では Attention 機構内に softmax 関数を採用し、𝑝-精度浮動小数点数に基づき実装されたTransformer decoder を言語認識装置として定義した(3.4 節)。
+そのときに認識する言語クラスが有限言語および余有限言語(3.1 節)クラスと一致することを示した(4 節、 定理 10)。
+さらに 5 節では、本研究における証明手法の汎用性や限界について論じた。
+以上により Transformer decoder が取り扱う言語クラスの性質を明確にし、今後の発展的研究に向けた基盤を提供できたと考える。
+
+
+
+謝辞
+
+本研究は AMED の課題番号 24wm0625405h0001の助成および JSPS 科研費の課題番号 JP24K16077 の助成を受けたものです。
+
+参考文献
+
+
+[1] Ashish Vaswani, Noam Shazeer, Niki Parmar, JakobUszkoreit, Llion Jones, Aidan N Gomez, Ł ukasz Kaiser,and Illia Polosukhin. Attention is all you need. InI. Guyon, U. Von Luxburg, S. Bengio, H. Wallach, R. Fer-gus, S. Vishwanathan, and R. Garnett, editors, Advancesin Neural Information Processing Systems, Vol. 30.Curran Associates, Inc., 2017.
+[2] Lena Strobl, William Merrill, Gail Weiss, David Chiang,and Dana Angluin. What formal languages can transform-ers express? a survey. Transactions of the Associationfor Computational Linguistics, Vol. 12, pp. 543–561,2024.
+[3] William Merrill and Ashish Sabharwal. The expressivepower of transformers with chain of thought. In TheTwelfth International Conference on Learning Rep-resentations, 2024.
+[4] Jason Wei, Xuezhi Wang, Dale Schuurmans, MaartenBosma, Brian Ichter, Fei Xia, Ed H. Chi, Quoc V. Le, andDenny Zhou. Chain-of-thought prompting elicits reason-ing in large language models. In Proceedings of the36th International Conference on Neural Informa-tion Processing Systems, NIPS ’22, Red Hook, NY,USA, 2024. Curran Associates Inc.
+[5] George V. Cybenko. Approximation by superpositions of asigmoidal function. Mathematics of Control, Signalsand Systems, Vol. 2, pp. 303–314, 1989.
+[6] Chulhee Yun, Srinadh Bhojanapalli, Ankit Singh Rawat,Sashank Reddi, and Sanjiv Kumar. Are transformers uni-versal approximators of sequence-to-sequence functions?In International Conference on Learning Represen-tations, 2020.
+[7] David Chiang, Jon Rawski, Lena Strobl, and Andy Yang.Esslli 2024, （2025-01 閲覧）. https://sleynas.com/esslli-2024-summer-school-course.
+[8] Jorge Pérez, Pablo Barceló, and Javier Marinkovic. Atten-tion is turing-complete. Journal of Machine LearningResearch, Vol. 22, No. 75, pp. 1–35, 2021.
+[9] Zhiyuan Li, Hong Liu, Denny Zhou, and Tengyu Ma.Chain of thought empowers transformers to solve inher-ently serial problems. In The Twelfth InternationalConference on Learning Representations, 2024.
+[10] J. Oncina and P. García. INFERRING REGULAR LAN-GUAGES IN POLYNOMIAL UPDATED TIME, pp.49–61.
+[11] William Merrill and Ashish Sabharwal. The paral-lelism tradeo: Limitations of log-precision transformers.Transactions of the Association for ComputationalLinguistics, Vol. 11, pp. 531–545, 2023.
+[12] Ieee standard for oating-point arithmetic. IEEE Std754-2019 (Revision of IEEE 754-2008), pp. 1–84,2019.
+[13] Alec Radford and Karthik Narasimhan. Improving lan-guage understanding by generative pre-training. 2018.
+[14] Tom B. Brown, Benjamin Mann, Nick Ryder, MelanieSubbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Nee-lakantan, Pranav Shyam, Girish Sastry, Amanda Askell,Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger,Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M.Ziegler, Jerey Wu, Clemens Winter, Christopher Hesse,Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray,Benjamin Chess, Jack Clark, Christopher Berner, SamMcCandlish, Alec Radford, Ilya Sutskever, and DarioAmodei. Language models are few-shot learners. In Pro-ceedings of the 34th International Conference onNeural Information Processing Systems, NIPS ’20,Red Hook, NY, USA, 2020. Curran Associates Inc.
+[15] Alec Radford, Je Wu, Rewon Child, David Luan, DarioAmodei, and Ilya Sutskever. Language models are unsu-pervised multitask learners. 2019.
+[16] Ben Wang and Aran Komatsuzaki. GPT-J-6B: A 6 BillionParameter Autoregressive Language Model. https://github.com/kingoflolz/mesh-transformer-jax,May 2021.
+[17] Amirhossein Kazemnejad, Inkit Padhi, Karthikeyan Nate-san Ramamurthy, Payel Das, and Siva Reddy. The impactof positional encoding on length generalization in trans-formers. In Proceedings of the 37th InternationalConference on Neural Information Processing Sys-tems, NIPS ’23, Red Hook, NY, USA, 2024. Curran As-sociates Inc.
+[18] Sejun Park, Chulhee Yun, Jaeho Lee, and Jinwoo Shin.Minimum width for universal approximation. In Inter-national Conference on Learning Representations,2021.
+
+
+
+
+A 仮定 9 の妥当性
+
+仮定 9 内の式 2 について、今回のように pre-layernormalization を採用する場合 k𝑦k, k𝑦0k ∼ 1 であるため、|𝑄(𝑦)𝐾 (𝑦0)>| ≤ ( k𝑊𝑄k + k𝑏𝑄k)(k𝑊𝐾k + k𝑏𝐾k) < Inf と変形できる。
+初期パラメータの選択や、学習過程における正規化・勾配クリッピング等の技術によりこの不等号は基本的に成立する。
+実際に事前学習済みモデル[15, 16]の各 Attention 層のノルム和積 𝛾def= (k𝑊𝑄k + k𝑏𝑄k)(k𝑊𝐾k + k𝑏𝐾k)を計算してみると、表 2 のように最大値(𝛾max)もオーバーフローしない小さな値に収まっていた。
+表 2 Decoder モデルの Attention 層のノルム和積の最大値・最小値モデル名 𝛾min𝛾maxgpt-2 small 420.94 (layer-12) 1974.25
+(
+layer-5)gpt-2 large 182.80 (layer-21)
+283.92 (layer-15)gpt-j-6b 3630.00 (layer-24) 6318.29 (layer-1)
+
+B 証明
+
+
+
+B.1 補題 11 の証明
+
+まず 𝑙 を以下で定義する。
+𝑙 = min(𝑙𝑙Õ𝑄(𝛼)𝐾 (𝛽)T= +inf)(5)ここで埋め込み関数 emb : Σ → 𝔻𝑝𝑑を用いて、𝛼 = emb(hsepi), 𝛽 = embargmin𝜏 ∈Σ𝑄(𝛼)𝐾 (emb(𝜏))T)(6)であり、𝛼 ならびに 𝛽 は定数である。
+𝑙 は 𝑙 以上の長さの文字列について、必ず query, key 積の和が無限大の大きさになることを保証する値であり、仮定 9 よりその存在が保証される。
+デコード開始のための hsepi トークンに対する Attention層の出力は、Attn(𝑄hsepi, 𝐾, 𝑉) =exp 𝑄hsepi𝐾TÍexp𝑄hsepi𝐾T𝑉 (7)であるが、softmax 関数の分母に注目すると、|𝑤 |+1Õ𝑗exp𝑄𝐾𝑗≥𝑙Õexp(𝑄(𝛼)𝐾 (𝛽))= +inf (8)と評価されるため、Attn(𝑄hsepi, 𝐾, 𝑉) = 0 となる。
+また Transformer では文脈を引数に取る関数が attention機構以外に存在しないため、帰納的に TDec(𝑤) = TDec(𝑤0)が成立する。
+2）よって補題は示された。
+2） この結果を拡張すると、hsepi トークンのように入力文字列直後に特殊トークンを挟まないようなモデルの表現力の上限は末尾による区別が可能な言語まで拡大されることがわかる。
+例) 𝐿 = {𝑤 ∈ Σ∗| 末尾が𝑎であるような言語}
+
+B.2 補題 12 の証明
+
+(1)第 1 層による位置分化[17]第 1 層では各入力トークン 𝑤𝑖を，causal masking のもとで適切に設計されたtransformer block Block1に適用する。
+このとき十分な精度があれば、z(1)𝑖= Block1emb(𝑤𝑖)(9)が、位置 𝑖 の違いに応じて異なるベクトルになるよう調整することができる。
+すなわち同じ文字 𝑤𝑖= 𝑤𝑗であっても 𝑖 ≠ 𝑗 なら z(1)𝑖≠ z(1)𝑗．(2)第 2 層による一点的注意次に、 時刻 𝑡 の queryベクトルを 𝑄𝑡def= z(1)𝑞𝑡 −1𝑊𝑄2とし、 key を 𝐾𝑖def= z(1)𝑖𝑊𝐾2とする。
+ここで 𝑖 ≠ 𝑡 の場合には 𝑄𝑡𝐾T𝑖< 𝑄𝑡𝐾T𝑡となるよう、行列 𝑊𝑄2, 𝑊𝐾2を設定できる。
+温度 𝜏 を十分大きくとったattention スコア𝛼𝑖=exp(𝜏 · 𝑄𝑡𝐾T𝑖)Í𝑗exp(𝜏 · 𝑄𝑡𝐾T𝑗)(10)は，𝑖 = 𝑡 に近似的に 1 の重みを与える。
+(3)出力ベクトルの支配性第 2 層目 attention 層の出力 h(2)𝑛+𝑡+1は，attention スコアによる重み付き value 和Í𝑖𝛼𝑖v𝑖であり、 𝛼𝑡≈ 1 ならば kh(2)𝑛+𝑡+1− emb(𝑤𝑡)k < 𝜀 を満たせる。
+有限長 𝑛 ならパラメータのスケーリングを調整することで誤差を任意に小さくできる。
+以上により、𝑞𝑡 −1デコード時における第 2 層目 attention層により、𝑤𝑡の埋め込みをほぼ一点的に抽出可能であり、補題の主張が成り立つ。
+
+
+B.3 補題 13 の証明
+
+(1) FFN による遷移関数の模倣。
+DFA において、遷移関数 𝛿 : 𝑄 × Σ → 𝑄 は定義域・値域が有限集合である。
+よって、任意のemb(𝑞𝑡 −1), emb(𝑤𝑡)の組に対してemb(𝑞𝑡)を返す写像を、FFN (多層パーセプトロン)を通じて任意の精度で近似できる[18]。
+具体的には、埋め込みベクトルを結合したh(2)𝑛+𝑡+1, emb(𝑞𝑡 −1)を入力として、線形変換と ReLU 等の非線形を組み合わせれば、 emb(𝑞𝑡)に近いベクトル z(2)𝑛+𝑡+1を出力可能になる。
+(2)出力層におけるトークンの決定。
+FFN によりkz(2)𝑛+𝑡+1− emb(𝑞𝑡)k < 𝜀 である z(2)𝑛+𝑡+1が得られたとする。
+ここで、出力層として Layer Normalization と線形変換を施し，Σ ∪ 𝕍 (𝕍 ⊇ 𝑄)上で argmax を取ると、トークン 𝑞𝑡を一意に確定できる。

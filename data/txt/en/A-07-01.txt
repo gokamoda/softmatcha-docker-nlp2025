@@ -1,0 +1,261 @@
+What Language Do Japanese-specialized Large LanguageModels Think in?
+
+Chengzhi Zhong
+
+1
+
+Fei Cheng
+
+1
+
+Qianying Liu
+
+2
+
+Junfeng Jiang
+
+3
+
+Zhen Wan
+
+1
+
+Chenhui Chu
+
+1
+
+Yugo Murawaki
+
+1
+
+Sadao Kurohashi
+
+1,21
+
+Kyoto University, Japan
+
+2
+
+National Institute of Informatics, Japan
+
+3
+
+The University of Tokyo, Japan
+
+
+
+{zhong, feicheng, wan, chu, murawaki,kuro}@nlp.ist.i.kyoto-u.ac.jp
+
+
+
+ying@nii.ac.jp
+
+
+
+jiangjf@is.s.u-tokyo.ac.jp
+
+
+
+Abstract
+
+In this study, we investigate whether large language mod-els (LLMs) trained with substantial Japanese data exhibithigher probabilities for Japanese in their intermediate lay-ers when projected onto the vocabulary space (a.k.a la-tent languages).
+Focusing on Llama2 (English-centric),Swallow (continued in Japanese), and LLM-jp (balancedEnglish-Japanese), we ﬁnd Llama2 relies mainly on En-glish, while Swallow and LLM-jp use both Japanese andEnglish as latent languages.
+Moreover, input and target lan-guages both inﬂuence the probability distribution betweenlatent languages.
+
+
+1 Introduction
+
+Recent studies have shown that English-centric large lan-guage models (LLMs) display distinct patterns in their in-termediate layers, where the language distribution is heav-ily skewed towards English when generating underrepre-sented languages
+[1].
+This raises our interest in inves-tigating whether LLMs utilize the dominant non-Englishlanguages from their training corpora in their intermedi-ate layers during generation.
+We examine three typicalcategories of models that are used to process Japanese:Llama2
+[2], an English-centric model; along with twoJapanese-specialized models Swallow
+[3], an English-centric model with continued pre-training (CPT) inJapanese; and LLM-jp
+[4], a model pre-trained on bal-anced corpora of English and Japanese.
+More details ofthese models are shown in Table 1.(a)
+Japanese CPT: Swallow(b) Balanced English and Japanese: LLM-jpFigure 1: Logit lens results of Japanese-specialized mod-els, (a) Swallow, (b) LLM-jp.
+The input prompt is"Français: "musique" - 日本語: "", a French-to-Japanesetranslation task with the answer "音楽" (music).
+The ﬁgureshows the highest probability token from the intermediatelayers, starting from layer 20.To investigate how the LLMs’ behaviour in the interme-diate layers, we employ the logit lens method
+[5], whichunembeds each layer’s latent representation into the vo-cabulary space.
+We verify the latent languages of the threetypes of models when processing Japanese: While Llama2Table 1: Categorization of multilingual models based on language proportion and training strategy.
+Model Category Model Proportion in pre-training data Token From scratchEn Ja OtherEnglish-centric Llama 2 89.70% 0.10% 10.20%
+2,000B YesJapanese CPT Swallow 10% 90% 0% 100B Llama-2 basedBalanced English and Japanese LLM-jp 50% 50% 0%
+300B Yesuses English as its latent language
+[1], in contrast, theJapanese CPT model Swallow utilizes both English andJapanese within its intermediate layers, as shown in Fig-ure 1 (a).
+Meanwhile, Figure 1 (b) shows LLM-jp primarilyutilizes Japanese as the latent language in this case.
+To further ﬁnd out the models’ latent language whengenerating languages other than the dominant Japanese andEnglish.
+We introduce a new setting in which non-Japaneseand non-English languages are used as input and target lan-guages to explore the behaviors of the intermediate layers.
+Our experiments show that in intermediate layers of themodels, the latent language of Japanese-specialized mod-els is a distribution over English and Japanese, with theprobabilities of these distributions depending on their sim-ilarity to both input and target language.
+In the ﬁnal layers, the internal predictions transform into the correspondingtarget language.
+In summar y, we conﬁrm that Japanese-specialized mod-els Swallow and LLM-jp exhibit two latent languages, En-glish and Japanese.
+The utilization of these latent lan-guages depends on their similarity to the input and targetlanguages, reﬂecting a dynamic adjustment in internal lan-guage processing.
+
+
+2 Related work
+
+
+
+2.1 Multilingual Large Language Models
+
+Current frontier large language models, such as GPT-4[6], Gemini
+[7], and Llama-2
+[2], are primarily trainedwith English-centric corpora, with other languages con-stituting only a small portion of the training data.
+Re-searchers have sought to enhance these models’ mul-tilingual capabilities through various methods.
+Oneapproach involves continued pre-training with second-language data [8, 9, 10, 11, 12], as demonstrated by mod-els like Swallow [3] based on Llama-2.
+While these ap-proaches have proven eﬀective, ongoing research aims todiscover more eﬃcient techniques to further improve themultilingual capabilities of large language models.
+
+
+2.2 Mechanistic Interpretability
+
+Mechanistic interpretability is the study of understand-ing how machine learning models work by analyzing theirinternal components and processes to elucidate the mech-anisms that give rise to their behavior and predictions.
+Itencompasses research lines like superposition [13], sparseautoencoders [14], circuit analysis [15] and so on.
+Withinthese studies, logits lens
+[5] and tuned lens
+[16] focus ondecoding the probability distribution over the vocabularyfrom intermediate vectors of the model, aiding in the com-prehension of how the model generates text in the targetlanguage.
+Previous study [1] showed that Llama-2 modelshave an abstract "concept space" that lies closer to Englishthan to other languages.
+When Llama-2 models performtasks such as translation between non-English languages,the probabilities in the intermediate layers initially focuson the English version of the answer and gradually shift tothe target language.
+In this work, we expand previous work and utilize thesetools to study the distribution of latent languages in diﬀer-ent categories of Japanese-specialized LLMs and examinedhow the probability of internal latent languages is associ-ated with the target language.
+
+
+3 Method
+
+
+
+3.1 Logit Lens
+
+In the last layer, LLMs use an unembedding matrix toproject the hidden vectors onto the vocabulary dimensions.
+Then, a softmax function is applied to determine the outputtoken.
+This process is called unembedding.
+By applyingthe same unembedding operation to the hidden vectorspassed between the intermediate layers, we can obtain to-kens generated by intermediate layers.
+Logit lens is a tooldesigned to achieve this purpose.
+Therefore, we leveragelogit lens to calculate the probability for the model’s inter-0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_targetLlama2-13b0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_targetSwallow-13b0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_targetLLM-jp-v2.0Figure 2: Comparison of English-centric and Japanese-specialized models when processing Japanese Cloze.
+X-axesdenote layer’s index of the model, and y-axes denote probability of answer in each language.
+Translucent area show 95%Gaussian conﬁdence intervals.mediate layers to generate a speciﬁc token sequence.
+
+
+3.2 Task Design
+
+Dataset Construction.
+We ﬁrst collect parallel words infour languages―English, French, Japanese, and Chinese.
+To obtain word pairs with diﬀerent spellings but identi-cal meanings, we construct this dataset based on part ofthe Database of Japanese Kanji Vocabulary in Contrast toChinese (JKVC)[17].
+Then, we use GPT-4 to do trans-lation and obtain the corresponding English and Frenchwords or phrases, and then manually review and correct er-rors.
+The total size is 166.
+Based on the parallel words andfollowing previous studies, we demonstrate the followingprompts for two tasks, and the corresponding answers forexamples will be the same Japanese word "原則" (prin-ciple).
+Models are asked to predict the answer, and wecalculate the probability of the answer in the language wewant to monitor.
+We use 4-shot for translation task and2-shot for cloze task.
+Translation task:Français: "principe" - 日本語:"Cloze t ask:"__"は、基本的なルールや信念です。答え: "
+
+4 Results
+
+
+
+4.1 Analysis on Processing Dominant
+
+
+
+Language – Japanese
+
+To investigate which latent language is used when pro-cessing Japanese, we conduct experiments to compare thelatent language behaviors of three models when processingcloze task with Japaneses set as the target language.
+The average result of cloze task is shown in Figure 2.Llama2, which is an English-dominant model, exhibitsusing English as latent language in its intermediate layers.
+In contrast, Swallow, which underwent CPT in Japanese,demonstrates a noticeable probability of Japanese in itsintermediate layers.
+For LLM-jp, English probabilities arenearly absent in the intermediate layers.
+This indicates thatthese Japanese-specialized models lean to utilize Japanesemore as the latent language when processing Japanese.
+
+
+4.2 Analysis on non-Dominant Languages
+
+We further investigate which latent language the mod-els use when generating non-dominant languages, such asFrench and Chinese, compared to dominant languages.
+Forthis part, we test the models on translation tasks betweendiﬀerent languages.
+The average result is shown in Figure 3, the source lan-guage is always English.
+When the target language is alsoEnglish, it becomes a repetition task.
+Following a left-to-right order, we gradually change the target language.
+It is observed that for both Swallow and LLM-jp, as thetarget language gets closer to Japanese, the probability ofJapanese in the intermediate layers increases while thatof English decreases.
+Additionally, for Swallow, Englishand Japanese are consistently intermixed in the intermedi-ate layers, whereas for LLM-jp, the usage of English andJapanese in the intermediate layers is more isolated.
+We also investigate how the source language aﬀects theprobability distribution of latent languages.
+We show thoseresults in Appendix Figure 5.
+In this case, the targetlanguage is Japanese.
+When the source language is alsoJapanese, it becomes a repetition task.
+Following a left-to-right order, we gradually change the source language toincrease its similarity to Japanese.
+The results are similarthat the probability of Japanese in the intermediate layers(a) Translation: Swallow-13b0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_targetja_latent0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_latentfr_target0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_latentzh_target0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_target(b) Translation: LLM-jp-v2.00 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_targetja_latentEn -> En0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_latentfr_targetEn -> Fr0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_latentzh_targetEn -> Zh0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_targetEn -> JaFigure 3: Translation task results of two models with a ﬁxed target language and varying source languages.
+(a)results for Swallow-13b, (b) results for llm-jp-v2.0.
+X-axes denote layer’s index of the model, and y-axes denote probabilityof answer in each language.
+Translucent area show 95% Gaussian conﬁdence inter vals.increases while that of English decreases.
+In the selectionof latent languages in the intermediate layers, the sourcelanguage has a similar inﬂuence to the target language.
+The results indicate that the activation of latent lan-guages in LLMs depends on their similarity to the inputand target languages.
+
+
+4.3 How Is Culture Conﬂict QA Solved?
+
+
+Because the models ‘think’ in latent languages, whetherthis aﬀects the model’s reasoning in QA tasks is a questionworth discussing.
+Because some questions can have diﬀer-ent answers in diﬀerent cultural contexts across languages.
+Thus, We conduct a case study on this topic and use thelogit lens to observe the intermediate layers of the models.
+As shown in Figure 4, we ask the models about the startdate of the school year in Japan with Japanese prompt.
+In Japan, the new school term begins in April.
+Llama-2’s English-dominant intermediate layers prefer the answer"September/nine," which is the typical start date for Amer-ican schools.
+The correct answer for Japan only appearsin the latter layers where the probability is concentratedon the target language.
+In Swallow, the wrong answer"九" (nine) only appear once in layer 36.
+In contrast,the bilingual-centric LLM-jp does not exhibit this issue.
+You can see in the early layers that other numbers like "八" and 1 appear.
+But it is likely just due to the chaoticstate in the early layers before the answer is determined.
+This indicates that, for such questions, the knowledge inthe primary language context signiﬁcantly inﬂuences themodel’s predictions.
+This provides an internal perspectiveon why operations like knowledge editing should focus onthe model’s primary language.
+
+
+5 Conclusion
+
+In this study, we demonstrate that the latent language ofLLMs is majorly determined by the language of its trainingcorpora.
+We conﬁrm that Japanese-specialized Swallowand LLM-jp both utilize Japanese as their latent languagewhen processing Japanese input.
+Given that Swallow and LLM-jp exhibit the use of twointernal latent languages, the degree to which each latentlanguage is utilized depends on its similarity to the inputand target languages.
+When the input language is moresimilar to Japanese, the proportion of Japanese in the in-termediate layers increases, and the same applies to thetarget language.
+Additionally, For Swallow, the internallatent language distribution consistently includes both En-glish and Japanese, with English being more dominant.
+Incontrast, LLM-jp tends to favor a single language.
+In future research, we aim to extend our investigationto models with other speciﬁc dominant languages, suchas Chinese, French, and Arabic, to further explore thebehavior and mechanisms of non-English-centric LLMs.
+
+
+
+Acknowledgment
+
+This work was supported by the "R&D Hub Aimed atEnsuring Transparency and Reliability of Generative AIModels" project of the Ministry of Education, Culture,Sports, Science and Technology.
+
+References
+
+
+[1]Chris Wendler, Veniamin Veselovsky, GiovanniMonea, and Robert West. Do llamas work in English?on the latent language of multilingual transformers.arXiv preprint arXiv:2402.10588, 2024.
+[2]Hugo Touvron, Louis Martin, Kevin Stone, PeterAlbert, Amjad Almahairi, Yasmine Babaei, Niko-lay Bashlykov, Soumya Batra, Prajjwal Bhargava,Shruti Bhosale, et al. Llama 2: Open founda-tion and ﬁne-tuned chat models. arXiv preprintarXiv:2307.09288, 2023.
+[3]Kazuki Fujii, Taishi Nakamura, Mengsay Loem, Hi-roki Iida, Masanari Ohi, Kakeru Hattori, Hirai Shota,Sakae Mizuki, Rio Yokota, and Naoaki Okazaki.Continual pre-training for cross-lingual LLM adapta-tion: Enhancing Japanese language capabilities. arXivpreprint arXiv:2404.17790, 2024.
+[4]Akiko Aizawa, Eiji Aramaki, Bowen Chen, Fei Cheng,Hiroyuki Deguchi, Rintaro Enomoto, Kazuki Fujii,Kensuke Fukumoto, Takuya Fukushima, Namgi Han,et al. LLM-jp: A cross-organizational project forthe research and development of fully open JapaneseLLMs. arXiv preprint arXiv:2407.03963, 2024.
+[5]Nostalgebraist. Interpreting gpt: Thelogit lens. https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens, 2020.Accessed: 2024-07-28.
+[6]Josh Achiam, Steven Adler, Sandhini Agarwal, LamaAhmad, Ilge Akkaya, Florencia Leoni Aleman, DiogoAlmeida, Janko Altenschmidt, Sam Altman, ShyamalAnadkat, et al. Gpt-4 technical report. arXiv preprintarXiv:2303.08774, 2023.
+[7]Gemini Team, Rohan Anil, Sebastian Borgeaud,Yonghui Wu, Jean-Baptiste Alayrac, Jiahui Yu, RaduSoricut, Johan Schalkwyk, Andrew M Dai, AnjaHauth, et al. Gemini: a family of highly capable mul-timodal models. arXiv preprint arXiv:2312.11805,2023.
+[8]Fan-Keng Sun, Cheng-Hao Ho, and Hung-Yi Lee.Lamol: Language modeling for lifelong languagelearning. In International Conference on LearningRepresentations, 2020.
+[9]Tom Brown, Benjamin Mann, Nick Ryder, MelanieSubbiah, Jared D Kaplan, Prafulla Dhar iwal, ArvindNeelakantan, Pranav Shyam, Girish Sastry, AmandaAskell, et al. Language models are few-shot learn-ers. Advances in neural information processingsystems, Vol. 33, pp. 1877–1901, 2020.
+[10]Zoltan Csaki, Bo Li, Jonathan Li, Qiantong Xu, PianPawakapan, Leon Zhang, Yun Du, Hengyu Zhao,Changran Hu, and Urmish Thakker. Sambalingo:Teaching large language models new languages, 2024.
+[11]Yiming Cui, Ziqing Yang, and Xin Yao. Eﬃcient andeﬀective text encoding for Chinese llama and alpaca.arXiv preprint arXiv:2304.08177, 2023.
+[12]Julie Hunter, Jérôme Louradour, Virgile Rennard, Is-maïl Harrando, Guokan Shang, and Jean-Pierre Lorré.The claire French dialogue dataset. arXiv preprintarXiv:2311.16840, 2023.
+[13]Nelson Elhage, Tristan Hume, Catherine Olsson,Nicholas Schiefer, Tom Henighan, Shauna Kravec, ZacHatﬁeld-Dodds, Robert Lasenby, Dawn Drain, CarolChen, et al. Toy models of superposition. arXivpreprint arXiv:2209.10652, 2022.
+[14]Robert Huben, Hoagy Cunningham, Logan RiggsSmith, Aidan Ewart, and Lee Sharkey. Sparse autoen-coders ﬁnd highly interpretable features in languagemodels. In The Twelfth International Conferenceon Learning Representations, 2023.
+[15]Kevin Ro Wang, Alexandre Variengien, ArthurConmy, Buck Shlegeris, and Jacob Steinhardt. In-terpretability in the wild: a circuit for indirect objectidentiﬁcation in gpt-2 small. In The Eleventh In-ternational Conference on Learning Represen-tations, 2022.
+[16]Nora Belrose, Zach Furman, Logan Smith, DannyHalawi, Igor Ostrovsky, Lev McKinney, Stella Bider-man, and Jacob Steinhardt. Eliciting latent predictionsfrom transformers with the tuned lens. arXiv preprintarXiv:2303.08112, 2023.
+[17]松下達彦, 陳夢夏, 王雪竹, 陳林柯. 日中対照漢字語データベースの開発と応用. 日本語教育, Vol.177, pp. 62–76, 2020.
+
+
+
+A Culture Conﬂict QA
+
+▁answer ▁month ▁month： 「 ▁school： ▁“ ▁school： ▁“ ▁Septe…： ▁“ ▁Septe…： ▁“ ▁Septe…： ▁“ ▁April： ▁“ ▁April： “ ▁nine： “ 四： “ 四え ：  “  20222426283032343638Llama-2-13bInputLayeroutput(a) English-centric: Llama-2-13b: ▁school ▁school: ▁school ▁school: ▁Septe… 学期: “ ▁Septe…: “ 学期: “ 学期: “ 学期: “ ▁April: “
+九: “ 四: “ 四答え ：  “  20222426283032343638Llama-2-13bInputLayeroutput(b) Japanese CPT:
+Swallow-13b： ▁“ 1： “ 八： “ 八： “ 月： “ 月： “ 始： “ 始： “ 四月： “ 始： “ 4： “ 四月答え ：  “  20222426283032343638LLM-jp-v2.0InputLayeroutput(c) Balanced English and Japanese: LLM-jp-v2.0Figure 4: Results of culture conﬂict question.
+We use one-shot format prompts.
+The question is: 「日本の学校新学期が始まる月は：＿月、答え：」(The month when the new school term starts in Japan is: _ month, answer: ).
+Thecorrect answer is 「四」(April).
+The colors in the ﬁgures represent entropy: blue indicates the probability is concentratedon the top tokens, while red means it is dispersed across the vocabulary.
+
+
+B Extra Results
+
+(a) Translation:
+Swallow-13b0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_target0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_latent0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_target0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_latent(b) Translation: LLM-jp-v2.00 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_targetEn -> Ja0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_targetFr -> Ja0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_targetZh -> Ja0 5 10 15 20 25 30 35 40layer0.00.51.0probabilityen_latentja_targetJa -> JaFigure 5: Translation task results of two models with a ﬁxed source language and varying target languages.
+(a)results for Swallow-13b, (b) results for llm-jp-v2.0.
+X-axes denote layer’s index of the model, and y-axes denote probabilityof answer in each language.
+Translucent area show 95% Gaussian conﬁdence inter vals.

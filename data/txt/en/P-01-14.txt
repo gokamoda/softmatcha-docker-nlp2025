@@ -1,0 +1,198 @@
+Adapting Multilingual Models for Specialized Translationthrough Mixed Fine-tuning
+
+Liyan Wang Haotong Wang Yves Lepage
+
+
+
+ 早稲田大学 情報生産システム研究科
+
+
+
+{wangliyan0905@toki.,wanghaotong0925@toki., yves.lepage@}waseda.jp
+
+
+
+Abstract
+
+In this work, we dissect mixed ﬁne-tuning for adapt-ing multilingual models to English-to-Japanese translation.
+We explore diﬀerent sampling regimes across specializedand generic translations.
+Our ﬁndings indicate that over-sampling the in-domain data leads to notable improvementsin domain-speciﬁc performance, yet at the cost of severedegradation in generalization to unseen languages, per-forming even worse than basic ﬁne-tuning with no genericdata.
+In contrast, undersampling the generic data pre-serves more of the original multilingual capabilities whilestill achieving moderate domain adaptation gains.
+Theseresults highlight the critical role of managing training sizeand data coverage to optimize the trade-oﬀ between spe-cialization and generalization during adaptation.
+
+
+1 Introduction
+
+Adaptive Neural Machine Translation (NMT) tradition-ally involves ﬁne-tuning a pre-trained, generic model on asmall amount of in-domain data to improve performanceon a specialized target domain.
+While eﬀective, this ba-sic approach often leads the model to overﬁt the in-domaindistribution and lose the generalization capabilities learnedfrom large-scale generic data.
+To address this, mixed ﬁne-tuning for NMT has been ﬁrst proposed in [1] based on theidea of domain adaptation where in-domain data is limited.
+This method updates a generic model, pre-trained on large-scale generic data, by training it on a mix of in-domainand generic samples, eﬀectively improving in-domain per-formance while mitigating overﬁtting.
+Prior studies haveapplied it for various transfer scenarios, such as adaptingtranslations across diﬀerent domains for the same languagepair [2] and improving low-resource translations by lever-aging high-resource language data [3].Figure 1 Variants of mixed ﬁne-tuning in sampling traininginstances from in-domain and generic sets.
+In this work, we apply mixed ﬁne-tuning to adapt apre-trained multilingual model for a speciﬁc translationtask.
+Recognizing that data used in the development ofmany state-of-the-art models is not always open-sourced,we simulate this scenario by using a small subset of genericdata.
+We investigate the impact of varying training datadistributions (shaped by diﬀerent sampling regimes), fo-cusing on their inﬂuence on specialized and multilingualtranslation performance.
+
+
+2 Mixed ﬁne-tuning: background
+
+
+
+and variants
+
+
+The mixed ﬁne-tuning approach involves training ageneric model on out-of-domain data and then ﬁne-tuningthe model using both in-domain and out-of-domain data.
+In this work, we focus on the ﬁne-tuning step.
+A com-mon technique of this approach is oversampling, wherein-domain samples are repeated multiple times to balancetheir weight against the larger generic dataset.
+This work explores three distinct variants of mixed ﬁne-tuning, each deﬁned by how in-domain (in size of 𝐼) andgeneric (in size of 𝑂) parallel sentences are combined.
+Figure 1 illustrates the diﬀerence between these variants.
+Oversampling As proposed in [1], oversampling in-terleaves two datasets with a heavier sampling probabilityto in-domain data.
+The probability is based on the size ofthe generic data relative to the total size, i.e.,𝑂𝐼+𝑂for in-domain data and 1 −𝑂𝐼+𝑂for generic data.
+Consequently,each in-domain sample is repeated approximately𝑂𝐼times,creating a combined set where 𝐼 ×𝑂𝐼in-domain instancesare interleaved with 𝑂 generic ones, thus a 1:1 ratio by theend of training iterations.
+Undersampling It uses the same sampling probabil-ities as oversampling but stops earlier when all in-domainsamples have been added.
+Undersampling exhausts all 𝐼examples from the in-domain set, resulting in a total num-ber of𝐼𝑂𝐼+𝑂=𝐼
+(𝐼 +𝑂)𝑂training samples.
+Of these, the genericdata is trimmed to𝐼 (𝐼 +𝑂)𝑂× (1 −𝑂𝐼+𝑂) =𝐼2𝑂.Concatenation
+As a simpler alternative, it directlycombines the original in-domain and generic sets withoutadjusting their sizes.
+The training set includes 𝐼 +𝑂 parallelsentences with raw data proportions.
+
+
+3 Experimental setups
+
+
+
+3.1 Datasets
+
+Table 1 summarizes the distribution of languages in thedatasets used in the experiments reported in this work.
+Table 1
+Dataset distribution.
+Data Languages translated from EnglishTrain in-domain Japanese (ja)generic Spanish (es), Chinese (zh), Indonesian (id),Portuguese (pt), Finnish (ﬁ), Urdu (ur), Mace-donian (mk), Albanian (sq), Dutch (nl)Valid.
+in-domain JapaneseTest in-domain Japanesegeneric Spanish, Chinese, Indonesian, Portuguese,Finnish, Urdu, Macedonian, Albanian, Dutch,Japanese, and others (over 100 languages)In-domain data The in-domain data is sourced fromthe Kyoto Free Translation Task (KFTT) corpus1）, whichcontains English-Japanese parallel sentences extractedfrom Wikipedia articles.
+We apply several ﬁltering cri-teria as in [ 4] to both the source and target segments andrandomly sample 2k sentence pairs for validation and test.
+For training, we experiment with three sizes of 5k, 10k and50k parallel sentences.
+Generic data The generic data is sampled fromOPUS2）[5], a collection of parallel corpora used in devel-1）
+https://opus.nlpl.eu/KFTT/corpus/version/KFTT2）
+https://opus.nlpl.eu/opus-100.php.oping the series of OPUS translation models.
+We randomlyselect 9 language pairs and curate 10k parallel sentencesfor each pair following the same ﬁltering procedures.
+Intotal, 90k generic sentence pairs are selected for modeltraining.
+
+3.2 Models and evaluation
+
+We experiment with the Helsinki-NLP/opus-mt-en-mul3）model
+[6], which is capable of translating Englishinto 120 diﬀerent languages.4）For mixed ﬁne-tuning, weimplement three diﬀerent settings, each designed to ex-plore unique sampling strategies for combining in-domainand generic data.
+These settings are compared against twobaselines: the pre-trained model, used without additionalﬁne-tuning, and basic ﬁne-tuning, which updates the modelfor convergence on English-to-Japanese translation usingonly in-domain data.
+The evaluation is conducted on a spe-cialized test set, aligned with the in-domain training data,and a generic test set5）to assess generalization across mul-tilingual translations.
+The generic set includes 9 selectedlanguage pairs from the generic training data, Japanese-speciﬁc translations, and over 100 other (unselected) lan-guage pairs that were not seen during ﬁne-tuning.
+
+
+4 Results and analysis
+
+
+
+4.1 Specialized versus generic translation
+
+Table 2 presents the performance of multilingual MTmodels ﬁne-tuned for English-to-Japanese translation us-ing various strategies.
+Without ﬁne-tuning, the pre-trainedmodel lacks the specialized knowledge required for trans-lating Wikipedia content (of KFTT sentences), achievinga BLEU score of only 3.3 on the English-to-Japanesetest set.
+Introducing ﬁne-tuning leads to signiﬁcant im-provements in domain-speciﬁc adaptation, though with aslight degradation in generating the correct target language.
+Basic ﬁne-tuning, which uses only the 10k in-domaindataset, increases the BLEU score by +5.6 points overthe baseline.
+When incorporating generic data throughmixed ﬁne-tuning strategies, out-of-domain exposure pro-3） https://huggingface.co/Helsinki-NLP/opus-mt-en-mul4）
+The OPUS model is built on the MarianNMT architecture, con-sisting of a 6-layer encoder and a 6-layer decoder with a total of 77million trainable parameters.5） https://object.pouta.csc.fi/Tatoeba-MT-models/eng-mul/opus2m-2020-08-01.test.txtTable 2 Performance of translation models ﬁne-tuned undervarious conﬁgurations for interleaving 10k in-domain data (I)and generic data (O).
+Models are evaluated on both specialized(English-to-Japanese) and generic (multilingual) translation tasksusing BLEU, ChrF++ and LangAcc, where LangAcc measures theaccuracy of generating translations in the correct target language.
+Fine-tuning Data size (k) BLEU ChrF++ LangAccapproach I +
+O ↑ ↑ ↑Specialized translation (ja)- 0
++ 0
+3.3±0.28.8±0.2100.0%basic 10 + 0 8.9±0.415.3±0.399.7%mixed-concat 10 + 90 9.5±0.416.1±0.399.8%mixed-under 10 + 1 8.8±0.315.3±0.399.6%mixed-over 90 + 90 13.1±0.519.8±0.4100.0%Generic translation (all)- 0 + 0 40.5±2.859.7±0.771.7%basic 10 + 0
+30.2±3.251.3±0.771.0%mixed-concat 10 + 90 18.8±1.845.9±0.666.2%mixed-under 10 + 1 31.0±3.253.2±0.771.3%mixed-over 90 + 90 9.5±1.442.0±0.966.4%Generic translation (unselected)- 0 + 0 39.0±3.259.4±0.865.6%basic 10 + 0 28.1±3.550.5±0.865.0%mixed-concat 10 + 90 15.2±1.743.1±0.758.6%mixed-under 10 + 1 29.0±3.652.6±0.865.0%mixed-over 90 + 90 7.2±1.138.8±0.958.9%Generic translation (selected)- 0
++ 0
+52.8±2.365.1±1.596.7%basic 10 + 0 41.1±1.958.3±1.395.9%mixed-concat 10 + 90 44.5±2.161.8±1.397.6%mixed-under 10 + 1 42.3±1.959.6±1.397.2%mixed-over 90 + 90 43.0±1.960.6±1.397.6%Generic translation (ja)- 0
++ 0 14.9±2.919.0±2.499.1%basic 10 + 0 9.8±1.715.8±1.498.7%mixed-concat 10 + 90 8.9±1.715.3±1.399.5%mixed-under 10 + 1 9.9±1.715.8±1.498.7%mixed-over 90 + 90 9.3±1.715.5±1.399.6%vides competitive performance, with larger amounts ofgeneric data yielding marginal improvements.
+In par-ticular, mixed-concat, which accesses the full genericdata, achieves slight but statistically insigniﬁcant gainsover mixed-under that includes a small portion of genericdata.
+This indicates that the beneﬁts of out-of-domaindata for specialized translation are limited.
+In contrast,the oversampling strategy, which ampliﬁes the presenceof in-domain instances by repeating each multiple times,delivers the best performance in specialized translation,achieving notable gains of approximately 10 points in bothBLEU and ChrF++ evaluations.
+However, this improved in-domain performance comesat a substantial cost to the general translation capabil-ity.
+All ﬁne-tuned models exhibit notable declines onthe generic multilingual test.
+More strikingly, increas-ing generic data during ﬁne-tuning (as in mixed-concat)paradoxically worsens generalization, hinting at potentialconﬂicts in representation learning when scaling up train-ing computations.
+The oversampling regime, in particu-lar, leads to a form of catastrophic forgetting, where pre-viously acquired multilingual proﬁciency diminishes sig-niﬁcantly.
+This degradation is especially pronounced forunselected languages that received no reinforcement dur-ing ﬁne-tuning.
+Similarly, intensive adaptation erodes thegeneral translation proﬁciency in the same language pair.
+While mixed-over enhances the ability to translate spe-cialized English-to-Japanese text, it fails to preserve thequality of generic English-to-Japanese translation.
+
+
+4.2 Inﬂuence of in-domain data scale
+
+Figure 2 Diﬀerences in BLEU scores relative to the pre-trainedmultilingual model for various ﬁne-tuning strategies across threescales of in-domain training data (5k, 10k, and
+50k).In addition to 10k in-domain scenario, we also con-duct experiments using both smaller (5k) and larger (50k)datasets. Figure 2 shows comparison between ﬁne-tunedmodels and the pre-trained MT model across three scalesin specialized and general multilingual translation capabil-ities (as measured by BLEU).For specialized translation, increasing the amountof in-domain data consistently leads to better perfor-mance.
+We observe that BLEU scores of ﬁne-tunedmodels are proportionally magniﬁed as the amount of in-domain data increases.
+The oversampling regime consis-tently outperforms others in capturing the domain-speciﬁcdistribution across all in-domain data scales.
+It ampli-ﬁes the size of in-domain data by repeatedly exposing themodel to samples based on the ratio of generic to in-domaindata.
+Importantly, oversampling, while maintaining thetotal in-domain repetition constant, yields greater gainswhen applied to more diverse datasets (as shown in Fig-ure 3).
+By encountering a wider variety of examples inlarger in-domain datasets, the mixed-over model achievesbetter generalization for the specialized task.
+Incorporat-ing generic data (mixed-concat or mixed-under) yieldsmarginal gains over basic ﬁne-tuning.
+In contrast, adaptation to a specialized language pair ex-acts a cost on multilingual translation quality, where ﬁne-tuning the generic model results in performance degrada-tion.
+Both basic and mixed approaches suﬀer declines asmore in-domain data is introduced.
+Furthermore, we ob-serve that increasing the training size during ﬁne-tuningexacerbates degradation on generic translation tasks, par-ticularly for unselected language pairs(Figure 2).
+Inmixed-concat and mixed-over settings, where the train-ing size is scaled up signiﬁcantly in the 5k in-domain sce-nario, the models perform substantially worse than ba-sic ﬁne-tuning.
+Undersampling, which limits access toa smaller portion of generic data, emerges as a compar-atively stable compromise in maintaining generalization.
+Although the model still experiences declines compared tothe original generic baseline, these losses remain relativelymodest, per forming better than other mixed ﬁne-tuning set-tings.
+This paradox suggests that more extensive trainingappears to intensify conﬂicts in representation learn-ing, ultimately harming performance in areas outsidethe adapted domain.
+For selected languages (those included in the genericdata), mixed ﬁne-tuning strategies demonstrate a stabledegradation of around -10 points across diﬀerent in-domaindata sizes.
+In contrast, basic ﬁne-tuning, which excludesthese languages, exhibits a more substantial drop of -23points in the 50k setting.
+This highlights that the presenceof even a small amount of generic data (as in mixed-under)stabilizes performance on selected languages.
+When theratio between in-domain and generic data is less extreme,the proportion of the in-domain appears to have minimalimpact on three settings of mixed ﬁne-tuning.
+
+
+4.3 Insights from negative results
+
+While increasing the in-domain data improves spe-cialized translation, our ﬁndings suggest that avoidingexcessive exposure to large volumes of generic data isequally crucial.
+Increasing training size imposes a grow-ing penalty on generic multilingual translation perfor-mance.
+Fine-tuning methods that integrate generic dataexcessively can also lead to severe overﬁtting to the learneddistribution.
+Instead, undersampling ensures that the sam-pling distribution remains more in line with the in-domaindata by trimming generic data, emerges as a more eﬀectivestrategy than oversampling (Figure 4).
+Selective inclusionof generic data during adaptation can retain a residual levelof generalization.
+In addition, it is crucial to carefully select generic datawhen adapting pre-trained models that support multiplelanguages or domains.
+Rather than maximizing the vol-ume of generic data, prioritizing the coverage of sam-ples proves more eﬀective.
+In our experiments, the uni-form distribution of generic data across 9 languages enablesthe undersampling strategy to include representative exam-ples from each language pair, even with small in-domaindatasets.
+By incorporating fewer but more representativegeneric samples, the ﬁne-tuned model achieves a better bal-ance between specialized adaptation and multilingual gen-eralization (Figure 5).
+These ﬁndings suggest that selectinggeneric data to ensure comprehensive language coveragewithin the pre-trained model would further enhance the ef-fectiveness of mixed ﬁne-tuning under the undersamplingstrategy.
+
+
+5 Conclusion
+
+This work examined the eﬀects of ﬁne-tuning strate-gies on adapting multilingual NMT models to special-ized English-to-Japanese translation.
+We observed thatdomain-speciﬁc expertise scales with the quantity of in-domain samples.
+In particular, intensive exposure to in-domain data (e.g., through oversampling) can substantiallyenhance specialized translation quality.
+However, it riskseroding general translation performance, especially on un-selected language pairs not covered in generic training data.
+Scaling in-domain data leads to cumulative degradation forgeneric translation in basic ﬁne-tuning.
+In contrast, mixedﬁne-tuning facilitates better adaptation to out-of-domaintranslations, but its eﬀectiveness depends on the genericdata incorporated.
+Strategies that incorporate generic datamore conservatively, as with undersampling, help maintaina better balance between domain adaptation and multilin-gual generalization.
+
+
+
+References
+
+
+[1] Chenhui Chu, Raj Dabre, and Sadao Kurohashi. An empir-ical comparison of domain adaptation methods for neuralmachine translation. In Regina Barzilay and Min-Yen Kan,editors, ACL 2017, pp. 385–391, Vancouver, Canada, July2017.
+[2] Yasmin Moslem, Rejwanul Haque, John Kelleher, and AndyWay. Domain-speciﬁc text generation for machine transla-tion. In Kevin Duh and Francisco Guzm´an, editors, Pro-ceedings of the 15th biennial conference of the As-sociation for Machine Translation in the Americas(Volume 1: Research Track), pp. 14–30, Orlando, USA,September 2022. Association for Machine Translation in theAmericas.
+[3] Raj Dabre, Atsushi Fujita, and Chenhui Chu. Exploit-ing multilingualism through multistage ﬁne-tuning for low-resource neural machine translation. In Kentaro Inui, JingJiang, Vincent Ng, and Xiaojun Wan, editors, Proceed-ings of the 2019 Conference on Empirical Methodsin Natural Language Processing and the 9th Inter-national Joint Conference on Natural Language Pro-cessing (EMNLP-IJCNLP), pp. 1410–1416, Hong Kong,China, November 2019. Association for Computational Lin-guistics.
+[4] Christian Herold, Jan Rosendahl, Joris Vanvinckenroye, andHermann Ney. Detecting various types of noise for neuralmachine translation. In Smaranda Muresan, Preslav Nakov,and Aline Villavicencio, editors, Findings of the Associ-ation for Computational Linguistics: ACL 2022, pp.2542–2551, Dublin, Ireland, May 2022. Association forComputational Linguistics.
+[5] J¨org Tiedemann. Parallel data, tools and interfaces in OPUS.In Nicoletta Calzolari, Khalid Choukri, Thierry Declerck,Mehmet U˘gur Do˘gan, Bente Maegaard, Joseph Mariani,Asuncion Moreno, Jan Odijk, and Stelios Piperidis, editors,LREC’12, pp. 2214–2218, Istanbul, Turkey, May 2012.
+[6] J¨org Tiedemann and Santhosh Thottingal. OPUS-MT –building open translation services for the world. In Andr´eMartins, Helena Moniz, Sara Fumega, Bruno Martins, Fer-nando Batista, Luisa Coheur, Carla Parra, Isabel Trancoso,Marco Turchi, Arianna Bisazza, Joss Moorkens, Ana Guer-berof, Mary Nurminen, Lena Marg, and Mikel L. For-cada, editors, EAMT 2020, pp. 479–480, Lisboa, Portugal,November 2020.
+
+
+
+A Training details
+
+Fine-tuning is performed for up to 5 epochs with a batchsize of 32 on an Nvidia RTX A6000 GPU.
+We use a dropoutrate of 0.1, a maximum learning rate of 2e-5, and set thebeam search to 4 beams.
+The Adam optimizer is conﬁguredwith an epsilon of 1e-6.
+Model evaluation is conducted af-ter each training epoch, with early stopping applied if thereis no improvement in validation losses for 3 consecutiveepochs.
+
+
+B Trade-oﬀs between specialized
+
+
+
+and generic performance
+
+Figure 3 Performance diﬀerences (BLEU) in in-domain trans-lations between ﬁne-tuned models and the pre-trained translationmodel across various training data sizes.
+The size of each scatterindicates the in-domain data used (5k, 10k, or 50k).Figure 4 Degradations in generic performance compared tothe pre-trained translation model.
+Scatter sizes indicate the in–domain data used (5k, 10k, or 50k).Figure 5 Correlation of improvements in specialized (in-do-main) translations and degradations in generic (out-of-domain)translations.
+The labels around the scatters denote the in-domaindatasets used, while the size of each scatter represents the numberof generic examples involved during ﬁne-tuning.

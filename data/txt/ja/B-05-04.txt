@@ -1,0 +1,224 @@
+ソフトウェア高速化を対象とした LLM と SLM の言語処理特性
+
+飯塚康太
+
+1
+
+ 吉藤尚生
+
+11
+
+株式会社フィックスターズ
+
+
+
+{kota.iizuka,yoshifuji}@fixstars.com
+
+
+
+概要
+
+大規模言語モデル(LLM)のコスト削減を主な目的として、特定ドメインに特化した小規模言語モデル(SLM)の開発が急速に進んでいる。
+この論文では、ソースコードの高速化性能を題材として LLMと SLM を比較し、SLM のコードを壊すリスクが低くなる特性が発揮される事例を示した。
+また、SLMと LLM を組み合わせることで互いの長所を生かしたコード高速化性能を獲得できることも示した。
+
+
+1 はじめに
+
+2022 年 11 月に ChatGPT が公開されたことをきっかけに、さまざまな企業による高性能な LLM の公開と提供が現在に至るまで盛んに行われている[1]。
+LLM では数百億を超えるパラメータを持つことが多いが、最近では、特定ドメインに向けて再学習した比較的パラメータ数の少ない SLM（ドメイン特化SLM、以降単に SLM）を利用することがさまざまな領域で増加している[2][3]。
+しかしながら、SLM の評価は、LLM の評価手法を適用したときにどれくらいの性能劣化が起こるかという側面で検証されることが多く、SLM 独自の特性についてはあまり明らかにはなっていない。
+例えば、コード補完などの一部のタスクでは SLM と LLM で性能差が無いという報告もある[4][5]が、タスク自体が複雑でないことが主な要因で性能差が出なかったと考えられている。
+また、LLM では自然言語のみならずプログラミング言語も扱うこともでき、ソースコードを改善する応用研究も盛んである[6]。
+このようなソースコードの改善のうち、特に高速化（実行時間の短縮）は、同等の資源のまま計算できる量を増大させることができるため、省エネルギー・低コスト化などの面で重要な改善である。
+実際に LLM を用いると、例えば付録 A のような高速化事例を得ることができる。
+そこで本研究では、「競技プログラミングコンテストに提出されたコードを高速化するように書き換える」というタスクを与えて SLM と LLM を比較し、特にコードの実行可能性と実行時間の短縮量という 2 点の特性について、比較と評価を実施した。
+その結果、 SLM は汎用 LLM と異なる長所特性を発揮することを発見した。
+この論文の貢献は次に示すとおりである。
+• ソースコードの高速化を題材とし、言語モデルの高速化能力を定量的かつ多面的に評価できる手法を提案した• ソースコードの高速化能力において、SLM がLLM に比べ高速化能力は劣るがコードを壊しにくい長所を発揮する事例を発見した• SLM と LLM を組み合わせると LLM のみと比較して高速化能力を向上できることを発見した
+
+2 関連研究
+
+LLM が生成したコードを実行して評価する代表的なベンチマークとして HumanEval [7]や MBPP[8]がある。
+これらはタスクの多様性・コード実行の安全性・過剰適合などの問題が指摘されており、xCodeEval [9], SAFIM[4]やLiveCodeBench [10]など新しいベンチマークが提案されている。
+特にxCodeEval は競技プログラミングコンテストサイトである Codeforces1）をもとにしており、自然言語とコードの相互変換や間違ったコードの修正など様々なタスクからなる大規模なデータセットと、その評価のための API サーバーが含まれている。
+
+
+3 実験の概要
+
+実験は 5 つの段階からなる手順で実施した。
+本章ではそれらを順に説明する。
+
+
+3.1 データセット作成
+
+本研究では、2 章でも取り上げた xCodeEval のデータセットを元にした。
+ただし、この中には、今1） https://codeforces.com/表 1: フィルタリング後（サンプリング前）のデータ数。
+難易度については、Codeforces にて示されている点数を、A(1000 点以下)、B(1100-1400 点)、C(1500-1800 点)、D(1900 点以上)と区分した言語＼難易度 A B C D 合計C 224 214 92 70 600C# 3505 1574 429 72 5580C++ 325 255 924 2045 3649Go 42 20 6 5 73Javascript 290 21 7 3 321PHP 445 96 19 4 564Python 3617 2178 1856 591 8242Ruby 1421 399 98 25 1943Rust 31 16 13 22 82合計 9900 4773 3444 2837 20954回利用したいコード・テキスト・テストの 3 点がすべて揃っていないものや、テストを通過しないコードが含まれている。
+また、Java のように xCodeEvalの評価フレームワークでは実行時間が計測できないプログラミング言語のコードも含まれている。
+そのためまず、このような本研究に用いることができないデータをフィルタリングした。
+このフィルタリングによって、実験に使用できるデータの総数は20,954 件となった。
+フィルタリング後の内訳を表 1 に示す。
+これを見ると、プログラミング言語や難易度に大きな偏りがあることがわかる。
+そこで本実験ではそのような偏りを排除するために、言語ごと・難易度ごとに一様乱択で 25 件ずつサンプリングした。
+この条件を満たすコード数が 25 に満たない場合も発生したが、そのような場合には全数を 1 回ずつ使用することとした。
+この結果、実際に使用したサンプル数は 688件となった。
+
+
+
+3.2 LLM によるコード生成
+
+vLLM[11]ライブラリのバッチ推論機能を使用して、各モデルに対してコードを入力し、プロンプトを与えたうえで返答を収集した。
+モデルは次の 4 種類を評価対象とした。
+• Llama3.3-70B: meta-llama/Llama-3.3-70B-Instruct• Llama3.2-1B: meta-llama/Llama-3.2-1B-Instruct• Qwen2.5-32B: Qwen/Qwen2.5-Coder-32B-Instruct• Qwen2.5-1.5B: Qwen/Qwen2.5-Coder-1.5B-InstructQwen 2.5 はプログラミング向けの追加学習がされている特化型モデルで、 Llama 3 はより大規模なデータセットで学習された汎用モデルである。
+それぞれ、 LLM に該当するサイズとして 32B と 70B 、SLM に該当するサイズとして 1.5B と 1B を用いた。
+システムプロンプトは次の 4 種類を使用した。
+• rewrite : 「コードを書き換えて」という指示だけを与え、高速化を指示しない• simple : 「コードを高速化して」という指示だけを与える• general : simple に一般的な高速化手法（SIMD、メモリアクセス最適化など）をまとめたテキストを加える• competitive : simple に競技プログラミングでよく使われる高速化アルゴリズム（二分探索、ダイクストラ法、DP など）をまとめたテキストを加えるgeneral と competitive プロンプトについては、各手法の名称と概要のみを自然言語で記載することで、各プログラミング言語についてどのように実装するかについて、モデルが元々持っている知識と能力が発揮されることを期待した。
+システムプロンプトの詳細と具体例は付録 B を参照されたい。
+ユーザープロンプトは問題ごとにテンプレートとして与えた。
+実際の内容は付録 C のとおりである。
+コードの正しさを維持しながらバリエーションのある結果を得るために、温度パラメータは 0.3、Top-p は 0.95 を設定した。
+また各設定でシードを変更して複数回生成させることで、同じ問題に対して複数の異なる生成結果を得た。
+その他の設定は付録D に記載した。
+
+
+
+3.3 コード抽出
+
+LLM の markdown 記法の出力から、コードブロックに相当するバッククォート 3 つで囲まれた最初のブロックを取り出す後処理を実施した。
+その結果、目視確認の範囲においては多くのコードが正常に抽出できていることが確認された。
+抽出できなかったものは次の段階において正答できなかったものとして判定される。
+
+
+
+3.4 実行時間測定
+
+ここでは最初に、 xCodeEval API に抽出したコードを与え、各テストケースに正答するかを評価した。
+その後、正答した場合には、その標準入力を与えてコンパイル済みのバイナリを呼び出した時点から、解答を標準出力して実行が終了した時点の処理時間を「実行時間」とし、ケースごとに 1 回ずつ測定した。
+API による実行時間測定は /proc/{pid}/statを利用して行われており、分解能は 0.01 秒である。
+
+3.5 実行時間比較
+
+各問題について（LLM が出力したコードを使った場合の各テストケースの実行時間の合計）÷（データセットの既存コードを使った場合の各テストケースの実行時間の合計）を相対実行時間として収集した。
+その後、得られた相対実行時間の累積分布を描画して、モデルの高速化能力を比較した。
+
+
+
+4 予備実験
+
+モデルごとの性能評価をする本実験の前に、本実験の比較で用いるプロンプトと推論回数を予備実験にて検討した。
+
+
+4.1 プロンプトによる影響
+
+図 1a に、モデルを Qwen2.5-32B に固定してプロンプトを変えた場合に得られた相対実行時間を示す。
+実行可能なコード数は、高速化の指示を含まない rewrite プロンプトが他の 3 種類のプロンプトに比べて顕著に多くなった。
+一方で、相対実行時間が0.5 未満の（つまり 2 倍を超える高速化がされた）コードの数は、高速化の指示を含むプロンプトよりわずかに減少する結果となった。
+また、他の 3 種類は全体として同様の傾向であり、プロンプトによる影響はあまり大きくなかった。
+この結果から、本研究のように高速化する能力に重点を置いて評価する場合には、高速化指示を含むほうが良いが事例の具体指示は必要ないことが分かった。
+そこで今後の実験では simple プロンプトを使用して評価することとした。
+
+
+4.2 推論回数による影響
+
+プロンプトを simple に固定して、Qwen2.5-32B モデルで推論回数を 1,2,5,10 回に変更した時に最短実行時間を選択した場合の結果を図 1b に示す。
+この図から、試行回数を増やしても、高速化の成功率が一様に向上するだけで全体的な傾向は大きく変化しないことが分かった。
+そのため今後の実験では 1 回ずつ推論した結果でも比較には十分と判断し、1 回の結果のみを用いた。
+
+5 本実験の結果と考察
+
+
+
+5.1 モデルの比較
+
+モデルごとに simple プロンプトで 1 回実行したときの相対実行時間の比較を図 1c に示す。
+実行可能なコードを返す割合が最も高かったのは SLM である Qwen2.5-1.5B であった。
+一方で、高速化されるコードについては、相対実行時間が 0.5 倍未満になる（2 倍を超えて高速化される）のは LLM であるLlama3.3-70B および Qwen2.5-32B が高くなった。
+このことから、SLM は LLM に比べて高度な高速化を行う能力は低い一方で、コードを壊してしまうようなリスクは低い特性を持つことが示唆された。
+
+
+
+5.2 複数モデルの利用
+
+前節の結果によってモデルによって長所特性が異なることが分かったが、実用を考えると、その異なる適性の両方をもった結果を得たい。
+そのような目的のためには複数モデルを組み合わせることが考えられるが、その時に適性がどのように変化するかを比較した。
+比較結果を図 1d に示す。
+この図から、Qwen2.5-32B の性能を向上させるには、他の LLM である Llama3.3-70B と組み合わせたり、Qwen2.5-32B 自身を 2 回推論させるより、SLM である Qwen2.5-1.5B を組み合わせたほうが高い性能が得られていることが確認された。
+このことから、複数のモデルを組み合わせる場合においても、LLM だけでなく SLM を用いて組み合わせるほうが、コードを壊しにくい SLM の利点と、高い性能を出しやすい LLM の利点を組み合わせることができ、計算量を節約して良い結果を得られることが示唆された。
+
+
+
+5.3 主要ベンチマークとの比較
+
+相対実行時間 1 倍、 0.5 倍を達成したコードの百分率を、モデルカードとして提供されている主要ベンチマークと比較した結果を表 2 に示す。
+MMLU[12]など主要ベンチマークは SLM のスコアが LLM の半分程度となっているが、 1 倍のスコアは Qwen2.5-1.5B のほうが LLM より高くなっている。
+言い換えると、この指標はコードに特化して学習された SLM を LLM より高く評価するという点で特異的である。
+0.00 0.25 0.50 0.75 1.00 1.25 1.50 1.75 2.00relative time0.00.20.40.60.81.0cumulative distributionrewritesimplegeneralcompetitive(a)プロンプトの比較0.00 0.25 0.50 0.75 1.00 1.25 1.50 1.75 2.00relative time0.00.20.40.60.81.0cumulative distribution12510(b)推論回数の比較0.00 0.25 0.50 0.75 1.00 1.25 1.50 1.75 2.00relative time0.00.20.40.60.81.0cumulative distributionLlama3.3-70BLlama3.2-1BQwen2.5-32BQwen2.5-1.5B(c)モデルの比較0.00 0.25 0.50 0.75 1.00 1.25 1.50 1.75 2.00relative time0.00.20.40.60.81.0cumulative distributionQwen2.5-32BQwen2.5-32B + Qwen2.5-1.5BQwen2.5-32B + Llama3.3-70BQwen2.5-32B x2(d)複数モデル利用時の比較図 1: 相対実行時間の実験結果。
+実線がその相対実行時間未満に短縮改善できた累積割合を示し、破線は実行可能なコードが出力された割合を示す。
+相対実行時間が 0 になっているのは、各テストケースがすべて時間分解能（0.01 秒）未満まで改善されたことを示す。
+表 2: 主要ベンチマークとの比較(*は Base モデル)Llama Llama Qwen Qwen3.3-70B 3.2-1B 2.5-32B 2.5-1.5BMMLU 86.0 49.3 77.6 42.0*MMLU-Pro 68.9 - 62.3 -IFEval - 59.5 79.9 -HumanEval 88.4 - 92.7 70.7EvalPlus 87.6 - 75.1 59.4MATH 77.0 30.6 76.4 15.4*GSM8K - 44.4 93.0 34.5*相対実行時間1 倍 27.2 3.8 21.8 50.70.5 倍 9.9 0.4 9.0 8.6
+
+6 おわりに
+
+この論文では、ソフトウェアの高速化という能力に着目して言語モデルを評価する手法を提案し、実際に SLM と LLM における特性の違いを明らかにした。
+今後の展開として、ユーザープロンプトの変更によってコードに関連するテキストの情報量が変化する場合の影響や、より多くのモデル・データセットに対する性能比較を実施することで、モデルごとの特性の違いがより明らかになると考えられる。
+また、今回の評価手法を、より汎用的かつ簡易に利用できる評価ベンチマークとして整備し公開することで、今後も進化が期待される各言語モデルの性能評価の一助となることを期待したい。
+
+
+
+謝辞
+
+本研究の実験環境には、株式会社フィックスターズの Fixstars AI Booster クラウドを活用しました。
+
+参考文献
+
+
+[1] Wayne Xin Zhao, Kun Zhou, Junyi Li, Tianyi Tang, XiaoleiWang, Yupeng Hou, Yingqian Min, Beichen Zhang, JunjieZhang, Zican Dong, Yifan Du, Chen Yang, Yushuo Chen,Zhipeng Chen, Jinhao Jiang, Ruiyang Ren, Yifan Li, XinyuTang, Zikang Liu, Peiyu Liu, Jian-Yun Nie, and Ji-RongWen. A survey of large language models, 2024.
+[2] Zhenyan Lu, Xiang Li, Dongqi Cai, Rongjie Yi, Fang-ming Liu, Xiwen Zhang, Nicholas D. Lane, and MengweiXu. Small language models: Survey, measurements, andinsights, 2024.
+[3] Chien Van Nguyen, Xuan Shen, Ryan Aponte, Yu Xia,Samyadeep Basu, Zhengmian Hu, Jian Chen, Mihir Par-mar, Sasidhar Kunapuli, Joe Barrow, Junda Wu, AshishSingh, Yu Wang, Jiuxiang Gu, Franck Dernoncourt, Nes-reen K. Ahmed, Nedim Lipka, Ruiyi Zhang, Xiang Chen,Tong Yu, Sungchul Kim, Hanieh Deilamsalehy, NamyongPark, Mike Rimer, Zhehao Zhang, Huanrui Yang, Ryan A.Rossi, and Thien Huu Nguyen. A survey of small languagemodels, 2024.
+[4] Linyuan Gong, Sida Wang, Mostafa Elhoushi, and AlvinCheung. Evaluation of llms on syntax-aware code ﬁll-in-the-middle tasks, 2024.
+[5] Continue faq: I want better completions, should i use gpt-4?
+[6] Juyong Jiang, Fan Wang, Jiasi Shen, Sungju Kim, andSunghun Kim. A survey on large language models forcode generation, 2024.
+[7] Mark Chen, et al. Evaluating large language models trainedon code, 2021.
+[8] Jacob Austin, Augustus Odena, Maxwell Nye, MaartenBosma, Henryk Michalewski, David Dohan, Ellen Jiang,Carrie Cai, Michael Terry, Quoc Le, and Charles Sutton.Program synthesis with large language models, 2021.
+[9] Mohammad Abdullah Matin Khan, M Saiful Bari,Xuan Long Do, Weishi Wang, Md Rizwan Parvez, andShaﬁq Joty. xcodeeval: A large scale multilingual multi-task benchmark for code understanding, generation, trans-lation and retrieval, 2023.
+[10] Naman Jain, King Han, Alex Gu, Wen-Ding Li, FanjiaYan, Tianjun Zhang, Sida Wang, Armando Solar-Lezama,Koushik Sen, and Ion Stoica. Livecodebench: Holistic andcontamination free evaluation of large language models forcode, 2024.
+[11] Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng,Lianmin Zheng, Cody Hao Yu, Joseph E. Gonzalez, HaoZhang, and Ion Stoica. Eﬃcient memory management forlarge language model serving with pagedattention, 2023.
+[12] Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou,Mantas Mazeika, Dawn Song, and Jacob Steinhardt. Mea-suring massive multitask language understanding, 2021.
+
+
+
+
+A ソフトウェア高速化の具体例
+
+まず C 言語のループ範囲の省略について例示する。
+元のコードは下記のようになっていた。
+f o r ( i n t x = 0 ; x <= B ; x ++) {f o r ( i n t y = 0; y <= C ; y ++) {i n t rem = N − 2 ∗ x − 4 ∗ y ;i f (( rem >= 0 ) && ( rem <= A)) r e s++;Qwen2.5-32B による出力では、あらかじめ条件を満たさない範囲をループから省略することで、実行時間が 0.17秒から 0.01 秒に高速化された。
+f o r ( i n t x = 0 ; x <= B && 2 ∗ x <= N; x ++){f o r ( i n t y = 0; y <= C && 4 ∗ y <= N −2 ∗ x ; y ++) {i n t rem = N − 2 ∗ x − 4 ∗ y ;i f (( rem >= 0 ) && ( rem <= A)) r e s++;別の例として、 C++ 言語の std::unordered map を使用することによる高速化についても挙げる。
+問題は𝑖+1= (𝑎𝑟𝑖+ 𝑏) mod 𝑚 で生成される数列の周期を求めるもので、元のコードは十分な長さ生成してから同じ値が出てくるまで後ろ向きに走査するというものだった。
+f o r ( i = 1 ; i < 5 000000 l l ; ++ i )r [ i ] = ( a ∗ r [ i − 1 ] + b ) % m;f o r ( i n t j = i − 2 ; j >= 0 ; −− j )i f ( r [ i − 1 ] == r [ j ]) {c o u t << i − j − 1 ;r e t u r n 0 ;}Qwen2.5-32B はより単純に前向きに走査するコードを出力し、3.32 秒から 0.08 秒への高速化を達成した。
+un o r d e r e d ma p < i n t , i n t > s e e n ;w h i l e ( t r u e ) {i f ( s e e n . f i n d ( c u r r e n t ) !
+= s e e n . e nd ()){c o u t << s t e p − s e e n [ c u r r e n t ] ;r e t u r n 0 ;}s e e n [ c u r r e n t ] = s t e p ;c u r r e n t = ( a ∗ c u r r e n t + b ) % m;s t e p + +;}
+
+B システムプロンプトの例
+
+作成したシステムプロンプトは、モデルにとって解釈がしやすいことを考えて、いずれも英語で記載した。
+また、後処理のしやすさを考えて、各プロンプトには markdown形式で出力するように指示を加えた。
+作成した 4 種類のプロンプトのうち competitive プロンプトの例を次に示す。
+これは Llama3.1-70B に生成させたのち手動で修正したテキストである。
+simple プロンプトは、competitiveプロンプトの第 1 パラグラフのみ使用したものである。
+You w i l l be g i v e n a p r o b le m s t a t e m e n t f o rt h e pr og ra mmi ng c o n t e s t and a co d e t h a ta n s w e r s i t . P l e a s e m od i fy t h i s c o de t omake i t f a s t e r . P l e a s e o u t p u t t h e r e s u l ta s a c od e e mb eddin g i n markdown .Some o f t h e a l g o r i t h m s o f t e n u s e d i nc o m p e t i t i v e progr am ming a r e :− B i n a r y S e a r c h : A s e a r c h a l g o r i t h m t h a tu s e s a s o r t e d a r r a y o r l i s t t o d e t e r m i n ew h e t h e r i t c o n t a i n s a c e r t a i n v a l u e .− Depth − F i r s t S e a r c h ( DFS ) and Br e a d t h −F i r s t S e a r c h ( BFS) : A l g o r i t h m s f o rs e a r c
+h i n g g r a p h s an d t r e e s t r u c t u r e s . DFSgo e s a s d ee p a s p o s s i b l e , w h i l e BFSp r i o r i t i z e s s e a r c h i n g a d j a c e n t no d e s .− D i j k s t r a ' s A l g o r i t h m : An a l g o r i t h m f o rf i n d i n g t h e s h o r t e s t p a t h i n a g r a p h . I ts u p p o r t s w e i g h t e d g r a p h s .− Dynamic Prog ramm ing : An a l g o r i t h m t h a tb r e a k s down a co mpl ex pr o b le m i n t o s m a l l e rs u b p r o b l e m s and co mbi n e s t h e s o l u t i o n s t of i n d t h e o v e r a l l s o l u t i o n .− Gr eedy A l g o r i t h m : An a l g o r i t h m t h a tf i n d s t h e o v e r a l l o p t i m a l s o
+l u t i o n bymaking t h e o p t i m a l c h o i c e a t e a c h s t e p .− B a c k t r a c k i n g : An a l g o r i t h m t h a t s e a r c h e sr e c u r s i v e l y u n t i l a s o l u t i o n i s fou nd ,and r e t u r n s t o t h e p r e v i o u s s t e p i f i tf a i l s .− E u c l i d e a n a l g o r i t h m : An a l g o r i t h m f o rf i n d i n g t h e g r e a t e s t common d i v i s o r (GCD)o f two nu mbers .− F erm at ' s L i t t l e Theorem : An a l g o r i t h mf o r e f f i c i e n t l y c a l c u l a t i n g t h e r e m a i n d e ro f l a r g e num ber s .− FFT ( F a s t F o u r i e r T r a n s f o r m ) : A f a s tF o u r i e r t r a n s f o r m a l g o r i t h m .
+I t i s u s e df o r p o l y n o m i a l m u l t i p l i c a t i o n andc o n v o l u t i o n .− Segment T r e e : A d a t a s t r u c t u r e f o re f f i c i e n t l y c a l c u l a t i n g t h e me dia n andr a n g e sum o f a r r a y s and l i s t s .− Union − F i n d (UF) : A d a t a s t r u c t u r e f o rman agi ng s e t s a nd d e t e r m i n i n g w h e t h e r twoe l e m e n t s b e l o n g t o t h e same s e t .Th es e a l g o r i t h m s a r e f r e q u e n t l y us e d t os o l v e c o m p e t i t i v e p ro gra mm in g p r o b le m s ,and u n d e r s t a n d i n g t h e a l g o r i t h m s a nd t h ea b i l i t y t o i m p l e m e n t them a r e i m p o r t a n t .
+
+C ユーザープロンプト
+
+Jinja 言語を用いた markdown テンプレート形式で記載し、問題に応じて自動で適用されるようになっている。
+# pr o b l e m{{ d e s c r i p t i o n }}# ans w e r` ` ` {{ l a n g u a g e }}{{ co d e }}` ` `
+
+D 生成時の環境設定
+
+NVIDIA H100 SXM が 8 枚搭載されたサーバーを使用し、Llama3.2-1B, Qwen2.5-1.5B モデルは Tensor Parallel size(TP)=1, Qwen2.5-32B は TP=2, Llama3.3-70B は TP=4 と設定した。
+モデルの量子化は適用せず、コンテキスト長はモデルのデフォルトを使用した。
+最大出力トークン数は4096 とした。

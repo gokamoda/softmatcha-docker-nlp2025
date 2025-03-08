@@ -1,0 +1,248 @@
+Advancements in Sentiment Analysis: A MethodologicalExamination of News using multiple LLMs
+
+Muhammad Ali Mahmood
+
+1
+
+, Iﬀat Maab
+
+2
+
+, Muhammad Sibtain
+
+1
+
+, Asima Sar war
+
+1
+
+,
+
+
+
+Muhammad Arsalan
+
+3
+
+, Masroor Hussain
+
+1
+
+FCSE, GIK Institute of Engineering Sciences and Technology, Topi
+
+1
+
+National Institute of Informatics, Tokyo
+
+2
+
+Technische Universit
+
+
+
+¨
+
+
+
+at Braunschweig, Germany
+
+3
+
+{u2021346, u2021459, asima.sarwar, hussain}@giki.edu.pk
+
+1
+
+{maab}@nii.ac.jp
+
+2
+
+, {muhammad.arsalan}@tu-braunschweig.de
+
+3
+
+Abstract
+
+As the digital news consumption continues to grow,sentiment analysis has become essential for understand-ing public opinion and the impact of media.
+TraditionalNLP methods often fail to capture the in-depth emotions innews content, especially when taken from various mediasources.
+This work identiﬁes gaps in the use of ﬁne-tuneddeep learning models and large language models (LLMs)without ﬁne-tuning in the sentiment analysis of news arti-cles, oﬀering enhanced insights across various model fam-ilies.
+In our work, we collect news from BBC, and annotateBBC dataset using the proprietary OpenAI GPT-3.5-turbomodel, and ﬁne-tune models such as DistilBERT, BERT,and RoBERTa-large.
+We also compare ﬁne-tuned modelswith LLM variants including Llama-3 and Qwen-2 modelswithout any model ﬁne-tuning through crafted prompts.
+Our results show that RoBERTa-large achieved the highestperformance, delivering an accuracy of 86%.
+
+
+1 Introduction
+
+Given the rise of misinformation, polarized reporting,and the complexities of contemporary global crises, it be-comes crucial to develop methods that can accurately in-terpret the language used in today’s digital media.
+Politicalorientations, economic movements, and societal attitudesare all shaped by the media, which often carry subtle emo-tional undertones, whether intentional or not [1].
+Tools thatcan unveil these hidden sentiments enhance transparencyand promote media literacy [2].Sentiment analysis using NLP has demonstrated sig-niﬁcant importance across diverse ﬁelds such as marketanalysis, political opinion tracking, and social media an-alytics
+[3, 4].
+With the g rowth in online news and itsvarious formats, understanding how news articles expressemotional tone and sentiment becomes increasingly im-portant for stakeholders such as businesses, policymakers,and the general public [4].
+Moreover, incorporating largelanguage models (LLMs) into this domain presents promis-ing avenues to improve the accuracy and interpretability ofsentiment classiﬁcation
+[5].This paper investigates sentiment analysis on news ar-ticles collected from high-quality source i.e., BBC usingNewsAPI.
+Traditional NLP models often struggle to cap-ture the nuanced emotions present in complex texts, espe-cially in news reporting, where the language used is oftensubtle and context-dependent [6].
+While various senti-ment analysis tools exist, they frequently underperform inthe context of news articles due to limitations in their train-ing data and lack of domain-speciﬁc knowledge.
+In ourstudy, we introduce a framework to enhance the accuracyof sentiment classiﬁcation while also oﬀer deeper insightsinto the narrative elements that shape public perception.
+In our work, we utilize models such as BERT andRoBERTa [7, 8], which have been ﬁne-tuned to determinesentiment classiﬁcation across news content.
+We also uti-lize instruction-tuned open-source LLMs such as Llama-3(1B, 3B, 8B) and Qwen-2 (1.5B, 3B, 7B) without any ﬁne-tuning to examine how they process sentiments comparedto ﬁne-tuned approaches.
+In addition, we identify the dom-inant words frequently used in news sources that inﬂuencesentiments, drawing on methodologies such as those de-scribed attention-based models by [9].
+The signiﬁcance ofthis work lies in its response to the growing demand foradvanced analysis of contemporary and real-time medialandscapes.
+
+
+2 Related Work
+
+Sentiment analysis, particularly focusing on news con-tent, has signiﬁcantly advanced due to innovations in ma-chine learning (ML), deep learning (DL), and generativeAI (GenAI) approaches.
+Each approach has contributeduniquely to the evolution of sentiment analysis techniques.
+Popular classical techniques such as Naive Bayes, SVM,and the hybrid approaches have been adopted earlier for an-alyzing the sentiment from news articles.
+[10] proposedNaive Bayes approach tailored for social and news sen-timent analysis to achieve higher performance on smalldatasets.
+Similarly, [11] combined Naive Bayes and SVMfor text classiﬁcation, highlighting its eﬀectiveness in iden-tifying sentiment trends in news media.
+[12] took sentimentanalysis a step further by incorporating eﬀective computingtechniques with SVM to facilitate more nuanced sentimentcategorization across a variety of news sources.
+Build-ing on these approaches, [13] utilize a hybrid SVM modelto achieve greater accuracy, showing signiﬁcant improve-ments over traditional machine learning methods in senti-ment classiﬁcation.
+Table 1: Summary of dataset distribution for three-classsentiment analysis.
+Labels Number of Sentences PercentagePositive 3,500 35%Negative 3,500 35%Neutral 3,000 30%Total 10,000 100%Deep learning models like LSTM and BERT haveproven more eﬀective in sentiment analysis, par ticularlyexcelling with long-form news articles.
+In this context,[14] showcased the strength of LSTM networks in identi-fying temporal patterns, making them particularly suitablefor analyzing sequenced news data.
+Another work by Yanget.
+al.
+in [15] highlighted the exceptional capabilities ofBERT, a pre-trained transformer model, in delivering nu-anced sentiment classiﬁcation, achieving state-of-the-artperformance in news sentiment tasks.
+Similarly, researchby [16] highlights the superior capability of LSTMs overCNNs in captur ing contextual sentiment in text analysis.[17] ﬁnd strong eﬃcacy of RoBERTa model for sentimentprediction, especially in the domain of politically sensitivenews content.
+[18] use DistilBERT for real-time senti-ment classiﬁcation, achieving notable accuracy while sig-niﬁcantly reducing computational costs compared to largermodels.
+Recent advancements in generative AI models, includ-ing GPT-3, have led to the development of robust frame-works for sentiment classiﬁcation through the training oflarge-scale language models.
+As shown by [19], detectingsocial and news sentiments using GPT-3 also has trans-fer learning abilities for adapting to diverse datasets.
+[20]investigated the integration of GPT-2 and RoBERTa formulti-source sentiment analysis, tackling issues of cross-domain adaptability and providing insights into eﬀectivesentiment classiﬁcation across varied news environments.
+While sentiment analysis of news has advanced signiﬁ-cantly, particularly with recent progress in machine lear n-ing, deep learning, and generative AI models, many ex-isting approaches still struggle to accurately analyze newscontent.
+Traditional machine learning techniques, such asNa¨ıve Bayes and SVM, failed to capture the complexity ofemotions in news articles because they lack contextual un-derstanding to interpret sentiments.
+Although deep learn-ing models are more adept at handling sequential data, theyremain computationally expensive to train and may not ad-dress the contextual issues unless speciﬁcally ﬁne-tuned onnews datasets.
+While models like GPT-2 and GPT-3 haveshown promise for sentiment analysis, they are compu-tationally costly and require domain-speciﬁc ﬁne-tuning,presenting challenges in practical applications.
+
+
+3 Proposed Approach
+
+Our methodology consists of a multiple-stage processfor analyzing the sentiment of news articles.
+First, we uti-lize NewsAPI1）to collect data from BBC News corpus,selecting speciﬁc sources and keywords to ﬁlter news arti-cles.
+We ﬁltered the news articles using speciﬁc keywordssuch as politics, technology, science, sports, etc. to remainrelevant to the targeted sentiment themes.
+Second, we preprocess the data through text cleaningand tokenization.
+The dataset was initially collected in theJSON for mat, after which it was cleansed and processedusing the Beautiful Soup library.
+This initial step involvedremoving URLs, special characters, and stop words, ef-fectively eliminating extraneous information and allowing1）
+https://newsapi.org/PreprocessingText CleaningData LabellingOpenAI APISentimentAnalysisUsing MLFine Tune LargeLanguageModels(LLMs)TextBlobVaderFlairRobertaBERTDistilBertDominantWordExtractionFinalSentimentAI FrameworkData CollectionFigure 1: Workﬂow pipeline for enhanced sentiment analysis of news articles, showing stages from data collection to ﬁnalsentiment scoring.us to concentrate on the relevant text.
+We then annotatethe collected samples, ensuring an equal distribution ofpositive, negative, and neutral sentiments, using widelyrecongnized GPT-3.5-turbo model to guide the labelingprocess.
+In the ﬁnal stages, we experiment with various traditionalsentiment analysis models, including TextBlob, Vader, andFlair.
+Flair emerges as the top performer.
+Flair’s per-formance served as as a baseline for experimenting withmore advanced models, i.e., we also ﬁne-tune deep learningmodels such as DistilBERT, BERT, and RoBERTa-large onthe annotated dataset.
+RoBERTa-large demonstrates su-perior performance.
+Furthermore, zero-shot experimentsusing LLMs are performed with variants of Llama-3 andQwen-2 model families.
+Table3 shows the template usedfor zero-shot experiments.
+We also conﬁgure RoBERTamodel to extract dominant words associated with each sen-timent label, adding an interpretative layer to the resultsby highlighting inﬂuential words that drive the sentimentclassiﬁcation.
+The integration of our ﬁne-tuned models in sentimentanalysis pipeline show improved performance in discern-ing context-aware sentiment scores, which enhanced thepredictions compared to those from traditional models andLLMs used without any ﬁne-tuning.
+The workﬂow is illus-trated in Figure 1, detailing each phase from data collectionthrough to the ﬁnal sentiment classiﬁcation step.
+Table 1shows dataset distribution.
+See Appendix A.1 for detailson dataset, A.2 for experimental setup and implementationdetails, and A.3 for evaluation metrics.
+TextBlob Vader Flair010203040506070Figure 2: Comparison of ML models in terms of accuracy.
+
+
+4 Results and Experiments
+
+In our ﬁrst set of experiments, we use ML models for sen-timent classiﬁcation on our dataset, using TextBlob, Vader,and Flair.
+The accuracy of each model was evaluated, withthe results summarized in Figure 2.
+TextBlob achievedan accuracy of 50.36%, while VADER performed slightlybetter with an accuracy of 54.66%.
+The best performanceamong the ML models was from Flair, with an accuracy of65.09%.We also compare ﬁne-tuned DL models against LLMTable 2: Sample showing Sentiment Dominant (SD) scores across each sentiment type.
+News Sample Sentiment Type SD ScoresFederal Reserve hints at potential rate hike amid inﬂa-tion concerns.
+NEGATIVE hints: 5.99, hike: 4.13, inﬂation: 3.41, rate: 3.25,amid: 2.56Tech giant announces revolutionary smartphone withgroundbreaking features.
+POSITIVE groundbreaking: 2.85, revolutionary: 1.54, smart-phone: 1.34, announces: 1.31, features: 0.98Global survey reveals shifting trends in consumer be-havior.
+NEUTRAL shifting: 2.27, trends: 1.28, reveals: 0.99, survey:0.94, global:
+0.85Prompt
+LabelsYou are a sentiment analysis detector.
+User: Classifythe following “𝑠𝑒𝑛𝑡 𝑒𝑛𝑐𝑒 ” as 𝑥𝑎, 𝑥𝑏, or 𝑥𝑐withoutproviding additional details System: The sentence is:𝑥𝑎: Positive𝑥𝑏: Negative𝑥𝑐:
+NeutralTable 3: Zero-shot prompt for the Llama-3 and Qwen-2models involves using the labels 𝑥𝑎, 𝑥𝑏, and 𝑥𝑐, whichrepresent diﬀerent classes within the dataset.
+Model Acc.
+P R F1-scoreFine-tunedDistilBERT 80.40 76.35 76.25 76.29BERT 72.22 69.94 69.81 69.85RoBERTa-large 86.12 81.29 81.36 81.31No ﬁne-tuningLlama-3.2-1B-Instruct 39.03 39.03 39.03 39.03Llama-3.2-3B-Instruct 51.97 54.51 51.97 51.97Llama-3-8B-Instruct 56.61 58.14 56.61 56.61Qwen-2-1.5B-Instruct 42.63 50.72 42.63 42.63Qwen-2.5-3B-Instruct 56.83 57.78 56.83 56.09Qwen-2-7B-Instruct 60.10 62.72 60.10 60.10Table 4: Summary of results with the ﬁne-tuned modelsagainst LLMs with no ﬁne-tuning in terms of accuracy(Acc.)
+, P, R, and F1-scores for three-class sentiments.variants of Llama-3 and Qwen-2, noting that BERT, Dis-tilBERT, and RoBERTa-large demonstrated robust perfor-mance over ML models and LLMs.
+Table 4 shows a sum-mary of our results.
+Among ﬁne-tuned models, it can beseen that RoBERTa-large outperformed with 86.12%, fol-lowed by DistilBERT with an accuracy of 80.40%, andBERT with 72.22%.
+In case of LLMs used without anyﬁne-tuning, the Qwen-2-7B model demonstrated increasedperformance compared to a similarly sized Llama-3-8Bmodel, achieving an F1-score of 60.91 versus 56.61, re-spectively.
+LLMs with smaller parameter counts, suchas Llama-3 (1B, 3B) and Qwen-2 (1.5B, 3B), do not ex-hibit signiﬁcant performance improvements.
+These ﬁnd-ings indicate that ﬁne-tuned transformer-based models out-perform both traditional ML models and LLMs in handlingsentiment classiﬁcation tasks.
+We found that while, Vaderand TextBlob provided some level of insight, their per-formance was limited, especially on sentences with subtleor compound sentiments, which RoBERTa handled moreeﬀectively.
+In addition, we also integrate dominant word extraction,which identiﬁes key terms that inﬂuence sentiment catego-rization.
+This approach adds interpretability to the model,an aspect often overlooked in previous studies.
+Whilemost existing methods focus primarily on classiﬁcation ac-curacy, our technique oﬀers a deeper understanding of howspeciﬁc words impact sentiment labels.
+For this purpose,we use our best performing model, RoBERTa-large.
+Referto the results in Table2, which illustrates an example show-ing the dominant words and their respective SD scores.
+
+
+5 Conclusion
+
+The objective of our study is to better understand thesentiment analysis research by synthesizing results of ad-vanced proprietary LLMs, such as GPT-3.5-turbo, along-side various ﬁne-tuned ML and DL models, against familyof LLMs used without any gradient updates.
+As part ofthis study, we highlight open challenges associated withapplying these models to sentiment analysis.
+Althoughthe Llama-3 and Qwen-2 models yield less substantial re-sults, they hold signiﬁcance in resource-constrained en-vironments where annotation can be costly.
+Overall, ourﬁndings indicate that DL models, when ﬁne-tuned, exhibitsubstantial capabilities in accurately detecting sentiments,outperforming traditional ML and generative LLMs.
+No-tably, the RoBERTa model has proven eﬀective in senti-ment classiﬁcation within digital media contexts, althoughthe limited availability of labeled data may impede themodel’s generalizability.
+Future work may involve senti-ment interpretation by integrating hybrid DL approacheswith LLMs, such as combining RoBERTa with XLNet orT5, to enhance the contextual analysis of sentiments.
+
+
+
+Acknowledgements
+
+The authors wish to express gratitude to the fundingorganisation as this study was carr ied out using the TSUB-AME4.0 supercomputer at Institute of Science Tokyo.
+
+References
+
+
+[1] Alexander Ligthart, Cagatay Catal, and Bedir Tekinerdo-gan. Systematic reviews in sentiment analysis: a tertiarystudy. Artiﬁcial intelligence review, pp. 1–57, 2021.
+[2] Kian Long Tan, Chin Poo Lee, and Kian Ming Lim. Asurvey of sentiment analysis: Approaches, datasets, andfuture research. Applied Sciences, Vol. 13, No. 7, p.4550, 2023.
+[3] John Smith and Priya Patel. Explor ing sentiment analysistechniques in natural language processing. InternationalJournal of NLP Research, Vol. 12, No. 4, pp. 345–367,2020.
+[4] Andrew Lee and Mei Lin Wong. A guide to sentimentanalysis using nlp. Journal of Data Science and Ap-plications, Vol. 10, No. 2, pp. 221–240, 2019.
+[5] Ethan Brown and Olivia Taylor. Advancements in nlp:Deep learning models for sentiment analysis. DeepLearning and AI Applications, Vol. 15, No. 6, pp. 501–518, 2021.
+[6] Bo Pang and Lillian Lee. Opinion mining and sentimentanalysis. Foundations and Trends in Information Re-trieval, Vol. 2, No. 1-2, pp. 1–135, 2008.
+[7] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and KristinaToutanova. Bert: Pre-training of deep bidirectional trans-formers for language understanding. In Proceedings ofthe 2019 Conference of the North American Chap-ter of the Association for Computational Linguis-tics: Human Language Technologies, pp. 4171–4186,2019.
+[8] Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Man-dar Joshi, Danqi Chen, Omer Levy, Mike Lewis, LukeZettlemoyer, and Veselin Stoyanov. Roberta: A robustlyoptimized bert pretraining approach. arXiv preprintarXiv:1907.11692, 2019.
+[9] Zhenyu Li, Hua Zhang, and Yunfei Zhang. Attention-basedmodels for sentiment analysis. Computational Linguis-tics, Vol. 47, No. 1, pp. 123–145, 2021.
+[10] H. Park, et al. Application of naive bayes in news senti-ment analysis. IEEE Transactions on ComputationalSocial Systems, 2020.
+[11] B. Pang, et al. Sentiment analysis with naive bayes andsvm. Journal of Machine Learning Research, 2019.
+[12] E. Cambria, et al. Aﬀective computing and sentimentanalysis using ml. IEEE Transactions on AﬀectiveComputing, 2021.
+[13] X. Liu, et al. Hybr id svm for news sentiment analysis.International Journal of Data Mining, 2021.
+[14] L. Zhang, et al. Sentiment analysis using lstm. Journalof Data Science, 2020.
+[15] Q. Yang, et al. Bert for news sentiment analysis. IEEETransactions on Neural Networks and Learning Sys-tems, 2021.
+[16] S. Tang, et al. Comparative study of cnn and lstm forsentiment analysis. Social Media Analysis Journal,2022.
+[17] J. Sun, et al. Fine-tuned roberta for news sentiment. Jour-nal of Computational Linguistics, 2022.
+[18] M. Liu, et al. Real-time sentiment analysis with distilbert.Journal of News Sentiment Analysis, 2023.
+[19] T. Ahmed, et al. Gpt-3 for sentiment analysis of socialmedia. Social Media Research Journal, 2023.
+[20] P. Brown, et al. Gpt-2 and roberta for advanced sentimentanalysis. Text Analytics Journal, 2023.
+[21] Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey,Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman,Akhil Mathur, Alan Schelten, Amy Yang, Angela Fan,et al. The llama 3 herd of models. arXiv preprintarXiv:2407.21783, 2024.
+[22] AI Meta. Llama 3.2: Revolutionizing edge ai and visionwith open, customizable models. Meta AI, 2024.
+[23] An Yang, Baosong Yang, Binyuan Hui, Bo Zheng, BowenYu, Chang Zhou, Chengpeng Li, Chengyuan Li, DayihengLiu, Fei Huang, et al. Qwen2 technical report. arXivpreprint arXiv:2407.10671, 2024.
+[24] Hugging Face. The ai community building the future.URL: https://huggingface. co, 2021.
+
+
+
+A Appendix
+
+
+
+A.1 Dataset
+
+In this study, we used a dataset custom-labeled froma collection of news articles obtained through NewsAPI.The initial dataset comprised roughly 18,000 unlabeledsamples from BBC News, chosen for its dependable andvaried coverage of multiple topics ranging from politics toscience, sports, and more.
+We utilized the GPT-3.5-turbomodel to automatically assign sentiment categories: pos-itive, negative, or neutral―to each sample in the dataset.
+Next, we downsample the data to achieve a balanced distri-bution of sentiments, resulting in a ﬁnal dataset of 10,000samples, with approximately 3,500 instances of each sen-timent category.
+Having a balanced dataset allowed usto train and evaluate our sentiment analysis models withincreased precision.
+
+
+A.2 Experimental settings
+
+We compare various ﬁne-tuned models such as Distil-BERT, BERT, and RoBERTa-large for the task of sentimentclassiﬁcation.
+In our experiments, a data split of 80/10/10for training, validation, and testing, respectively, is used,ensuring that the samples do not overlap between sets.
+Ini-tially, we test with various batch size, learning rate, andthe number of training epochs to optimize the training ef-ﬁciency of our models.
+Weights decay and frequency oflogging was changed to prevent overﬁtting as well as tomonitor the training progress.
+Moreover, for comparisonof our models with classical methods, we utilize modelsincluding TextBlob, Vader, and Flair to evaluate the im-provements oﬀered by the ﬁne-tuned models.
+The hyper-parameters used in the ﬁne-tuning of our models are sum-marized in Table 5.
+LLM variants include Llama-3
+[21, 22]and Qwen-2
+[23].
+Moreover, we use PyTorch for modelimplementation, leveraging resources from HuggingFace[24] for DistilBERT, BERT, RoBERTa-large, Llama-3, andQwen-2, and the NLP-Toolkit for TextBlob, Vader, andFlair.
+
+
+A.3 Evaluation Metrics
+
+The metrics included accuracy (Acc.), precision (P), re-call (R), F1-score (F1), and Sentiment Dominance (SD),each tailored to the challenges inherent in analyzing senti-Table 5: Hyper-parameter settings used for ﬁne-tuningmodels.
+Hyper-parameter Settings for LLMsEpochs 5Learning rate 2 ×
+10−5Batch size (train) 16Batch size (eval) 16Weight decay 0.01Logging steps 10Model saving strategy EpochTotal checkpoints saved 2Load best model at end Truement in news content.
+SD is a unique metric for the model ability to ﬁnd wordswhich are dominant, meaning words that carry majorityweight to the sentiment category it belongs to is calledSentiment Dominance.
+In order to use a model to associatekey terms to the correct sentiment during ﬁne tuning, weextract inﬂuential terms speciﬁc to each sentiment as ourmetric to evaluate model capability.

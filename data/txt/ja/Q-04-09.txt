@@ -1,0 +1,262 @@
+Mixture-of-Experts の悲観的な統合による頑健な自然言語理解
+
+本多右京
+
+1
+
+ 岡達志
+
+2
+
+ 張培楠
+
+1
+
+ 三田雅人
+
+11
+
+株式会社サイバーエージェント 
+
+2
+
+慶應義塾大学
+
+
+
+{honda_ukyo,zhang_peinan,mita_masato}@cyberagent.co.jp tatsushi.oka@keio.jp
+
+
+
+概要
+
+自然言語理解タスクのデータでは、ショートカットと呼ばれる、ラベルと擬似相関をもつ単純な特徴量が存在することがある。
+擬似相関はデータ分布の変動に対して頑健でないため、ショートカットへの依存は分布外データでの性能低下につながる。
+先行研究ではショートカットに依存しないモデルの学習が目標とされてきたが、この学習には実用上大きな困難が伴う。
+本研究ではこの学習を直接の目標とせず、それぞれ異なる潜在特徴量に基づいて予測するmixture-of-experts モデルをルールにより悲観的に統合することで、頑健に予測する手法を提案する。
+実験により、実用的な設定において先行研究を上回る分布外性能を示すことを確認した。
+
+
+1 はじめに
+
+含意関係認識、言い換え同定、事実検証などの自然言語理解タスクのデータセットでは、ラベルと相関する単純な特徴量が存在することが知られている[1, 2, 3, 4]。
+これらはデータ作成者が用いた経験則や選好、あるいは自然言語の構成的な性質などによって意図せず生じるとされ、様々なデータセットで確認されている[1, 5, 6]。
+しかし、例えばデータ作成者やデータ作成時の指示が変われば、これらの特徴量とラベルとの相関は容易に変化しうる。
+図 1 のように、学習データでは含意ラベルの事例で単語一致率が高かったとしても、テストデータの作成者が単語の入れ替えを好んで使った場合には、この単語一致率とラベルとの相関は変化してしまう。
+このように、学習データにおいてはラベルに対して予測力を持つが、テスト時のデータ分布の変動によって容易にその予測力を失うような単純な特徴量のことを、ショートカットという[7, 8]。
+言い換えれば、ラベルと擬似相関する単純な特徴量を指す。
+ショートカットは単純な特徴量でありながらラベルを予測可能であるため、モデルにとって捉えやす前提文子猫が犬を追いかけている猫が犬を追いかけている仮説文前提文犬が子どもをなでている仮説文含意非含意学習テストa1単語一致率: 高a1単語一致率: 高a2否定表現: 無a2否定表現: 無a*含意関係: 有a*含意関係: 無データ特徴量図 1 含意関係認識タスクにおけるショートカットの例。
+学習データにおいては単語一致率や否定表現の有無がラベルと相関するが、分布外のテストデータではこの相関が変化してしまう。
+𝑎∗は理想的な、どの分布でも正しくラベルを予測できる特徴量だが、この学習は困難である。
+く、依存しやすい。
+しかし、データ分布の変動に対して頑健でないため、これに依存したモデルは分布外データにおいて性能が低下する可能性が高い。
+そこで、先行研究ではショートカットへの依存を抑制する手法が提案されてきた[9, 10, 11, 12, 13, i.a.]。
+これらの手法では、学習時にショートカットへの依存を抑制することで、どの分布でも正しくラベルを予測可能なモデルを学習することを目標にしている。
+しかし、学習データとその分布内データでは正しくラベルを予測できる特徴量の利用をあえて抑制することになるため、実際には分布内外のデータにおいて性能のトレードオフが生じてしまう。
+このトレードオフは分布外データでのハイパーパラメータ調整の必要性など、実用上深刻な問題をもたらす。
+本研究では、このように困難な学習を直接の目的とせず、別のアプローチを検討する。
+ショートカットにおける分布外データでの問題は、いずれかの特徴量についてラベルとの相関が変化するが、分布外データは通常未知であるので、どの特徴量について変化するかはわからないということである。
+我々はこれを、どの特徴量に基づいて予測するべきかわからない不確実性のもとでの意思決定の問題として考える。
+悲観的な想定のもとで最小のリ― 1652 ― (https://creativecommons.org/licenses/by/4.0/).スクを達成するようにラベルを選択することで、未知の分布外データでも頑健に予測させる。
+学習時はmixture-of-experts モデルを、各エキスパートが異なる潜在特徴量に基づいて予測するよう促進して学習し、推論時はどのエキスパートを用いればよいかわからない状況でのリスクを最小化するようにエキスパートの予測を統合する。
+3 つの自然言語理解タスクで実験を行い、分布内データのみで学習とハイパーパラメータ調整を行う現実的な実験設定において、既存手法を上回る分布外性能を確認した。
+
+
+2 関連研究と問題点
+
+自然言語理解タスクでは、学習事例の再重み付けがショートカット依存抑制の主要なアプローチとなってきた[9, 10, 11]。
+再重み付けでは、ショートカットのラベル予測力に応じて、学習時の損失に重みをかける。
+これにより、ショートカットによって簡単にラベルが予測できる事例での学習を抑え、そうでない事例での学習を促す。
+主に画像分類タスクでは、データをショートカットに基づいたグループに分割する。
+各グループはそれぞれ異なるショートカットをもつことになるので、どのグループにおいても同時に最適となるモデルを学習する IRM [12]や、最も損失が高いグループでの損失を最小化するよう学習する GroupDRO [13]は、どのショートカットにも依存しないよう学習することになる。
+これらの手法の目標は、ショートカットに依存せず頑健に予測できるモデルの学習である。
+しかし実際には、学習データとその分布内データでは有効な特徴量をあえて学習から排除することで学習データの分布から逸脱し、分布内外での性能のトレードオフが生じている。
+分布内データでの性能低下はそれ自体問題であるが、このトレードオフから生じる実用上より深刻な問題として、ハイパーパラメータ調整に分布外データが必要となることが指摘されてきた[9, 11, 14, 15, 16, 17, 18]。
+これは、トレードオフにより、分布内データでの性能を見るだけでは分布外データでの性能を予測できないことによる。
+ショートカットは意図せず生じるものであり、その特定にはデータの詳細な分析が必要となる[1, 2, 3, 4]。
+したがって、ショートカットの特定自体と、さらにそれに関する分布外データの準備はコストが大きく、これらを常に要求することは現実的ではない。
+このコストを懸念して学習データに対してはショートカットの特定を必要としない手法も提案されてきたが、依然としてハイパーパラメータ調整のための評価データには事前に特定されたショートカットの情報を必要とする[14, 15, 16, 17, 18]。
+この情報を用いずにハイパーパラメータ調整を行った場合、分布外データでの性能改善は顕著に小さくなることが報告されている[19]。
+
+
+
+3 提案手法
+
+未知のショートカットに関する分布変動では、いずれかの特徴量とラベルとの相関が変化するが、どの特徴量について変化するかはわからない。
+そこで本研究では、どの特徴量に基づいて予測するべきかわからないという不確実性のもとで最小のリスクを達成するようにラベルを選択することで、未知の分布外データでも頑健に予測する手法を検討する。
+学習時の目標はそれぞれ異なる特徴量に基づいて予測するモデルの学習となり、既存手法のような直接的なショートカット依存抑制ではなくなるため、上述の実用上の困難が緩和される。
+提案手法は、学習時と推論時の 2 つのパートから成る。
+
+
+
+3.1 学習時：異なる特徴量のモデル化
+
+Mixture-of-Experts モデル自然言語の構成的な性質やデータ作成プロセスの偏りから、自然言語理解タスクのデータでは、タスクに本質的な特徴量に加えて複数の特徴量がラベルと相関しうる[1, 5, 6]。
+学習時はこのデータ構造を mixture-of-experts [20]によってモデル化する。
+推論時の後処理を容易にするため、分類器の最終層でのみエキスパートに分岐する mixture-of-softmax (MoS)[21]を特に用いる。
+入力を 𝑥 ∈X、ラベルを 𝑦 ∈Y、潜在特徴量の数を𝐾 としたとき、MoS での条件付き確率 𝑝(𝑦 | 𝑥)は、𝑝𝜽(𝑦 | 𝑥) =𝐾∑𝑘=1𝑝𝑘(𝑦 | 𝜙(𝑥)) 𝜋𝑘(𝜙(𝑥)). (1)𝑝𝑘∈ Δ|Y|−1は 𝑘 番目のエキスパートの予測で、𝜋 ∈ Δ𝐾 −1はエキスパートの混合率、𝜋𝑘∈ ℝ は 𝜋 の 𝑘番目の要素である。
+ただし、Δ𝑁は 𝑁 次元の単体を指す。
+𝜙 はエンコーダを、𝜽 は 𝑝𝑘，𝜋，𝜙 のパラメータ全体を指す。
+学習は、事例数 𝑀 のミニバッチに対して以下の負の対数尤度を最小化するよう行う。
+𝐿main(𝜽) = −1𝑀𝑀∑𝑖=1log 𝑝𝜽(𝑦𝑖| 𝑥𝑖). (2)補助損失この MoS モデルでは、𝜋 が各事例で顕著な潜在特徴量を推定し、𝑝𝑘はその潜在特徴量に― 1653 ― (https://creativecommons.org/licenses/by/4.0/).基づいてラベルを予測することが期待される。
+しかし、学習中に事例をまたいで特定の 𝜋𝑘に確率が集中したり、あるいは 𝜋 が常に一様分布であったりした場合、実質的に単一のエキスパートしか存在しない状態となる[22]。
+これを避けるため、学習に次の補助損失を加える。
+𝐿aux(𝜽) =∥𝑑𝑠(𝚷⊤𝚷 − I)∥𝐹∥𝑑𝑠(J − I)∥𝐹. (3)𝚷 ∈ ℝ𝐾 × 𝑀は、事例数 𝑀 のミニバッチにおける𝜋(𝑥1), ..., 𝜋(𝑥𝑀)の連結とする。
+簡略化のため、𝜙 は省略している。
+𝑰 ∈ ℝ𝑀 ×𝑀は単位行列、𝑱 ∈ ℝ𝑀 ×𝑀はすべての要素が 1 の行列、∥·∥𝐹は行列のフロベニウスノルムを指す。
+∥𝚷⊤𝚷 − I∥𝐹は Li ら[23]の自己注意機構に対する制約に基づいており、𝑀 ≤ 𝐾 であれば、事例ごとに異なる 𝑘 において 𝜋 が one-hotである場合に値が 0 になる。
+これにより、𝜋 が事例ごとに異なる潜在特徴量を推定するよう促す。
+しかし，𝑀 > 𝐾 である場合、すべての 𝜋 が one-hot であっても同一の 𝜋 が必ず発生し、値が 0 にならない。
+そこで、各行でスコア 𝜋(𝑥𝑖)⊤𝜋(𝑥𝑗)が上位 𝑠 個に入る事例同士では同じ潜在特徴量が顕著であるとして、その 𝑠 個の要素の値を 0 にする関数 𝑑𝑠を導入する。
+分母は損失の値を[0, 1]に収めるよう正規化する。
+最終的に最小化する損失は、重みのハイパーパラメータ 𝛼 を用いて以下となる。
+𝐿(𝜽 ) = 𝐿main(𝜽) + 𝛼𝐿aux(𝜽). (4)
+
+3.2 推論時：不確実性下の意思決定
+
+分布内データであれば 𝜋 により予測に用いるべき潜在特徴量がわかるが、分布外データではこれがわからない。
+そこで、決定理論に基づいて、この不確実性のもとでリスクを最小化するよう意思決定を行うことを考える[24, 25]。
+提案モデルのもとで、𝑥 から 𝑦 を決定する関数𝛿 :X→Yの集合Dから、リスクを最小化する 𝛿 を選びたい。
+このリスクを次のように定義する。
+𝑅(𝜋, 𝛿) = 1 − 𝔼𝑥[𝐾∑𝑘=1𝑝𝑘(𝛿(𝑥)|𝑥)𝜋𝑘(𝑥)]. (5)分布内データであれば、𝜋 を用いて以下のようにラベルを決定することでリスクを最小化できる。
+𝛿∗𝜋(𝑥) = arg max𝑦∈Y𝐾∑𝑘=1𝑝𝑘(𝑦|𝑥)𝜋𝑘(𝑥). (6)しかし、分布外データではこの限りでない。
+不確実性のもとでリスクを最小化する方法として、まずuniform weighting を導入する。
+これは、どの潜在特徴量でも同程度に正しく予測できると仮定して、エキスパートの予測の平均をとる手法である。
+𝛿∗𝑢(𝑥) = arg max𝑦∈Y1𝐾𝐾∑𝑘=1𝑝𝑘(𝑦|𝑥). (7)この仮定は必ずしも成り立たないため、より悲観的な状況を考える手法として、argmin weighting を導入する。
+ラベルごとに最大のリスクを考えて、その最悪の場合で最小のリスクを達成する minimax 問題min𝛿∈Dmax𝜋 ∈Δ𝐾 −1𝑅(𝜋, 𝛿)を考え、以下のようにラベルを決定する（図 3 参照）。
+ただし、K∈ {1, ..., 𝐾}．𝛿∗𝑤(𝑥) = arg max𝑦∈Ymin𝑘 ∈K𝑝𝑘(𝑦|𝑥). (8)これらはいずれも軽量なルールベースの後処理であるため、推論時に容易に適用可能である。
+
+
+4 実験
+
+
+
+4.1 実験設定
+
+データセット比較対象とする先行研究にしたがい、含意関係認識MNLI[29]、言い換え同定QQP，事実検証 FEVER [30]の 3 つのデータセットで実験を行った。
+いずれのデータセットも、分布内開発データ(Dev)と、ショートカットとラベルの相関が大きく変動した分布外テストデータから成る。
+分布外テストデータはそれぞれ、HANS [2]，PAWS [3]，FEVER Symmetric v1 and v2 [30]を用いた。
+比較対象ベースラインは BERTbase-uncased[31]とし、提案モデルのエンコーダ 𝜙 にもこれを用いた。
+また、主要な既存手法を選び比較を行った。
+詳細は付録 A を参照。
+いずれも学習時にショートカットが未知である設定で提案された手法だが、評価データにおいてショートカットの情報が利用可能であった。
+そこで、本実験ではすべての手法について、分布内開発データでハイパーパラメータ調整を行う設定[19]で再評価を行った。
+ハイパーパラメータ調整提案手法のハイパーパラメータは、エキスパート数 𝐾、損失の重み 𝛼，補助損失の 𝑠 の 3 つである。
+データセットごとに以下の探索を行った。
+まず、最も自然にデータ構造を表現できる 𝐾 を特定するため、𝛼 = 0 とした上で、𝐾 ∈ {5, 10, 15} から、Dev スコアが最大となるエポッ― 1654 ― (https://creativecommons.org/licenses/by/4.0/).表 1 ベースライン・既存手法との比較結果。
+スコアは accuracy で、5 回の試行の平均と標準偏差である。
+背景色がついているのが提案手法で、破線から下は既存手法。
+太字は最も高い平均スコアを示す。
+MNLI QQP FEVERDev HANS Dev PAWS Dev Symm. v1 Symm. v2BERTbase-uncased84.4±0.255.2±4.291.5±0.136.7±3.186.7±0.258.5±1.465.1±1.5MoS 84.4±0.159.4±5.591.4±0.134.9±1.687.0±0.558.9±1.265.5±1.0→ uniform 83.0±1.063.6±5.789.1±2.447.0±8.687.6±1.262.2±0.768.2±1.0→ argmin 81.0±3.167.2±4.683.8±7.355.7±8.585.3±6.861.8±1.267.4±2.2Conf-reg ♠self-debias[26] 84.5±0.263.7±2.490.5±0.231.0±1.787.1±0.759.7±1.366.5±1.1JTT [16] 80.7±0.357.3±2.289.4±0.236.0±0.682.7±1.153.0±2.660.3±2.6RISK [27] 83.9±0.356.3±4.290.5±0.134.8±3.287.6±0.858.9±2.665.9±1.6EIIL [17] 83.9±0.261.5±2.491.1±0.231.0±0.686.8±1.156.2±1.963.8±1.7BAI [18] 83.7±0.262.0±2.191.2±0.231.2±0.386.3±1.256.0±2.163.6±1.9GroupDROlabel-group[13, 19] 84.3±0.357.7±2.991.6±0.134.6±3.789.3±0.262.1±1.167.9±1.3ReWeightCRT [28] 84.6±0.155.8±0.391.5±0.032.0±0.388.5±0.061.3±0.466.9±0.2表 2 Ablation study. 背景色部分は表 1 と同じ結果。
+Dev HANS𝛼 = 0.5MoS 84.4±0.159.4±5.5→ argmin 81.0±3.167.2±4.6𝛼 = 0.0MoS 84.5±0.057.6±4.8→ argmin 76.0±9.560.7±4.4DeBERTav3-largeMoS 91.8±0.066.3±1.8→ argmin 86.5±4.974.4±8.4クで 𝐿main+ 𝐿auxが最も小さくなる 𝐾 を選択した。
+𝐾 をこれに固定したうえで、次に 𝛼 ∈ {0.0, 0.5, 1.0}から同じく 𝐿main+ 𝐿auxが最も小さくなる 𝛼 を選択した。
+𝑠 は 2𝑛のうち、𝜋 の出力が事例ごとに異なるone-hot であった場合に、𝐾 = 5 でも 𝐿auxが 0 になる最小の数に設定した。
+実験では 𝑀 = 32 のミニバッチを 2 並列処理したので、𝑠 = 8 とした。
+選択された値やその他の詳細は付録 B を参照。
+
+4.2 実験結果
+
+分布外性能比較表 1 に結果を示す。
+提案モデル（MoS）はいずれのタスクにおいても分布内開発データ（Dev）でベースラインと同等の高い性能を示しているが、提案した後処理(→ uniform/argmin)を適用するだけで、分布外テストデータでの性能が顕著に向上している。
+既存手法は、Dev でのハイパーパラメータ調整では分布外性能の改善が小さく、先行研究[19]と整合的な結果となっている。
+Ablation Study ハイパーパラメータ調整の結果，MNLI における 𝛼 の最適な値は 0.5 であったが、これを 0 にした場合との比較を行い、補助損失 𝐿auxの効果を検証した。
+結果を表 2 に示す。
+𝛼 = 0.5 では MoS の性能は 𝛼 = 0.0 のときとほぼ変わらないのに対して、後処理を適用した場合の HANS での性能1 2 3 4 5 6 7 8 9 10Dev0.15 0.11 0.15 0.05 0.12 0.11 0.06 0.13 0.05 0.060.000.250.500.751.00図 2 MNLI データセットにおける 𝜋 の平均値。
+𝐾 = 10．は大きく向上しており、補助損失が分布外性能の改善に大きく寄与していることがわかる。
+また、エンコーダ𝜙にサイズのより大きいDeBERTav3-large[32]を用いた場合の結果も示した。
+大規模なモデルでは分布外性能が高くなるが、後処理によってさらに改善しており、提案手法の有効性を示している。
+解釈性提案モデルの解釈性を検証するため、MNLI データそれぞれでの 𝜋 の平均値を図 2 に示す．HANS の仮説文は前提文の一部を変更することで作られるため、全事例にわたって両文の単語一致率が高い。
+図 2 では HANS において特定のエキスパートに割当てが集中しており、単語一致率の高さという特徴量をこのエキスパートが捉えていることを示唆している。
+付録 C に示すとおり、その他のデータセットについても同様の傾向であった。
+
+
+5 おわりに
+
+本研究では、mixture-of-experts モデルを悲観的に統合することで、ショートカットに関する分布変動に対して頑健に予測する手法を提案した。
+実験により、分布内データでのみ学習・調整を行う実用的な設定での高い分布外性能を確認した。
+今後の課題としては、分布内外での後処理の適応的な使い分けや、解釈性の改善、データ中の異なる潜在特徴量を捉えられることの理論的保証の検討などがある。
+― 1655 ― (https://creativecommons.org/licenses/by/4.0/).
+
+
+
+参考文献
+
+
+[1] Suchin Gururangan, Swabha Swayamdipta, Omer Levy,Roy Schwartz, Samuel Bowman, and Noah A. Smith. An-notation artifacts in natural language inference data. InNAACL-HLT, 2018.
+[2] Tom McCoy, Ellie Pavlick, and Tal Linzen. Right for thewrong reasons: Diagnosing syntactic heuristics in naturallanguage inference. In ACL, 2019.
+[3] Yuan Zhang, Jason Baldridge, and Luheng He. PAWS:Paraphrase adversaries from word scrambling. InNAACL-HLT, 2019.
+[4] Tal Schuster, Darsh Shah, Yun Jie Serene Yeo, DanielRoberto Filizzola Ortiz, Enrico Santus, and Regina Barzi-lay. Towards debiasing fact veriﬁcation models. InEMNLP-IJCNLP, 2019.
+[5] Mor Geva, Yoav Goldberg, and Jonathan Berant. Are wemodeling the task or the annotator? an investigation ofannotator bias in natural language understanding datasets.In EMNLP-IJCNLP, 2019.
+[6] Matt Gardner, William Merrill, Jesse Dodge, MatthewPeters, Alexis Ross, Sameer Singh, and Noah A. Smith.Competency problems: On ﬁnding and removing artifactsin language data. In EMNLP, 2021.
+[7] Maggie Makar, Ben Packer, Dan Moldovan, Davis Blalock,Yoni Halper n, and Alexander D’Amour. Causally moti-vated shortcut removal using auxiliary labels. In AIS-TATS, 2022.
+[8] Amir Feder, Katherine A. Keith, Emaad Manzoor, ReidPryzant, Dhanya Sridhar, Zach Wood-Doughty, JacobEisenstein, Justin Grimmer, Roi Reichart, Margaret E.Roberts, Brandon M. Stewart, Victor Veitch, and DiyiYang. Causal inference in natural language processing:Estimation, prediction, interpretation and beyond. TACL,Vol. 10, pp. 1138–1158, 2022.
+[9] Christopher Clark, Mark Yatskar, and Luke Zettlemoyer.Don’t take the easy way out: Ensemble based methodsfor avoiding known dataset biases. In EMNLP-IJCNLP,2019.
+[10] He He, Sheng Zha, and Haohan Wang. Unlearn datasetbias in natural language inference by ﬁtting the residual. InWorkshop on Deep Learning Approaches for Low-Resource NLP , 2019.
+[11] Rabeeh Karimi Mahabadi, Yonatan Belinkov, and JamesHenderson. End-to-end bias mitigation by modelling bi-ases in corpora. In ACL, 2020.
+[12] Martin Arjovsky, Léon Bottou, Ishaan Gulrajani,and David Lopez-Paz. Invariant risk minimization.arXiv:1907.02893v3, 2019.
+[13] Shiori Sagawa, Pang Wei Koh, Tatsunori B. Hashimoto,and Percy Liang. Distributionally robust neural networks.In ICLR, 2020.
+[14] Christopher Clark, Mark Yatskar, and Luke Zettlemoyer.Learning to model and ignore dataset bias with mixed ca-pacity ensembles. In Findings of ACL: EMNLP, 2020.
+[15] Abbas Ghaddar, Phillippe Langlais, Mehdi Reza-gholizadeh, and Ahmad Rashid. End-to-end self-debiasingframework for robust NLU training. In Findings of ACL:ACL-IJCNLP, 2021.
+[16] Evan Z Liu, Behzad Haghgoo, Annie S Chen, Aditi Raghu-nathan, Pang Wei Koh, Shiori Sagawa, Percy Liang, andChelsea Finn. Just train twice: Improving group robust-ness without training group information. In ICML, 2021.
+[17] Elliot Creager, Joern-Henrik Jacobsen, and Richard Zemel.Environment inference for invariant learning. In ICML,2021.
+[18] Sicheng Yu, Jing Jiang, Hao Zhang, Yulei Niu, QianruSun, and Lidong Bing. Interventional training for out-of-distribution natural language understanding. In EMNLP,2022.
+[19] Yuzhe Yang, Haoran Zhang, Dina Katabi, and MarzyehGhassemi. Change is hard: A closer look at subpopulationshift. In ICML, 2023.
+[20] Robert A Jacobs, Michael I Jordan, Steven J Nowlan, andGeoﬀrey E Hinton. Adaptive mixtures of local experts.Neural computation , Vol. 3, No. 1, pp. 79–87, 1991.
+[21] Zhilin Yang, Zihang Dai, Ruslan Salakhutdinov, andWilliam W. Cohen. Breaking the softmax bottleneck: Ahigh-rank RNN language model. In ICLR, 2018.
+[22] Noam Shazeer, Azalia Mirhoseini, Krzysztof Maziarz,Andy Davis, Quoc Le, Geoﬀrey Hinton, and Jeﬀ Dean.Outrageously large neural networks: The sparsely-gatedmixture-of-exper ts layer. In ICLR, 2017.
+[23] Zhouhan Lin, Minwei Feng, Cicero Nogueira dos Santos,Mo Yu, Bing Xiang, Bowen Zhou, and Yoshua Bengio.A structured self-attentive sentence embedding. In ICLR,2017.
+[24] Abraham Wald. Statistical Decision Functions. Wiley:New York, 1950.
+[25] James O. Berger. Statistical Decision Theory andBayesian Analysis. Springer-Verlag, New York, 1985.
+[26] Prasetya Ajie Utama, Naﬁse Sadat Moosavi, and IrynaGurevych. Towards debiasing NLU models from unknownbiases. In EMNLP, 2020.
+[27] Ting Wu and Tao Gui. Less is better: Recovering intended-feature subspace to robustify NLU models. In COLING,2022.
+[28] Bingyi Kang, Saining Xie, Marcus Rohrbach, ZhichengYan, Albert Gordo, Jiashi Feng, and Yannis Kalantidis.Decoupling representation and classiﬁer for long-tailedrecognition. In ICLR, 2020.
+[29] Adina Williams, Nikita Nangia, and Samuel Bowman. Abroad-coverage challenge corpus for sentence understand-ing through inference. In NAACL-HLT, 2018.
+[30] James Thorne, Andreas Vlachos, ChristosChristodoulopoulos, and Arpit Mittal. FEVER: alarge-scale dataset for fact extraction and VERiﬁcation.In NAACL-HLT, 2018.
+[31] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and KristinaToutanova. BERT: Pre-training of deep bidirectional trans-formers for language understanding. InNAACL-HLT,2019.
+[32] Pengcheng He, Jianfeng Gao, and Weizhu Chen. DeBER-TaV3: Improving DeBERTa using ELECTRA-Style Pre-Training with Gradient-Disentangled Embedding Sharing.In ICLR, 2023.― 1656 ― (https://creativecommons.org/licenses/by/4.0/).
+
+ラベル 1 ラベル 2 ラベル 3p 1p2 min(p1, p2)p k (y | x)図 3 Argmin weighting を適用した際のラベル選択の例。
+エキスパート数 𝐾 = 2、ラベル数 |Y| = 3 としている。
+Argmin weighting 適用後（網掛け部分）で最もリスクが小さいラベル 2 が選択される。
+
+
+A 比較対象手法の詳細
+
+比較対象とした手法のうち、Conf-reg ♠self-debias[26]と JTT [16]は再重み付けを行う手法で、弱い分類器がショートカットに依存しやすいという経験則を活用して、弱い分類器で分類が難しい事例に重みをかける。
+RISK [27]は特徴量削減によって、ショートカットとなる冗長な特徴量への依存を防ぐ。
+EIIL[17]はショートカットに基づくグループを推定した後に、それに基づいて IRM [13]で学習する手法である。
+BAI [18]はその拡張で、グループ推定と IRMでの学習を複数回行う。
+GroupDROlabel-group[13, 19]は、データをショートカットではなくラベルごとのグループに分割したうえで、GroupDRO で学習する手法である。
+GroupDRO では事前にショートカットが特定されている必要があるため、この要求を緩和したものとして提案された[19]。
+ReWeightCRT[28]はラベル不均衡データでの学習手法で、学習データでのラベル頻度によって損失を重み付けする。
+テスト時にラベル頻度が均等である場合に、分布外データでも性能改善があることが報告されている[19]。
+IRM と GroupDRO の詳細は 2 節を参照。
+いずれの手法も、公開されているコードに基づいて、論文記載のハイパーパラメータを用いて再現実験を行った。
+ショートカットが事前にわからない現実的な設定での比較のため、モデルは分布内開発データでの性能が最も高くなるエポックのものを選択した。
+Conf-reg ♠self-debiasでは、分布外テストデータで調整していた annealing のためのハイパーパラメータについても分布内データで調整した。
+
+
+
+B ハイパーパラメータ調整の詳細
+
+4.1 節で説明したハイパーパラメータ調整の結果、MNLI ではエキスパート数 𝐾 = 10、損失への重み1 2 3 4 5 6 7 8 9 10 11 12 13 14 15DevPAWS0.04 0.06 0.04 0.10 0.08 0.08 0.06 0.06 0.04 0.08 0.14 0.07 0.05 0.05 0.060.00 0.00 0.01 0.01 0.00 0.08 0.00 0.05 0.00 0.00 0.54 0.27 0.04 0.00 0.000.000.250.500.751.00図 4 QQP データセットにおける 𝜋 の平均値。
+𝐾 = 15．1 2 3 4 5 6 7 8 9 10DevDevSupportsat leastDevSupportsperson whoDevSupportsunited statesDevRefutesdid notDevRefutesdoes notDevRefutesto be0.26 0.01 0.08 0.11 0.18 0.15 0.00 0.12 0.08 0.010.00 0.05 0.04 0.71 0.05 0.03 0.00 0.06 0.06 0.000.04 0.00 0.00 0.03 0.03 0.84 0.00 0.04 0.00 0.010.26 0.00 0.06 0.24 0.13 0.04 0.00 0.18 0.09 0.021.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.000.92 0.02 0.00 0.00 0.00 0.00 0.00 0.00 0.04 0.010.79 0.00 0.05 0.03 0.06 0.02 0.00 0.03 0.02 0.010.00.20.40.60.81.0図 5 FEVER データセットにおける 𝜋 の平均値。
+𝐾 = 10．Devlabelbigramは、そのラベルと相関する bigram を含む事例だけで構成されたデータを示す。
+𝛼 = 0.5 が最適となった。
+QQP では 𝐾 = 15，𝛼 = 1.0，FEVER では 𝐾 = 10，𝛼 = 1.0 であった。
+学習時は、学習率 2e-5 で 10 エポック学習を行った。
+DeBERTav3-largeでも同様にハイパーパラメータ調整を行った結果、MNLI データにおいて、BERTbase-uncasedと同じ値が選択された。
+学習のエポック数は同じく 10 としたが、先行研究にしたがって、学習率は 5e-6 とし、最大勾配ノルム 1.0 として勾配クリッピングを用いた[32]。
+
+
+
+C その他データでの解釈性
+
+4.2 節での分析に続き、特定の特徴量が顕著に存在するデータにおいて、特定のエキスパートが集中して用いられる傾向があるか検証する。
+PAWS では、元となる文に対して単語の入れ替えや逆翻訳を行い、これを言い換え候補として用いる。
+このため，HANS と同様に全事例にわたって文同士の単語一致率が高い。
+FEVER Symmetr icではこのような顕著な特徴量が存在しないが、以下のようにして特定の特徴量が顕著に存在するデータ分割を作成した。
+FEVER では特定の bigram がラベルと強く相関することが報告されているため、FEVER の Dev のうち、特定の bigram を含む事例だけを集めて一つの分割とした。
+図 4, 5 から、Dev 以外の、特定の特徴量が顕著に存在するデータでは、特定のエキスパートに割当てが集中していることがわかる。
+これは、提案モデルにおいてエキスパートがそれぞれ異なる潜在特徴量を捉えていることを示唆する結果である。
+― 1657 ― (https://creativecommons.org/licenses/by/4.0/).

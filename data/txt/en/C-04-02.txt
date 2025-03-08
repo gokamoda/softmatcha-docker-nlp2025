@@ -1,0 +1,715 @@
+A Survey of MultiModal Large Language Models
+
+Yahan Yu
+
+1
+
+ 
+
+
+
+Duzhen Zhang
+
+2,3
+
+ 
+
+
+
+Chenhui Chu
+
+11
+
+Kyoto University 
+
+2
+
+Tencent AI Lab, China 
+
+3
+
+Mohamed bin Zayed University of Artiﬁcial Intelligence
+
+
+
+yahan@nlp.ist.i.kyoto-u.ac.jp, duzhen.zhang@mbzuai.ac.ae, chu@i.kyoto-u.ac.jp
+
+
+
+Abstract
+
+In recent years, MultiModal Large Language Models(MM-LLMs) have undergone substantial advancements,augmenting oﬀ-the-shelf LLMs to suppor t MM inputs oroutputs via cost-eﬀective training strategies.
+In this paper,we provide a survey aimed at facilitating further researchon MM-LLMs.
+We outline general design formulationsfor model architecture.
+Furthermore, we review the perfor-mance of selected MM-LLMs on mainstream benchmarksand explore future directions.
+More latest developments inthis ﬁeld are provided in a real-time tracking website.1）Wehope that this survey contributes to the ongoing advance-ment of the MM-LLMs domain.
+
+
+1 Introduction
+
+MultiModal (MM) pre-training has advanced signiﬁ-cantly, improving performance across various tasks [1, 2, 3,4, 5, 6, 7, 8, 9, 10, 11, 12].
+However, as models and datasetsgrow, training from scratch becomes computationally ex-pensive.
+A promising approach leverages pre-trained foun-dation models, especially Large Language Models (LLMs)[13], to reduce costs and improve eﬃciency, giving rise tothe emerging ﬁeld of MM-LLMs.
+MM-LLMs utilize LLMs as the core, oﬀering robustlanguage generation, while other foundation models pro-vide high-quality representations.
+The main challengelies in eﬀectively connecting LLMs with other modali-ties.
+Research focuses on improving modality alignmentand human intent alignment through Pre-Training (PT) andInstruction-Tuning (IT).Figure 1 illustrates the evolution of MM-LLMs.
+Investi-gation of MM-LLMs initially focuses on MM comprehen-sion and text generation tasks, such as image-text under-standing (e.g., BLIP-2 [14], LLaVA
+[15], and MiniGPT-4
+[16]), video-text understanding (e.g., VideoChat
+[17],1） https://mm-llms.github.ioJan.-2Apr.20222023Jan.
+~ Feb.May.
+Jun.Jul.Sep.Oct.
+FlamingoBLIP-2PaLM-EVisual ChatGPT ViperGPTGPT-4 MM-REACTHuggingGPTLLaVAMiniGPT-4AudioGPT mPLUG-OwlX-LLMVideoChat
+InstructBLIPSpeechGPTEmbodiedGPT PandaGPTPaLI-XVideo-LLaMAVideo-ChatGPT Kosmos-2ShikraDLPChatSpotBuboGPTQwen-VLNExT-GPTMiniGPT-5 MiniGPT-v2Fuyu-8BCogVLMDRESSX-InstructBLIPCoDi-2VILAMobileVLMLLaVA-1.5IDEFICSOpenFlamingoMM-GPTKosmos-1GeminiQwen-AudioFROMAGeMar.
+~ Apr.OtterDetGPTGILLLLaVA-MedAudioPaLMLLaVARmPLUG-DocOwlLynxGPT4RoIEmu SEEDAug.
+LISAChinese-LLaVAASMBLIVAVisCPMCM3LeonLaVIT Kosmos-2.5DreamLLMInternLM-XComposerJAMAnyMALLanguageBindKosmos-GSALMONNControlLLMNov.-1GLaMMmPLUG-Owl2TEALLLaVA-PlusMonkeyVolcanoLIONDocPediaShareGPT4VLLaMA-VID VIMmPLUG-PaperOwlNov.-2Dec.-1RLHF-VDolphinsPixelLMSilkieLyricsCogAgentVL-GPTOspreyCLOVADec.-2Emu-2Intern-VLV*TinyGPT-VDocLLM2024Jan.-1LLaVA-Phi3DMITGroundingGPTModaVerse𝛼−UMiMM-Interleaved DiffusionGPTMLLM-ToolRPGKAM-CoTYi-VLCogCoMVLGuardMobileVLM V2MoE-LLaVAWebVoyagerMobile-AgentLLaVA-NeXTLLaVA-MoLEVary-toySPHINX-XInternLM-XComposer2Feb.
+~
+Mar.ViGoR VisLingInstructVideo-LaVIT3D-LLMChat-3DPointLLMApr.
+~ Jul.Aug. ~
+Dec.DeepSeek-VLVL-Mamba Cobra Mini-GeminiVITRONInternLM-XComposer2-4KHDBRAVECuMoLibraParrotOMG-LLaVAVideoLLM-onlineDocKylinTroLvideo-SALMONNEAGLELinVTCompCapDeepSeek-VL2StreamChatVITAmPLUG-Owl3T2VidApolloLongVUAuroraCapFigure 1
+The timeline of MM-LLMs.
+Video-ChatGPT
+[18], and LLaMA-VID
+[19]), and audio-text understanding (e.g., Qwen-Audio
+[20]).
+Later researchextended MM-LLMs to support speciﬁc modality outputs,including image-text output (e.g., GILL
+[21], Kosmos-2
+[22], Emu [23], and MiniGPT-5
+[24]) and audio-text out-put (e.g., SpeechGPT [25]).
+Recent eﬀorts target human-like any-to-any modality conversion (e.g., NExT-GPT [26])to reduce er rors in cascaded systems.
+In this paper, we present a survey on MM-LLM re-search.
+We outline general design principles and the train-ing pipeline.
+We review benchmark performance of thelatest SOTA MM-LLMs, and propose future research di-rections.
+We aim to deepen understanding and inspire thedevelopment of more eﬀective MM-LLMs.
+
+
+2 Model Architecture
+
+This section details the ﬁve components of the generalmodel architecture and their implementation, as shown in
+
+A Survey of MultiModal Large Language Models
+
+Yahan Yu
+
+1
+
+ 
+
+
+
+Duzhen Zhang
+
+2,3
+
+ 
+
+
+
+Chenhui Chu
+
+11
+
+Kyoto University 
+
+2
+
+Tencent AI Lab, China 
+
+3
+
+Mohamed bin Zayed University of Artiﬁcial Intelligence
+
+
+
+yahan@nlp.ist.i.kyoto-u.ac.jp, duzhen.zhang@mbzuai.ac.ae, chu@i.kyoto-u.ac.jp
+
+
+
+Abstract
+
+In recent years, MultiModal Large Language Models(MM-LLMs) have undergone substantial advancements,augmenting oﬀ-the-shelf LLMs to suppor t MM inputs oroutputs via cost-eﬀective training strategies.
+In this paper,we provide a survey aimed at facilitating further researchon MM-LLMs.
+We outline general design formulationsfor model architecture.
+Furthermore, we review the perfor-mance of selected MM-LLMs on mainstream benchmarksand explore future directions.
+More latest developments inthis ﬁeld are provided in a real-time tracking website.1）Wehope that this survey contributes to the ongoing advance-ment of the MM-LLMs domain.
+
+
+1 Introduction
+
+MultiModal (MM) pre-training has advanced signiﬁ-cantly, improving performance across various tasks [1, 2, 3,4, 5, 6, 7, 8, 9, 10, 11, 12].
+However, as models and datasetsgrow, training from scratch becomes computationally ex-pensive.
+A promising approach leverages pre-trained foun-dation models, especially Large Language Models (LLMs)[13], to reduce costs and improve eﬃciency, giving rise tothe emerging ﬁeld of MM-LLMs.
+MM-LLMs utilize LLMs as the core, oﬀering robustlanguage generation, while other foundation models pro-vide high-quality representations.
+The main challengelies in eﬀectively connecting LLMs with other modali-ties.
+Research focuses on improving modality alignmentand human intent alignment through Pre-Training (PT) andInstruction-Tuning (IT).Figure 1 illustrates the evolution of MM-LLMs.
+Investi-gation of MM-LLMs initially focuses on MM comprehen-sion and text generation tasks, such as image-text under-standing (e.g., BLIP-2 [14], LLaVA
+[15], and MiniGPT-4
+[16]), video-text understanding (e.g., VideoChat
+[17],1） https://mm-llms.github.ioJan.-2Apr.20222023Jan.
+~ Feb.May.
+Jun.Jul.Sep.Oct.
+FlamingoBLIP-2PaLM-EVisual ChatGPT ViperGPTGPT-4 MM-REACTHuggingGPTLLaVAMiniGPT-4AudioGPT mPLUG-OwlX-LLMVideoChat
+InstructBLIPSpeechGPTEmbodiedGPT PandaGPTPaLI-XVideo-LLaMAVideo-ChatGPT Kosmos-2ShikraDLPChatSpotBuboGPTQwen-VLNExT-GPTMiniGPT-5 MiniGPT-v2Fuyu-8BCogVLMDRESSX-InstructBLIPCoDi-2VILAMobileVLMLLaVA-1.5IDEFICSOpenFlamingoMM-GPTKosmos-1GeminiQwen-AudioFROMAGeMar.
+~ Apr.OtterDetGPTGILLLLaVA-MedAudioPaLMLLaVARmPLUG-DocOwlLynxGPT4RoIEmu SEEDAug.
+LISAChinese-LLaVAASMBLIVAVisCPMCM3LeonLaVIT Kosmos-2.5DreamLLMInternLM-XComposerJAMAnyMALLanguageBindKosmos-GSALMONNControlLLMNov.-1GLaMMmPLUG-Owl2TEALLLaVA-PlusMonkeyVolcanoLIONDocPediaShareGPT4VLLaMA-VID VIMmPLUG-PaperOwlNov.-2Dec.-1RLHF-VDolphinsPixelLMSilkieLyricsCogAgentVL-GPTOspreyCLOVADec.-2Emu-2Intern-VLV*TinyGPT-VDocLLM2024Jan.-1LLaVA-Phi3DMITGroundingGPTModaVerse𝛼−UMiMM-Interleaved DiffusionGPTMLLM-ToolRPGKAM-CoTYi-VLCogCoMVLGuardMobileVLM V2MoE-LLaVAWebVoyagerMobile-AgentLLaVA-NeXTLLaVA-MoLEVary-toySPHINX-XInternLM-XComposer2Feb.
+~
+Mar.ViGoR VisLingInstructVideo-LaVIT3D-LLMChat-3DPointLLMApr.
+~ Jul.Aug. ~
+Dec.DeepSeek-VLVL-Mamba Cobra Mini-GeminiVITRONInternLM-XComposer2-4KHDBRAVECuMoLibraParrotOMG-LLaVAVideoLLM-onlineDocKylinTroLvideo-SALMONNEAGLELinVTCompCapDeepSeek-VL2StreamChatVITAmPLUG-Owl3T2VidApolloLongVUAuroraCapFigure 1
+The timeline of MM-LLMs.
+Video-ChatGPT
+[18], and LLaMA-VID
+[19]), and audio-text understanding (e.g., Qwen-Audio
+[20]).
+Later researchextended MM-LLMs to support speciﬁc modality outputs,including image-text output (e.g., GILL
+[21], Kosmos-2
+[22], Emu [23], and MiniGPT-5
+[24]) and audio-text out-put (e.g., SpeechGPT [25]).
+Recent eﬀorts target human-like any-to-any modality conversion (e.g., NExT-GPT [26])to reduce er rors in cascaded systems.
+In this paper, we present a survey on MM-LLM re-search.
+We outline general design principles and the train-ing pipeline.
+We review benchmark performance of thelatest SOTA MM-LLMs, and propose future research di-rections.
+We aim to deepen understanding and inspire thedevelopment of more eﬀective MM-LLMs.
+
+
+2 Model Architecture
+
+This section details the ﬁve components of the generalmodel architecture and their implementation, as shown inImageVideoAudioModality Encoder !"!
+Input Projector Θ!→#Tex t $!!……!"#$%&'(%)*
++*%,-+.&'/01!23&'/45#-01!2 &'/67(')0-+)8"%897:4;/:46/<"!1'=%#8328)>%?,)8@1208)<<-#A%=B)=C-+)8"%82-+)8"%8…#!LLM Backbone+D#=-/E0F#,G1@H1I CJ%=ChinchillaOPTPaLMLLaMALLaMA-2…S!Output Projector Θ$→%/'=K3/8#=<L)8"%8@12…%!Modality Generator "#!!
+"#$%&'(%)67(')67(')1M@N,#OD%3M'P7<')=Zeroscope…❄❄❄"""$Mul.modal UnderstandingMul.modal
+Genera.on…Uniﬁed ImageBindVicuna……@C-+)8"%8Figure 2 The general model architecture of MM-LLMs and the implementation choices for each component.
+Figure 2.
+During training, the Modality Encoder, LLMBackbone, and Modality Generator are typically frozen,with optimization centered on the lightweight Input andOutput Projectors, which constitute around 2% of the totalparameters.
+
+
+2.1 Modality Encoder
+
+The Modality Encoder (ME) is tasked with encodinginputs from diverse modalities 𝐼𝑋to obtain correspondingfeatures 𝑭𝑋, formulated as 𝑭𝑋= ME𝑋(𝐼𝑋).
+Various pre-trained encoder options ME𝑋exist for handling diﬀerentmodalities, where 𝑋 can be image, video, audio, 3D, etc.Visual Modality For images, there are various op-tional encoders:
+NFNet-F6
+[27], ViT
+[28], CLIP ViT
+[6],Eva-CLIP ViT
+[29
+], BEiT-3
+[30], and OpenCLIP
+[31],etc.
+For videos, they can be uniformly sampled to 5 frames,undergoing the same pre-processing as images.
+Audio Modality is typically encoded by C-Former [32], HuBERT
+[33], BEATs
+[34],
+Whisper [35],and CLAP
+[36].3D Point Cloud Modality is typically encoded byULIP-2
+[37] with a PointBERT [38] backbone.
+Moreover, to handle numerous heterogeneous modal en-coders, some MM-LLMs, particularly any-to-any ones, useImageBind [39], a uniﬁed encoder covering six modali-ties, including image/video, text, audio, heat map, inertialmeasurement units, and depth.
+
+2.2 Input Projector
+
+The Input Projector 𝚯𝑋→𝑇is tasked with aligning theencoded features of other modalities 𝑭𝑋with the text fea-ture space 𝑇.
+The aligned features as prompts 𝑷𝑋are thenfed into LLM Backbone alongside the textual features 𝑭𝑇.Given 𝑋-text dataset {𝐼𝑋, 𝑡 }, the goal is to minimize the𝑋-conditioned text generation lossLtxt-gen:arg min𝚯𝑋→𝑇Ltxt-gen(LLM(𝑷𝑋, 𝑭𝑇), 𝑡), (1)where 𝑷𝑋= 𝚯𝑋→𝑇(𝑭𝑋).𝚯𝑋→𝑇can be achieved directly by a Linear Projector,or Multi-Layer Perceptron (MLP), or more complex im-plementations like Cross-attention and Q-Former [14].Cross-attention
+[40] uses a set of trainable vectors asqueries and 𝑭𝑋as keys to compress the feature sequence toa ﬁxed length, and then fed them into the LLM. Q-Formerextracts relevant features from 𝑭𝑋with learnable queries,and the selected features are then used as prompts 𝑷𝑋.Meanwhile,
+
+2.3 LLM Backbone
+
+Taking LLMs
+[41] as the core agents, MM-LLMs caninherit some notable properties like zero-shot generaliza-tion.
+The LLM Backbone produces direct textual outputs𝑡, and signal tokens 𝑺𝑋from other modalities (if any).These signal tokens act as instructions to guide the genera-tor on whether to produce MM contents and, if aﬃrmative,specify the content to produce 𝑡, 𝑺𝑋= LLM(𝑷𝑋, 𝑭𝑇),where the aligned representations of other modalities 𝑷𝑋can be considered as soft Prompt-tuning for the LLM.Moreover, some works have introduced Parameter-EﬃcientFine-Tuning (PEFT) methods such as LoRA [42].
+In thesecases, the number of additional trainable parameters is ex-ceptionally minimal, even less than 0.1% of the total LLMparameter count.
+
+
+2.4 Output Projector
+
+The Output Projector 𝚯𝑇 →𝑋maps
+𝑺𝑋into features 𝑯𝑋understandable to the following Modality Generator MG𝑋.To facilitate alignment of the mapped 𝑯𝑋, the goal is to
+
+A Survey of MultiModal Large Language Models
+
+Yahan Yu
+
+1
+
+ 
+
+
+
+Duzhen Zhang
+
+2,3
+
+ 
+
+
+
+Chenhui Chu
+
+11
+
+Kyoto University 
+
+2
+
+Tencent AI Lab, China 
+
+3
+
+Mohamed bin Zayed University of Artiﬁcial Intelligence
+
+
+
+yahan@nlp.ist.i.kyoto-u.ac.jp, duzhen.zhang@mbzuai.ac.ae, chu@i.kyoto-u.ac.jp
+
+
+
+Abstract
+
+In recent years, MultiModal Large Language Models(MM-LLMs) have undergone substantial advancements,augmenting oﬀ-the-shelf LLMs to suppor t MM inputs oroutputs via cost-eﬀective training strategies.
+In this paper,we provide a survey aimed at facilitating further researchon MM-LLMs.
+We outline general design formulationsfor model architecture.
+Furthermore, we review the perfor-mance of selected MM-LLMs on mainstream benchmarksand explore future directions.
+More latest developments inthis ﬁeld are provided in a real-time tracking website.1）Wehope that this survey contributes to the ongoing advance-ment of the MM-LLMs domain.
+
+
+1 Introduction
+
+MultiModal (MM) pre-training has advanced signiﬁ-cantly, improving performance across various tasks [1, 2, 3,4, 5, 6, 7, 8, 9, 10, 11, 12].
+However, as models and datasetsgrow, training from scratch becomes computationally ex-pensive.
+A promising approach leverages pre-trained foun-dation models, especially Large Language Models (LLMs)[13], to reduce costs and improve eﬃciency, giving rise tothe emerging ﬁeld of MM-LLMs.
+MM-LLMs utilize LLMs as the core, oﬀering robustlanguage generation, while other foundation models pro-vide high-quality representations.
+The main challengelies in eﬀectively connecting LLMs with other modali-ties.
+Research focuses on improving modality alignmentand human intent alignment through Pre-Training (PT) andInstruction-Tuning (IT).Figure 1 illustrates the evolution of MM-LLMs.
+Investi-gation of MM-LLMs initially focuses on MM comprehen-sion and text generation tasks, such as image-text under-standing (e.g., BLIP-2 [14], LLaVA
+[15], and MiniGPT-4
+[16]), video-text understanding (e.g., VideoChat
+[17],1） https://mm-llms.github.ioJan.-2Apr.20222023Jan.
+~ Feb.May.
+Jun.Jul.Sep.Oct.
+FlamingoBLIP-2PaLM-EVisual ChatGPT ViperGPTGPT-4 MM-REACTHuggingGPTLLaVAMiniGPT-4AudioGPT mPLUG-OwlX-LLMVideoChat
+InstructBLIPSpeechGPTEmbodiedGPT PandaGPTPaLI-XVideo-LLaMAVideo-ChatGPT Kosmos-2ShikraDLPChatSpotBuboGPTQwen-VLNExT-GPTMiniGPT-5 MiniGPT-v2Fuyu-8BCogVLMDRESSX-InstructBLIPCoDi-2VILAMobileVLMLLaVA-1.5IDEFICSOpenFlamingoMM-GPTKosmos-1GeminiQwen-AudioFROMAGeMar.
+~ Apr.OtterDetGPTGILLLLaVA-MedAudioPaLMLLaVARmPLUG-DocOwlLynxGPT4RoIEmu SEEDAug.
+LISAChinese-LLaVAASMBLIVAVisCPMCM3LeonLaVIT Kosmos-2.5DreamLLMInternLM-XComposerJAMAnyMALLanguageBindKosmos-GSALMONNControlLLMNov.-1GLaMMmPLUG-Owl2TEALLLaVA-PlusMonkeyVolcanoLIONDocPediaShareGPT4VLLaMA-VID VIMmPLUG-PaperOwlNov.-2Dec.-1RLHF-VDolphinsPixelLMSilkieLyricsCogAgentVL-GPTOspreyCLOVADec.-2Emu-2Intern-VLV*TinyGPT-VDocLLM2024Jan.-1LLaVA-Phi3DMITGroundingGPTModaVerse𝛼−UMiMM-Interleaved DiffusionGPTMLLM-ToolRPGKAM-CoTYi-VLCogCoMVLGuardMobileVLM V2MoE-LLaVAWebVoyagerMobile-AgentLLaVA-NeXTLLaVA-MoLEVary-toySPHINX-XInternLM-XComposer2Feb.
+~
+Mar.ViGoR VisLingInstructVideo-LaVIT3D-LLMChat-3DPointLLMApr.
+~ Jul.Aug. ~
+Dec.DeepSeek-VLVL-Mamba Cobra Mini-GeminiVITRONInternLM-XComposer2-4KHDBRAVECuMoLibraParrotOMG-LLaVAVideoLLM-onlineDocKylinTroLvideo-SALMONNEAGLELinVTCompCapDeepSeek-VL2StreamChatVITAmPLUG-Owl3T2VidApolloLongVUAuroraCapFigure 1
+The timeline of MM-LLMs.
+Video-ChatGPT
+[18], and LLaMA-VID
+[19]), and audio-text understanding (e.g., Qwen-Audio
+[20]).
+Later researchextended MM-LLMs to support speciﬁc modality outputs,including image-text output (e.g., GILL
+[21], Kosmos-2
+[22], Emu [23], and MiniGPT-5
+[24]) and audio-text out-put (e.g., SpeechGPT [25]).
+Recent eﬀorts target human-like any-to-any modality conversion (e.g., NExT-GPT [26])to reduce er rors in cascaded systems.
+In this paper, we present a survey on MM-LLM re-search.
+We outline general design principles and the train-ing pipeline.
+We review benchmark performance of thelatest SOTA MM-LLMs, and propose future research di-rections.
+We aim to deepen understanding and inspire thedevelopment of more eﬀective MM-LLMs.
+
+
+2 Model Architecture
+
+This section details the ﬁve components of the generalmodel architecture and their implementation, as shown inImageVideoAudioModality Encoder !"!
+Input Projector Θ!→#Tex t $!!……!"#$%&'(%)*
++*%,-+.&'/01!23&'/45#-01!2 &'/67(')0-+)8"%897:4;/:46/<"!1'=%#8328)>%?,)8@1208)<<-#A%=B)=C-+)8"%82-+)8"%8…#!LLM Backbone+D#=-/E0F#,G1@H1I CJ%=ChinchillaOPTPaLMLLaMALLaMA-2…S!Output Projector Θ$→%/'=K3/8#=<L)8"%8@12…%!Modality Generator "#!!
+"#$%&'(%)67(')67(')1M@N,#OD%3M'P7<')=Zeroscope…❄❄❄"""$Mul.modal UnderstandingMul.modal
+Genera.on…Uniﬁed ImageBindVicuna……@C-+)8"%8Figure 2 The general model architecture of MM-LLMs and the implementation choices for each component.
+Figure 2.
+During training, the Modality Encoder, LLMBackbone, and Modality Generator are typically frozen,with optimization centered on the lightweight Input andOutput Projectors, which constitute around 2% of the totalparameters.
+
+
+2.1 Modality Encoder
+
+The Modality Encoder (ME) is tasked with encodinginputs from diverse modalities 𝐼𝑋to obtain correspondingfeatures 𝑭𝑋, formulated as 𝑭𝑋= ME𝑋(𝐼𝑋).
+Various pre-trained encoder options ME𝑋exist for handling diﬀerentmodalities, where 𝑋 can be image, video, audio, 3D, etc.Visual Modality For images, there are various op-tional encoders:
+NFNet-F6
+[27], ViT
+[28], CLIP ViT
+[6],Eva-CLIP ViT
+[29
+], BEiT-3
+[30], and OpenCLIP
+[31],etc.
+For videos, they can be uniformly sampled to 5 frames,undergoing the same pre-processing as images.
+Audio Modality is typically encoded by C-Former [32], HuBERT
+[33], BEATs
+[34],
+Whisper [35],and CLAP
+[36].3D Point Cloud Modality is typically encoded byULIP-2
+[37] with a PointBERT [38] backbone.
+Moreover, to handle numerous heterogeneous modal en-coders, some MM-LLMs, particularly any-to-any ones, useImageBind [39], a uniﬁed encoder covering six modali-ties, including image/video, text, audio, heat map, inertialmeasurement units, and depth.
+
+2.2 Input Projector
+
+The Input Projector 𝚯𝑋→𝑇is tasked with aligning theencoded features of other modalities 𝑭𝑋with the text fea-ture space 𝑇.
+The aligned features as prompts 𝑷𝑋are thenfed into LLM Backbone alongside the textual features 𝑭𝑇.Given 𝑋-text dataset {𝐼𝑋, 𝑡 }, the goal is to minimize the𝑋-conditioned text generation lossLtxt-gen:arg min𝚯𝑋→𝑇Ltxt-gen(LLM(𝑷𝑋, 𝑭𝑇), 𝑡), (1)where 𝑷𝑋= 𝚯𝑋→𝑇(𝑭𝑋).𝚯𝑋→𝑇can be achieved directly by a Linear Projector,or Multi-Layer Perceptron (MLP), or more complex im-plementations like Cross-attention and Q-Former [14].Cross-attention
+[40] uses a set of trainable vectors asqueries and 𝑭𝑋as keys to compress the feature sequence toa ﬁxed length, and then fed them into the LLM. Q-Formerextracts relevant features from 𝑭𝑋with learnable queries,and the selected features are then used as prompts 𝑷𝑋.Meanwhile,
+
+2.3 LLM Backbone
+
+Taking LLMs
+[41] as the core agents, MM-LLMs caninherit some notable properties like zero-shot generaliza-tion.
+The LLM Backbone produces direct textual outputs𝑡, and signal tokens 𝑺𝑋from other modalities (if any).These signal tokens act as instructions to guide the genera-tor on whether to produce MM contents and, if aﬃrmative,specify the content to produce 𝑡, 𝑺𝑋= LLM(𝑷𝑋, 𝑭𝑇),where the aligned representations of other modalities 𝑷𝑋can be considered as soft Prompt-tuning for the LLM.Moreover, some works have introduced Parameter-EﬃcientFine-Tuning (PEFT) methods such as LoRA [42].
+In thesecases, the number of additional trainable parameters is ex-ceptionally minimal, even less than 0.1% of the total LLMparameter count.
+
+
+2.4 Output Projector
+
+The Output Projector 𝚯𝑇 →𝑋maps
+𝑺𝑋into features 𝑯𝑋understandable to the following Modality Generator MG𝑋.To facilitate alignment of the mapped 𝑯𝑋, the goal is toTable 1
+The summary of mainstream MM-LLMs.
+I→O:
+Input to Output Modalities, I: Image, V: Video, A: Audio, and T: Text.
+Model I→O Modality Encoder Input Projector LLM Backbone Output Projector Modality GeneratorBLIP-2 I+T→T
+I: CLIP/Eva-CLIP ViT@224 Q-Former w/ Linear Projector Flan-T5/OPT – –LLaVA I+T→T
+I: CLIP ViT-L/14
+Linear Projector Vicuna-7B/13B – –MiniGPT-4 I+T→T
+I: Eva-CLIP ViT-G/14 Q-Former w/ Linear Projector Vicuna-13B – –mPLUG-Owl I+T→T I: CLIP ViT-L/14
+Cross-attention LLaMA-7B – –InstructBLIP I+V+T→T I/V: ViT-G/14@224 Q-Former w/ Linear Projector Flan-T5/Vicuna – –Video-LLaMA I+V+A+T→TI/V: Eva-CLIP ViT-G/14;
+A: ImageBindQ-Former w/ Linear Projector Vicuna/LLaMA – –mPLUG-DocOwl ID+T→T I: CLIP ViT-L/14
+Cross-attention LLaMA-7B – –Qwen-VL-Chat I+T→T
+I: ViT@448 Cross-attention Qwen-7B – –LaVIT I+T→I+T
+I: ViT Cross-attention LLaMA-7B – I: Stable
+DiﬀusionMiniGPT-5
+I+T→I+T
+I: Eva-CLIP ViT-G/14 Q-Former w/ Linear Projector Vicuna-7B
+Tiny Transfor mer
+I: StableDiﬀusion-2LLaVA-1.5 I+T→T
+I: CLIP ViT-L@336
+MLP Vicuna-v1.5-7B/13B – –MiniGPT-v2 I+T→T
+I: Eva-CLIP ViT@448 Linear Projector LLaMA-2-Chat-7B – –CogVLM I+T→T
+I: Eva-2-CLIP ViT
+MLP Vicuna-v1.5-7B – –Qwen-Audio A+T→T
+A: Whisper-L-v2 Linear Projector Qwen-7B – –VILA I+T→T
+I: ViT@336
+Linear Projector LLaMA-2-7B/13B – –LongVU V+T→T SigLIP + DINOv2 Cross-attention Llama3.2-3B/Qwen2-7B – –minimize the distance between 𝑯𝑋and the conditional textrepresentations of MG𝑋: arg min𝚯𝑇→𝑋Lmse(𝑯𝑋, 𝜏𝑋(𝑡)).The optimization only relies on captioning texts, with-out utilizing any audio or visual resources 𝑋, where𝑯𝑋= 𝚯𝑇 →𝑋(𝑺𝑋) and 𝜏𝑋is the textual condition encoderin MG𝑋.
+The Output Projector is implemented by a TinyTransformer with a learnable decoder feature sequence orMLP.
+
+2.5 Modality Generator
+
+The Modality Generator MG𝑋is tasked with producingoutputs in distinct modalities.
+Commonly, existing worksuse oﬀ-the-shelf Latent Diﬀusion Models (LDMs)[43],i.e., Stable Diﬀusion [44] for image synthesis, Zero-scope
+[45] for video synthesis, and AudioLDM-2
+[46, 47]for audio synthesis.
+𝑯𝑋mapped by the Output Projectorserves as conditional inputs in the denoising process togenerate MM content.
+
+
+3 Training Pipeline
+
+MM-LLMs’ training pipeline can be delineated into MMPT stage and MM IT stage.
+During the PT stage, typicallyleveraging the X-Text datasets, Input and Output Projectorsare trained to achieve alignment among various modalitiesby optimizing predeﬁned objectives.
+MM IT comprises Supervised Fine-Tuning (SFT) andReinforcement Learning from Human Feedback (RLHF),aiming to align with human intents and enhance the inter-action capabilities of MM-LLMs.
+SFT converts part ofthe PT stage data into an instruction-aware format.
+Next,it ﬁne-tunes pre-trained MM-LLMs using the same opti-mization objectives.
+After SFT, RLHF involves furtherﬁne-tuning of the model, relying on feedback regardingthe MM-LLMs’ responses (e.g., Natural Language Feed-back (NLF) labeled manually or automatically)[48].
+Thisprocess employs a reinforcement learning algorithm to ef-fectively integrate the non-diﬀerentiable NLF
+[49, 50].
+
+
+4 SOTA MM-LLMs
+
+Based on the previously deﬁned design formulations, weconduct a comprehensive comparison of the architecturesand training dataset scales for current SOTA MM-LLMs,as illustrated in Table 1.Trends in Existing MM-LLMs: (1) Progressingfrom a dedicated emphasis on MM understanding to thegeneration of speciﬁc modalities and further evolving intoany-to-any modality conversion; (2) Adopting a More Ef-ﬁcient Model Architecture, transitioning from complex Q-and P-Former input projector modules in BLIP-2 and DLPto a simpler yet eﬀective linear projector in VILA; (3) Fromproducing foundational multimodal models to leveragingexisting models to achieve more challenging goals and fo-cus on more specialized problems (e.g., Video-LLaVA →LongVU).
+
+
+5 Benchmarks and Performance
+
+To provide a comprehensive comparison, we have com-piled a table featuring major MM-LLMs across Vision-Language (VL) benchmarks, as reported in various pa-pers [14, 51, 52, 53].
+Results are presented in Table 2.Given the numerous benchmarks available, we focus onevaluating and comparing diﬀerent MM-LLMs based onOKVQA, IconVQA, VQAv2, and GQA.OKVQA requires reasoning with a variety of knowledge
+
+A Survey of MultiModal Large Language Models
+
+Yahan Yu
+
+1
+
+ 
+
+
+
+Duzhen Zhang
+
+2,3
+
+ 
+
+
+
+Chenhui Chu
+
+11
+
+Kyoto University 
+
+2
+
+Tencent AI Lab, China 
+
+3
+
+Mohamed bin Zayed University of Artiﬁcial Intelligence
+
+
+
+yahan@nlp.ist.i.kyoto-u.ac.jp, duzhen.zhang@mbzuai.ac.ae, chu@i.kyoto-u.ac.jp
+
+
+
+Abstract
+
+In recent years, MultiModal Large Language Models(MM-LLMs) have undergone substantial advancements,augmenting oﬀ-the-shelf LLMs to suppor t MM inputs oroutputs via cost-eﬀective training strategies.
+In this paper,we provide a survey aimed at facilitating further researchon MM-LLMs.
+We outline general design formulationsfor model architecture.
+Furthermore, we review the perfor-mance of selected MM-LLMs on mainstream benchmarksand explore future directions.
+More latest developments inthis ﬁeld are provided in a real-time tracking website.1）Wehope that this survey contributes to the ongoing advance-ment of the MM-LLMs domain.
+
+
+1 Introduction
+
+MultiModal (MM) pre-training has advanced signiﬁ-cantly, improving performance across various tasks [1, 2, 3,4, 5, 6, 7, 8, 9, 10, 11, 12].
+However, as models and datasetsgrow, training from scratch becomes computationally ex-pensive.
+A promising approach leverages pre-trained foun-dation models, especially Large Language Models (LLMs)[13], to reduce costs and improve eﬃciency, giving rise tothe emerging ﬁeld of MM-LLMs.
+MM-LLMs utilize LLMs as the core, oﬀering robustlanguage generation, while other foundation models pro-vide high-quality representations.
+The main challengelies in eﬀectively connecting LLMs with other modali-ties.
+Research focuses on improving modality alignmentand human intent alignment through Pre-Training (PT) andInstruction-Tuning (IT).Figure 1 illustrates the evolution of MM-LLMs.
+Investi-gation of MM-LLMs initially focuses on MM comprehen-sion and text generation tasks, such as image-text under-standing (e.g., BLIP-2 [14], LLaVA
+[15], and MiniGPT-4
+[16]), video-text understanding (e.g., VideoChat
+[17],1） https://mm-llms.github.ioJan.-2Apr.20222023Jan.
+~ Feb.May.
+Jun.Jul.Sep.Oct.
+FlamingoBLIP-2PaLM-EVisual ChatGPT ViperGPTGPT-4 MM-REACTHuggingGPTLLaVAMiniGPT-4AudioGPT mPLUG-OwlX-LLMVideoChat
+InstructBLIPSpeechGPTEmbodiedGPT PandaGPTPaLI-XVideo-LLaMAVideo-ChatGPT Kosmos-2ShikraDLPChatSpotBuboGPTQwen-VLNExT-GPTMiniGPT-5 MiniGPT-v2Fuyu-8BCogVLMDRESSX-InstructBLIPCoDi-2VILAMobileVLMLLaVA-1.5IDEFICSOpenFlamingoMM-GPTKosmos-1GeminiQwen-AudioFROMAGeMar.
+~ Apr.OtterDetGPTGILLLLaVA-MedAudioPaLMLLaVARmPLUG-DocOwlLynxGPT4RoIEmu SEEDAug.
+LISAChinese-LLaVAASMBLIVAVisCPMCM3LeonLaVIT Kosmos-2.5DreamLLMInternLM-XComposerJAMAnyMALLanguageBindKosmos-GSALMONNControlLLMNov.-1GLaMMmPLUG-Owl2TEALLLaVA-PlusMonkeyVolcanoLIONDocPediaShareGPT4VLLaMA-VID VIMmPLUG-PaperOwlNov.-2Dec.-1RLHF-VDolphinsPixelLMSilkieLyricsCogAgentVL-GPTOspreyCLOVADec.-2Emu-2Intern-VLV*TinyGPT-VDocLLM2024Jan.-1LLaVA-Phi3DMITGroundingGPTModaVerse𝛼−UMiMM-Interleaved DiffusionGPTMLLM-ToolRPGKAM-CoTYi-VLCogCoMVLGuardMobileVLM V2MoE-LLaVAWebVoyagerMobile-AgentLLaVA-NeXTLLaVA-MoLEVary-toySPHINX-XInternLM-XComposer2Feb.
+~
+Mar.ViGoR VisLingInstructVideo-LaVIT3D-LLMChat-3DPointLLMApr.
+~ Jul.Aug. ~
+Dec.DeepSeek-VLVL-Mamba Cobra Mini-GeminiVITRONInternLM-XComposer2-4KHDBRAVECuMoLibraParrotOMG-LLaVAVideoLLM-onlineDocKylinTroLvideo-SALMONNEAGLELinVTCompCapDeepSeek-VL2StreamChatVITAmPLUG-Owl3T2VidApolloLongVUAuroraCapFigure 1
+The timeline of MM-LLMs.
+Video-ChatGPT
+[18], and LLaMA-VID
+[19]), and audio-text understanding (e.g., Qwen-Audio
+[20]).
+Later researchextended MM-LLMs to support speciﬁc modality outputs,including image-text output (e.g., GILL
+[21], Kosmos-2
+[22], Emu [23], and MiniGPT-5
+[24]) and audio-text out-put (e.g., SpeechGPT [25]).
+Recent eﬀorts target human-like any-to-any modality conversion (e.g., NExT-GPT [26])to reduce er rors in cascaded systems.
+In this paper, we present a survey on MM-LLM re-search.
+We outline general design principles and the train-ing pipeline.
+We review benchmark performance of thelatest SOTA MM-LLMs, and propose future research di-rections.
+We aim to deepen understanding and inspire thedevelopment of more eﬀective MM-LLMs.
+
+
+2 Model Architecture
+
+This section details the ﬁve components of the generalmodel architecture and their implementation, as shown inImageVideoAudioModality Encoder !"!
+Input Projector Θ!→#Tex t $!!……!"#$%&'(%)*
++*%,-+.&'/01!23&'/45#-01!2 &'/67(')0-+)8"%897:4;/:46/<"!1'=%#8328)>%?,)8@1208)<<-#A%=B)=C-+)8"%82-+)8"%8…#!LLM Backbone+D#=-/E0F#,G1@H1I CJ%=ChinchillaOPTPaLMLLaMALLaMA-2…S!Output Projector Θ$→%/'=K3/8#=<L)8"%8@12…%!Modality Generator "#!!
+"#$%&'(%)67(')67(')1M@N,#OD%3M'P7<')=Zeroscope…❄❄❄"""$Mul.modal UnderstandingMul.modal
+Genera.on…Uniﬁed ImageBindVicuna……@C-+)8"%8Figure 2 The general model architecture of MM-LLMs and the implementation choices for each component.
+Figure 2.
+During training, the Modality Encoder, LLMBackbone, and Modality Generator are typically frozen,with optimization centered on the lightweight Input andOutput Projectors, which constitute around 2% of the totalparameters.
+
+
+2.1 Modality Encoder
+
+The Modality Encoder (ME) is tasked with encodinginputs from diverse modalities 𝐼𝑋to obtain correspondingfeatures 𝑭𝑋, formulated as 𝑭𝑋= ME𝑋(𝐼𝑋).
+Various pre-trained encoder options ME𝑋exist for handling diﬀerentmodalities, where 𝑋 can be image, video, audio, 3D, etc.Visual Modality For images, there are various op-tional encoders:
+NFNet-F6
+[27], ViT
+[28], CLIP ViT
+[6],Eva-CLIP ViT
+[29
+], BEiT-3
+[30], and OpenCLIP
+[31],etc.
+For videos, they can be uniformly sampled to 5 frames,undergoing the same pre-processing as images.
+Audio Modality is typically encoded by C-Former [32], HuBERT
+[33], BEATs
+[34],
+Whisper [35],and CLAP
+[36].3D Point Cloud Modality is typically encoded byULIP-2
+[37] with a PointBERT [38] backbone.
+Moreover, to handle numerous heterogeneous modal en-coders, some MM-LLMs, particularly any-to-any ones, useImageBind [39], a uniﬁed encoder covering six modali-ties, including image/video, text, audio, heat map, inertialmeasurement units, and depth.
+
+2.2 Input Projector
+
+The Input Projector 𝚯𝑋→𝑇is tasked with aligning theencoded features of other modalities 𝑭𝑋with the text fea-ture space 𝑇.
+The aligned features as prompts 𝑷𝑋are thenfed into LLM Backbone alongside the textual features 𝑭𝑇.Given 𝑋-text dataset {𝐼𝑋, 𝑡 }, the goal is to minimize the𝑋-conditioned text generation lossLtxt-gen:arg min𝚯𝑋→𝑇Ltxt-gen(LLM(𝑷𝑋, 𝑭𝑇), 𝑡), (1)where 𝑷𝑋= 𝚯𝑋→𝑇(𝑭𝑋).𝚯𝑋→𝑇can be achieved directly by a Linear Projector,or Multi-Layer Perceptron (MLP), or more complex im-plementations like Cross-attention and Q-Former [14].Cross-attention
+[40] uses a set of trainable vectors asqueries and 𝑭𝑋as keys to compress the feature sequence toa ﬁxed length, and then fed them into the LLM. Q-Formerextracts relevant features from 𝑭𝑋with learnable queries,and the selected features are then used as prompts 𝑷𝑋.Meanwhile,
+
+2.3 LLM Backbone
+
+Taking LLMs
+[41] as the core agents, MM-LLMs caninherit some notable properties like zero-shot generaliza-tion.
+The LLM Backbone produces direct textual outputs𝑡, and signal tokens 𝑺𝑋from other modalities (if any).These signal tokens act as instructions to guide the genera-tor on whether to produce MM contents and, if aﬃrmative,specify the content to produce 𝑡, 𝑺𝑋= LLM(𝑷𝑋, 𝑭𝑇),where the aligned representations of other modalities 𝑷𝑋can be considered as soft Prompt-tuning for the LLM.Moreover, some works have introduced Parameter-EﬃcientFine-Tuning (PEFT) methods such as LoRA [42].
+In thesecases, the number of additional trainable parameters is ex-ceptionally minimal, even less than 0.1% of the total LLMparameter count.
+
+
+2.4 Output Projector
+
+The Output Projector 𝚯𝑇 →𝑋maps
+𝑺𝑋into features 𝑯𝑋understandable to the following Modality Generator MG𝑋.To facilitate alignment of the mapped 𝑯𝑋, the goal is toTable 1
+The summary of mainstream MM-LLMs.
+I→O:
+Input to Output Modalities, I: Image, V: Video, A: Audio, and T: Text.
+Model I→O Modality Encoder Input Projector LLM Backbone Output Projector Modality GeneratorBLIP-2 I+T→T
+I: CLIP/Eva-CLIP ViT@224 Q-Former w/ Linear Projector Flan-T5/OPT – –LLaVA I+T→T
+I: CLIP ViT-L/14
+Linear Projector Vicuna-7B/13B – –MiniGPT-4 I+T→T
+I: Eva-CLIP ViT-G/14 Q-Former w/ Linear Projector Vicuna-13B – –mPLUG-Owl I+T→T I: CLIP ViT-L/14
+Cross-attention LLaMA-7B – –InstructBLIP I+V+T→T I/V: ViT-G/14@224 Q-Former w/ Linear Projector Flan-T5/Vicuna – –Video-LLaMA I+V+A+T→TI/V: Eva-CLIP ViT-G/14;
+A: ImageBindQ-Former w/ Linear Projector Vicuna/LLaMA – –mPLUG-DocOwl ID+T→T I: CLIP ViT-L/14
+Cross-attention LLaMA-7B – –Qwen-VL-Chat I+T→T
+I: ViT@448 Cross-attention Qwen-7B – –LaVIT I+T→I+T
+I: ViT Cross-attention LLaMA-7B – I: Stable
+DiﬀusionMiniGPT-5
+I+T→I+T
+I: Eva-CLIP ViT-G/14 Q-Former w/ Linear Projector Vicuna-7B
+Tiny Transfor mer
+I: StableDiﬀusion-2LLaVA-1.5 I+T→T
+I: CLIP ViT-L@336
+MLP Vicuna-v1.5-7B/13B – –MiniGPT-v2 I+T→T
+I: Eva-CLIP ViT@448 Linear Projector LLaMA-2-Chat-7B – –CogVLM I+T→T
+I: Eva-2-CLIP ViT
+MLP Vicuna-v1.5-7B – –Qwen-Audio A+T→T
+A: Whisper-L-v2 Linear Projector Qwen-7B – –VILA I+T→T
+I: ViT@336
+Linear Projector LLaMA-2-7B/13B – –LongVU V+T→T SigLIP + DINOv2 Cross-attention Llama3.2-3B/Qwen2-7B – –minimize the distance between 𝑯𝑋and the conditional textrepresentations of MG𝑋: arg min𝚯𝑇→𝑋Lmse(𝑯𝑋, 𝜏𝑋(𝑡)).The optimization only relies on captioning texts, with-out utilizing any audio or visual resources 𝑋, where𝑯𝑋= 𝚯𝑇 →𝑋(𝑺𝑋) and 𝜏𝑋is the textual condition encoderin MG𝑋.
+The Output Projector is implemented by a TinyTransformer with a learnable decoder feature sequence orMLP.
+
+2.5 Modality Generator
+
+The Modality Generator MG𝑋is tasked with producingoutputs in distinct modalities.
+Commonly, existing worksuse oﬀ-the-shelf Latent Diﬀusion Models (LDMs)[43],i.e., Stable Diﬀusion [44] for image synthesis, Zero-scope
+[45] for video synthesis, and AudioLDM-2
+[46, 47]for audio synthesis.
+𝑯𝑋mapped by the Output Projectorserves as conditional inputs in the denoising process togenerate MM content.
+
+
+3 Training Pipeline
+
+MM-LLMs’ training pipeline can be delineated into MMPT stage and MM IT stage.
+During the PT stage, typicallyleveraging the X-Text datasets, Input and Output Projectorsare trained to achieve alignment among various modalitiesby optimizing predeﬁned objectives.
+MM IT comprises Supervised Fine-Tuning (SFT) andReinforcement Learning from Human Feedback (RLHF),aiming to align with human intents and enhance the inter-action capabilities of MM-LLMs.
+SFT converts part ofthe PT stage data into an instruction-aware format.
+Next,it ﬁne-tunes pre-trained MM-LLMs using the same opti-mization objectives.
+After SFT, RLHF involves furtherﬁne-tuning of the model, relying on feedback regardingthe MM-LLMs’ responses (e.g., Natural Language Feed-back (NLF) labeled manually or automatically)[48].
+Thisprocess employs a reinforcement learning algorithm to ef-fectively integrate the non-diﬀerentiable NLF
+[49, 50].
+
+
+4 SOTA MM-LLMs
+
+Based on the previously deﬁned design formulations, weconduct a comprehensive comparison of the architecturesand training dataset scales for current SOTA MM-LLMs,as illustrated in Table 1.Trends in Existing MM-LLMs: (1) Progressingfrom a dedicated emphasis on MM understanding to thegeneration of speciﬁc modalities and further evolving intoany-to-any modality conversion; (2) Adopting a More Ef-ﬁcient Model Architecture, transitioning from complex Q-and P-Former input projector modules in BLIP-2 and DLPto a simpler yet eﬀective linear projector in VILA; (3) Fromproducing foundational multimodal models to leveragingexisting models to achieve more challenging goals and fo-cus on more specialized problems (e.g., Video-LLaVA →LongVU).
+
+
+5 Benchmarks and Performance
+
+To provide a comprehensive comparison, we have com-piled a table featuring major MM-LLMs across Vision-Language (VL) benchmarks, as reported in various pa-pers [14, 51, 52, 53].
+Results are presented in Table 2.Given the numerous benchmarks available, we focus onevaluating and comparing diﬀerent MM-LLMs based onOKVQA, IconVQA, VQAv2, and GQA.OKVQA requires reasoning with a variety of knowledgeTable 2 Comparison of mainstream MM-LLMs on VL benchmarks.
+The red denotes the highest result, and the blue denotes thesecond highest result.
+Model LLM Backbone OKVQAIconVQAVQAv2GQAVizWizSQAIVQATPOPE MMEPMMECMMB MMBCNSEEDILLaVAWMM-Vet QBenchHM VSRBLIP-2 Flan-T5XXL(13𝐵 ) 45.9 40.6 65.0 44.7 19.6 61.0 42.5 85.3 1293.8 290.0 – – 46.4 38.1 22.4 – 53.7 50.9LLaVA Vicuna-13B 54.4 43.0 – 41.3 – – 38.9 – – – – – – – – – – 51.2MiniGPT-4 Vicuna-13B 37.5 37.6 – 30.8 – – 19.4 – – – – – – – – – – 41.6InstructBLIP Vicuna-7B – – – 49.2 34.5 60.5 50.1 – – – 36.0 23.7 53.4 60.9 26.2 56.7 – –Qwen-VL Qwen-7B – – 78.8 59.3 35.2 67.1 63.8 – – – 38.2 7.4 56.3 – – 59.4 – –Qwen-VL-Chat Qwen-7B – – 78.2 57.5 38.9 68.2 61.5 – 1487.5 360.7 60.6 56.7 58.2 – – – – –LLaVA-1.5 Vicuna-1.5-7B – – 78.5 62.0 50.0 66.8 58.2 85.9 1510.7 316.1 64.3 58.3 58.6 63.4 30.5
+58.7 – –LLaVA-1.5 Vicuna-1.5-13B – – 80.0 63.3 53.6 71.6 61.3 85.9 1531.3 295.4 67.7 63.6 61.6 70.7 35.4 62.1 – –MiniGPT-v2 LLaMA-2-Chat-7B 56.9 47.7 – 60.3 30.3 – 51.9 – – – – – – – – – 58.2 60.6MiniGPT-v2-Chat LLaMA-2-Chat-7B 55.9 49.4 – 58.8 42.4 – 52.3 – – – – – – – – – 59.5 63.3VILA-7B LLaMA-2-7B – – 79.9 62.3 57.8 68.2 64.4 85.5 1533.0 – 68.9 61.7 61.1 69.7 34.9 – – –VILA-13B LLaMA-2-13B – – 80.8 63.3 60.6 73.7 66.6 84.2 1570.1 – 70.3 64.3 62.8 73.0 38.8 – – –StreamChat-7B Qwen-7B – – – 62.4 – 85.5 72.4 – 1520.0 – 74.4 – 74.3 – – – – –StreamChat-14B Qwen-14B – – – 63.3 – 85.8 74.4 – 1617.0 – 79.0 – 75.5 – – – – –types such as commonsense.
+MiniGPT-v2 and MiniGPT-v2-chat perform best in this benchmark, showcasing theiroutstanding reasoning abilities.
+IconVQA emphasizes theimportance of holistic cognitive reasoning in real-worlddiagram-based word problems, requiring both perceptualacumen and versatile cognitive reasoning.
+MiniGPT-v2and MiniGPT-v2-chat also perform best, highlighting theirexceptional perception and cognitive reasoning capabili-ties.
+VQAv2is a more balanced VQA dataset.
+VILA-13Bperforms best, demonstrating its resistance to language bi-ases in the knowledge it acquires.
+GQA focuses on imagescene graphs, oﬀering impartial compositional questionsderived from real-world images.
+Each question is asso-ciated with a structured representation of its meaning andthe detailed logical steps required to answer it.
+StreamChatperforms best in this benchmark, illustrating their excellentreasoning abilities.
+These ﬁndings can inspire training recipes.
+Firstly,higher image resolution can incorporate more visual detailsfor the model, beneﬁting tasks that require ﬁne-grained de-tails.
+For example, LLaVA-1.5 and VILA employ a resolu-tion of 336 × 336, while Qwen-VL and MiniGPT-v2 utilize448 × 448.
+Moreover, StreamChat and VILA reveal sev-eral key ﬁndings: (1) A dense instruction dataset is crucialto facilitate the training of MM-LLMs; (2) Re-blendingtext-only instruction data (e.g., unnatural instruction
+[54])with image-text data during SFT not only addresses thedegradation of text-only tasks but also enhances VL taskaccuracy.
+
+
+6 Future Directions
+
+We can enhance the MM-LLMs’ strength from the fol-lowing four key avenues: (1) Expanding Modalities: Cur-rent MM-LLMs mainly support the following modalities:image, video, audio, 3D, and text.
+However, the real worldinvolves a broader range of modalities.
+Extending MM-LLMs to accommodate additional modalities (e.g., webpages, heat maps, and ﬁgures&tables) will increase themodel’s versatility, making it more universally applicable;(2)
+Diversifying LLMs: Incorporating various types andsizes of LLMs provides practitioners with the ﬂexibilityto select the most appropr iate one based on their speciﬁcrequirements; (3) Improving MM IT Dataset Quality:Current MM IT datasets have ample room for improvementand expansion.
+Diversifying the range of instructions canenhance the eﬀectiveness of MM-LLMs in understandingand executing user commands; (4) Strengthening MMGeneration Capabilities: Most current MM-LLMs arepredominantly oriented towards MM understanding.
+Al-though some models have incorporated MM generationcapabilities, the quality of generated responses may beconstrained by the capacities of the LDMs.
+Exploringthe integration of retrieval-based approaches [55, 56, 57]holds signiﬁcant promise in complementing the generativeprocess, enhancing the overall performance of the model.
+
+
+7 Conclusion
+
+In this paper, we presented a survey of MM-LLMs fo-cusing on recent advancements.
+Initially, we categorizethe model architecture into ﬁve components, providing adetailed overview of general design formulations and train-ing pipelines.
+Subsequently, we introduced various SOTAMM-LLMs, shed light on their capabilities across diverseMM benchmarks, and envision future developments in thisrapidly evolving ﬁeld.
+Although MM-LLMs have mademany breakthroughs, there is still room for improvement.
+We hope this survey can provide insights and contribute tothe ongoing advancements in the MM-LLMs domain.
+
+
+
+Acknowledgements
+
+This work was supported by JST BOOST Grant Num-ber JPMJBS2407 and JSPS KAKENHI Grant NumberJP23K28144.
+
+References
+
+
+[1] Xiujun Li, Xi Yin, Chunyuan Li, Pengchuan Zhang, Xiaowei Hu, Lei Zhang, Lijuan Wang, Houdong Hu,Li Dong, Furu Wei, et al. Oscar: Object-semantics aligned pre-training for vision-language tasks. InComputer Vision–ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020,Proceedings, Part XXX 16, pp. 121–137. Springer, 2020.
+[2] Hassan Akbari, Liangzhe Yuan, Rui Qian, Wei-Hong Chuang, Shih-Fu Chang, Yin Cui, and Boqing Gong.Vatt: Transformers for multimodal self-supervised learning from raw video, audio and text. Advances inNeural Information Processing Systems, Vol. 34, pp. 24206–24221, 2021.
+[3] Han Fang, Pengfei Xiong, Luhui Xu, and Yu Chen. Clip2video: Mastering video-text retrieval via image clip.arXiv preprint arXiv:2106.11097, 2021.
+[4] Rui Yan, Mike Zheng Shou, Yixiao Ge, Alex Jinpeng Wang, Xudong Lin, Guanyu Cai, and Jinhui Tang.Video-text pre-training with learned regions. arXiv preprint arXiv:2112.01194, 2021.
+[5] Junnan Li, Ramprasaath Selvaraju, Akhilesh Gotmare, Shaﬁq Joty, Caiming Xiong, and Steven Chu HongHoi. Align before fuse: Vision and language representation learning with momentum distillation. Advancesin neural information processing systems, Vol. 34, pp. 9694–9705, 2021.
+[6] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry,Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual models from natural languagesupervision. In International conference on machine learning, pp. 8748–8763. PMLR, 2021.
+[7] Junnan Li, Dongxu Li, Caiming Xiong, and Steven Hoi. Blip: Bootstrapping language-image pre-training foruniﬁed vision-language understanding and generation. In International Conference on Machine Learning,pp. 12888–12900. PMLR, 2022.
+[8] Rowan Zellers, Jiasen Lu, Ximing Lu, Youngjae Yu, Yanpeng Zhao, Mohammadreza Salehi, Aditya Kusupati,Jack Hessel, Ali Farhadi, and Yejin Choi. Merlot reserve: Neural script knowledge through vision andlanguage and sound. In Proceedings of the IEEE/CVF Conference on Computer Vision and PatternRecognition, pp. 16375–16387, 2022.
+[9] Yan Zeng, Xinsong Zhang, and Hang Li. Multi-Grained Vision Language Pre-Training: Aligning Texts withVisual Concepts. In International Conference on Machine Learning, pp. 25994–26009. PMLR, 2022.
+[10] Jinyu Yang, Jiali Duan, Son Tran, Yi Xu, Sampath Chanda, Liqun Chen, Belinda Zeng, Trishul Chilimbi,and Junzhou Huang. Vision-language pre-training with triple contrastive learning. In Proceedings of theIEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 15671–15680, 2022.
+[11] Peng Wang, An Yang, Rui Men, Junyang Lin, Shuai Bai, Zhikang Li, Jianxin Ma, Chang Zhou, Jingren Zhou,and Hongxia Yang. Ofa: Unifying architectures, tasks, and modalities through a simple sequence-to-sequencelearning framework. In International Conference on Machine Learning, pp. 23318–23340. PMLR, 2022.
+[12] Wenhui Wang, Hangbo Bao, Li Dong, Johan Bjorck, Zhiliang Peng, Qiang Liu, Kriti Aggarwal, Owais KhanMohammed, Saksham Singhal, Subhojit Som, et al. Image as a foreign language: Beit pretraining for all visionand vision-language tasks. arXiv preprint arXiv:2208.10442, 2022.
+[13] OpenAI. OpenAI: Introducing ChatGPT. 2022.
+[14] Junnan Li, Dongxu Li, Silvio Savarese, and Steven C. H. Hoi. BLIP-2: Bootstrapping Language-ImagePre-training with Frozen Image Encoders and Large Language Models. In International Conference onMachine Learning, ICML 2023, 23-29 July 2023, Honolulu, Hawaii, USA, pp. 19730–19742, 2023.
+[15] Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong Jae Lee. Visual Instruction Tuning. In Thirty-seventhConference on Neural Information Processing Systems, 2023.
+[16] Deyao Zhu, Jun Chen, Xiaoqian Shen, Xiang Li, and Mohamed Elhoseiny. Minigpt-4: Enhancing vision-language understanding with advanced large language models. arXiv preprint arXiv:2304.10592, 2023.
+[17] KunChang Li, Yinan He, Yi Wang, Yizhuo Li, Wenhai Wang, Ping Luo, Yali Wang, Limin Wang, and Yu Qiao.Videochat: Chat-centric video understanding. arXiv preprint arXiv:2305.06355, 2023.
+[18] Muhammad Maaz, Hanoona Rasheed, Salman Khan, and Fahad Shahbaz Khan. Video-ChatGPT: TowardsDetailed Video Understanding via Large Vision and Language Models. arXiv preprint arXiv:2306.05424,2023.
+[19] Yanwei Li, Chengyao Wang, and Jiaya Jia. LLaMA-VID: An Image is Worth 2 Tokens in Large LanguageModels. arXiv preprint arXiv:2311.17043, 2023.
+[20] Yunfei Chu, Jin Xu, Xiaohuan Zhou, Qian Yang, Shiliang Zhang, Zhijie Yan, Chang Zhou, and Jingren Zhou.Qwen-audio: Advancing universal audio understanding via uniﬁed large-scale audio-language models. arXivpreprint arXiv:2311.07919, 2023.
+[21] Jing Yu Koh, Daniel Fried, and Ruslan Salakhutdinov. Generating images with multimodal language models.In Thirty-seventh Conference on Neural Information Processing Systems, 2023.
+[22] Zhiliang Peng, Wenhui Wang, Li Dong, Yaru Hao, Shaohan Huang, Shuming Ma, and Furu Wei. Kosmos-2:Grounding Multimodal Large Language Models to the World. arXiv preprint arXiv:2306.14824, 2023.
+[23] Quan Sun, Qiying Yu, Yufeng Cui, Fan Zhang, Xiaosong Zhang, Yueze Wang, Hongcheng Gao, Jingjing Liu,Tiejun Huang, and Xinlong Wang. Generative pretraining in multimodality. In The Twelfth InternationalConference on Learning Representations, 2024.
+[24] Kaizhi Zheng, Xuehai He, and Xin Eric Wang. Minigpt-5: Interleaved vision-and-language generation viagenerative vokens. arXiv preprint arXiv:2310.02239, 2023.
+[25] Dong Zhang, Shimin Li, Xin Zhang, Jun Zhan, Pengyu Wang, Yaqian Zhou, and Xipeng Qiu. SpeechGPT:Empowering Large Language Models with Intrinsic Cross-Modal Conversational Abilities. In Findings ofthe Association for Computational Linguistics: EMNLP 2023, Singapore, December 6-10, 2023,pp. 15757–15773, 2023.
+[26] Shengqiong Wu, Hao Fei, Leigang Qu, Wei Ji, and Tat-Seng Chua. Next-gpt: Any-to-any multimodal llm.arXiv preprint arXiv:2309.05519, 2023.
+[27] Andy Brock, Soham De, Samuel L Smith, and Karen Simonyan. High-performance large-scale image recogni-tion without normalization. In International Conference on Machine Learning, pp. 1059–1071. PMLR,2021.
+[28] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Un-terthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, et al. An Image is Worth16x16 Words: Transformers for Image Recognition at Scale. In International Conference on LearningRepresentations, 2020.
+[29] Yuxin Fang, Wen Wang, Binhui Xie, Quan Sun, Ledell Wu, Xinggang Wang, Tiejun Huang, Xinlong Wang,and Yue Cao. Eva: Exploring the limits of masked visual representation learning at scale. In Proceedings ofthe IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 19358–19369, 2023.
+[30] Wenhui Wang, Hangbo Bao, Li Dong, Johan Bjorck, Zhiliang Peng, Qiang Liu, Kriti Aggarwal, Owais KhanMohammed, Saksham Singhal, Subhojit Som, et al. Image as a Foreign Language: BEiT Pretraining for Visionand Vision-Language Tasks. In Proceedings of the IEEE/CVF Conference on Computer Vision andPattern Recognition, pp. 19175–19186, 2023.
+[31] Mehdi Cherti, Romain Beaumont, Ross Wightman, Mitchell Wortsman, Gabriel Ilharco, Cade Gordon,Christoph Schuhmann, Ludwig Schmidt, and Jenia Jitsev. Reproducible scaling laws for contrastive language-image learning. In Proceedings of the IEEE/CVF Conference on Computer Vision and PatternRecognition, pp. 2818–2829, 2023.
+[32] Feilong Chen, Minglun Han, Haozhi Zhao, Qingyang Zhang, Jing Shi, Shuang Xu, and Bo Xu. X-llm:Bootstrapping advanced large language models by treating multi-modalities as foreign languages. arXivpreprint arXiv:2305.04160, 2023.
+[33] Wei-Ning Hsu, Benjamin Bolte, Yao-Hung Hubert Tsai, Kushal Lakhotia, Ruslan Salakhutdinov, and Abdel-rahman Mohamed. Hubert: Self-supervised speech representation learning by masked prediction of hiddenunits. IEEE/ACM Transactions on Audio, Speech, and Language Processing, Vol. 29, pp. 3451–3460,2021.
+[34] Sanyuan Chen, Yu Wu, Chengyi Wang, Shujie Liu, Daniel Tompkins, Zhuo Chen, Wanxiang Che, XiangzhanYu, and Furu Wei. BEATs: Audio Pre-Training with Acoustic Tokenizers. In International Conference onMachine Learning, ICML 2023, 23-29 July 2023, Honolulu, Hawaii, USA, pp. 5178–5193, 2023.
+[35] Alec Radford, Jong Wook Kim, Tao Xu, Greg Brockman, Christine McLeavey, and Ilya Sutskever. Ro-bust Speech Recognition via Large-Scale Weak Supervision. In International Conference on MachineLearning, ICML 2023, 23-29 July 2023, Honolulu, Hawaii, USA, pp. 28492–28518, 2023.
+[36] Yusong Wu, Ke Chen, Tianyu Zhang, Yuchen Hui, Taylor Berg-Kirkpatrick, and Shlomo Dubnov. Large-scalecontrastive language-audio pretraining with feature fusion and keyword-to-caption augmentation. In ICASSP2023-2023 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP),pp. 1–5. IEEE, 2023.
+[37] Salesforce. Ulip. 2022.
+[38] Xumin Yu, Lulu Tang, Yongming Rao, Tiejun Huang, Jie Zhou, and Jiwen Lu. Point-bert: Pre-training 3dpoint cloud transformers with masked point modeling. In Proceedings of the IEEE/CVF Conference onComputer Vision and Pattern Recognition, pp. 19313–19322, 2022.
+[39] Rohit Girdhar, Alaaeldin El-Nouby, Zhuang Liu, Mannat Singh, Kalyan Vasudev Alwala, Armand Joulin,and Ishan Misra. Imagebind: One embedding space to bind them all. In Proceedings of the IEEE/CVFConference on Computer Vision and Pattern Recognition, pp. 15180–15190, 2023.
+[40] Jean-Baptiste Alayrac, Jeﬀ Donahue, Pauline Luc, Antoine Miech, Iain Barr, Yana Hasson, Karel Lenc, ArthurMensch, Katherine Millican, Malcolm Reynolds, et al. Flamingo: a visual language model for few-shotlearning. Advances in Neural Information Processing Systems, Vol. 35, pp. 23716–23736, 2022.
+[41] Wayne Xin Zhao, Kun Zhou, Junyi Li, Tianyi Tang, Xiaolei Wang, Yupeng Hou, Yingqian Min, Beichen Zhang,Junjie Zhang, Zican Dong, et al. A survey of large language models. arXiv preprint arXiv:2303.18223,2023.
+[42] Edward J Hu, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen, et al.LoRA: Low-Rank Adaptation of Large Language Models. InInternational Conference on LearningRepresentations, 2021.
+[43] Yang Song, Jascha Sohl-Dickstein, Diederik P Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole.Score-Based Generative Modeling through Stochastic Diﬀerential Equations. InInternational Conferenceon Learning Representations, 2021.
+[44] Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Bj¨orn Ommer. High-resolutionimage synthesis with latent diﬀusion models. InProceedings of the IEEE/CVF conference on computervision and pattern recognition, pp. 10684–10695, 2022.
+[45] Cerspense. Zeroscope: Diﬀusion-based text-to-video synthesis. 2023.
+[46] Haohe Liu, Zehua Chen, Yi Yuan, Xinhao Mei, Xubo Liu, Danilo P. Mandic, Wenwu Wang, and Mark D.Plumbley. AudioLDM: Text-to-Audio Generation with Latent Diﬀusion Models. In International Confer-ence on Machine Learning, ICML 2023, 23-29 July 2023, Honolulu, Hawaii, USA, pp. 21450–21474,2023.
+[47] Haohe Liu, Qiao Tian, Yi Yuan, Xubo Liu, Xinhao Mei, Qiuqiang Kong, Yuping Wang, Wenwu Wang, YuxuanWang, and Mark D. Plumbley. AudioLDM 2: Learning Holistic Audio Generation with Self-supervisedPretraining. CoRR, Vol. abs/2308.05734, , 2023.
+[48] Zhiqing Sun, Sheng Shen, Shengcao Cao, Haotian Liu, Chunyuan Li, Yikang Shen, Chuang Gan, Liang-YanGui, Yu-Xiong Wang, Yiming Yang, et al. Aligning large multimodal models with factually augmented rlhf.arXiv preprint arXiv:2309.14525, 2023.
+[49] Yangyi Chen, Karan Sikka, Michael Cogswell, Heng Ji, and Ajay Divakaran. Dress: Instructing largevision-language models to align and interact with humans via natural language feedback. arXiv preprintarXiv:2311.10081, 2023.
+[50] Afra Feyza Aky¨urek, Ekin Aky ¨urek, Aman Madaan, Ashwin Kalyan, Peter Clark, Derry Wijaya, and NiketTandon. RL4F: Generating Natural Language Feedback with Reinforcement Learning for Repairing ModelOutputs. arXiv preprint arXiv:2305.08844, 2023.
+[51] Jun Chen, Deyao Zhu, Xiaoqian Shen, Xiang Li, Zechun Liu, Pengchuan Zhang, Raghuraman Krishnamoorthi,Vikas Chandra, Yunyang Xiong, and Mohamed Elhoseiny. Minigpt-v2: large language model as a uniﬁedinterface for vision-language multi-task learning. arXiv preprint arXiv:2310.09478, 2023.
+[52] Lin Chen, Jisong Li, Xiaoyi Dong, Pan Zhang, Conghui He, Jiaqi Wang, Feng Zhao, and DahuaLin. ShareGPT4V: Improving Large Multi-Modal Models with Better Captions. arXiv preprintarXiv:2311.12793, 2023.
+[53] Ji Lin, Hongxu Yin, Wei Ping, Yao Lu, Pavlo Molchanov, Andrew Tao, Huizi Mao, Jan Kautz, Mo-hammad Shoeybi, and Song Han. VILA: On Pre-training for Visual Language Models. arXiv preprintarXiv:2312.07533, 2023.
+[54] Or Honovich, Thomas Scialom, Omer Levy, and Timo Schick. Unnatural instructions: Tuning languagemodels with (almost) no human labor. arXiv preprint arXiv:2212.09689, 2022.
+[55] Akari Asai, Sewon Min, Zexuan Zhong, and Danqi Chen. Retrieval-based language models and applications.In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics(Volume 6: Tutorial Abstracts), pp. 41–46, 2023.
+[56] Yunfan Gao, Yun Xiong, Xinyu Gao, Kangxiang Jia, Jinliu Pan, Yuxi Bi, Yi Dai, Jiawei Sun, and Haofen Wang.Retrieval-augmented generation for large language models: A survey. arXiv preprint arXiv:2312.10997,2023.
+[57] Mintong Kang, Nezihe Merve G ¨urel, Ning Yu, Dawn Song, and Bo Li. C-RAG: Certiﬁed Generation Risksfor Retrieval-Augmented Language Models. arXiv preprint arXiv:2402.03181, 2024.

@@ -1,0 +1,264 @@
+音声信号から文字記号を創り出す―深層ベイズに基づく教師なし表現学習によるアプローチ―
+
+髙橋 舜
+
+1
+
+  金崎朝子
+
+2
+
+ 須田仁志
+
+3
+
+ サクリアニ・サクティ
+
+11
+
+奈良先端科学技術大学院大学
+
+2
+
+東京科学大学
+
+3
+
+産業技術総合研究所 
+
+
+
+ takahashi.shun.tq9@naist.ac.jp kanezaki@c.titech.ac.jp
+
+
+
+suda.h@aist.go.jp ssakti@is.naist.jp
+
+
+
+概要
+
+如何にして対象の音声言語の音声データから、その言語において言語学的に妥当な文字記号の体系を機械に創り出させるか。
+この問いに答えるべく、本研究では深層ベイズに基づく機械学習手法を提案する。
+提案手法では、世界の言語の音素数の報告データをもとに、文字記号の種類数の弱情報事前分布を導入する。
+これにより、従来研究のように、文字記号の種類数に関する事前の仮定に無限や定数を無理に持ち出すことなく、対象言語が持ち得る文字記号の種類数を推定しながら、その言語の文字記号の体系を創出することが可能になる。
+実験により、提案手法の文字体系と人手で創られた文字体系に、従来手法と比較してより強い対応が示された。
+
+
+
+1 はじめに
+
+世界の 7,168 言語の 93 ％程度が文字体系を確立しておらず、話しことば（音声）を主とする口頭言語に分類される[1, 2, 3]。
+このことから、自然言語の総体として最も「自然」な状態は音声の形式といっても過言でない。
+しかし、自然言語処理の分野はこれまで、専らテキストという人手で整形された二次的なデータ形式で自然言語を扱ってきた。
+結果として、その殆どの技術がテキスト資源の豊かなごく一部の言語にしか適用できない現状がある。
+より包摂的な言語技術の実現を目標に、音声から直接、音素に相当するような一種の文字記号（以下、文字とする）の体系を機械に創出させる「音響単位発見」という基礎タスクがある。
+それを通じて得られた文字体系をもとに、ブートストラップ方式に自然言語処理を展開することが見込まれる[4]。
+また、その過程が人間の第一言語獲得と相通ずるため、発達認知科学への貢献も期待されている[5]。
+音響単図 1 Phoible [6]内の 3,020 言語の音素の種類数分布位発見でモデル化の対象となる音素体系は、図 1 のように、どの言語でも有限小数個で構成される。
+しかし、第 2 節で詳述するように、従来手法には、文字の種類数を潜在的に無限、あるいは事前指定の定数とするなど、極端な仮定があった。
+そこで本研究では、音素の実態により即した文字体系の獲得手法を提案する。
+より具体的には、 本研究では深層ベイズというベイズ推論と深層学習を融合させたアプローチにより、「音素らしい種類数」の事前知識を考慮しつつ、文字体系の獲得を可能にする手法を提案する。
+そして従来手法との比較実験により、提案手法が創り出す文字体系が、人手で創られた文字体系とより強く対応することを示す。
+
+
+
+2 関連研究
+
+ディリクレ過程(DP)音響単位発見の先駆的な研究のひとつに Lee らの研究[7]がある。
+Lee らはディリクレ過程（DP）という無限次元のカテゴリー分布を生成する確率過程をもとに、混合分布数がデータ依存のガウス混合モデルを提案している。
+その各混合分布が音響単位（文字）に対応する。
+後続研究には例えば、変分推論を導入した手法[8]や、より複雑な階層構造を取り入れた手法[9]がある。
+ニューラル量子化近年、より主流となった手法がニューラル量子化オートエンコーダー（VQVAE）[10]という、DNN の中間表現を量子化する手法である。
+Tjandra ら[11]や Niekerk ら[12]が音響単位発見に応用した。
+同手法は、文字の種類数に相当するコードブックの大きさを事前指定する必要があるが，DP ベースの手法に対して音素情報の特徴抽出性能に関して優位性が報告されている[13]。
+無限のカテゴリー数を想定する DP は、例えば任意のテキスト上の単語や漢字の頻度分布のモデルには適切と考えられるが、音素体系のモデルにはそう考え難い。
+また、各言語・方言で音素の種類数が異なることから、コードブックを事前指定するニューラル量子化も妥当性を欠く。
+これらに対して、本研究では、言語学者がつくる音素目録のように、有限小数で構成される文字体系の獲得を可能にする。
+
+
+3 提案手法
+
+本節では深層ベイズに基づく提案手法について説明する。
+提案手法は、深層ベイズの代表手法 VAE[14]や従来研究[12]の VQVAE [10]と同様にオートエンコーダーの一種とみなせる。
+つまり、入力データを所望の形質の表現に変換するエンコーダーと、その表現から元の入力データを再構成するデコーダーで構成される。
+第 3.1 節の認識モデルが前者に、第 3.2 節の生成モデルが後者に相当する。
+ここで提案手法の概略を述べる。
+提案手法の認識モデルは対象言語の音声データ、系列長 𝑇 ∈ ℕ の対数メルスぺクトログラム 𝒙1:𝑇= [𝒙1, 𝒙2, ..., 𝒙𝑇]を、漸進的に時刻 𝑡 ∈ {1, 2, ..., 𝑇 } ごとに入力として受け取る。
+そして、認識モデルと生成モデルの逐次的な協働の過程を経て、𝑁 通りの、各入力 𝒙𝑡に対応し得る文字（の ID），𝑧𝑡∈ {0, 1, 2, ..., 𝐾 }𝐾 ∈ℕが連なった文字列 {𝑧(𝑛)1:𝑇}𝑁𝑛=1を、それぞれの尤もらしさを表す確率 {𝑤(𝑛)𝑇}𝑁𝑛=1とともに返す。
+それらで構成される確率分布こそが提案手法で獲得される表現である。
+以下、提案手法を構成する認識モデルと生成モデル、そして提案手法の学習・推論手法を説明する。
+
+3.1 認識モデル
+
+提案手法において、認識モデルは時刻ごとに入力音声データに対応し得る文字の候補を 𝑁 個立てる役割を持つ。
+認識モデルは式(1)に表したように、時刻に合わせて因数分解された確率分布をベースとする。
+時刻 𝑡 の音声データ 𝒙𝑡に対応する文字の候補は式(1)の分布から抽出される。
+𝑞𝜙(𝑧1:𝑇| 𝒙1:𝑇) =𝑇Ö𝑡=1𝑞𝜙(𝑧𝑡| 𝒙1:𝑡, 𝑧1:𝑡 −1)(1)式(1)において、各分布のパラメーターは時刻 𝑡 までの 𝒙1:𝑡と直前までの 𝑧1:𝑡 −1に依存している。
+この依存関係は毎時刻、𝒙𝑡と 𝑧𝑡 −1の埋め込み 𝒆𝑧𝑡 −1∈ ℝ𝐷を入力に更新される IndRNN [15]の内部状態 𝒓𝜙(𝑡)によって捉えられる。
+提案手法の認識モデルは文字 𝑧𝑡の候補を、そもそも対象言語で必要となる文字の種類数が未知の状況下で推定する。
+本研究ではそれを可能とするために、より高次の潜在変数として、文字の種類数𝐾𝑡∈ {0, 1, 2...} および各文字の存在確率 𝝅𝑡∈ △𝐾𝑡+2を導入する。
+この階層構造を有した確率分布は時刻𝑡 において式(2)に表される。
+𝑞𝜙(𝑧𝑡| 𝒙≤𝑡, 𝑧1:𝑡 −1) = 𝑞𝜙(𝑧𝑡| 𝝅𝑡, 𝐾𝑡, 𝒙1:𝑡, 𝑧1:𝑡 −1)× 𝑞𝜙(𝝅𝑡| 𝐾𝑡, 𝒙1:𝑡, 𝑧1:𝑡 −1)× 𝑞𝜙(𝐾𝑡| 𝒙1:𝑡, 𝑧1:𝑡 −1)= 𝐶𝑎𝑡𝑒𝑔𝑜𝑟𝑖𝑐𝑎𝑙 (𝑧𝑡| 𝝅𝑡, 𝐾𝑡, 𝒙1:𝑡, 𝑧1:𝑡 −1)× 𝐷𝑖𝑟𝑖𝑐ℎ𝑙𝑒𝑡 (𝝅𝑡| 𝐾𝑡, 𝒙1:𝑡, 𝑧1:𝑡 −1)× 𝑃𝑜𝑖𝑠𝑠𝑜𝑛(𝐾𝑡| 𝒙1:𝑡, 𝑧1:𝑡 −1)
+(2)式(2)では 𝐾𝑡を全時刻の共通変数とせず、時刻毎で局所化している。
+これは全時刻共通の依存関係があると、全体を見る必要性から系列長が長くなりやすい音声データでは計算量が膨大になるためである。
+また式(2)の 𝐷𝑖𝑟𝑖𝑐ℎ𝑙𝑒𝑡 分布は、式(3)の通りにパラメーター化される。
+𝐾𝑡の増加に合わせて 𝝅𝑡が疎らになり、𝑧𝑡の種類数の過度な増加が抑制される。
+𝐷𝑖𝑟𝑖𝑐ℎ𝑙𝑒𝑡(𝝅𝑡| 𝐾𝑡, 𝒙1:𝑡, 𝑧1:𝑡 −1)= 𝐷𝑖𝑟𝑖𝑐ℎ𝑙𝑒𝑡𝜶(1)𝑡(𝐾𝑡+ 2), ...,𝜶(𝐾𝑡+2)𝑡(𝐾𝑡+ 2),𝜶(1)𝑡, ..., 𝜶(𝐾+2)𝑡⊺= 𝑀 𝐿𝑃𝜙, 𝜋(𝒓𝜙(𝑡)) ∈ ℝ𝐾+2+(3)さらに、式(2)の 𝐶𝑎𝑡𝑒𝑔𝑜𝑟𝑖𝑐𝑎𝑙 分布のパラメーター計算には式(4)を用いる。
+式(4)は時刻 𝑡 で考慮する 𝐾𝑡+ 2 個の文字埋め込み {𝒆𝑘|𝒆 ∈ ℝ𝐷}𝐾𝑡+2𝑘=1と、認識モデルの埋め込みˆ𝒆𝑡= 𝑀 𝐿𝑃𝜙,𝑧𝑡(𝒓𝜙(𝑡)) ∈ ℝ𝐷の類似度 𝜎(𝒆,ˆ𝒆𝑡) = 𝑒𝑥 𝑝−| |𝒆 −ˆ𝒆𝑡| |22で 𝝅𝑡に重み付けする。
+これにより、モデルが対応確率を上げるために両者を近づけるように学習するので、𝒆 に ˆ𝒆𝒕の情報が直接、含まれるように促す狙いがある。
+𝐶𝑎𝑡𝑒𝑔𝑜𝑟𝑖𝑐𝑎𝑙 (𝑧𝑡| 𝝅𝑡, 𝐾𝑡, 𝒙≤𝑡, 𝑧<𝑡)= 𝐶𝑎𝑡𝑒𝑔𝑜𝑟𝑖𝑐𝑎𝑙 (𝑐(1)𝑡, ..., 𝑐(𝐾+2)𝑡),𝑐(𝑖)𝑡=𝜋(𝑖)𝑡𝜎(𝒆(𝑖),ˆ𝒆𝑡)Σ𝐾+2𝑗=1𝜋( 𝑗 )𝑡𝜎(𝒆( 𝑗 ),ˆ𝒆𝑡), 𝑖 = 1, 2, ..., 𝐾 + 2(4)認識モデル内の DNN の構成は付録 A.1 に示す。
+
+3.2 生成モデル
+
+提案手法の生成モデルは認識モデルが挙げた文字の候補を評価する役割をもつ。
+その際に実際の音声データとモデルが持つ事前知識が参照される。
+生成モデルは式(5)に表される。
+ここで式(5) - 1 は認識モデルの立てた文字候補の予測のしやすさをもとに評価値として算出する。
+そして式(5) - 2 は音声データの再構成誤差をもとに評価値を算出する。
+ベイズ推論の観点でいえば前者は事前分布、後者は尤度関数であるため、以後そのように呼ぶ。
+𝑝𝜃(𝒙1:𝑇, 𝑧1:𝑇) =𝑇Ö𝑡=12z  }|  {𝑝𝜃(𝒙𝑡| 𝑧𝑡)1z  }|  {𝑝𝜃(𝒛𝑡| 𝑧1:𝑡 −1) 𝑝𝜃(𝑧1)(5)また、ここで事前分布(5) -2における過去の文字列への依存関係は、認識モデルと同様に IndRNN [15]の内部状態 𝒓𝜃(𝑡)が捉える。
+なお、(5) -2は機能的には認識モデルを正則化する項であるが、形式的には文字列上の言語モデルとみなせる。
+生成モデルの時刻 𝑡 = 1 の事前分布は、式(6)に示したように指定する。
+𝑝𝜃(𝑧1) = 𝑝𝜃(𝑧𝑡| 𝝅1, 𝐾1) × 𝑝𝜃(𝝅1| 𝐾1) × 𝑝𝜃(𝐾1)= 𝐶𝑎𝑡𝑒𝑔𝑜𝑟𝑖𝑐𝑎𝑙 (𝑧𝑡| 𝝅1)× 𝐷𝑖𝑟𝑖𝑐ℎ𝑙𝑒𝑡(𝝅1| 1/(𝐾1+ 2))× 𝐺𝑒𝑜𝑚𝑒𝑡𝑟𝑖𝑐(𝐾1| 0.03)(6)ここで、𝑝𝜃(𝐾1)は、図 1 で示した世界の言語の音素数が平均 34.93 であるという事前知識のみをもとに、自然数上で平均が既知の時に最も不確実な分布、すなわちエントロピー最大化分布の 𝐺𝑒𝑜𝑚𝑒𝑡𝑟𝑖𝑐分布を、弱情報事前分布として指定している。
+同分布はより小さい自然数にほど、確率質量が集中する。
+つまり、提案手法においては、認識モデルがより少ない文字の種類数をもとに文字の候補を立てた場合に、生成モデルがそれをより高く評価する。
+この節約性により、認識モデルが過度な値を設定することを抑えつつ、いわば音素らしいスケールのなかで適切な種類数を推定させることが可能になる。
+時刻 𝑡 > 1 における生成モデルの事前分布は、式(7)に示したように 𝐾𝑡を除いて認識モデルとともに学習される。
+式(7)の 𝐷𝑖𝑟𝑖𝑐ℎ𝑙𝑒𝑡 分布と 𝐶𝑎𝑡𝑒𝑔𝑜𝑟𝑖𝑐𝑎𝑙分布は、RNN の内部状態 𝒓𝜙(𝑡)を入力に、認識モデルで導入したパラメーター化手法の式(3)と式(4)によりパラメーターが算出される。
+𝐾𝑡の事前分布は、全時刻において時刻 𝑡 = 1 と同一の分布を仮定する。
+𝑝𝜃(𝑧𝑡| 𝑧1:𝑡 −1) = 𝑝𝜃(𝑧𝑡| 𝝅𝑡, 𝐾𝑡, 𝑧1:𝑡 −1)× 𝑝𝜃(𝝅𝑡| 𝐾𝑡, 𝑧1:𝑡 −1)× 𝑝𝜃(𝐾𝑡| 𝒙≤𝑡, 𝑧1:𝑡 −1)= 𝐶𝑎𝑡𝑒𝑔𝑜𝑟𝑖𝑐𝑎𝑙 (𝑧𝑡| 𝝅𝑡, 𝐾𝑡, 𝑧1:𝑡 −1)× 𝐷𝑖𝑟𝑖𝑐ℎ𝑙𝑒𝑡 (𝝅𝑡| 𝐾𝑡, 𝑧1:𝑡 −1)× 𝐺𝑒𝑜𝑚𝑒𝑡𝑟𝑖𝑐(𝐾1| 0.03)(7)尤度関数には、式(8)に示すように、ガウス分布Nを指定する。
+ここで 𝜇𝜃(.)と 𝜎2𝜃(.)の算出にはそれぞれ適当な DNN が用いられる。
+𝑝𝜃(𝒙𝑡| 𝑧𝑡) =N(𝒙𝒕| 𝜇𝜃(𝑧𝑡), 𝜎2𝜃(𝑧𝑡)𝑰)(8)生成モデル内の DNN の構成は付録A.2 に示す。
+
+
+
+3.3 学習・推論アルゴリズム
+
+本研究で提案するモデルは、時系列性、階層性、離散性を有する複雑な潜在構造を学習・推論する必要がある。
+これに対して、本研究では NASMC [16]という、逐次モンテカルロ法と深層学習を組み合わせた学習・推論アルゴリズムの応用を提案する。
+NASMC による推論では、重点抽出法を基礎とする式(9)をもとに、その再帰的関係を利用して、認識モデルと生成モデルを通じて漸進的に重要度重み𝑤(𝑛)𝑇, 𝑛 = 1, 2, ..., 𝑁 を算出する。
+𝑤(𝑛)𝑇=𝑝𝜃(𝒙1:𝑇, 𝑧(𝑛)1:𝑇)/𝑞𝜙(𝑧(𝑛)1:𝑇| 𝒙1:𝑇)Σ𝑁𝑚=1𝑝𝜃(𝒙1:𝑇, 𝑧(𝑚)1:𝑇)/𝑞𝜙(𝑧(𝑚)1:𝑇| 𝒙1:𝑇)∝ 𝑤(𝑛)𝑇 −1𝑝(𝒙𝑡| 𝑧(𝑛)𝑇) 𝑝(𝑧(𝑛)𝑇| 𝑧(𝑛)1:𝑇 −1)𝑞(𝑧(𝑛)𝑇| 𝑧(𝑛)1:𝑇 −1, 𝒙1:𝑇)(9)結果として、{𝑤(𝑛)𝑇}𝑁𝑛=1と {𝑧(𝑛)1:𝑇}𝑁𝑛=1を合わせて、式(10)に示す形で 𝑧1:𝑇の事後分布の近似分布がデータ表現として得られる。
+なお、𝛿(.)はデルタ関数で、𝑁 を増やすほどに、より良い近似が達成される。
+𝑁Õ𝑛=1𝑤(𝑛)𝑇𝛿(𝑧1:𝑇− 𝑧(𝑛)1:𝑇) ≈ 𝑝(𝑧1:𝑇| 𝒙1:𝑇)(10)認識モデルと生成モデルの学習においても、𝑤(𝑛)𝑇を用いて、両モデルの学習パラメーターが、それぞれ、式(11)と式(12)により個別の目的関数を最適化する形で同時に更新される。
+∇𝜙𝐾 𝐿 [𝑝(𝑧1:𝑇| 𝒙1:𝑇)||𝑞𝜙(𝑧1:𝑇| 𝒙1:𝑇)]≈ −Σ𝑇𝑡=1Σ𝑁𝑛𝑤(𝑛)𝑡∇𝜙log 𝑞𝜙(𝑧𝑡| 𝒙≤𝑡, 𝑧1:𝑡 −1)(11)∇𝜃log 𝑝𝜃(𝒙1:𝑇)≈ Σ𝑇𝑡=1Σ𝑁𝑛𝑤(𝑛)𝑡∇𝜃log 𝑝𝜃(𝒙𝑡, 𝑧𝑡| 𝑧1:𝑡 −1) 𝑝𝜃(𝑧1)(12)
+
+4 実験評価
+
+本実験は、提案手法の各文字とその埋め込み表現が、分節的単位の言語学的情報を捉えられているか、従来手法の VQVAE との比較を通じて評価した。
+
+
+
+4.1 実験設定
+
+訓練データセット Zero Resource Speech Challenge2017（ZeroSpeech2017）[17]の英語（方言不明）のデータセットを利用した。
+これには、69 話者による合計約 45 時間の読み上げ音声で構成されている。
+データ前処理 16kHz の各音声信号に、STFT（窓幅 400、シフト幅 160）をかけ、対数メル尺度（メル・バンド数 40）に変換した。
+評価手法本実験では次の２つの評価手法を用いた。
+以下のうち、前者では獲得文字の埋め込み表現が、後者では獲得文字それ自体が用いられた。
+1. ABX 音素識別誤り率（ABX）[18]：獲得表現が各音素の弁別特徴を捉えているか、異なる音素間で表現の類似度をもとに評価する尺度。
+話者不変性の評価のために音素の標本が話者内と話者間から抽出される場合で計測される。
+本実験では埋め込みのコサイン類似度を利用した。
+ZeroSpeech2017 のテストデータを利用した。
+2. 補正相互情報量（AMI）[19]：人手の書き起こしテキストと、各手法独自の文字体系で自動で書き起こされた疑似テキストの「対応の良さ」を、情報理論に基づき定量評価する尺度。
+評価データに TIMIT [20]（米国英語）の SI/SX 文および Lee らの文字体系（39 種類）[21]を用いた。
+提案手法の実験設定学習の詳細は B に示す。
+評価時には 𝑁 = 1024 に固定した。
+ABX の算出にはベクトル表現を必要とするため、本実験では¯𝑒1:𝑇=Í𝑁𝑛=1𝑤(𝑛)1:𝑇𝑒(𝑛)1:𝑇を採用した。
+一方で、AMI の文字 𝑧 の出現頻度は各 𝑤(𝑛)𝑡で重み付けして測定した。
+従来手法の実験設定先行研究[12]により公開されている VQ-VAE の実装1）をベースに、提案手法に合わせてデコーダーを対数メルスペクトログラムの再構築誤差で学習するようにした。
+話者埋め込みの利用本実験で比較する両手法には L2 正規化した同一の事前学習済みの話者埋め込み ECAPA-TDNN2）[22]を文字埋め込みに連結させる形でデコーダーの補助入力として利用した。
+1） https://github.com/bshall/ZeroSpeech2） https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb
+
+4.2 実験結果とその考察
+
+表 1 ZeroSpeech 2017 英語のテストデータにおける ABX音素識別誤り率文字の 1 秒の文脈 10 秒の文脈 120 秒の文脈種類数話者内話者間話者内話者間話者内話者外提案手法 44 17.50 24.71 17.68 24.68 18.29 25.13VQVAE32 17.60 24.16 17.37 24.17 17.35 24.34128 15.36 22.39 15.48 22.24 15.50 22.43512 15.66 22.50 15.61 22.22 15.46 22.282048 15.63 22.28 15.26 21.89 15.43 21.93表 2 TIMIT コーパスの人手書き起こしと各手法独自の文字体系に基づく自動書き起こしの補正相互情報量(AMI)文字の種類数 AMI ([0, 1] ↑)提案手法 44 0.3163VQVAE32 0.3064128 0.2645512 0.26062048 0.2493表 1 に示すように、ABX では提案手法が従来手法を上回ることはなかった。
+しかし表 2 により、AMIでは提案手法の優位性が示された。
+ABX では埋め込みの特徴量で評価していることから、従来手法のほうが埋め込みにより言語学的に有意義な情報を捕捉していることが示唆される。
+AMI では直接、獲得した文字を人手で創られた文字体系を参照して評価している。
+その AMI における優位性から、提案手法で獲得される文字体系が、より「人間の文字らしい」ということが示唆される。
+従来手法は文字の種類数が 2048 に設定されたときに ABX で最高性能を記録している。
+しかしこの数は英語諸方言の音素数の 39∼45 [6]や図 1 の分布からも大きく逸脱する。
+一方で提案手法は、比較的妥当な数、最大 44 と推定している。
+
+
+
+5 おわりに
+
+本研究では、機械が「音素らしい」文字体系を創り出せるようにするために、深層ベイズの枠組みから、世界の言語の報告データに依拠する文字の種類数の弱情報事前分布を導入した教師なし学習の手法を提案した。
+従来手法との比較実験により、提案手法が人手でつくられた文字体系とより強く対応する文字体系を構築したことを示した。
+今後はモデルを改良しつつ、大規模なデータや多様な言語での評価、より高度な自然言語処理への展開を行う。
+
+
+
+謝辞
+
+本研究は、 国立研究開発法人産業技術総合研究所事業の令和 5 年度覚醒プロジェクトの助成を受けたものです。
+
+参考文献
+
+
+[1] Gary F. Simons and M. Paul Lewis. The world’s languagesin crisis: A 20-year update. In Elena Mihas, BernardPerley, Gabriel Rei-Doval, and Kathleen Wheatley, editors,Studies in Language Companion Series, Vol. 142, pp.3–20. John Benjamins Publishing Company, Amsterdam,2013.
+[2] David M. Eberhard, Gary F. Simons, and Charles D. Fen-nig. Ethnologue: Languages of the World. SIL Inter-national, Dallas, 26 edition, 2023.
+[3] Steven Bird and Dean Yibarbuk. Centering the SpeechCommunity. In Yvette Graham and Matthew Purver, ed-itors, Proceedings of the 18th Conference of theEuropean Chapter of the Association for Compu-tational Linguistics (Volume 1: Long Papers), pp.826–839, St. Julian’s, Malta, March 2024. Association forComputational Linguistics.
+[4] Ewan Dunbar, Nicolas Hamilakis, and Emmanuel Dupoux.Self-supervised language learning from raw audio:Lessons from the Zero Resource Speech Challenge. IEEEJ. Sel. Top. Signal Process., pp. 1–16, 2022.
+[5] Emmanuel Dupoux. Cognitive science in the era of arti-ﬁcial intelligence: A roadmap for reverse-engineering theinfant language-learner. Cognition, Vol. 173, pp. 43–59,April 2018.
+[6] Steven Moran and Daniel McCloy, editors. Phoible 2.0.Max Planck Institute for the Science of Human History,Jena, 2019.
+[7] Chia-ying Lee and James Glass. A nonparametric Bayesianapproach to acoustic model discovery. In Proceedings ofthe 50th Annual Meeting of the Association forComputational Linguistics (Volume 1: Long Pa-pers), pp. 40–49, Jeju Island, Korea, July 2012. Asso-ciation for Computational Linguistics.
+[8] Lucas Ondel, Lukaš Burget, and Jan Černocký. Varia-tional Inference for Acoustic Unit Discovery. ProcediaComputer Science, Vol. 81, pp. 80–86, January 2016.
+[9] Michael Heck, Sakriani Sakti, and Satoshi Nakamura.Dirichlet Process Mixture of Mixtures Model for Unsuper-vised Subword Modeling. IEEE/ACM Transactions onAudio, Speech, and Language Processing, Vol. 26,No. 11, pp. 2027–2042, November 2018.
+[10] Aaron van den Oord, Oriol Vinyals, and KorayKavukcuoglu. Neural Discrete Representation Learning.In Proceedings of the 31st International Confer-ence on Neural Information Processing Systems, pp.6309–6318, Red Hook, NY, USA, 2017. Curran AssociatesInc.
+[11] Andros Tjandra, Berrak Sisman, Mingyang Zhang, Sakri-ani Sakti, Haizhou Li, and Satoshi Nakamura. VQVAEUnsupervised Unit Discovery and Multi-Scale Code2SpecInverter for Zerospeech Challenge 2019. In Interspeech2019, pp. 1118–1122. ISCA, September 2019.
+[12] Benjamin van Niekerk, Leanne Nortje, and Herman Kam-per. Vector-Quantized Neural Networks for Acoustic UnitDiscovery in the ZeroSpeech 2020 Challenge. In Inter-speech 2020, pp. 4836–4840. ISCA, October 2020.
+[13] Ewan Dunbar, Julien Karadayi, Mathieu Bernard, Xuan-Nga Cao, Robin Algayres, Lucas Ondel, Laurent Besacier,Sakriani Sakti, and Emmanuel Dupoux. The Zero Re-source Speech Challenge 2020: Discovering Discrete Sub-word and Word Units. In Interspeech 2020, pp. 4831–4835. ISCA, October 2020.
+[14] Dieder ik P. Kingma and Max Welling. Auto-EncodingVariational Bayes, May 2014.
+[15] Shuai Li, Wanqing Li, Chris Cook, Ce Zhu, and YanboGao. Independently Recurrent Neural Network (In-dRNN): Building A Longer and Deeper RNN. In 2018IEEE/CVF Conference on Computer Vision andPattern Recognition, pp. 5457–5466, June 2018.
+[16] Shixiang (Shane) Gu, Zoubin Ghahramani, and Richard ETurner. Neural Adaptive Sequential Monte Carlo. In Ad-vances in Neural Information Processing Systems,Vol. 28. Curran Associates, Inc., 2015.
+[17] Ewan Dunbar, Xuan Nga Cao, Juan Benjumea, JulienKaradayi, Mathieu Bernard, Laurent Besacier, XavierAnguera, and Emmanuel Dupoux. The zero resourcespeech challenge 2017. In 2017 IEEE AutomaticSpeech Recognition and Understanding Workshop(ASRU), pp. 323–330, Okinawa, December 2017. IEEE.
+[18] Thomas Schatz, Vijayaditya Peddinti, Francis Bach, ArenJansen, Hynek Hermansky, and Emmanuel Dupoux. Eval-uating speech features with the minimal-pair ABX task:analysis of the classical MFC/PLP pipeline. In Inter-speech 2013, pp. 1781–1785. ISCA, August 2013.
+[19] Nguyen Xuan Vinh, Julien Epps, and James Bailey. In-formation theoretic measures for clusterings compari-son: Variants, properties, normalization and correctionfor chance. Journal of Machine Learning Research,Vol. 11, No. 95, pp. 2837–2854, 2010.
+[20] Garofolo, John S., Lamel, Lori F., Fisher, William M.,Pallett, David S., Dahlgren, Nancy L., Zue, Victor, andFiscus, Jonathan G. TIMIT Acoustic-Phonetic ContinuousSpeech Corpus, 1993.
+[21] K.-F. Lee and H.-W. Hon. Speaker-independent phonerecognition using hidden Markov models. IEEE Trans.Acoust., Speech, Signal Processing, Vol. 37, No. 11,pp. 1641–1648, November 1989.
+[22] Brecht Desplanques, Jenthe Thienpondt, and Kris De-muynck. ECAPA-TDNN: Emphasized Channel Attention,Propagation and Aggregation in TDNN Based SpeakerVeriﬁcation. In Interspeech 2020, pp. 3830–3834, Oc-tober 2020.
+
+
+
+
+A 提案手法の DNN 構成
+
+提案手法は Pytorch (version: 2.0.1+cu118)で実装された。
+以下を構成する層は、いずれも基本的には Pytorch のデフォルトのハイパーパラメーター設定である。
+
+
+A.1 認識モデルの DNN 構成
+
+1. Causal 1D-CNN•｛入力: 40, 出力: 512, カーネルの大きさ：4, 畳み込み幅：2｝• 活性化関数：ReLU2. MLP (I)•｛入力: 512, 出力: 512, 中間層の数：4｝• 活性化関数：ReLU3. IndRNN [15]•｛入力: 64+512, 出力: 256, レイヤー数：2｝• 活性化関数：ReLU4. MLP (II)•｛入力: 512, 出力: 512×3, 中間層の数：1｝• 活性化関数：ReLU5. 式(2)の各分布のパラメーターに写像する線形層
+
+A.2 生成モデルの DNN 構成
+
+1. 文字埋め込み•｛次元数：64, 初期値：平均 0、標準偏差 0.01 の正規分布からのサンプル｝2. IndRNN [15]•｛入力: 64, 出力: 256, レイヤー数：2｝• 活性化関数：ReLU3. MLP (I)•｛入力: 256,出力: 512×2,中間層の数：1｝• 活性化関数：ReLU4. 式(7)の各分布のパラメーターに写像する線形層5. MLP (II)•｛入力: 256, 出力: 512×3, 中間層の数：1｝• 活性化関数：ReLU6. Transposed 1D-CNN•｛入力: 64 × 2, 出力: 512, カーネルの大きさ：2, 畳み込み幅：1｝• 活性化関数：ReLU7. MLP (III)•｛入力: 192, 出力: 64, 中間層の数：2｝• 活性化関数：ReLU8. MLP (IV)•｛入力: 64×2, 出力: 40×2 × 2, 中間層の数：2｝• 活性化関数：ReLU9. 式(8)の分布のパラメーターに写像する線形層
+
+B 学習時の実験設定
+
+各モデルの最適化には Pytorch 実装 Adam を学習率 0.004 で使用した。
+バッチサイズは 64、候補数 𝑁 は 16 とした。
+検証データでの損失が収束したところで訓練を停止させた。
+
+C 話者埋め込みを使わず訓練させ
+
+
+
+た場合の評価結果
+
+表 3 ZeroSpeech 2017 英語のテストデータにおける ABX音素識別誤り率文字の 1 秒の文脈 10 秒の文脈 120 秒の文脈種類数話者内話者間話者内話者間話者内話者外提案手法 128 22.5 33.87 23.17 34.04 23.06 34.04VQVAE32 17.82 26.14 18.50 26.32 18.54 26.67128 16.31 24.13 15.98 23.72 15.87 23.57512 14.76 22.07 14.70 21.45 14.49 21.292048 15.24 23.00 15.08 22.40 15.09 22.36表 4 TIMIT コーパスの人手書き起こしと各手法独自の文字体系に基づく自動書き起こしの補正相互情報量(AMI)文字の種類数 AMI ([0, 1] ↑)提案手法 128 0.2881VQVAE32 0.2844128 0.2603512 0.22162048 0.2177
+
+D 提案手法の獲得した文字体系と
+
+
+
+人手で創られた文字体系の対応
+
+図 2 に TIMIT コーパスをもとに構築した混同行列を視覚化した。
+図 2 人手で創られた文字体系と提案手法が獲得した文字体系の混合行列。
+獲得した文字のどれがどの文字に反応する傾向にあるか示している。
+上部の樹形図はその反応パターンの類似度をもとに階層クラスタリングしたもの。

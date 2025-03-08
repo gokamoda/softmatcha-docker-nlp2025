@@ -1,0 +1,271 @@
+Generating Explanations of Stereotypical Biaseswith Large Language Model
+
+Yang Liu Chenhui Chu
+
+
+
+Kyoto University
+
+
+
+yangliu@nlp.ist.i.kyoto-u.ac.jp  chu@i.kyoto-u.ac.jp
+
+Content Warning: This paper presents textual examplesthat may be oﬀensive or upsetting.
+
+
+Abstract
+
+Existing studies investigate stereotypical biases in largelanguage models (LLMs) through the diﬀerence betweenreal-world and counterfactual data.
+In this case, real-worlddata typically exhibit pro-stereotypical bias, while counter-factual data rewritten by humans exhibit anti-stereotypicalbias.
+Due to the subjective nature of stereotypical biasjudgment, it is crucial to explain the judgment.
+In thisstudy, we aim to use LLMs to judge whether a sentenceis pro- or anti-stereotypical and explain the reason for thejudgment.
+We construct a stereotypical bias explanationdataset for this goal.
+The experimental results show thatLLMs outperform humans in distinguishing pro- and anti-stereotypical biases.
+Moreover, our constructed dataset ishighly eﬀective in training smaller language models to gen-erate high-quality explanations.
+Finally, we ﬁnd that LLMsdiﬀer from human annotations on counterfactual data thanon real-world data.
+
+
+1 Introduction
+
+Stereotypical biases in large language models (LLMs)often rely on crowd-sourced datasets to study [1, 2].
+Thesentences in these datasets are annotated or rewritten bycrowd-sourced workers as pro- or anti-stereotypical bias.
+The real world data usually exhibit pro-stereotypical bias,while counterfactual data exhibit anti-stereotypical bias.
+However, recent studies [3, 4] have found no signiﬁcantdiﬀerence between real-world and counterfactual data inexisting crowd-sourced datasets, raising questions aboutthe reliability of human annotations.
+It is crucial to provide the necessary explanations toimprove the reliability of the judgment of whether a sen-tence exhibits pro- or anti-stereotypical bias.
+The explain-able natural language processing (NLP) ﬁeld usually rec-ommends writing explanations in free-form natural lan-guage
+[5].
+Previous studies [6, 7] have shown that wecan eﬀectively collect textual explanations through crowd-sourcing for simple and objective tasks (e.g., classiﬁcationtasks).
+However, collecting high-quality human explana-tions is more challenging for tasks that rely on subjec-tive judgment (e.g., stereotypical bias).
+Even the mostmeticulous crowd-sourcing eﬀorts often struggle to en-sure logically consistent and grammatically correct expla-nations
+[8].Recent advances in LLMs provide a promising solutionor alternative to traditional large-scale crowd-sourcing.
+Bywriting appropriate prompts, we can guide LLMs to gen-erate high-quality output that signiﬁcantly performs acrossa range of NLP tasks [9, 10].
+Fur thermore, Wiegreﬀe etal.
+[5] show that not only LLMs generate reliable explana-tions, but also these generated explanations often outper-form explanations written by crowd-sourced workers.
+In previous explanation studies, Dalvi et al.
+[6] focuson question-answering (QA) tasks, introducing entailmenttrees to explain answers.
+Wiegreﬀe et al.
+[5] focus onclassiﬁcation tasks and propose to use GPT-3 to generateexplanations for classiﬁcation decisions.
+However, previ-ous studies failed to consider tasks that are highly subjec-tive (e.g., stereotypical bias).
+In this study, we proposeto use LLMs (e.g., GPT-4o-mini1）) to determine whethera sentence exhibits pro- or anti-stereotypical bias and togenerate explanations.
+We construct a stereotypical bias explanation dataset thatcontains 7,228 sentences and the explanations of whetherthey exhibit pro- or anti-stereotypical bias.
+Our exper-imental results show that LLMs outperform humans in1）
+https://chatgpt.com― 2065 ―distinguishing pro- and anti-stereotypical biases.
+We alsoshow that smaller language models (SLMs) can learn high-quality explanations from our dataset.
+In addition, we ﬁndmore signiﬁcant diﬀerence between the results of LLMsand human annotations on counterfactual data than real-world data.
+This leads to concer ns about the quality ofhuman-rewritten counterfactual data.
+
+
+2 Deﬁnition
+
+Before going into the technical details, we ﬁrst deﬁnesome important terms used in this paper.
+
+2.1 Basic Sentence
+
+A basic sentence (e.g., People who live in trailerparks/mansions are alcoholics) contains a demographicword (e.g., trailer parks or mansions), and the sentenceshould exhibit either pro- or anti-stereotypical bias regard-ing that demographic word.
+Note that the demographicword in basic sentence often refers to historically advan-taged (e.g., mansions) or disadvantaged (e.g., trailer parks)groups
+[2].
+
+2.2 Pro- and Anti-stereotypical Bias
+
+In this section, we distinguish between pro- and anti-stereotypical bias.
+In StereoSet (SS)[1] and CrowS-Pairs (CP)[2] datasets, sentences appear in pairs and haveminimal modiﬁcations to each other (only demographicwords are diﬀerent).
+One of the sentences is from thereal world, and the other is manually rewritten counter-factual data; both exhibit stereotypical biases.
+Generally,sentences from the real world are more likely to exhibit pro-stereotypical bias, and manually rewritten counterfactualsentences are likely to exhibit anti-stereotypical bias.
+Forexample, sentence pairs People who live in trailer parks arealcoholics and People who live in mansions are alcoholicsboth express stereotypical bias.
+The former (real-worlddata) exhibit pro-stereotypical bias, and the latter (counter-factual data) exhibit anti-stereotypical bias.
+
+
+2.3 Stereotypical Bias Explanation
+
+An explanation 𝐸𝑆in this study is a piece of naturallanguage text explaining why a basic sentence 𝑆 is pro-or anti-stereotypical bias.
+An explanation often includesa judgment about whether the sentence exhibits pro- oranti-stereotypical bias.
+For example, “ Explanation: TheTable 1 Example of the prompt for LLMs to generate stereo-typical bias explanations for sentences.
+Highlight indicates thetext generated by LLMs.
+SystemJudge whether the sentence exhibits pro-stereotypical or anti-stereotypical bias; write <P> for pro-stereotypical bias and<A> for anti-stereotypical bias after “Answer:” Then give aspeciﬁc explanation after “Explanation:”UserSentence: ###sentence###Assistant:Answer: <P>Explanation: The sentence reinforces a negative stereotype bysuggesting that individuals who reside in trailer parks are ...sentence reinforces a negative stereotype by suggesting thatindividuals who reside in trailer parks are ...”Even though various factors could cause bias [11], thispaper mainly focuses on biases caused by stereotypes.
+Toexplain whether a basic sentence exhibits pro- or anti-stereotypical bias, we deﬁne stereotypical bias explana-tion.
+Stereotypical bias explanation requires an LLM 𝑀 togenerate explanation 𝐸𝑆to explain whether a sentence 𝑆exhibits pro- or anti-stereotypical bias.
+It can be denotedas 𝐸𝑆= 𝑀 (𝑆; 𝜃), where 𝜃 are the parameters of 𝑀.
+
+3 Stereotypical Bias Explanation
+
+
+
+Generation
+
+
+
+3.1 Basic Sentence Collection
+
+
+As our basic sentences, we use sentences from two pub-licly available crowd-sourced datasets, SS [1] and CP
+[2].The datasets consist of sentence pairs where one sentenceexhibits pro- and another anti-stereotypical bias.
+In par tic-ular, the SS dataset contains 2,106 sentence pairs coveringfour stereotypical bias types: race, profession, gender, andreligion.
+The CP dataset contains 1,508 sentence pairscovering nine stereotypical bias types: race, gender, sex-ual orientation, religion, age, nationality, disability, phys-ical appearance, and socioeconomic status.
+We collectall 7,228 sentences from SS and CP datasets as our basicsentences.
+
+
+3.2 Prompt Design
+
+
+In this paper, we focus on the ability of LLMs to judgeand explain stereotypical biases.
+Therefore, we do not setup various prompts to obtain multiple types of explana-tions, and we focus only on general forms of explanations.
+Speciﬁcally, the prompts are designed as shown in Ta-ble 1.
+We set up system instruction for LLMs to ﬁrst judge― 2066 ―Human (pro-) GPT-4o-mini (pro-)
+Human (anti-) GPT-4o-mini (anti-)0.30.20.10.00.10.2Stereotype ScoreStereotype Score of GPT-4o-mini vs. HumanFigure 1 Boxplot of stereotype scores of GPT-4o-mini vs. hu-man annotations on our dataset.whether a sentence exhibits pro- or anti-stereotypical biasand then generate an explanation for the judgment.
+In ad-dition, we use GPT-4o-mini to generate explanations andalways output in a ﬁxed format.
+
+
+3.3 Explanation Distillation
+
+Due to the high deployment costs of LLMs, it is essen-tial to equip SLMs with the ability to provide explanationsfor stereotypical biases.
+Therefore, in this paper, we adopta knowledge distillation approach [7] to distill stereotypi-cal bias explanations from LLMs.
+Speciﬁcally, we denotethe stereotypical bias explanations generated by LLMs andSLMs as the distribution 𝑃𝑙and 𝑃𝑠.
+Our objective func-tion is 𝐻(𝑃𝑙, 𝑃𝑠) = 𝔼𝑦∼𝑃𝑙(𝑦)[− log 𝑃𝑠(𝑦)].
+Knowledgeis transferred to SLMs by encouraging them to match thegenerations of LLMs.
+
+
+4 Experiments
+
+We design experiments to test the eﬀectiveness of ourmethods toward answering three questions: RQ1: DoesGPT-4o-mini make more accurate decisions than humans?RQ2: Can SLMs learn to generate explanations?
+RQ3:How GPT-4o-mini diﬀer from human-generated decisions?
+
+4.1 Measure Validation (RQ1)
+
+Method
+We use stereotype score
+[4] to evaluatethe performance of GPT-4o-mini and human annotations.
+Stereotype score is a continuous value from −1 to 1 usedto indicate the stereotype of a sentence, with −1 indicatinglower stereotypes and 1 indicating higher stereotypes.
+Wechose RoBERTa version2）with the highest Pearson’s 𝑟 as2）
+https://huggingface.co/nlply/quantifying-stereotype-robertaTable 2 Overall performance of training SLMs to generateexplanations.
+Bold indicates the best performance.
+Model Faithful BLEU ROUGE BERTScoreGPT-2 (124m) 77.76 9.48 20.55 85.36OPT-125m 90.88 33.63 44.19 93.07Bloomz-560m 81.77 13.19 25.87 88.66OPT-350m 95.44 34.24 45.51 93.44Phi-1.5 (1.3b) 72.38 12.54 25.15 88.66OPT-1.3b 98.20 36.20 47.45
+93.93our scoring model.
+Results Figure 1 demonstrates the diﬀerence instereotype scores between GPT-4o-mini and human an-notations.
+Firstly, the human-annotated pro- and anti-stereotypical samples (blue and green) have closer stereo-type scores than GPT-4o-mini (orange and red).
+In ad-dition, GPT-4o-mini-annotated pro- and anti-stereotypicalsamples achieve the highest and lowest stereotype scores,respectively.
+This indicates that GPT-4o-mini are morecorrelated with stereotype scores than human annota-tions.
+Speciﬁcally, in the stereotype scores of the human-annotated samples, the median diﬀerence between pro-and anti-stereotypical samples is 0.015, whereas the cor-responding diﬀerence for GPT-4o-mini-annotated samplesis 0.079.
+This indicates that GPT-4o-mini exhibits a moresigniﬁcant ability to distinguish between pro- and anti-prototypical samples than humans.
+This also indicates thatGPT-4o-mini may be more accurate than human annota-tion on highly subjective tasks.
+The results inspire futureresearch on the usage of LLMs in stereotypical bias anno-tation.
+Please refer to Appendix A for speciﬁc bias types.
+
+
+4.2 Explanation with SLMs (RQ2)
+
+
+In this section, we train SLMs for stereotypical biasexplanation.
+Dataset We randomly split our dataset into 8:1:1 ra-tios for training, validation, and testing sets.
+Models We use GPT-2
+[9], Bloomz-560m
+[12], Phi-1.5
+[13], and OPT [14] models as our baseline models.
+We download the weights and implementations of thesemodels from the Huggingface library.3）Metrics We train a binary classiﬁcation model to eval-uate the faithfulness
+[15] of explanations.
+Speciﬁcally, wecollect 5,782 samples in the training set as positive sam-ples and shuﬄe sentences and explanations to construct3） https://huggingface.co― 2067 ―5,782
+negative samples.
+Then, we ﬁne-tuned a RoBERTamodel for the classiﬁcation task, achieving 97.93% accu-racy on the test set.
+In addition, we also use BLEU
+[16],ROUGE-L [17], and
+BERTScore
+[18] to evaluate the se-mantic completeness.
+Results The experimental results are shown in Ta-ble 2.
+Firstly, OPT-1.3b gets the best performance on allmetrics.
+Secondly, all SMLs achieve high faithfulness.
+However, except for OPT models, the semantic complete-ness of the explanations generated by the other models isrelatively limited.
+In addition, OPT models get the bestperformance in the same parameter scale.
+
+
+4.3 GPT-4o-mini vs. Human (RQ3)
+
+Figure 2 shows the comparison of GPT-4o-mini with hu-man annotations.
+We found diﬀerences between GPT-4o-mini and human-annotated samples, mainly in the coun-terfactual data (the orange bar).
+Speciﬁcally, the diﬀer-ences between GPT-4o-mini and human annotations areclose to or greater than 50% on counterfactual data for allbias types.
+This indicates that human-rewritten counter-factual data, such as anti-stereotypical samples, may beunreliable.
+Moreover, GPT-4o-mini shows signiﬁcant dif-ferences from human annotations in speciﬁc bias types,such as nationality and physical-appearance.
+This indi-cates that human-rewritten data may more likely introducesubjective judgments on speciﬁc bias types.
+
+
+5 Related Work
+
+Stereotypical Biases in LLMs LLMs learn stereo-typical human-like biases from human corpora.
+Nadeem etal.
+[1] and Nangia et al.
+[2] evaluated social biases in LLMsby constructing crowd-sourced datasets consisting of pro-and anti-stereotypical sentences.
+Subsequently, Blodgett etal.
+[3] indicated that these crowd-sourced datasets may noteﬀective evaluated stereotypical biases in LLMs becauseof pitfall samples in these datasets.
+To mitigate the im-pact caused by pitfall samples on the evaluation, Liu
+[19]proposed to use the KL divergence of the Gaussian distri-butions as the evaluation scores.
+Furthermore, an overviewand discussion of available datasets, evaluation methods,and debiasing methods is available in the survey by Galle-gos et al.
+[20].Explanation Generation Early explanationwork
+[21] relied on supervised datasets to train ex-050010001500CountLabel comparison for GPT-4o-mini vs. HumanGPT-4o-mini eq.
+Human (pro-)GPT-4o-mini uneq.
+Human (pro-)GPT-4o-mini eq.
+Human (anti-)GPT-4o-mini uneq.
+Human (anti-)racegenderreligionsocioeconomicdisabilitynationalitysexual-orientationphysical-appearanceageBias Types020406080100Percentage (%)Figure 2 Comparison of GPT-4o-mini and human annotationson speciﬁc bias types.
+Blue indicates pro-stereotypical samples.
+Orange indicates anti-stereotypical samples.
+Deep indicates caseswhere GPT-4o-mini equal to human annotations.
+Light indicatescases where GPT-4o-mini unequal to human annotations.planation generators.
+Subsequently, Rajani et al.
+[22]proposed generating explanations or clariﬁcations toimprove task performance.
+Dalvi et al.
+[6] introducedentailment trees to explain answers to QA tasks.
+Inrecent studies, Marasovic et al.
+[23] study the eﬀectof prompt format and model size on the plausibility ofprompted explanations based on crowd-sourced workerannotations.
+Due to the excellent performance of GPT,Wiegreﬀe et al.
+[5] proposed to use GPT-3 to generatetextual explanations for classiﬁcation decisions.
+Theirstudy revealed the great potential of LLMs in generatingstereotypical bias explanations.
+
+
+6 Conclusion
+
+In this study, we use GPT-4o-mini to judge whether sen-tences exhibit pro- or anti-stereotypical biases and generateexplanations.
+We ﬁnd that GPT-4o-mini is more eﬀectivethan human annotations in distinguishing pro- and anti-stereotypical bias, according to stereotype scores.
+In addi-tion, SLMs can be trained to generate faithful explanationswith our dataset.
+We also ﬁnd that the main diﬀerencebetween GPT-4o-mini and human annotations is in thecounterfactual data, and we point out that human-rewrittencounterfactual data are unreliable.
+Our dataset will pro-vide a valuable resource for studing generating stereotypi-cal bias judgments and explanations with LLMs.― 2068 ―
+
+
+
+Acknowledgment
+
+This work was supported by JST BOOST, Grant NumberJPMJBS2407.
+
+References
+
+
+[1] Moin Nadeem, Anna Bethke, and Siva Reddy. StereoSet: Measur-ing stereotypical bias in pretrained language models. In ChengqingZong, Fei Xia, Wenjie Li, and Roberto Navigli, editors,Proceed-ings of the 59th Annual Meeting of ACL-IJCNLP (Volume1: Long Papers), pp. 5356–5371, Online, August 2021. Associ-ation for Computational Linguistics.
+[2] Nikita Nangia, Clara Vania, Rasika Bhalerao, and Samuel R. Bow-man. CrowS-pairs: A challenge dataset for measuring social biasesin masked language models. In Bonnie Webber, Trevor Cohn, Yu-lan He, and Yang Liu, editors, Proceedings of the 2020 Con-ference on EMNLP, pp. 1953–1967, Online, November 2020.Association for Computational Linguistics.
+[3] Su Lin Blodgett, Gilsinia Lopez, Alexandra Olteanu, Robert Sim,and Hanna Wallach. Stereotyping Norwegian salmon: An inven-tory of pitfalls in fairness benchmark datasets. In Chengqing Zong,Fei Xia, Wenjie Li, and Roberto Navigli, editors, Proceedings ofthe 59th Annual Meeting of the ACL-IJCNLP (Volume 1:Long Papers), pp. 1004–1015, Online, August 2021. Associationfor Computational Linguistics.
+[4] Yang Liu. Quantifying stereotypes in language. In Proceed-ings of the 18th Conference of the European Chapter ofthe Association for Computational Linguistics (Volume 1:Long Papers), pp. 1223–1240, 2024.
+[5] Sarah Wiegreﬀe, Jack Hessel, Swabha Swayamdipta, Mark Riedl,and Yejin Choi. Reframing human-AI collaboration for generat-ing free-text explanations. In Marine Carpuat, Mar ie-Catherinede Marneﬀe, and Ivan Vladimir Meza Ruiz, editors, Proceed-ings of the 2022 Conference of NAACL: Human LanguageTechnologies, pp. 632–658, Seattle, United States, July 2022.Association for Computational Linguistics.
+[6] Bhavana Dalvi, Peter Jansen, Oyvind Tafjord, Zhengnan Xie, Han-nah Smith, Leighanna Pipatanangkura, and Peter Clark. Explaininganswers with entailment trees. In Marie-Francine Moens, XuanjingHuang, Lucia Specia, and Scott Wen-tau Yih, editors, Proceed-ings of the 2021 Conference on EMNLP, pp. 7358–7370,Online and Punta Cana, Dominican Republic, November 2021.Association for Computational Linguistics.
+[7] Peter West, Chandra Bhagavatula, Jack Hessel, Jena Hwang, LiweiJiang, Ronan Le Bras, Ximing Lu, Sean Welleck, and Yejin Choi.Symbolic knowledge distillation: from general language modelsto commonsense models. In Marine Carpuat, Marie-Catherinede Marneﬀe, and Ivan Vladimir Meza Ruiz, editors, Proceed-ings of the 2022 Conference of NAACL: Human LanguageTechnologies, pp. 4602–4625, Seattle, United States, July 2022.Association for Computational Linguistics.
+[8] Sharan Narang, Colin Raﬀel, Katherine Lee, Adam Roberts, NoahFiedel, and Karishma Malkan. Wt5?! training text-to-text modelsto explain their predictions. arXiv preprint arXiv:2004.14546,2020.
+[9] Alec Radford, Jeﬀrey Wu, Rewon Child, David Luan, DarioAmodei, Ilya Sutskever, et al. Language models are unsupervisedmultitask learners. OpenAI blog, Vol. 1, No. 8, p. 9, 2019.
+[10] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah,Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, PranavShyam, Girish Sastry, Amanda Askell, et al. Language models arefew-shot learners. Advances in neural information processingsystems, Vol. 33, pp. 1877–1901, 2020.
+[11] Anthony G Greenwald and Linda Hamilton Krieger. Implicit bias:Scientiﬁc foundations. California law review, Vol. 94, No. 4, pp.945–967, 2006.
+[12] Niklas Muennighoﬀ, Thomas Wang, Lintang Sutawika, AdamRoberts, Stella Biderman, Teven Le Scao, M Saiful Bari, ShengShen, Zheng-Xin Yong, Hailey Schoelkopf, et al. Crosslin-gual generalization through multitask ﬁnetuning. arXiv preprintarXiv:2211.01786, 2022.
+[13] Yuanzhi Li, S´ebastien Bubeck, Ronen Eldan, Allie Del Gior no,Suriya Gunasekar, and Yin Tat Lee. Textbooks are all you needii: phi-1.5 technical report. arXiv preprint arXiv:2309.05463,2023.
+[14] Susan Zhang, Stephen Roller, Naman Goyal, Mikel Artetxe, MoyaChen, Shuohui Chen, Christopher Dewan, Mona Diab, Xian Li,Xi Victoria Lin, Todor Mihaylov, Myle Ott, Sam Shleifer, KurtShuster, Daniel Simig, Punit Singh Koura, Anjali Sridhar, TianluWang, and Luke Zettlemoyer. Opt: Open pre-trained transformerlanguage models, 2022.
+[15] Siyu Yuan, Jiangjie Chen, Ziquan Fu, Xuyang Ge, Soham Shah,Charles Jankowski, Yanghua Xiao, and Deqing Yang. Distillingscript knowledge from large language models for constrained lan-guage planning. In Anna Rogers, Jordan Boyd-Graber, and NaoakiOkazaki, editors, Proceedings of the 61st Annual Meetingof ACL (Volume 1: Long Papers), pp. 4303–4325, Toronto,Canada, July 2023. Association for Computational Linguistics.
+[16] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu.Bleu: a method for automatic evaluation of machine translation.In Proceedings of the 40th Annual Meeting on ACL, ACL’02, p. 311–318, USA, 2002. Association for Computational Lin-guistics.
+[17] Chin-Yew Lin. ROUGE: A package for automatic evaluation ofsummaries. In Text Summarization Branches Out, pp. 74–81, Barcelona, Spain, July 2004. Association for ComputationalLinguistics.
+[18] Tianyi Zhang*, Varsha Kishore*, Felix Wu*, Kilian Q. Weinberger,and Yoav Artzi. Bertscore: Evaluating text generation with bert.In International Conference on Learning Representations,2020.
+[19] Yang Liu. Robust evaluation measures for evaluating social biasesin masked language models. In Proceedings of the AAAI Con-ference on Artiﬁcial Intelligence, Vol. 38, pp. 18707–18715,2024.
+[20] Isabel O. Gallegos, Ryan A. Rossi, Joe Barrow, Md Mehrab Tanjim,Sungchul Kim, Franck Dernoncourt, Tong Yu, Ruiyi Zhang, andNesreen K. Ahmed. Bias and fairness in large language models:A survey. Computational Linguistics, Vol. 50, No. 3, pp. 1097–1179, September 2024.
+[21] Oana-Maria Camburu, Tim Rockt¨aschel, Thomas Lukasiewicz,and Phil Blunsom. e-snli: Natural language inference with naturallanguage explanations. In S. Bengio, H. Wallach, H. Larochelle,K. Grauman, N. Cesa-Bianchi, and R. Garnett, editors, Advancesin Neural Information Processing Systems, Vol. 31. CurranAssociates, Inc., 2018.
+[22] Nazneen Fatema Rajani, Bryan McCann, Caiming Xiong, andRichard Socher. Explain yourself! leveraging language modelsfor commonsense reasoning. In Anna Korhonen, David Traum,and Llu´ıs M`arquez, editors, Proceedings of the 57th AnnualMeeting of the Association for Computational Linguistics,pp. 4932–4942, Florence, Italy, July 2019. Association for Com-putational Linguistics.
+[23] Ana Marasovic, Iz Beltagy, Doug Downey, and Matthew Peters.Few-shot self-rationalization with natural language prompts. InMarine Carpuat, Marie-Catherine de Marneﬀe, and Ivan VladimirMeza Ruiz, editors, Findings of the Association for Computa-tional Linguistics: NAACL 2022, pp. 410–424, Seattle, UnitedStates, July 2022. Association for Computational Linguistics.― 2069 ―
+
+
+
+A Speciﬁc Bias Types
+
+As shown in Figure 3, GPT-4o-mini outperforms hu-man annotations on all bias types (higher stereotype scoresfor pro-stereotypical samples and lower stereotype scoresfor anti-stereotypical samples).
+Surprisingly, the humanannotations exhibit negative correlations with stereotypescores in the gender, socioeconomic, disability, and agebias types.
+This indicates that humans face more signiﬁcantchallenges in rewriting samples of these bias types.
+In ad-dition, GPT-4o-mini has a larger interquartile range (IQR)on anti-stereotypical samples in physical-appearance biastype.
+This indicates that GPT-4o-mini may have diﬃcultyin judging physical-appearance bias type.
+H (P) G (P) H (A) G (A)0.30.20.10.00.1professionH (P) G (P) H (A) G (A)0.20.00.2raceH (P) G (P) H (A) G (A)0.30.20.10.00.1genderH (P) G (P) H (A) G (A)0.20.10.00.10.2religionH (P) G (P) H (A) G (A)0.20.10.00.1socioeconomicH (P) G (P) H (A) G (A)0.20.10.00.1disabilityH (P) G (P) H (A) G (A)0.20.10.00.1nationalityH (P) G (P) H (A) G (A)0.10.00.1sexual-orientationH (P) G (P) H (A) G (A)0.20.10.00.1physical-appearanceH (P) G (P) H (A) G (A)0.20.10.00.1ageFigure 3 Boxplot of stereotype scores of GPT-4o-mini vs. hu-man annotations on our dataset for speciﬁc bias types.― 2070 ―

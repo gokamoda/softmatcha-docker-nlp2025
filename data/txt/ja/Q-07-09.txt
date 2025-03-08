@@ -1,0 +1,196 @@
+適応型負例選択を用いた対照学習による回答検索
+
+伊東 秀夫
+
+
+
+株式会社リコー デジタル戦略部 デジタル技術開発センター 言語 AI 開発室
+
+
+
+hideo.itoh@jp.ricoh.com
+
+
+
+概要
+
+質問応答における RAG では、質問文と回答が必ずしも類似関係にないため、回答を含む文脈（チャンク）が検索できない場合がある。
+我々はこの問題を、質問文から回答をピンポイントに検索する機能（回答検索）を用いて従来の検索結果をリランキングすることで解決する。
+具体的には生成言語モデルによる質問文のエンコード結果から得られる質問ベクトルを検索キーとし、同じく検索対象のエンコード結果から得られるベクトル列に対し最大内積検索（MIPS）を行う。
+これらベクトルは次トークン予測用に最適化されているため、MIPS 用に変換する必要がある。
+このベクトル変換の対照学習を効果的にするため、適応型負例選択と呼ぶ提案手法を用いる。
+実験では、回答検索によるリランキングにより一貫して検索精度が向上した。
+
+
+
+1 はじめに
+
+質問応答において外部知識に基づいて言語モデルに回答させる枠組みとして RAG [1]がある。
+RAG における課題の１つとして、質問文と回答が必ずしも類似関係にないため、回答に必要な知識を含む文脈（チャンク等）が、質問文との類似検索では得られない場合があることが指摘され、この課題に対していくつかの解決方法が提案されている[2][3][4]。
+我々は上述の課題に対し、質問文から回答をピンポイントに検索する機能（回答検索と呼ぶ）を加えることで、質問文を検索条件とする従来の検索手法を補うアプローチを提案する。
+具体的には図 1 に示すように、質問応答を担う生成言語モデル（LM）を用いて質問文をエンコードして得られる最上位層の出力ベクトル群の内、質問文の末尾トークンに対応する出力ベクトルを検索キーとする（質問ベクトルと呼ぶ)。
+検索対象は、外部知識に相当するテキスト群をLM でエンコードして得られる最上位層の出力ベ図 1 回答検索の概要図クトル群であり、質問ベクトルとの最大内積検索（MIPS）によりトークン単位の検索を行う。
+ただし、これら質問ベクトルおよび検索対象ベクトル群は、次トークン予測(NTP）のために最適化されたものであるから、検索前に MIPS 用のベクトルに変換する必要がある。
+このベクトル変換は、図中に示した３つ組（トリプレット）を用いた対照学習により得るが、この学習を効果的に行うために、適応型負例選択と呼ぶ手法を提案する。
+回答検索の結果を RAG におけるリランキングに用いることで、質問文全体をキーとした検索と相補的に作用し、検索精度が向上することを実験により示す。
+
+
+2 関連研究
+
+質問文と回答が必ずしも類似関係にないことへの対策として以下の提案がある。
+検索専用のエンコーダーを用いる手法質問文と外部知識のエンコーダーを分けた上で、両者の埋め込みが近くなるように学習するデュアルエンコーダー手法[5]や、単一のエンコーダーにおいて特殊トークンにより質問文用と外部知識用の埋め込みを切り分ける手法（タスクタイプ別埋め込み）[4]が提案されている。
+これらは質問応答用の LM とは別に、検索（RAG）専用のエンコーダーが必要となり、それらの事前学習やドメイン適応のコストが運用上の問題となる。
+回答生成を行う手法質問応答用の LM に回答候補を生成させて、質問文とともに検索条件として用いる手法（HyDE）[3]も提案されている。
+本提案と同じく、検索用と質問応答のための LMを兼用することが可能だが、自己回帰予測による回答生成のために応答が遅延する問題がある。
+
+
+3 提案手法
+
+提案手法ではテキストを Transformer 型の生成言語モデル（causal language model）でエンコードして得られる最上位層の出力ベクトルが中心となるので、これらを “状態ベクトル” と略称する。
+
+3.1 回答検索
+
+回答検索の検索キーは、図1 を用いて概説したように、質問文の末尾トークンに対応する状態ベクトル（質問ベクトル）である。
+回答生成において質問ベクトルは次トークン、つまり回答の開始トークン予測のための唯一の情報源であることから、回答の検索キーとして妥当と考える。
+回答検索の検索対象は、外部知識を表すテキスト（トークン列）から得られる状態ベクトル列である。
+各検索対象ベクトルにはその前方文脈とともに、回答パートか否かの手がかりになる情報がエンコードされていると考える。
+最大内積検索（MIPS）により、検索対象ベクトル列中から、質問ベクトルとの内積値順に上位 N 件のトークン位置を取得し、それらが回答または回答を含むチャンク（パッセージ等）にヒットする割合として回答検索の性能を定める。
+
+
+
+3.2 ベクトル変換の対照学習
+
+質問ベクトルおよび検索対象ベクトル群を MIPS用のベクトルに変換するため、変換行列 𝑴 ∈ 𝑅𝑂×𝐼を用いて式 1 に示す線形変換を行う。
+ここで 𝐼, 𝑂 は変換前後の次元数であり 𝒉, 𝒗 は変換前後のベクトルである。
+𝒗 = 𝑴 𝒉 (1)入力次元数 𝐼 は状態ベクトルの次元数となるが、出力次元数 𝑂 を小さくすることで、検索精度を損なわない程度に学習・推論を効率化できる。
+実装としてはバイアス項なしの線形層と、正則化のためのドロップアウト層を線形層の前に設ける。
+変換行列のパラメタ（行列要素）を訓練データから収集したトリプレット(𝒒,𝒑,𝒏)の集合を用いて対照学習する。
+ここで 𝒒, 𝒑, 𝒏 は以下のトークンに対応する状態ベクトルである。
+𝒒 質問文の末尾トークンのベクトル𝒑 検索対象中の回答開始トークンのベクトル𝒏 検索対象中の回答外のトークンのベクトル対照学習ではトリプレット集合をランダムにバッチに分割し、バッチ内の 𝒒, 𝒑, 𝒏 に対するベクトル変換後、InfoNCE [6]として知られる式 2 に示す損失関数 𝐿 を用いて学習する。
+𝐿 = −1𝐵𝐵𝑖=1logexp(𝑸𝑖· 𝑷𝑖)exp(𝑸𝑖· 𝑷𝑖)+𝐵𝑘=1exp(𝑸𝑖· 𝑵𝑘)(2)ここで 𝐵 はバッチ内のトリプレット数、𝑸𝑖, 𝑷𝑖, 𝑵𝑘はベクトル変換後の 𝒒𝑖, 𝒑𝑖, 𝒏𝑘を表す。
+なお、式 2 の計算における桁溢れを防ぐため exp 内の内積値は出力ベクトルの次元数 𝑂 で除算しスケーリングする。
+
+
+3.3 適応型負例選択
+
+トリプレット内に限らずバッチ内の負例を用いる手法はバッチ内負例（IBNeg）と呼ばれ[7]、負例の選択方法として以下がある[8][9]。
+• 式 2 のようにバッチ内の全負例を選択（all）• 𝑸𝑖· 𝑵𝑘> 𝑸𝑖· 𝑷𝑖となる負例のみ（semi-hard）• 𝑸𝑖· 𝑵𝑘が最大となる負例のみ（max-hard）しかしこれら従来法には以下の問題点がある。
+• 負例選択の範囲をランダムなバッチ分割に任せるのは非効率• 学習が進むにつれ困難な負例（semi-hard）が得られ難くなるこれらの問題点を解消するために、適応型負例選択と呼ぶ以下の手法を提案する。
+• 従来の負例選択方法でバッチ学習する• 学習後にトリプレットの負例 𝒏𝑖をバッチ内のmax-hard 負例 𝒏𝑘(𝑘 = argmax𝑗𝑸𝑖· 𝑵𝑗)に置換これにより、エポックが進むにつれて、より困難な負例がトリプレット毎に着実に収集されてゆく。
+
+3.4 リランキング
+
+回答検索の検索単位はトークンであるため、従来の文書やチャンクを単位とする検索（文書検索と総称する）と比べ、スケーラビリティ（検索対象の増大に対する耐性）に乏しい。
+一方、文書検索の結果に対し回答を含む文書の検索順位を上げるリランキングに応用することで、質問内容の検索を回答内容の検索で補う作用が期待できる。
+リランキングは以下の手順で行う。
+1. 質問文に対して質問ベクトル 𝒒 のベクトル変換結果 𝑸 = 𝑴𝒒 を求める。
+（𝑴 は式 1 の変換行列）2. 文書検索結果の上位 𝑁 件の文書 𝐷𝑖(𝑖 = 1..𝑁)毎にトークン列に対応する状態ベクトル列 𝑯𝑖を求める。
+ここで 𝑯𝑖は各トークンの状態ベクトルを列とする行列を表す。
+3. ベクトル変換 𝑽𝑖= 𝑴𝑯𝑖を行い、𝑸 と 𝑽𝑖から最大内積値 𝑅𝑖= 𝑚𝑎𝑥(𝑸𝑇𝑽𝑖)を得る。
+4. 𝐷𝑖(𝑖 = 1..𝑁)を式 3 で求めるスコア 𝑅𝑆𝑖の降順にリランキングする。
+ここで 𝑆𝑖は 𝐷𝑖の文書検索スコア、定数 𝛼 は調整パラメタである。
+𝑅𝑆𝑖= 𝛼𝑅𝑖+ 𝑆𝑖(3)現状、リランキングにはクロスエンコーダ[10]を用いるのが標準的であるが、本提案手法では文書毎のベクトル変換済み状態ベクトル列を MIPS 用データベースに予め登録しておくことで、より高速なリランキングを実現できる。
+
+
+
+4 実験
+
+
+
+4.1 使用データ
+
+表 1 に示す機械読解用テストデータを用いる。
+いずれも質問対象となるパラグラフ毎に質問文と回答が記述されている。
+回答毎にパラグラフ内の開始終了位置（文字単位）が付されており、パラグラフのトークン分割結果と照合することで、回答パートに相当するトークン列を取得できる。
+表 1 使用データデータ名種別質問パラグラフSQuAD [11] train 86821 19035dev 5928 1204JSQuAD [12] train 62859 15652valid 4442 1145DDQA [13] train 17905 8968test 1045 1042
+
+4.2 使用言語モデル
+
+パラメタ数 3B 〜 4B で入力幅 4k トークン以上の英語・日本語対応モデルとして表 2 に示す生成言語モデルを選択した。
+本論文内での略称と共に示す。
+表 2 使用言語モデル略称モデル名llama3.2 llama3.2-3B-Instructphi3.5 phi-3.5-mini-instructqwen2.5 Qwen2.5-3B-Instructnemotron Nemotron-Mini-4B-Instructllm-jp llm-jp-3-3.7b-instruct
+
+4.3 適応型負例選択と回答検索の実験
+
+使用言語モデル毎に、表 1 に示した各使用データの train データからトリプレット(𝒒, 𝒑, 𝒏)を抽出し、ベクトル変換行列を対照学習する（節 3.2 参照)。
+トリプレット抽出では質問毎に最大 5 つの負例を用いた（つまりトリプレット総数は質問数の約 5倍）。
+ベクトル変換の出力次元数は 512、対照学習のバッチサイズは 32、エポック数は 120 とした。
+対照学習におけるバッチ内負例の選択法として以下を設定する。
+1. バッチ内の全負例を使用2. semi-hard 負例を使用3. max-hard 負例を使用4. 上記 1 かつ適応型負例選択を適用5. 上記 2 かつ適合型負例選択を適用6. 上記 3 かつ適合型負例選択を適用上記 1 〜 6 の対照学習によるベクトル変換を用いて、以下に示す回答検索の性能を比較する。
+• 表 1 の dev, valid, test をテストデータとする。
+• テストデータの全パラグラフに対し生成言語モデルで求めた状態ベクトル列をベクトル変換して検索対象とする。
+• テストデータの質問文に対し生成言語モデルで求めた質問ベクトルをベクトル変換し、検索対象の全ベクトル列との内積を計算する。
+• パラグラフ毎に最大の内積値を検索スコアとし、検索スコア順に上位 N 件のパラグラフ群を検索結果とする。
+• 質問の回答を含むパラグラフ（すなわち機械読解において質問対象とされたパラグラフ１件）を正解とし、検索性能を評価する表 3 に言語モデル llama3.2 および llm-jp を用いたSQuAD データに対する回答検索の性能を示す。
+表中で N 列は上述のバッチ内負例選択法 1 〜 6， MAPは平均適合率、 R@N は再現率（Recall@N）を表す。
+表 3 SQuAD における回答検索性能llama3.2 llm-jpN MAP R@1 R@10 MAP R@1 R@101 13.0 5.6 28.5 35.9 50.4 63.22 27.7 16.7 50.8 47.5 61.9 73.03 14.2 6.8 29.5 36.8 50.7 63.64 12.6 5.8 26.1 56.8 71.1 80.55 45.8 34.3 69.3 58.6 72.1 81.46 43.9 31.4 67.4 56.6 70.8 80.6バッチ内負例選択法については、llama3.2 と llm-jpの両ケースにおいて、選択法 5 すなわちバッチ内のsemi-hard 負例を用い、かつ適合型負例選択を適用した場合がベスト性能となった。
+適合型負例選択を行わない従来法 1〜3 との性能差は顕著である。
+回答検索の性能は llm-jp の方が llama3.2 より高かった。
+この要因は llma3.2 の方が短いトークンに分割するため、トークン当たりの情報量が少なくなる点にあると考える。
+すなわちトークンを検索単位とする回答検索では、同程度のパラメタ数であればトークン長が長く語彙数が多い言語モデルの方が高性能になる傾向がある。
+
+4.4 リランキングの実験
+
+表 1 のテストデータ（dev, valid, test）のパラグラフ集合を検索対象として BM25 [14]の検索スコアを用いた検索結果の上位 10 件に対して節 3.4 で述べた回答検索によるリランキングを行った場合の効果を測定する。
+BM25 による検索では、各言語モデルのトークン分割結果に沿って検索/索引タームの設定、および文書長の計数等を行った。
+回答検索に用いるベクトル変換行列は、バッチ内負例選択法 5 で対照学習し、リランキングの調整パラメタ 𝛼 は表 1 の train データを用いた試行実験を通して、言語モデル毎に下表 4 の通り定めた。
+パラメタ 𝛼 の適正値は言語モデルの状態ベクトルのノルムのオーダーに依存すると考えられる。
+表 4 リランキングの調整パラメタ 𝛼言語モデル 𝛼 値llama3.2, phi3.5 0.10qwen2.5, nemotron, llm-jp 0.05表 5 にリランキング前後の MAP（平均適合率）と再現率（Recall@1）を示す。
+全てのデータと言語モデルの組み合わせにおいて、一貫してリランキング表 5 リランキング前後の再現率の変化前後データ言語モデル MAP R@1 MAP R@1SQuAD llama3.2 81.9 74.7 85.2 78.9phi3.5 82.1 74.8 85.5 79.3nemotron 81.2 74.0 84.7 77.8qwen2.5 81.5 74.4 85.0 78.4llm-jp 82.4 75.4 86.3 80.5JSQuAD llama3.2 90.8 86.9 91.1 87.4phi3.5 87.7 82.6 89.0 84.3nemotron 89.6 85.690.6 86.8qwen2.5 90.3 86.1 91.3 87.5llm-jp 89.1 84.8 90.8 87.0DDQA llama3.2 73.0 65.6 73.4 65.8phi3.5 62.1 53.8 63.2 54.8nemotron 70.8 63.3 74.5 67.2qwen2.5 74.6 67.7 76.4 69.8llm-jp 67.3 60.4 71.3 65.4により MAP と Recall@1 が向上した。
+前掲の表 3 に示した回答検索単独での検索性能（MAP, R@1）は，BM25 による文書検索の性能に比べ低いが、リランキングに用いることで、文書検索と相補的に働くことがわかる。
+この効果は llama3.2のように回答検索の性能が低い場合でも見られた。
+
+
+
+5 おわりに
+
+生成言語モデルを用いた回答検索、および、そのためのベクトル変換の対照学習を効果的にする適応型負例選択を提案した。
+回答検索の実験から、適応型負例選択としてはsemi-hard 負例を用いたバッチ内負例選択と組み合わせた場合、およびトークン長が長く語彙数が多い言語モデルを用いた場合に検索性能が高いことがわかった。
+リランキングへの応用実験からは、質問内容の検索に回答内容の検索を加えることで、質問文と回答は必ずしも類似関係にない、という RAG の課題を解決する見込みを得た。
+なお、適応型負例選択は対照学習一般に適用できる技術であるため、トリプレットデータを用いた埋め込み学習などへの応用も期待できる。
+今後の研究課題としたい。
+
+
+
+参考文献
+
+
+[1] Patrick S. H. Lewis, Ethan Perez, AleksandraPiktus, Fabio Petroni, Vladimir Karpukhin, Na-man Goyal, Heinrich K¨uttler, Mike Lewis, Wen-tau Yih, Tim Rockt¨aschel, Sebastian Riedel, andDouwe Kiela. Retrieval-augmented generationfor knowledge-intensive NLP tasks. CoRR, Vol.abs/2005.11401, , 2020.
+[2] Yunfan Gao, Yun Xiong, Xinyu Gao, Kangxiang Jia,Jinliu Pan, Yuxi Bi, Yi Dai, Jiawei Sun, Meng Wang,and Haofen Wang. Retrieval-augmented generationfor large language models: A survey, 2024.
+[3] Luyu Gao, Xueguang Ma, Jimmy Lin, and JamieCallan. Precise zero-shot dense retr ieval withoutrelevance labels, 2022.
+[4] Jinhyuk Lee, Zhuyun Dai, Xiaoqi Ren, Blair Chen,Daniel Cer, Jeremy R. Cole, Kai Hui, MichaelBoratko, Rajvi Kapadia, Wen Ding, Yi Luan, SaiMeher Karthik Duddu, Gustavo Hernandez Abrego,Weiqiang Shi, Nithi Gupta, Aditya Kusupati, Pra-teek Jain, Siddhartha Reddy Jonnalagadda, Ming-Wei Chang, and Iftekhar Naim. Gecko: Versatiletext embeddings distilled from large language mod-els, 2024.
+[5] Kenton Lee, Ming-Wei Chang, and KristinaToutanova. Latent retrieval for weakly supervisedopen domain question answering. In Anna Korho-nen, David Traum, and Llu´ıs M`arquez, editors,Pro-ceedings of the 57th Annual Meeting of theAssociation for Computational Linguistics, pp.6086–6096, Florence, Italy, July 2019. Associationfor Computational Linguistics.
+[6] Evgenia Rusak, Patr ik Reizinger, Attila Juhos,Oliver Br ingmann, Roland S. Zimmer mann, andWieland Brendel. Infonce: Identifying the gap be-tween theory and practice, 2024.
+[7] Vladimir Karpukhin, Barlas Oguz, Sewon Min,Ledell Wu, Sergey Edunov, Danqi Chen, and Wen-tau Yih. Dense passage retrieval for open-domainquestion answering. CoRR, Vol. abs/2004.04906, ,2020.
+[8] Daniel Gillick, Sayali Kulkarni, Larry Lansing,Alessandro Presta, Jason Baldridge, Eugene Ie,and Diego Garcia-Olano. Learning dense repre-sentations for entity retrieval. In Mohit Bansaland Aline Villavicencio, editors, Proceedings ofthe 23rd Conference on Computational Natu-ral Language Learning (CoNLL), pp. 528–537,Hong Kong, China, November 2019. Associationfor Computational Linguistics.
+[9] Alexander Hermans, Lucas Beyer, and BastianLeibe. In defense of the triplet loss for person re-identiﬁcation. CoRR, Vol. abs/1703.07737, , 2017.
+[10] Nils Reimers and Iryna Gurevych. Sentence-bert:Sentence embeddings using siamese bert-networks.CoRR, Vol. abs/1908.10084, , 2019.
+[11] Pranav Rajpurkar, Jian Zhang, Konstantin Lopy-rev, and Percy Liang. Squad: 100, 000+ questionsfor machine comprehension of text. CoRR, Vol.abs/1606.05250, , 2016.
+[12] Kentaro Kurihara, Daisuke Kawahara, and Tomo-hide Shibata. JGLUE: Japanese general languageunderstanding evaluation. In Nicoletta Calzolari,Fr´ed´eric B´echet, Philippe Blache, Khalid Choukr i,Christopher Cieri, Thierry Declerck, Sara Goggi,Hitoshi Isahara, Bente Maegaard, Joseph Mariani,H´el`ene Mazo, Jan Odijk, and Stelios Piperidis,editors, Proceedings of the Thirteenth Lan-guage Resources and Evaluation Conference,pp. 2957–2966, Marseille, France, June 2022. Eu-ropean Language Resources Association.
+[13] Norio Takahashi, Tomohide Shibata, DaisukeKawahara, and Sadao Kurohashi. Machinecomprehension improves domain-speciﬁc Japanesepredicate-argument structure analysis. In AdamFisch, Alon Talmor, Robin Jia, Minjoon Seo, Eu-nsol Choi, and Danqi Chen, editors, Proceedingsof the 2nd Workshop on Machine Reading forQuestion Answering, pp. 98–104, Hong Kong,China, November 2019. Association for Computa-tional Linguistics.
+[14] Stephen E. Robertson and Hugo Zaragoza. Theprobabilistic relevance framework: Bm25 and be-yond. Found. Trends Inf. Retr., Vol. 3, pp. 333–389, 2009.
+
+
+
+
+A 使用データの詳細
+
+いずれも SQuAD 2.0 形式の json ファイルで提供されている。
+実験では回答不能フラグが付されている質問データは除外した。
+パラグラフ長（平均トークン数）は llm-jp のトークナイザを用いて計測した値である。
+データ名言語種別質問数パラグラフ数文書数パラグラフ長SQuAD (v2.0)[11]英語 train 86821 19035 442 154dev 5928 1204 35 165JSQuAD (v1.1)[12]日本語 train 62859 15652 710 101valid 4442 1145 59 97DDQA (RC-QA v1.0)[13]日本語 train 17905 8968 1 72test 1045 1042 1 74
+
+A.1 データ例（SQuAD データ より）
+
+パラグラフ：Even before the Norman Conquest of England, the Normans had come into contact with Wales.Edward the Confessor had set up the aforementioned Ralph as earl of Hereford and charged him with defendingthe Marches and warring with the Welsh. In these original ventures, the Normans failed to make any headwayinto Wales.質問：Who was Ralph in charge of being at war with?
+回答：the Welsh
+
+B 使用言語モデルの詳細
+
+略称 hidden_size vocab_size URLllama3.2 3072 128256 https://huggingface.co/meta-llama/Llama-3.2-3Bphi3.5 3072 32064 https://huggingface.co/microsoft/Phi-3.5-mini-instructqwen2.5 2048 151936 https://huggingface.co/Qwen/Qwen2.5-3B-Instructnemotron 3072 256000 https://huggingface.co/nvidia/Nemotron-Mini-4B-Instructllm-jp 3072 99584 https://huggingface.co/llm-jp/llm-jp-3-3.7b-instruct
+
+C BM25 による文書検索
+
+以下の検索スコアを用いて質問 𝑄 に対し文書（パラグラフ）𝐷 をランキング検索した。
+検索語、索引語は各言語モデルが定めるトークンとし、調整パラメタ 𝑘1, 𝑏 の値は一律に各々 2.0, 0.75 とした。
+𝑠𝑐𝑜𝑟𝑒(𝐷, 𝑄) =𝑞∈𝑄log1 +𝑁𝑑𝑓 (𝑞)·𝑓 (𝑞, 𝐷) ·(𝑘1+ 1)𝑓 (𝑞, 𝐷) + 𝑘1·1 − 𝑏 + 𝑏 ·|𝐷 |𝑎𝑣𝑔𝑑𝑙where𝑞 質問中の検索語𝑑𝑓 (𝑞)文書頻度𝑁 総文書数𝑓 (𝑞, 𝐷)文書内頻度|𝐷| 文書長𝑎𝑣𝑔𝑑𝑙 平均文書長

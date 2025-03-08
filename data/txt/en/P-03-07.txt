@@ -1,0 +1,247 @@
+Incorporating Rule-Based Methods with Prompt-BasedTechniques for Indigenous Language Generation
+
+Justin Vasselli Arturo Mart
+
+
+
+´
+
+
+
+ınez Peguero Taro Watanabe
+
+
+
+Nara Institute of Science and Technology
+
+
+
+vasselli.justin ray.vk4@is.naist.jp
+
+
+
+Abstract
+
+In this work, we explore how to leverage the meta-linguistic knowledge of large language models (LLMs) bycombining rule-based techniques with few-shot prompt-ing to produce new sentences in Indigenous languages,despite the LLMs having little to no prior knowledge ofthe language.
+Integrating rule-based preprocessing forBribri signiﬁcantly improves accuracy―over six times theedit-tree baseline and twice that of few-shot prompting―while a simpliﬁed version enhances performance for Mayaand Guarani.
+This research provides a generalizable so-lution for addressing linguistic challenges in low-resourcesettings through combining structured linguistic resourceswith LLM meta-linguistic capabilities to support languagerevitalization and preservation.1）
+
+1 Introduction
+
+The disappearance of a language represents a loss ofcultural and historical knowledge, but advances in technol-ogy oﬀer tools to prevent this extinction.
+Fostering newspeakers through education is essential for the survival ofa language.
+The AmericasNLP 2024 Shared Task [1] ad-dressed this need by focusing on creating educational mate-rials for Indigenous languages, including Maya, Bribri, andGuarani, contributing to eﬀorts in language revitalization.
+Each of the languages of the shared task had their ownunique challenges, and we focused primarily on Bribri,which features complex verb morphology.
+The challengeswere further compounded by a lack of overlap betweenverbs in the training and testing data making straighforwardfew-shot prompting less eﬀective.
+To address these challenges, we propose a hybridmethodology that combines rule-based methods with the1） https://github.com/JVasselli/JAJ-Americas2024generative capabilities of LLM.
+Rule-based methods lever-age grammatical frameworks and expert-curated lexiconsto address complex morphology and syntax.
+The metalin-guistic capabilities of LLMs allow them to apply linguisticpatterns from limited data, eﬀectively generating examplesentences or translations when guided by structured input.
+This work advances low-resource NLP by designing apipeline that integrates rule-based preprocessing with LLMprompting for educational material generation, demonstrat-ing the role of rule-based methods in improving linguisticaccuracy for languages with unique features, and provid-ing insights into how structured linguistic resources canbe combined with LLM capabilities to support underrep-resented languages.
+Experimental results demonstrate the eﬀectiveness ofintegrating rule-based methods with LLM prompting.
+OnBribri, the baseline edit-tree approach achieved an accu-racy of only 8.75% on the shared task test set.
+By dele-gating the complex verb morphology to a rule-based con-jugator, our method achieved a sixfold improvement, withaccuracy over 53%.
+We further ﬁnd that a simpler ver-sion of this technique improves performance on other lowresource languages such as Maya and Guarani.
+
+
+2
+Prior Work
+
+Our approach builds on prior research like Rosetta Stonepuzzles
+[2], which simulate low-resource NLP scenariosrequiring grammatical inference and two-way translation.
+LLMs such as GPT4 have been shown to do well on this taskthat requires high level of metalinguistic reasoning ability[3, 4].
+Rule-based methods have been combined with LLMprompting to address machine translation for no-resourcelanguages, showing how structured frameworks enhanceLLM ﬂexibility for complex tasks
+[5].Our hybrid approach combining rule-based techniqueswith LLM prompting excelled in the AmericasNLP SharedTask, particularly for Bribri, where rule-based systems im-proved accuracy beyond few-shot prompting [6].
+
+
+3 Methodology
+
+
+
+3.1 Data and Task Description
+
+The dataset from the AmericasNLP 2024 Shared Task2 (Americas2024ST2) is a parallel set of source sentencesand target sentences both in the same indigenous language.
+Each entry also has one or more grammatical changes thatwere used to transform the source sentence into the tar-get sentence.
+These transformations included morphosyn-tactic changes such as tense, aspect, and negation.
+Forexample:Source sentence: Ye’ shka’ (“I walked”)Expected change: Polarity: NegativeTarget sentence: Ye’ k’¨e shk`anw¯e (“I didn’t walk”)The Bribri data for Americas2024ST2 was constructedusing examples from textbooks, grammar books, and atreebank.
+The focus was on Bribri’s verbal morphology,particularly its tense-aspect-mood suﬃxes.
+A total of 64original sentences were selected and conjugated into allpossible forms based on linguistic resources, resulting in1,001 example sentences.
+These included a mix of transi-tive, intransitive, locative, and copular sentences.
+Further-more, the dataset incorporated irregular verbs due to theirhigh frequency in the language (e.g., tso for ’is’ vs. b´akfor ’was’).
+Sentences were categorized by features such aspolarity, mood, tense, aspect, voice, number of arguments,and type of pronoun.
+These transformations formed theclusters of sentences used for training, development, andtesting.
+As this was a low-resource language task, the size ofthe Americas2024ST2 data was quite small: 309 traininginstances, 212 in the development split, and 480 in the testdata.
+
+
+3.2
+The Prompt
+
+Our system leverages the capabilities of large languagemodels by prompting them with relevant example cases tai-lored to the target language.
+The base prompt was adaptedfrom one used for the Rosetta Stone Puzzles [3].
+The sim-plest prompt we test includes only relevant examples as inthe following example:This is a linguistic puzzle.
+Below are example sen-tences in a foreign language and sets of changes toapply to them.
+The examples are followed by the prob-lem sentence and desired change.
+Your task is to lookclosely at the example sentences and to change the sen-tence correctly.
+Example 1:Sentence: Ye’ shka’Change(s):
+TYPE:NEGAnswer: K¨e ye’ shk`ane(more examples)Here is the problem.
+Answer ﬁrst, then explain yourreasoning.
+Sentence: Pˆus kap¨e’waChange(s): TYPE:NEGTo select examples for Bribri, we focused on aligning testcases with relevant training examples by grouping sim-ilar grammatical changes.
+For compound changes, oursystem decomposed them into smaller, sequential stepsprocessed independently.
+For instance, changes such asABSNUM:PLandPERSON:3 PLwere combinedwhere possible to streamline processing.
+This ensured ex-amples were representative and directly applicable to thegrammatical transformations required for each test case.
+
+
+3.3 POS Tags
+
+A key component of our system is the application ofcustom, simpliﬁed part of speech (POS) taggers tailoredto each target language.
+These taggers are primarilydictionary-based and are used to supplement the examplesentences being passed to the LLM by explaining betterthe grammatical role of the words of the provided exam-ples.
+Our tagger was built on Professor Haakon S. Krohn’sonline Bribri dictionary2）[7].With POS tags, the examples and problem text of theprompt are altered to include the additional information.
+The above example would become:Example:Sentence: Ye’ shka’((Ye’, PRON:1 SI)(shka’, VERB))Change(s): TYPE:NEGAnswer: K¨e ye’ shk`ane((K¨e,NEG)(ye’, PRON:1 SI)(shk`ane, VERB))Problem:Sentence:
+Pˆus kap¨e’wa ((Pˆus, NOUN)(kap¨e’wa,VERB))Change(s): TYPE:NEG2） https://www.haakonkrohn.com/bribri/index.html
+
+3.4 Verb Conjugation
+
+The complexity of Bribri verb conjugation, particularlyfor irregular verbs, required targeted strategies to improvetranslation accuracy.
+To evaluate potential performanceenhancements, we conducted an experiment using oracleverb conjugation “hints” to provide the correct verb formsdirectly to the LLM in the prompt.
+We tested this oracleverb conjugation hint on the development set by manuallyannotating the verb in the target sentence and providing itto the prompt.
+Our initial experiment showed an increasein accuracy from 15% to 65%.Motivated by the success of the oracle hint, we devel-oped a rule-based verb conjugation tool, built on a databaseof verb conjugations from [8]3）.
+In our system, the verbsidentiﬁed by our POS tagger are retrieved from the databaseand the correct form is produced from a series of conjuga-tion rules.
+For example, in the sentence Ye’ t¨o i k’¨otwa withchanges TYPE:NEG, TENSE:FUT_CER, ASPECT:IPFV, theverb k’¨otwwa is located by the POS tagger and looked upin the verb conjugation database.
+It is found to be theperfect remote form of ujt’¨okwwa.
+The conjugator trans-forms the verb into ujt`epawa for the negative certain futuretense.
+This transformation is then included as a hint at theend of the prompt: “The correct form of k’¨otwa is likelyujt`epawa.”
+
+
+4 Edit-Tree Baseline
+
+To contextualize the performance of our system, we com-pare it against the edit-tree baseline implemented by theshared task organizers.
+The baseline system was based ona simpliﬁed adaptation of the Prefer Observed Edit Trees(POET) method.
+An edit tree is a hierarchical structurerepresenting a sequence of edit operations needed to trans-form a source sentence into a target sentence.
+Nodes inthe tree either perform substitutions or match substrings,recursively applying these operations to produce the de-sired transformation.
+During training, the system built edittrees for all source-target sentence pairs in the dataset andcounted their frequency for each morphosyntactic change.
+At inference, the most frequent edit tree for a given changewas applied to the input sentence.
+If the transformationfailed, the system attempted less frequent trees.
+If no suc-3） https://www.lenguabribri.com/gramtica-de-la-lengua-bribricessful transformation occurred, the input sentence wasreturned unchanged.
+
+
+5 Experimental Results
+
+
+We tested generation on Americas2024ST2-dev us-ing gpt-3.5-turbo-0125, gpt-4-0125-preview, andMixtral-8x7B-Instruct-v0.1
+[9].
+For the GPT models,we used temperature of 0.
+For Mixtral we used a greedysearch.
+Table 1 details the performance across diﬀerentLLMs.
+As gpt-4-0125-preview had the highest score onthe development set, we used that on the test set.
+Table 1
+The results on the development set prompting diﬀerentLLMs.
+The best result in each column is bolded.
+System Acc.
+BLEU ChrFMixtral 34.43 42.86 72.06GPT-3.5 40.57 61.15 77.04GPT-4 47.17 67.01 80.75Our system improved accuracy by over six times higherthan the edit-tree baseline, and more than twice that offew-shot prompting alone.
+This is likely due to the chal-lenges of complex verb conjugation using pattern matchingapproach.
+The complete results can be seen in Table 2.Table 2
+The results of the test set of AmericasNLP2025.System Accuracy BLEU ChrFEdit-tree 8.75 22.11 52.73Few-shot prompt 17.71 39.48 69.28+ Hints (ours) 53.55 78.41 91.53
+
+5.1 Error Analysis
+
+Despite the rule-based conjugation, verb conjugation er-rors still posed the most signiﬁcant challenge, comprising57% of total errors.
+These ranged from minor accent is-sues (e.g., sur instead of s`ur) to completely incorrect verbforms (e.g., k’¨otwwa instead of ujt`ek`eulur).
+The inclusionof numerous irregular verbs in the Bribri data, as noted by[10], compounded these challenges, especially given thelack of overlap between training and testing verbs.
+Omis-sions made up 19% of errors, where words were missingas in Pp’¨o instead of I pp’¨o.
+Extraneous words, such asYe’ wa stsa’ instead of Ye’ stsa’, accounted for 9%, whilepronoun mismatches caused 8% of errors.
+The ﬁnal 6%of errors involved incorrect word order (e.g., K’e ie’ sts¨oinstead of Ie’ k’e
+sts¨o).The high proportion of errors related to verb conjugationsuggests that while the rule-based conjugator contributedsigniﬁcantly to system performance, there remains roomfor improvement in handling irregular forms and less fre-quent patterns.
+Streamlining these enhancements couldaddress gaps in linguistic coverage, which would result inbetter generalization across unseen data.
+
+
+5.2 Expanding to Maya and Guarani
+
+
+As rule-based methods require signiﬁcant time and lin-guistic expertise to develop, we aimed to test a moreminimal-eﬀort version of our hybrid approach on Mayaand Guarani.
+This simpliﬁed approach utilized only POStagging, which can be quickly constructed using a list ofwords and their corresponding parts of speech.
+See Ap-pendix A for details on the datasets for these languages.
+See Table 3 for the size of the dataset for each language.
+Table 3
+The number of instances in the training, development,and test splits for each language.
+Lang Train Dev TestBribri 309 212 480Maya 594 149 310Guarani 178 79
+364We made language-speciﬁc alterations as follows:
+Maya The POS tagger for Maya focuses predomi-nantly on function words, as these play a crucial role inunderstanding the grammatical structure of sentences.
+Al-though we did not create a full dictionary for Maya, weensured coverage of key aspect markers such as t’a’an andpronouns like in or teen
+[11].
+Additionally, the tagger isdesigned to recognize and handle common suﬃxes such ase’ex.
+Guarani The POS tagger for Guarani locates preﬁxesthat indicate the person performing the action, pronouns,and determinants.
+It tags verbs based on conjugations andguesses at nouns using sentence structure.
+All other partsof speech remain untagged.
+We did not build verb conjugators for these languages,focusing instead on testing the feasibility of our hybridmethod with only the minimally developed POS taggingsystem.
+Our experiments demonstrated that the hybrid approachimproved performance for Maya and Guarani comparedto baseline approaches, though the gains were less pro-Table 4
+The results of our hybrid method on Maya and GuaraniLanguage Data Accuracy BLEU ChrFMaya Edit-tree 25.81 53.69 80.23Our system 54.17 71.72 82.78Guarani Edit-tree 14.84 25.03 76.10Our system 36.81 48.29 84.12nounced than for Bribri.
+For Guarani, 75% of errorsinvolved incorrect verb forms, highlighting the potentialbeneﬁt of a rule-based verb conjugator.
+In contrast, Maya’sstrong baseline performance, likely due to its larger train-ing dataset, minimized the impact of verb conjugation onoverall accuracy.
+Errors in Maya were primarily linked toinconsistencies in training data and syntactic complexities,such as the placement of w´aaj in interrogatives (25% oferrors).
+
+
+6 Conclusion
+
+This study demonstrates that combining rule-basedmethods with LLM prompting provides a viable frame-work for generating educational materials in low-resourcesettings.
+The integration of a tailored rule-based verb con-jugator signiﬁcantly improved accuracy on the Bribri dataof Americas2024ST2, demonstrating the importance ofaddressing linguistic complexity in low-resource settings.
+Experiments on Maya and Guarani, using a minimal-eﬀortadaptation focused solely on partial POS tagging, alsoshowed improvements over the edit-tree baseline.
+Futurework should explore scalable methods to expand rule-basedframeworks more eﬃciently while maintaining high accu-racy, as well as integrating advanced prompting techniqueslike chain-of-thought reasoning or Retrieval-AugmentedGeneration (RAG) to enrich contextual understanding.
+Ourproposed method of integrating rule-based techniques intoLLM prompts oﬀers a practical and scalable approach forrevitalizing underrepresented languages, as the LLM doesnot have to be trained on a language directly to be able tocomplete tasks in it eﬀectively.
+
+
+
+Acknowledgments
+
+We would like to express our gratitude to Junehwan Sungfor his invaluable advice and support throughout the Amer-icasNLP 2024 Shared Task. We are also deeply thankful toProfessor Carla Victoria Jara Murillo and Professor HaakonS. Krohn for granting us permission to use and repackagetheir Bribri dictionary and textbook
+
+References
+
+
+[1] Luis Chiruzzo, Pavel Denisov, Samuel Canul Yah, LorenaHau Uc´an, Marvin Ag¨uero-Torales, Aldo Alvarez, Sil-via Fernandez Sabido, Alejandro Molina Villegas, Ab-teen Ebrahimi, Robert Pugh, Arturo Oncevay, Shruti Rijh-wani, Rolando Coto-Solano, Katharina von der Wense, andManuel Mager. Findings of the AmericasNLP 2024 sharedtask on the creation of educational materials for indigenouslanguages. In Proceedings of the 4th Workshop onNatural Language Processing for Indigenous Lan-guages of the Americas (AmericasNLP). Associationfor Computational Linguistics, June 2024.
+[2] Bozhidar Bozhanov and Ivan Derzhanski. Rosetta stonelinguistic problems. In Ivan Derzhanski and DragomirRadev, editors, Proceedings of the Fourth Workshopon Teaching NLP and CL, pp. 1–8, Soﬁa, Bulgaria,August 2013. Association for Computational Linguistics.
+[3] Jannis Vamvas. Translation puzzles are in-context learningtasks, 2022.
+[4] Nathan Chi, Teodor Malchev, Riley Kong, Ryan Chi, Lu-cas Huang, Ethan Chi, R. McCoy, and Dragomir Radev.ModeLing: A novel dataset for testing linguistic reasoningin language models. In Michael Hahn, Alexey Sorokin,Ritesh Kumar, Andreas Shcherbakov, Yulia Otmakhova,Jinrui Yang, Oleg Serikov, Priya Rani, Edoardo M. Ponti,Saliha Murado˘glu, Rena Gao, Ryan Cotterell, and Ekate-rina Vylomova, editors, Proceedings of the 6th Work-shop on Research in Computational Linguistic Ty-pology and Multilingual NLP, pp. 113–119, St. Ju-lian’s, Malta, March 2024. Association for ComputationalLinguistics.
+[5] Jared Coleman, Bhaskar Krishnamachari, Ruben Rosales,and Khalil Iskarous. LLM-assisted rule based machinetranslation for low/no-resource languages. In ManuelMager, Abteen Ebrahimi, Shruti Rijhwani, Arturo Once-vay, Luis Chiruzzo, Robert Pugh, and Katharina von derWense, editors, Proceedings of the 4th Workshop onNatural Language Processing for Indigenous Lan-guages of the Americas (AmericasNLP 2024), pp.67–87, Mexico City, Mexico, June 2024. Association forComputational Linguistics.
+[6] Justin Vasselli, Arturo Mart´ınez Peguero, Junehwan Sung,and Taro Watanabe. Applying linguistic expertise to LLMsfor educational material development in indigenous lan-guages. In Manuel Mager, Abteen Ebrahimi, Shruti Rijh-wani, Arturo Oncevay, Luis Chiruzzo, Robert Pugh, andKatharina von der Wense, editors, Proceedings of the4th Workshop on Natural Language Processing forIndigenous Languages of the Americas (Americas-NLP 2024), pp. 201–208, Mexico City, Mexico, June2024. Association for Computational Linguistics.
+[7] Haakon S Krohn. Diccionario bribri–espa˜nolespa˜nol–bribri, 2023.
+[8] Carla Victoria Jara Murillo. Gram´atica de la lenguabribri, Vol. 1. EDigital, San Jos´e, 2018.
+[9] Albert Q. Jiang, Alexandre Sablayrolles, Antoine Roux,Arthur Mensch, Blanche Savary, Chris Bamford, Deven-dra Singh Chaplot, Diego de las Casas, Emma Bou Hanna,Florian Bressand, Gianna Lengyel, Guillaume Bour, Guil-laume Lample, L´elio Renard Lavaud, Lucile Saulnier,Marie-Anne Lachaux, Pierre Stock, Sandeep Subrama-nian, Sophia Yang, Szymon Antoniak, Teven Le Scao,Th´eophile Gervet, Thibaut Lavril, Thomas Wang, Tim-oth´ee Lacroix, and William El Sayed. Mixtral of experts,2024.
+[10] Luis Chiruzzo, Pavel Denisov, Alejandro Molina-Villegas,Silvia Fernandez-Sabido, Rolando Coto-Solano, MarvinAg¨uero-Torales, Aldo Alvarez, Samuel Canul-Yah, LorenaHau-Uc´an, Abteen Ebrahimi, Robert Pugh, Arturo On-cevay, Shruti Rijhwani, Katharina von der Wense, andManuel Mager. Findings of the AmericasNLP 2024 sharedtask on the creation of educational materials for indigenouslanguages. In Manuel Mager, Abteen Ebrahimi, Shruti Ri-jhwani, Arturo Oncevay, Luis Chiruzzo, Robert Pugh, andKatharina von der Wense, editors, Proceedings of the4th Workshop on Natural Language Processing forIndigenous Languages of the Americas (Americas-NLP 2024), pp. 224–235, Mexico City, Mexico, June2024. Association for Computational Linguistics.
+[11] David Bolles and Alejandra Bolles. A Grammar of theYucatecan Mayan Language. 1996.
+
+
+
+A Maya and Guarani
+
+
+
+A.1 Data
+
+Americas2024ST2 includes data for Maya and Guaranias well as Bribri.
+The data collected is as follows:Maya The Maya dataset focused on Yucatec Maya, alanguage with complex grammatical features distinct fromEuropean languages.
+The data originated from a collab-orative eﬀort between SEDECULTA (the Secretariat ofCulture and the Arts of Yucat´an) and CentroGeo for thedevelopment of a machine translation system.
+This ini-tial data included 13,873 Maya-Spanish parallel sentences,which were later reﬁned and annotated for the shared task.
+The shared task data consisted of 1,400 phrases derivedfrom this corpus, annotated with 12 grammatical tags, in-cluding predicate type, statement type, mood, aspect, andtransitivity.
+Sentences were grouped into clusters, whereeach cluster contained a base sentence and several varia-tions with minor grammatical modiﬁcations.
+These clus-ters aimed to reﬂect diverse linguistic features, includingaﬃrmatives, negatives, interrogatives, and diﬀerent tenses.
+Guarani
+The Guarani dataset focused on theParaguayan variety, a language spoken by approximatelysix million people across South America.
+Guaranis
+mor-phology is highly complex, with verbs inﬂected for person,number, tense, aspect, and mood, and often involving cir-cumﬁxes for negation.
+This dataset aimed to challengemodels with these intricate linguistic features.
+The data was sourced from three main contributors: theJojajovai parallel corpus, Mozilla Common Voice tran-scriptions, and a grammar-based generator for Guarani-Spanish sentence pairs.
+The generator provided around80% of the training and development clusters, while theCommon Voice data accounted for 33% of the test set.
+Sentences were manually reviewed and annotated by threelinguists, including two native speakers.
+To increase dif-ﬁculty, verbs seen in the training data were excluded fromthe test set, requiring systems to generalize across unseenexamples.
+Annotation features included person, number,polarity, aspect, and verb nasal/oral categorization, the lat-ter inﬂuencing aﬃx compatibility.
+
+
+A.2 Results
+
+
+We conducted experiments with multiple LLMs on allthree languages.
+Table 5 details the performance acrossdiﬀerent LLMs, noting that while Mixtral scored morecompetitively with GPT 3.5 for Maya, it was very ineﬀec-tive for Guarani.
+GPT-4 resulted in the highest accuracyfor all three languages.
+Table 5
+The results on the development set for the diﬀerentLLMs for Maya and Guarani.
+Lang System Acc.
+BLEU ChrFMixtral 44.97 69.19 83.52Maya GPT-3.5 42.28 67.84 86.04GPT-4 56.38 78.26 91.33Mixtral 12.66 20.95 69.84Guarani GPT-3.5 36.71 51.38 83.35GPT-4 41.77 55.81 86.12
