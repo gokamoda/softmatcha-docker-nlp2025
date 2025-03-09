@@ -43,69 +43,26 @@ the end sen-tence generation technique to create high-quality par-allel sentence
 
 The idea of sentence generation using embeddings is il-lustrated by the notion of the middle sentence generation,introduced by [3]. A middle sentence serves as a bridgebetween a start sentence and an end sentence in an anal-
 
-Data Augmentation for Manipuri-English Neural MachineTranslation
-
-Xiaojing Shen
-
-1
-
-, Yves Lepage
-
-11
-
-Graduate School of Information, Production and Systems, Waseda University
-
-
-
-jetshen@akane.waseda.jp, yves.lepage@waseda.jp
-
-
-
-概要
-
-Neural Machine Translation (NMT) for low-resourcelanguages like Manipur i, a Sino-Tibetan language, is con-strained by limited parallel corpora. This study applies adata augmentation technique, end sentence generation, toimprove Manipuri-English NMT performance by creatingadditional parallel sentence pairs from existing datasets.Experiments on three datasets―the EM corpus, PMIn-dia corpus, and WMT23 corpus ― demonstrate that theproposed method consistently improves translation qual-ity. For the WMT23 dataset, BLEU scores increased from26.7 to 30.0 (Manipuri-to-English) and from 22.5 to 25.1(English-to-Manipuri), with similar gains across other cor-pora.Keywords: Neural Machine Translation, Data Augmen-tation, Low-Resource Language,
-Manipuri
-
-1 Introduction
-
-
-
-1.1 Background
-
-Neural Machine Translation (NMT) has signiﬁcantly ad-vanced machine translation by leveraging deep learningtechniques to achieve end-to-end translation. Despite itssuccess, NMT faces substantial challenges for low-resourcelanguages like Manipuri due to the scarcity of parallelcorpora. Manipuri, a Sino-Tibetan language with uniquelinguistic features such as agglutinative morphology andSubject-Object-Verb (SOV) word order, poses additionaldiﬃculties for machine translation.Large Language Models (LLMs), including ChatGPT-4o [1] and BLOOM [2], have shown limited eﬀectivenessin handling low-resource languages. Experiments on theWMT23 corpus reveal that LLMs achieve BLEU scores of8.2–8.9 for Manipuri-to-English translation and even lowerscores for English-to-Manipuri, far below the performanceof NMT systems ﬁne-tuned on augmented datasets. Theseresults highlight the need
-for novel strategies to improvetranslation per formance for low-resource language pairs.To address these challenges, this study applies a dataaugmentation technique known as end sentence generationto expand the training data for Manipuri-English NMT.By leveraging str uctural analogies within existing sentencepairs, this method generates additional parallel sentencepairs, enhancing the size and diversity of the training cor-pus. Experiments on datasets of varying sizes and quali-ties conﬁrm the eﬀectiveness of this approach in improvingtranslation per formance.
-
-1.2 Contributions
-
-• Enhanced training data: Introduced the end sen-tence generation technique to create high-quality par-allel sentence pairs, addressing the scarcity of avail-able data.• Performance improvements: Achieved signiﬁcantBLEU score gains across multiple datasets, demon-strating
-the eﬀectiveness of data augmentation forlow-resource NMT tasks.• Insights into corpus quality: Highlighted the impactof parallel sentence alignment on NMT performance,emphasizing the importance of data quality in low-resource settings.
-
-2 Methodology
-
-
-
-2.1 End sentence generation
-
-The idea of sentence generation using embeddings is il-lustrated by the notion of the middle sentence generation,introduced by [3]. A middle sentence serves as a bridgebetween a start sentence and an end sentence in an anal-ogy, and is derived by interpolating sentence embeddings.This approach has shown promise in generating meaningfulintermediate sentences, especially in low-resource scenar-ios [3, 4].Building upon this idea, [5] proposed the end sentencegeneration method, which extrapolates embeddings beyondthe middle sentence to
-create new sentences. This methodenables the exploration of broader semantic spaces, thusenhancing the diversity and size of the training dataset.
+ogy, and is derived by interpolating sentence embeddings.This approach has shown promise in generating meaningfulintermediate sentences, especially in low-resource scenar-ios [3, 4].Building upon this idea, [5] proposed the end sentencegeneration method, which extrapolates embeddings beyondthe middle sentence to create new sentences. This methodenables the exploration of broader semantic spaces, thusenhancing the diversity and size of the training dataset.
 
 2.2 Renormalized end sentence formula
 
-The end sentence embedding is computed using therenormalized formula:erenorm=2∥m∥ − ∥s∥∥2m − s∥× (2m − s)(1)where s, m, and e represent sentence embeddings for thestart, middle, and end sentences in the analogy s : m :: m :e, respectively. The renor malization step ensures that thegenerated embeddings are well-scaled and compatible withdecoding mechanisms, addressing potential vector lengthdiscrepancies.The renormalized end sentence formula builds on thework of [5], which demonstrated that this approach pro-duces high-quality sentences with greater semantic consis-tency compared to basic
-extrapolation methods.
+The end sentence embedding is computed using therenormalized formula:erenorm=2∥m∥ − ∥s∥∥2m − s∥× (2m − s)(1)where s, m, and e represent sentence embeddings for thestart, middle, and end sentences in the analogy s : m :: m :e, respectively. The renor malization step ensures that thegenerated embeddings are well-scaled and compatible withdecoding
+mechanisms, addressing potential vector lengthdiscrepancies.The renormalized end sentence formula builds on thework of [5], which demonstrated that this approach pro-duces high-quality sentences with greater semantic consis-tency compared to basic extrapolation methods.
 
 2.3 Optimization of sentence embeddings
 
 The sentence embedding space used in this study is dis-tilmBERT [6], a distilled version of BERT that signiﬁcantlyreduces the number of parameters while maintaining highperformance. Its lightweight architecture and multilingualtraining make it particularly suitable for low-resource lan-guage tasks such as Manipuri-English NMT.To decode sentence embeddings into natural languagesentences, we employed the vector-to-sequence (vec2seq)model [7], which maps embeddings to coherent textual rep-resentations. This combination of distilmBERT for encod-ing and vec2seq for decoding provides a robust frameworkfor end sentence generation.
 
-2.4 Optimization of embedding space
+2.4 Optimization of
+embedding space
 
 
 
 with BERT-ﬂow
 
-Sentence embeddings from distilmBERT often exhibitirregularities that can hinder vector arithmetic operations.To address this, BERT-ﬂow [8] was
-used to project the em-beddings onto a Gaussian latent space. This optimizationenhances the semantic consistency of the embeddings andreduces computational errors during end sentence genera-tion.BERT-ﬂow was ﬁne-tuned speciﬁcally for this experi-ment, using the hyperparameters given in Table 1.Parameter ValueBatch size 64Learning rate 1e-5Number of layers 2Hidden size768Dropout 0.1Number of training steps 10,000Optimizer AdamWWeight decay 0.01表 1 Fine-tuning hyperparameters for distilmBERTThe combination of distilmBERT, vec2seq, and BERT-ﬂow ensured that the generated sentence embeddings wereboth semantically meaningful and suitable for decoding.These optimizations played a crucial role in enhancing theperformance of the end sentence generation method, par-ticularly in the low-resource Manipuri-English translationtask.
+Sentence embeddings from distilmBERT often exhibitirregularities that can hinder vector arithmetic operations.To address this, BERT-ﬂow [8] was used to project the em-beddings onto a Gaussian latent space. This optimizationenhances the semantic consistency of the embeddings andreduces computational errors during end sentence genera-tion.BERT-ﬂow was ﬁne-tuned speciﬁcally for this experi-ment, using the hyperparameters given in Table 1.Parameter ValueBatch size 64Learning rate 1e-5Number of layers 2Hidden size768Dropout 0.1Number of training steps 10,000Optimizer AdamWWeight decay 0.01表 1 Fine-tuning hyperparameters for distilmBERTThe combination of distilmBERT, vec2seq, and BERT-ﬂow ensured that the generated sentence embeddings wereboth semantically meaningful and suitable for decoding.These optimizations played a crucial role in enhancing theperformance of the end sentence generation method, par-ticularly in
+the low-resource Manipuri-English translationtask.
 
 2.5 Integration with Manipuri-English
 
@@ -113,8 +70,7 @@ used to project the em-beddings onto a Gaussian latent space. This optimizatione
 
 NMT
 
-The end sentence
-generation method was integrated intothe Manipuri-English NMT pipeline to address the chal-lenges of data scarcity. By applying this technique, thetraining corpus was signiﬁcantly expanded, particularly fordatasets like the WMT23 corpus [9] by a factor of around3 (see Table 4). This resulted in enhanced translation per-formance, as reﬂected in improved BLEU scores.This approach builds on established data augmentationmethods, such as back-translation [10] and mix-up [11],while oﬀering a formula-driven, scalable solution tailoredto low-resource languages.
+The end sentence generation method was integrated intothe Manipuri-English NMT pipeline to address the chal-lenges of data scarcity. By applying this technique, thetraining corpus was signiﬁcantly expanded, particularly fordatasets like the WMT23 corpus [9] by a factor of around3 (see Table 4). This resulted in enhanced translation per-formance, as reﬂected in improved BLEU scores.This approach builds on established data augmentationmethods, such as back-translation [10] and mix-up [11],while oﬀering a formula-driven, scalable solution tailoredto low-resource languages.
 
 3 Experiment Setup
 
@@ -124,202 +80,17 @@ generation method was integrated intothe Manipuri-English NMT pipeline to addres
 
 For dataset preprocessing, SentencePiece [12] was usedto perform subword tokenization, which is eﬀective forhandling low-resource languages with rich morphology.All experiments were conducted using the OpenNMT-pytoolkit [13] with a Transformer-based architecture [14].
 
-Data Augmentation for Manipuri-English Neural MachineTranslation
-
-Xiaojing Shen
-
-1
-
-, Yves Lepage
-
-11
-
-Graduate School of Information, Production and Systems, Waseda University
-
-
-
-jetshen@akane.waseda.jp, yves.lepage@waseda.jp
-
-
-
-概要
-
-Neural Machine Translation (NMT) for low-resourcelanguages like Manipur i, a Sino-Tibetan language, is con-strained by limited parallel corpora. This study applies adata augmentation technique, end sentence generation, toimprove Manipuri-English NMT performance by creatingadditional parallel sentence pairs from existing datasets.Experiments on three datasets―the EM corpus, PMIn-dia corpus, and WMT23 corpus ― demonstrate that theproposed method consistently improves translation qual-ity. For
-the WMT23 dataset, BLEU scores increased from26.7 to 30.0 (Manipuri-to-English) and from 22.5 to 25.1(English-to-Manipuri), with similar gains across other cor-pora.Keywords: Neural Machine Translation, Data Augmen-tation, Low-Resource Language, Manipuri
-
-1 Introduction
-
-
-
-1.1 Background
-
-Neural Machine Translation (NMT) has signiﬁcantly ad-vanced machine translation by leveraging deep learningtechniques to achieve end-to-end translation. Despite itssuccess, NMT faces substantial challenges for low-resourcelanguages like Manipuri due to the scarcity of parallelcorpora. Manipuri, a Sino-Tibetan language with uniquelinguistic features such as agglutinative morphology andSubject-Object-Verb (SOV)
-word order, poses additionaldiﬃculties for machine translation.Large Language Models (LLMs), including ChatGPT-4o [1] and BLOOM [2], have shown limited eﬀectivenessin handling low-resource languages. Experiments on theWMT23 corpus reveal that LLMs achieve BLEU scores of8.2–8.9 for Manipuri-to-English translation and even lowerscores for English-to-Manipuri, far below the performanceof NMT systems ﬁne-tuned on augmented datasets. Theseresults highlight the need for novel strategies to improvetranslation per formance for low-resource language pairs.To address these challenges, this study applies a dataaugmentation technique
-known as end sentence generationto expand the training data for Manipuri-English NMT.By leveraging str uctural analogies within existing sentencepairs, this method generates additional parallel sentencepairs, enhancing the size and diversity of the training cor-pus. Experiments on datasets of varying sizes and quali-ties conﬁrm the eﬀectiveness of this approach in improvingtranslation per formance.
-
-1.2 Contributions
-
-• Enhanced training data: Introduced the end sen-tence generation technique to create high-quality par-allel sentence pairs, addressing the scarcity of avail-able data.• Performance improvements: Achieved
-signiﬁcantBLEU score gains across multiple datasets, demon-strating the eﬀectiveness of data augmentation forlow-resource NMT tasks.• Insights into corpus quality: Highlighted the impactof parallel sentence alignment on NMT performance,emphasizing the importance of data quality in low-resource settings.
-
-2 Methodology
-
-
-
-2.1 End sentence generation
-
-The idea of sentence generation using embeddings is il-lustrated by the notion of the middle sentence generation,introduced by [3]. A middle sentence serves as a bridgebetween a start sentence and an end sentence in an anal-ogy, and
-is derived by interpolating sentence embeddings.This approach has shown promise in generating meaningfulintermediate sentences, especially in low-resource scenar-ios [3, 4].Building upon this idea, [5] proposed the end sentencegeneration method, which extrapolates embeddings beyondthe middle sentence to create new sentences. This methodenables the exploration of broader semantic spaces, thusenhancing the diversity and size of the training dataset.
-
-2.2 Renormalized end sentence formula
-
-The end sentence embedding is computed using therenormalized formula:erenorm=2∥m∥ − ∥s∥∥2m − s∥× (2m − s)(1)where s, m,
-and e represent sentence embeddings for thestart, middle, and end sentences in the analogy s : m :: m :e, respectively. The renor malization step ensures that thegenerated embeddings are well-scaled and compatible withdecoding mechanisms, addressing potential vector lengthdiscrepancies.The renormalized end sentence formula builds on thework of [5], which demonstrated that this approach pro-duces high-quality sentences with greater semantic consis-tency compared to basic extrapolation methods.
-
-2.3 Optimization of sentence embeddings
-
-The sentence embedding space used in this study
-is dis-tilmBERT [6], a distilled version of BERT that signiﬁcantlyreduces the number of parameters while maintaining highperformance. Its lightweight architecture and multilingualtraining make it particularly suitable for low-resource lan-guage tasks such as Manipuri-English NMT.To decode sentence embeddings into natural languagesentences, we employed the vector-to-sequence (vec2seq)model [7], which maps embeddings to coherent textual rep-resentations. This combination of distilmBERT for encod-ing and vec2seq for decoding provides a robust frameworkfor end sentence generation.
-
-2.4 Optimization of embedding space
-
-
-
-with BERT-ﬂow
-
-Sentence embeddings from
-distilmBERT often exhibitirregularities that can hinder vector arithmetic operations.To address this, BERT-ﬂow [8] was used to project the em-beddings onto a Gaussian latent space. This optimizationenhances the semantic consistency of the embeddings andreduces computational errors during end sentence genera-tion.BERT-ﬂow was ﬁne-tuned speciﬁcally for this experi-ment, using the hyperparameters given in Table 1.Parameter ValueBatch size 64Learning rate 1e-5Number of layers 2Hidden size768Dropout 0.1Number of training steps 10,000Optimizer AdamWWeight decay 0.01表 1 Fine-tuning hyperparameters for distilmBERTThe combination of
-distilmBERT, vec2seq, and BERT-ﬂow ensured that the generated sentence embeddings wereboth semantically meaningful and suitable for decoding.These optimizations played a crucial role in enhancing theperformance of the end sentence generation method, par-ticularly in the low-resource Manipuri-English translationtask.
-
-2.5 Integration with Manipuri-English
-
-
-
-NMT
-
-The end sentence generation method was integrated intothe Manipuri-English NMT pipeline to address the chal-lenges of data scarcity. By applying this technique, thetraining corpus was signiﬁcantly expanded, particularly fordatasets like the WMT23 corpus [9] by a factor of
-around3 (see Table 4). This resulted in enhanced translation per-formance, as reﬂected in improved BLEU scores.This approach builds on established data augmentationmethods, such as back-translation [10] and mix-up [11],while oﬀering a formula-driven, scalable solution tailoredto low-resource languages.
-
-3 Experiment Setup
-
-
-
-3.1 Conﬁguration
-
-For dataset preprocessing, SentencePiece [12] was usedto perform subword tokenization, which is eﬀective forhandling low-resource languages with rich morphology.All experiments were conducted using the OpenNMT-pytoolkit [13] with a Transformer-based architecture [14].The Transformer model’s key conﬁguration parameters aredetailed
-in Table 2.Parameter ValueBatch size 256Optimizer AdamLearning rate 0.2Decay method NoamEncoder layers 6Decoder layers 6Heads 8Hidden size512Transformer ﬀ layer size 2048Attention dropout 0.15Vocabulary size 20,000表 2 Transformer model conﬁguration.
+The Transformer model’s key conﬁguration parameters aredetailed in Table 2.Parameter ValueBatch size 256Optimizer AdamLearning rate 0.2Decay method NoamEncoder layers 6Decoder layers 6Heads 8Hidden size512Transformer ﬀ layer size 2048Attention dropout 0.15Vocabulary size 20,000表 2 Transformer model conﬁguration.
 
 3.2 Data
 
-Three datasets were utilized to evaluate the Manipuri-English NMT models, representing varying sizes and de-grees of parallelism (Table 3):• EM Corpus: A comparable corpus with 125kManipuri-English sentence pairs [15]. 95% of thesentence pairs have low alignment quality, with co-sine similarity below 0.3, which poses challenges forNMT training.• PMIndia
-Corpus: A high-quality, strictly parallelcorpus containing 7k sentence pairs [16], sourcedfrom oﬃcial communications.• WMT23 Corpus: A curated corpus with 24k highlyparallel Manipuri-English sentence pairs [9], servingas a benchmark for evaluating augmentation strate-gies.Corpus Language Sentences Avg. LengthEM Manipuri (mni) 124,975 21English (en) 124,975 26PMIndia Manipuri (mni) 7,419 15English (en) 7,419 19WMT23 Manipuri (mni) 23,687 15English (en) 23,687 18表 3 Summary of datasets used in experiments.
+Three datasets were utilized to evaluate the Manipuri-English NMT models, representing varying sizes and de-grees of parallelism (Table 3):• EM Corpus: A comparable corpus with 125kManipuri-English sentence pairs [15]. 95% of thesentence pairs have low alignment quality, with co-sine similarity below 0.3, which poses challenges forNMT training.• PMIndia Corpus: A high-quality, strictly parallelcorpus containing 7k sentence pairs [16], sourcedfrom oﬃcial communications.•
+WMT23 Corpus: A curated corpus with 24k highlyparallel Manipuri-English sentence pairs [9], servingas a benchmark for evaluating augmentation strate-gies.Corpus Language Sentences Avg. LengthEM Manipuri (mni) 124,975 21English (en) 124,975 26PMIndia Manipuri (mni) 7,419 15English (en) 7,419 19WMT23 Manipuri (mni) 23,687 15English (en) 23,687 18表 3 Summary of datasets used in experiments.
 
 3.3 Evaluation
 
-The performance of NMT models was evaluated usingBLEU [17], chrF [18], and
-TER [19], which together cap-ture lexical accuracy, ﬂuency, and required edit operations.These metrics were chosen because:• They are robust for low-resource settings with limiteddata.• They do not rely on pre-trained language models,which may not adequately support Manipuri.Neural metrics like BLEURT [20] and COMET [21],while eﬀective in high-resource scenarios, were not useddue to their reliance on extensive pre-training corpora,which are unavailable for Manipur i. BLEU, chrF, andTER provide a reliable alternative for evaluating transla-tion quality in low-resource conditions.
-
-4
-Results and Analysis
-
-This section evaluates the performance of Manipuri-English NMT models on three datasets― EM, PMIndia,and WMT23―before and after applying the proposed dataaugmentation method. It also compares these results withthose of state-of-the-art Large Language Models (LLMs),ChatGPT-4o and BLOOM.
-
-4.1 The impact of data augmentation
-
-Table 4 summarizes the experimental results for bothoriginal and augmented datasets. The BLEU, chrF, andTER scores are reported for both translation directions(Manipuri-to-English and English-to-Manipuri).• EM corpus: The EM corpus, being thematicallycomparable rather than strictly
-parallel, exhibited thelowest baseline performance, with BLEU scores of6.1 (mni → en) and 3.5 (en → mni). After aug-mentation, the BLEU scores improved to 7.8 and 5.7,respectively. chrF scores also increased, highlightingthe potential of data augmentation to enhance evenloosely aligned corpora.• PMIndia corpus: As a high-quality, small-scaledataset, PMIndia achieved baseline BLEU scores of15.4 (mni → en) and 13.2 (en → mni). Augmentationincreased BLEU scores to 17.8 and 15.2, demonstrat-ing the eﬀectiveness of the method on strictly parallelcorpora.
-
-Data Augmentation for Manipuri-English Neural MachineTranslation
-
-Xiaojing Shen
-
-1
-
-, Yves Lepage
-
-11
-
-Graduate School of Information, Production and Systems, Waseda University
-
-
-
-jetshen@akane.waseda.jp, yves.lepage@waseda.jp
-
-
-
-概要
-
-Neural Machine Translation (NMT) for low-resourcelanguages like Manipur i, a Sino-Tibetan language, is con-strained by limited parallel corpora. This study applies adata augmentation technique, end sentence generation, toimprove Manipuri-English NMT performance by creatingadditional parallel sentence pairs from existing datasets.Experiments on three datasets―the EM corpus, PMIn-dia corpus, and WMT23 corpus ― demonstrate that theproposed method consistently improves translation qual-ity. For the WMT23 dataset, BLEU scores increased from26.7 to 30.0 (Manipuri-to-English) and from 22.5 to 25.1(English-to-Manipuri), with similar gains across other cor-pora.Keywords: Neural Machine Translation, Data Augmen-tation, Low-Resource Language, Manipuri
-
-1
-Introduction
-
-
-
-1.1 Background
-
-Neural Machine Translation (NMT) has signiﬁcantly ad-vanced machine translation by leveraging deep learningtechniques to achieve end-to-end translation. Despite itssuccess, NMT faces substantial challenges for low-resourcelanguages like Manipuri due to the scarcity of parallelcorpora. Manipuri, a Sino-Tibetan language with uniquelinguistic features such as agglutinative morphology andSubject-Object-Verb (SOV) word order, poses additionaldiﬃculties for machine translation.Large Language Models (LLMs), including ChatGPT-4o [1] and BLOOM [2], have shown limited eﬀectivenessin handling low-resource languages. Experiments on theWMT23 corpus reveal that LLMs achieve BLEU scores of8.2–8.9 for Manipuri-to-English translation and even lowerscores for English-to-Manipuri, far below the performanceof NMT systems ﬁne-tuned on augmented datasets. Theseresults highlight the need for novel strategies
-to improvetranslation per formance for low-resource language pairs.To address these challenges, this study applies a dataaugmentation technique known as end sentence generationto expand the training data for Manipuri-English NMT.By leveraging str uctural analogies within existing sentencepairs, this method generates additional parallel sentencepairs, enhancing the size and diversity of the training cor-pus. Experiments on datasets of varying sizes and quali-ties conﬁrm the eﬀectiveness of this approach in improvingtranslation per formance.
-
-1.2 Contributions
-
-• Enhanced training data: Introduced the end sen-tence generation technique to create high-quality par-allel sentence pairs, addressing the scarcity of avail-able data.• Performance improvements: Achieved signiﬁcantBLEU score gains across multiple datasets, demon-strating the eﬀectiveness of data
-augmentation forlow-resource NMT tasks.• Insights into corpus quality: Highlighted the impactof parallel sentence alignment on NMT performance,emphasizing the importance of data quality in low-resource settings.
-
-2 Methodology
-
-
-
-2.1 End sentence generation
-
-The idea of sentence generation using embeddings is il-lustrated by the notion of the middle sentence generation,introduced by [3]. A middle sentence serves as a bridgebetween a start sentence and an end sentence in an anal-ogy, and is derived by interpolating sentence embeddings.This approach has shown promise in generating meaningfulintermediate sentences, especially in low-resource scenar-ios [3, 4].Building upon this idea, [5] proposed the end sentencegeneration method, which extrapolates embeddings beyondthe middle sentence to create new sentences. This methodenables
-the exploration of broader semantic spaces, thusenhancing the diversity and size of the training dataset.
-
-2.2 Renormalized end sentence formula
-
-The end sentence embedding is computed using therenormalized formula:erenorm=2∥m∥ − ∥s∥∥2m − s∥× (2m − s)(1)where s, m, and e represent sentence embeddings for thestart, middle, and end sentences in the analogy s : m :: m :e, respectively. The renor malization step ensures that thegenerated embeddings are well-scaled and compatible withdecoding mechanisms, addressing potential vector lengthdiscrepancies.The renormalized end sentence formula builds on thework of [5], which demonstrated that this approach pro-duces high-quality sentences with greater semantic consis-tency compared to basic extrapolation methods.
-
-2.3 Optimization of sentence embeddings
-
-The
-sentence embedding space used in this study is dis-tilmBERT [6], a distilled version of BERT that signiﬁcantlyreduces the number of parameters while maintaining highperformance. Its lightweight architecture and multilingualtraining make it particularly suitable for low-resource lan-guage tasks such as Manipuri-English NMT.To decode sentence embeddings into natural languagesentences, we employed the vector-to-sequence (vec2seq)model [7], which maps embeddings to coherent textual rep-resentations. This combination of distilmBERT for encod-ing and vec2seq for decoding provides a robust frameworkfor end sentence generation.
-
-2.4 Optimization of embedding space
-
-
-
-with BERT-ﬂow
-
-Sentence embeddings from distilmBERT often exhibitirregularities that can hinder vector arithmetic operations.To address this, BERT-ﬂow [8] was used to project the em-beddings onto a Gaussian
-latent space. This optimizationenhances the semantic consistency of the embeddings andreduces computational errors during end sentence genera-tion.BERT-ﬂow was ﬁne-tuned speciﬁcally for this experi-ment, using the hyperparameters given in Table 1.Parameter ValueBatch size 64Learning rate 1e-5Number of layers 2Hidden size768Dropout 0.1Number of training steps 10,000Optimizer AdamWWeight decay 0.01表 1 Fine-tuning hyperparameters for distilmBERTThe combination of distilmBERT, vec2seq, and BERT-ﬂow ensured that the generated sentence embeddings wereboth semantically meaningful and suitable for decoding.These optimizations played a crucial role in enhancing theperformance of the end sentence generation method, par-ticularly in the low-resource Manipuri-English translationtask.
-
-2.5 Integration with Manipuri-English
-
-
-
-NMT
-
-The end sentence generation method was integrated intothe Manipuri-English NMT pipeline to
-address the chal-lenges of data scarcity. By applying this technique, thetraining corpus was signiﬁcantly expanded, particularly fordatasets like the WMT23 corpus [9] by a factor of around3 (see Table 4). This resulted in enhanced translation per-formance, as reﬂected in improved BLEU scores.This approach builds on established data augmentationmethods, such as back-translation [10] and mix-up [11],while oﬀering a formula-driven, scalable solution tailoredto low-resource languages.
-
-3 Experiment Setup
-
-
-
-3.1 Conﬁguration
-
-For dataset preprocessing, SentencePiece [12] was usedto perform subword tokenization, which is eﬀective forhandling low-resource languages with rich morphology.All experiments were conducted using the OpenNMT-pytoolkit [13] with a Transformer-based architecture [14].The Transformer model’s key conﬁguration parameters aredetailed in Table 2.Parameter ValueBatch
-size 256Optimizer AdamLearning rate 0.2Decay method NoamEncoder layers 6Decoder layers 6Heads 8Hidden size512Transformer ﬀ layer size 2048Attention dropout 0.15Vocabulary size 20,000表 2 Transformer model conﬁguration.
-
-3.2 Data
-
-Three datasets were utilized to evaluate the Manipuri-English NMT models, representing varying sizes and de-grees of parallelism (Table 3):• EM Corpus: A comparable corpus with 125kManipuri-English sentence pairs [15]. 95% of thesentence pairs have low alignment quality, with co-sine similarity below 0.3, which poses challenges forNMT training.• PMIndia Corpus: A high-quality, strictly parallelcorpus containing 7k sentence pairs [16], sourcedfrom oﬃcial communications.• WMT23 Corpus: A curated corpus with 24k highlyparallel Manipuri-English sentence pairs [9], servingas a benchmark for evaluating augmentation strate-gies.Corpus
-Language Sentences Avg. LengthEM Manipuri (mni) 124,975 21English (en) 124,975 26PMIndia Manipuri (mni) 7,419 15English (en) 7,419 19WMT23 Manipuri (mni) 23,687 15English (en) 23,687 18表 3 Summary of datasets used in experiments.
-
-3.3 Evaluation
-
-The performance of NMT models was evaluated usingBLEU [17], chrF [18], and TER [19], which together cap-ture lexical accuracy, ﬂuency, and required edit operations.These metrics were chosen because:• They are robust for low-resource settings with limiteddata.• They do not rely on pre-trained language models,which may not adequately support Manipuri.Neural metrics like BLEURT [20] and COMET [21],while eﬀective in high-resource scenarios, were not useddue to their reliance on extensive pre-training corpora,which are unavailable for Manipur
-i. BLEU, chrF, andTER provide a reliable alternative for evaluating transla-tion quality in low-resource conditions.
+The performance of NMT models was evaluated usingBLEU [17], chrF [18], and TER [19], which together cap-ture lexical accuracy, ﬂuency, and required edit operations.These metrics were chosen because:• They are robust for low-resource settings with limiteddata.• They do not rely on pre-trained language models,which may not adequately
+support Manipuri.Neural metrics like BLEURT [20] and COMET [21],while eﬀective in high-resource scenarios, were not useddue to their reliance on extensive pre-training corpora,which are unavailable for Manipur i. BLEU, chrF, andTER provide a reliable alternative for evaluating transla-tion quality in low-resource conditions.
 
 4 Results and Analysis
 
@@ -327,24 +98,25 @@ This section evaluates the performance of Manipuri-English NMT models on three d
 
 4.1 The impact of data augmentation
 
-Table 4 summarizes the experimental results for bothoriginal and augmented datasets. The BLEU, chrF, andTER scores are reported for both translation directions(Manipuri-to-English and English-to-Manipuri).• EM corpus: The EM corpus, being thematicallycomparable rather than strictly parallel, exhibited thelowest baseline performance, with BLEU scores of6.1 (mni → en) and 3.5
-(en → mni). After aug-mentation, the BLEU scores improved to 7.8 and 5.7,respectively. chrF scores also increased, highlightingthe potential of data augmentation to enhance evenloosely aligned corpora.• PMIndia corpus: As a high-quality, small-scaledataset, PMIndia achieved baseline BLEU scores of15.4 (mni → en) and 13.2 (en → mni). Augmentationincreased BLEU scores to 17.8 and 15.2, demonstrat-ing the eﬀectiveness of the method on strictly parallelcorpora.• WMT23 corpus: The WMT23 corpus, being thelargest and most parallel dataset, achieved the highestscores. Augmentation boosted BLEU scores from26.7 to 30.0 (mni → en) and from 22.5 to 25.1 (en →mni), with similar improvements observed for chrF.
+Table 4 summarizes the experimental results for bothoriginal and augmented datasets. The BLEU,
+chrF, andTER scores are reported for both translation directions(Manipuri-to-English and English-to-Manipuri).• EM corpus: The EM corpus, being thematicallycomparable rather than strictly parallel, exhibited thelowest baseline performance, with BLEU scores of6.1 (mni → en) and 3.5 (en → mni). After aug-mentation, the BLEU scores improved to 7.8 and 5.7,respectively. chrF scores also increased, highlightingthe potential of data augmentation to enhance evenloosely aligned corpora.• PMIndia corpus: As a high-quality, small-scaledataset, PMIndia achieved baseline BLEU scores of15.4 (mni → en) and 13.2 (en → mni). Augmentationincreased BLEU scores to 17.8 and 15.2, demonstrat-ing the eﬀectiveness of the method on strictly parallelcorpora.
+
+• WMT23 corpus: The WMT23 corpus, being thelargest and most parallel dataset, achieved the highestscores. Augmentation boosted BLEU scores from26.7 to 30.0 (mni → en) and from 22.5 to 25.1 (en →mni), with similar improvements observed for chrF.
 
 4.2 Comparison with LLMs
 
-The performance of ChatGPT-4o
-and BLOOM on theWMT23 test set is included for comparison. Both LLMsunderperformed signiﬁcantly compared to the augmentedNMT models, with BLEU scores of 8.2 and 8.9 (mni →en) and 2.6 and 3.4 (en → mni), respectively. These resultsindicate the limited capability of LLMs in handling low-resource language pairs, underscoring the importance ofﬁne-tuned NMT systems.Model Corpus Size BLEU chrF TERmni → enNITS-CNLP WMT23 – 26.9 48.6 67.6ChatGPT-4o WMT23 – 8.2 24.5 89.6BLOOM WMT23 – 8.9 33.1 83.7Original WMT23 23,687 26.7 48.3 68.8Augmented 71,061 30.0 52.4 69.1Original EM 124,975 6.1 19.0 73.3Augmented 374,925 7.8 21.5 73.6Original PMIndia 7,419 15.4 33.9 72.0Augmented 22,257 17.8 35.5 72.3en → mniNITS-CNLP WMT23
-– 22.7 48.3 70.0ChatGPT-4o WMT23 – 2.6 21.0 99.8BLOOM WMT23 – 3.4 27.9 96.4Original WMT23 23,687 22.5 47.9 69.7Augmented 71,061 25.1 49.2 70.7Original EM 124,975 3.5 21.1 81.4Augmented 374,925 5.7 23.9 81.3Original PMIndia 7,419 13.2 30.6 77.4Augmented22,25715.2 33.177.5表 4 Performance of NMT models and LLMs on Ma-nipuri-English translation tasks with diﬀerent datasets and dataaugmentation.
+The performance of ChatGPT-4o and BLOOM on theWMT23 test set is included for comparison. Both LLMsunderperformed signiﬁcantly compared to the augmentedNMT models, with BLEU scores of 8.2 and 8.9 (mni →en) and 2.6 and 3.4 (en → mni), respectively. These resultsindicate the limited capability of LLMs in handling low-resource language pairs, underscoring the importance ofﬁne-tuned NMT systems.Model Corpus Size BLEU chrF TERmni → enNITS-CNLP WMT23 – 26.9 48.6 67.6ChatGPT-4o WMT23 – 8.2 24.5 89.6BLOOM WMT23 –
+8.9 33.1 83.7Original WMT23 23,687 26.7 48.3 68.8Augmented 71,061 30.0 52.4 69.1Original EM 124,975 6.1 19.0 73.3Augmented 374,925 7.8 21.5 73.6Original PMIndia 7,419 15.4 33.9 72.0Augmented 22,257 17.8 35.5 72.3en → mniNITS-CNLP WMT23 – 22.7 48.3 70.0ChatGPT-4o WMT23 – 2.6 21.0 99.8BLOOM WMT23 – 3.4 27.9 96.4Original WMT23 23,687 22.5 47.9 69.7Augmented 71,061 25.1 49.2 70.7Original EM 124,975 3.5 21.1 81.4Augmented 374,925 5.7 23.9 81.3Original PMIndia 7,419 13.2 30.6 77.4Augmented22,25715.2 33.177.5表 4 Performance of NMT models and LLMs on Ma-nipuri-English translation tasks with diﬀerent datasets and dataaugmentation.
 
 4.3 Discussion
 
-The results demonstrate the signiﬁcant advantages ofdata augmentation for low-resource NMT. While LLMsshow promise in multilingual settings, their performancein low-resource language pairs like Manipuri-English re-mains subpar without ﬁne-tuning. In contrast, special-ized NMT models trained on augmented datasets achievesubstantial improvements in BLEU and chrF scores, reaf-ﬁrming the impor tance of tailored data augmentation
-tech-niques for low-resource MT tasks.
+The results demonstrate the signiﬁcant advantages ofdata augmentation for low-resource NMT. While LLMsshow promise in multilingual settings, their performancein low-resource language pairs like Manipuri-English re-mains subpar without ﬁne-tuning. In contrast,
+special-ized NMT models trained on augmented datasets achievesubstantial improvements in BLEU and chrF scores, reaf-ﬁrming the impor tance of tailored data augmentation tech-niques for low-resource MT tasks.
 
 5 Conclusion and future work
 
-This study applied the end sentence generation methodto augment Manipuri-English NMT datasets, achieving thefollowing key ﬁndings:• Data augmentation eﬀectiveness: End sentencegeneration added 249,950, 14,838, and 47,374 newsentence pairs to the EM, PMIndia, and WMT23 cor-pora, respectively. This led to consistent BLEU scoreimprovements across all datasets. On the WMT23corpus, the augmented model achieved BLEU scoresof 30.0 (mni → en) and 25.1 (en → mni), signif-icantly outperforming NITS-CNLP [22], which re-ported BLEU scores of 26.92 and 22.75 for the sametranslation directions.• Impact of dataset quality and size: The WMT23corpus, being the most well aligned, achieved thehighest performance, while the
-EM corpus, despitebeneﬁting from augmentation, required larger datavolumes due to low alignment quality.• Comparison with LLMs: Augmented NMT mod-els outperformed ChatGPT-4o and BLOOM, demon-strating the necessity of ﬁne-tuned systems for low-resource languages like Manipuri.For future work, we propose the following directions:• Improving augmented data quality: Employ gram-mar correction tools or advanced language models toreﬁne generated sentence pairs.• Better alignment for comparable corpora: En-hance weakly aligned datasets like the EM corpususing advanced embedding techniques.• Scaling to larger datasets: Validate end sentencegeneration on larger or cross-domain datasets to im-prove scalability and generalizability.• Leveraging LLMs: Fine-tune large language modelsor use them to generate high-quality parallel data forManipuri-English translation tasks.
+This study applied the end sentence generation methodto augment Manipuri-English NMT datasets, achieving thefollowing key ﬁndings:• Data augmentation eﬀectiveness: End sentencegeneration added 249,950, 14,838, and 47,374 newsentence pairs to the EM, PMIndia, and WMT23 cor-pora, respectively. This led to consistent BLEU scoreimprovements across all datasets. On the WMT23corpus, the augmented model achieved BLEU scoresof 30.0 (mni → en) and 25.1 (en → mni), signif-icantly outperforming NITS-CNLP [22], which re-ported BLEU scores of 26.92 and 22.75 for the sametranslation directions.• Impact of dataset quality and size: The
+WMT23corpus, being the most well aligned, achieved thehighest performance, while the EM corpus, despitebeneﬁting from augmentation, required larger datavolumes due to low alignment quality.• Comparison with LLMs: Augmented NMT mod-els outperformed ChatGPT-4o and BLOOM, demon-strating the necessity of ﬁne-tuned systems for low-resource languages like Manipuri.For future work, we propose the following directions:• Improving augmented data quality: Employ gram-mar correction tools or advanced language models toreﬁne generated sentence pairs.• Better alignment for comparable corpora: En-hance weakly aligned datasets like the EM corpususing advanced embedding techniques.• Scaling to larger datasets: Validate end sentencegeneration on larger or cross-domain datasets to im-prove scalability and generalizability.• Leveraging LLMs: Fine-tune large language modelsor use them to generate high-quality parallel data forManipuri-English translation tasks.
 
 
 
