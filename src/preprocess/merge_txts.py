@@ -15,6 +15,10 @@ def main(args):
         for file_path in file_paths:
             with open(file_path) as fi:
                 for line in fi:
+                    if line == "\n":
+                        continue
+                    line = line.strip() + "\n"
+                    assert len(line.split("\n")) == 2, line.split("\n")
                     line_to_file[line_idx] = file_path
                     fo.write(line)
                     line_idx += 1
