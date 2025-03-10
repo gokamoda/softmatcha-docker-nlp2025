@@ -18,6 +18,7 @@ embedding_models, tokenizers, model_options = get_model_tokenizers(
     app.embedding_model_infos
 )
 indexes = app.load_indexes()
+line_infos = app.load_line_infos()
 
 
 def check_model_availability(
@@ -52,7 +53,6 @@ def index(
             "filter_regex": filter_regex,
         },
     )
-
 
 @app.get("/search", response_class=JSONResponse)
 def search_demo(
@@ -100,6 +100,7 @@ def search_demo(
         embedding=embedding_models[model_name],
         tokenizer=tokenizers[model_name],
         indexes=indexes[corpus],
+        line_info=line_infos[corpus],
     )
 
     logger.info(

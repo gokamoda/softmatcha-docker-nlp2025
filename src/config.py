@@ -1,7 +1,7 @@
 from argparse import Namespace
 from collections import defaultdict
 from pprint import pformat
-
+import json
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -15,22 +15,17 @@ class SoftMatchaAPI(FastAPI):
     embedding_model_infos: dict[str, str] = {
         "glove-wiki-gigaword-300": "gensim",
         "fasttext-ja-vectors": "fasttext",
-        # "fasttext-la-vectors": "fasttext",
     }
 
     index_filenames: dict[str, dict[str, str]] = {
-        # "wikitext2 (2M)": "glove-wiki-gigaword-300_Wikitext2_Raw_Train",
         "en": {
             "NLP2025_en": "glove-wiki-gigaword-300_nlp2025",
         },
         "ja": {
             "NLP2025_ja": "fasttext-ja-vectors_nlp2025",
         },
-        # "la": {
-            # "Perseus (5M)": "fasttext-la-vectors_perseus",
-            # "Augustinian Sermon Parallelisms (0.1M)": "fasttext-la-vectors_augustinian-sermon-parallelisms",
-        # },
     }
+
 
     # TODO(kamoda): These class variables are no longer needed.
     # corpus_model_combinations: dict[str, list[str]] = {}
@@ -91,6 +86,20 @@ class SoftMatchaAPI(FastAPI):
                 # memory_usage["total"] += memory_usage[key]
 
         return indexes
+
+    def load_line_infos(self) -> dict[str, dict[int, str]]:
+        line_infos = {}
+        for _lang, filenames in self.index_filenames.items():
+            for key, filename in filenames.items():
+                line_info_file_path = "data/txt/" + key + ".json"
+
+                with open(line_info_file_path) as fi:
+                    line_info_dict = json.load(fi)
+                
+                line_infos[key] = line_info_dict
+        
+        return line_infos
+                    
 
 
 def get_model_tokenizers(embedding_model_infos):

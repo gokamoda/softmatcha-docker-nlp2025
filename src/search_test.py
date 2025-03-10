@@ -38,6 +38,15 @@ def test():
     )
     print(json.dumps(results))
 
+def test_index_inverted_file_collection():
+    filename = "fasttext-ja-vectors_nlp2025"
+    indexes = IndexInvertedFileCollection.load("data/" + filename + ".h5")
+
+    from IPython import embed
+
+    embed()
+
 
 if __name__ == "__main__":
-    test()
+    # test()
+    test_index_inverted_file_collection()
