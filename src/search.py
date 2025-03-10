@@ -35,7 +35,7 @@ def get_formatted_search_result(
     start_file: int = 0,
     max_lines: int = 250,
     filter_regex: str = ".*",
-):  
+):
     regex = re.compile(filter_regex)
 
     stopwatch.timers.reset(profile=output_cfg.profile)
@@ -47,7 +47,9 @@ def get_formatted_search_result(
         [threshold] * len(pattern_embeddings),
     )
 
-    for file_idx, (file_path, file_index) in enumerate(zip(indexes.paths, indexes.indexes)):
+    for file_idx, (file_path, file_index) in enumerate(
+        zip(indexes.paths, indexes.indexes)
+    ):
         searcher = SearchIndexInvertedFile(
             file_index, tokenizer, embedding, use_hash=True
         )
@@ -81,7 +83,7 @@ def get_formatted_search_result(
 
                 result = json.loads(res.text)
                 line_number = result["line_number"]
-                source_filepath = line_info[str(line_number)]
+                source_filepath = line_info[str(line_number - 1)]
 
                 file_stem = Path(source_filepath).stem
                 paper_identifiers = file_stem.split("-")
@@ -91,7 +93,13 @@ def get_formatted_search_result(
                 count += len(result["matched_token_start_positions"])
                 line_count += 1
                 nlp_url = f"https://www.anlp.jp/proceedings/annual_meeting/2025/#{paper_identifier}"
-                result_html = "<td><a href='" + nlp_url + "' target='_blank'>" + paper_identifier + "</a> "
+                result_html = (
+                    "<td><a href='"
+                    + nlp_url
+                    + "' target='_blank'>"
+                    + paper_identifier
+                    + "</a> "
+                )
 
                 current_position = 0
                 for rb_begin, token, score in zip(
@@ -101,7 +109,7 @@ def get_formatted_search_result(
                 ):
                     result_html += (
                         result["original_line"][current_position:rb_begin]
-                        + f" <ruby class='text-success'>{result['original_line'][rb_begin:rb_begin + len(token)]}<rt>{score:.2f}&nbsp;</rt></ruby> "
+                        + f" <ruby class='text-success'>{result['original_line'][rb_begin : rb_begin + len(token)]}<rt>{score:.2f}&nbsp;</rt></ruby> "
                     )
                     current_position = rb_begin + len(token)
                 result_html += result["original_line"][current_position:] + "</td>"
